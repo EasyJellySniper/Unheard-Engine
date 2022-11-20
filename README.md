@@ -11,6 +11,9 @@ Not many features in the first version, but covers all basic applications. <br>
 - Motion Vector Pass
 - Tone mapping
 - Temporal AA
-<br> Hopefully this can help all Vulkan beginners :) <br>
-Demo Link: <br>
+
+<br> Hopefully this can help all Vulkan learners :) <br>
+<br> Implementation Details: <br>
+https://thegraphicguysquall.wordpress.com/2022/11/21/unheard-engine-2-months-journey-of-vulkan-learning/
+<br><br> Demo Link: <br>
 [![IMAGE ALT TEXT HERE](https://thegraphicguysquall.files.wordpress.com/2022/11/unheardengine-1.jpg)](https://www.youtube.com/watch?v=EtZUbPk3ZYA) 
