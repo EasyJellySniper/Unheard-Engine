@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props" Condition="Exists('packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props')" />
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{9b07606d-c24f-4789-a089-2d0114bbf68d}</ProjectGuid>
+    <RootNamespace>UnheardEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.20348.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ExecutablePath>$(ExecutablePath)</ExecutablePath>
+    <TargetName>$(ProjectName)_Debug</TargetName>
+    <OutDir>$(SolutionDir)</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ExecutablePath>$(ExecutablePath)</ExecutablePath>
+    <TargetName>$(ProjectName)_Release</TargetName>
+    <OutDir>$(SolutionDir)</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;FBXSDK_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\VulkanSDK\1.3.224.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;C:\VulkanSDK\1.3.224.1\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;libfbxsdk.lib;libfbxsdk-md.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\VulkanSDK\1.3.224.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;C:\VulkanSDK\1.3.224.1\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="Editor\EditorUI\Editor.h" />
+    <ClInclude Include="Editor\EditorUI\EditorUtils.h" />
+    <ClInclude Include="Editor\GeometryUtility.h" />
+    <ClInclude Include="Editor\TextureImporter.h" />
+    <ClInclude Include="Game\UHDemoScript.h" />
+    <ClInclude Include="Runtime\Classes\AccelerationStructure.h" />
+    <ClInclude Include="Runtime\Classes\AssetPath.h" />
+    <ClInclude Include="Runtime\Components\GameScript.h" />
+    <ClInclude Include="Runtime\CoreGlobals.h" />
+    <ClInclude Include="Runtime\Renderer\DescriptorHelper.h" />
+    <ClInclude Include="Runtime\Components\Light.h" />
+    <ClInclude Include="Runtime\Components\Camera.h" />
+    <ClInclude Include="Runtime\Components\Component.h" />
+    <ClInclude Include="Runtime\Components\MeshRenderer.h" />
+    <ClInclude Include="Runtime\Classes\Material.h" />
+    <ClInclude Include="Runtime\Classes\MaterialLayout.h" />
+    <ClInclude Include="Runtime\Classes\GraphicState.h" />
+    <ClInclude Include="Runtime\Classes\Object.h" />
+    <ClInclude Include="Runtime\Classes\MeshLayout.h" />
+    <ClInclude Include="Runtime\Classes\RenderBuffer.h" />
+    <ClInclude Include="Runtime\Engine\RenderResource.h" />
+    <ClInclude Include="Runtime\Classes\RenderTexture.h" />
+    <ClInclude Include="Runtime\Renderer\RenderingTypes.h" />
+    <ClInclude Include="Runtime\Renderer\GraphicBuilder.h" />
+    <ClInclude Include="Runtime\Renderer\DeferredShadingRenderer.h" />
+    <ClInclude Include="Runtime\Classes\Utility.h" />
+    <ClInclude Include="Runtime\Engine\Config.h" />
+    <ClInclude Include="Runtime\Engine\Asset.h" />
+    <ClInclude Include="Editor\Profiler.h" />
+    <ClInclude Include="Runtime\Classes\Mesh.h" />
+    <ClInclude Include="Runtime\Classes\Types.h" />
+    <ClInclude Include="Runtime\Engine\GameTimer.h" />
+    <ClInclude Include="Runtime\Engine\Graphic.h" />
+    <ClInclude Include="Runtime\Classes\Settings.h" />
+    <ClInclude Include="Runtime\Engine\Engine.h" />
+    <ClInclude Include="framework.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="Runtime\Classes\Shader.h" />
+    <ClInclude Include="Runtime\Classes\Scene.h" />
+    <ClInclude Include="Runtime\Classes\Sampler.h" />
+    <ClInclude Include="Runtime\Components\SkyLight.h" />
+    <ClInclude Include="Editor\ShaderImporter.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\BasePassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTTextureTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\ShaderClass.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\SkyPassShader.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="Runtime\Engine\Input.h" />
+    <ClInclude Include="Editor\FbxImporter.h" />
+    <ClInclude Include="Runtime\Components\Transform.h" />
+    <ClInclude Include="Runtime\Classes\Texture2D.h" />
+    <ClInclude Include="Runtime\Classes\Texture.h" />
+    <ClInclude Include="Runtime\Classes\TextureCube.h" />
+    <ClInclude Include="UnheardEngine.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Editor\EditorUI\Editor.cpp" />
+    <ClCompile Include="Editor\EditorUI\EditorUtils.cpp" />
+    <ClCompile Include="Editor\TextureImporter.cpp" />
+    <ClCompile Include="Game\UHDemoScript.cpp" />
+    <ClCompile Include="Runtime\Classes\AccelerationStructure.cpp" />
+    <ClCompile Include="Runtime\Classes\TextureCube.cpp" />
+    <ClCompile Include="Runtime\Classes\Types.cpp" />
+    <ClCompile Include="Runtime\Components\GameScript.cpp" />
+    <ClCompile Include="Runtime\CoreGlobals.cpp" />
+    <ClCompile Include="Runtime\Renderer\DescriptorHelper.cpp" />
+    <ClCompile Include="Runtime\Components\Light.cpp" />
+    <ClCompile Include="Runtime\Components\Camera.cpp" />
+    <ClCompile Include="Runtime\Components\Component.cpp" />
+    <ClCompile Include="Runtime\Components\MeshRenderer.cpp" />
+    <ClCompile Include="Runtime\Classes\Material.cpp" />
+    <ClCompile Include="Runtime\Classes\GraphicState.cpp" />
+    <ClCompile Include="Runtime\Classes\Object.cpp" />
+    <ClCompile Include="Runtime\Engine\RenderResource.cpp" />
+    <ClCompile Include="Runtime\Classes\RenderTexture.cpp" />
+    <ClCompile Include="Runtime\Renderer\BasePassRendering.cpp" />
+    <ClCompile Include="Runtime\Renderer\DeferredShadingRenderer.cpp" />
+    <ClCompile Include="Runtime\Engine\Config.cpp" />
+    <ClCompile Include="Runtime\Engine\Asset.cpp" />
+    <ClCompile Include="Editor\Profiler.cpp" />
+    <ClCompile Include="Runtime\Classes\Mesh.cpp" />
+    <ClCompile Include="Runtime\Engine\GameTimer.cpp" />
+    <ClCompile Include="Runtime\Engine\Graphic.cpp" />
+    <ClCompile Include="Runtime\Engine\Engine.cpp" />
+    <ClCompile Include="Runtime\Engine\Input.cpp" />
+    <ClCompile Include="Editor\FbxImporter.cpp" />
+    <ClCompile Include="Runtime\Renderer\GraphicBuilder.cpp" />
+    <ClCompile Include="Runtime\Classes\Shader.cpp" />
+    <ClCompile Include="Runtime\Components\Transform.cpp" />
+    <ClCompile Include="Runtime\Classes\Scene.cpp" />
+    <ClCompile Include="Runtime\Renderer\LightPassRendering.cpp" />
+    <ClCompile Include="Runtime\Renderer\MotionPassRendering.cpp" />
+    <ClCompile Include="Runtime\Renderer\PostProcessRendering.cpp" />
+    <ClCompile Include="Runtime\Renderer\RayTracingRendering.cpp" />
+    <ClCompile Include="Runtime\Renderer\RendererInitializer.cpp" />
+    <ClCompile Include="Runtime\Classes\Sampler.cpp" />
+    <ClCompile Include="Runtime\Components\SkyLight.cpp" />
+    <ClCompile Include="Runtime\Classes\Texture2D.cpp" />
+    <ClCompile Include="Runtime\Classes\Texture.cpp" />
+    <ClCompile Include="Editor\ShaderImporter.cpp" />
+    <ClCompile Include="Runtime\Renderer\SkyPassRendering.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\ShaderClass.cpp" />
+    <ClCompile Include="UnheardEngine.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="UnheardEngine.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico" />
+    <Image Include="UnheardEngine.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <None Include="Shaders\RayTracing\UHRTCommon.hlsli" />
+    <None Include="Shaders\UHCommon.hlsli" />
+    <None Include="Shaders\UHInputs.hlsli">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\BasePixelShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\BaseVertexShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessVS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\LightPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SkyboxPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\SkyboxVertexShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\ToneMapPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\TemporalAAPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\MotionVectorShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RayTracingShadow.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RayTracingHitGroup.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\DebugViewPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets')" />
+  </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props'))" />
+    <Error Condition="!Exists('packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets'))" />
+  </Target>
+</Project>

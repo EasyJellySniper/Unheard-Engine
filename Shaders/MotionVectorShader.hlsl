@@ -1,0 +1,80 @@
+#include "UHInputs.hlsli"
+#include "UHCommon.hlsli"
+
+struct MotionVertexOutput
+{
+	float4 Position : SV_POSITION;
+	float2 UV0 : TEXCOORD0;
+	float3 WorldPos : TEXCOORD1;
+	float3 PrevWorldPos : TEXCOORD2;
+};
+
+Texture2D DepthTexture : register(t1);
+SamplerState PointSampler : register(s2);
+Texture2D OpacityTex : register(t3);
+SamplerState OpacitySampler : register(s4);
+
+float4 CameraMotionPS(PostProcessVertexOutput Vin) : SV_Target
+{
+	// this one simply builds motion vector from depth information
+	// suitable for opaque objects
+	// note that matrix used in this pass should be non-jittered!
+	float Depth = DepthTexture.SampleLevel(PointSampler, Vin.UV, 0).r;
+
+	// don't calculate in empty pixels
+	UHBRANCH
+	if (Depth == 0.0f)
+	{
+		return 0;
+	}
+
+	float3 WorldPos = ComputeWorldPositionFromDeviceZ(Vin.Position.xy, Depth, true);
+
+	// calc current/prev clip pos
+	float4 PrevNDCPos = mul(float4(WorldPos, 1.0f), UHPrevViewProj_NonJittered);
+	PrevNDCPos /= PrevNDCPos.w;
+	float2 PrevScreenPos = (PrevNDCPos.xy * 0.5f + 0.5f);
+
+	float4 CurrNDCPos = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
+	CurrNDCPos /= CurrNDCPos.w;
+	float2 CurrScreenPos = (CurrNDCPos.xy * 0.5f + 0.5f);
+
+	float2 Velocity = CurrScreenPos.xy - PrevScreenPos.xy;
+	return float4(Velocity, 0, 1);
+}
+
+MotionVertexOutput MotionObjectVS(VertexInput Vin)
+{
+	MotionVertexOutput Vout = (MotionVertexOutput)0;
+	float3 WorldPos = mul(float4(Vin.Position, 1.0f), UHWorld).xyz;
+	float3 PrevWorldPos = mul(float4(Vin.Position, 1.0f), UHPrevWorld).xyz;
+
+	// pass through the vertex data
+	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj);
+	Vout.UV0 = Vin.UV0;
+	Vout.WorldPos = WorldPos;
+	Vout.PrevWorldPos = PrevWorldPos;
+
+	return Vout;
+}
+
+float4 MotionObjectPS(MotionVertexOutput Vin) : SV_Target
+{
+#if WITH_OPACITY
+	UHMaterialConstants Material = UHMaterials[0];
+	float Opacity = OpacityTex.Sample(OpacitySampler, Vin.UV0).r * Material.DiffuseColor.a;
+	clip(Opacity - Material.Cutoff);
+#endif
+
+	// calc current/prev clip pos and return motion
+	float4 PrevNDCPos = mul(float4(Vin.PrevWorldPos, 1.0f), UHPrevViewProj_NonJittered);
+	PrevNDCPos /= PrevNDCPos.w;
+	float2 PrevScreenPos = (PrevNDCPos.xy * 0.5f + 0.5f);
+
+	float4 CurrNDCPos = mul(float4(Vin.WorldPos, 1.0f), UHViewProj_NonJittered);
+	CurrNDCPos /= CurrNDCPos.w;
+	float2 CurrScreenPos = (CurrNDCPos.xy * 0.5f + 0.5f);
+
+	float2 Velocity = CurrScreenPos.xy - PrevScreenPos.xy;
+	return float4(Velocity, 0, 1);
+}

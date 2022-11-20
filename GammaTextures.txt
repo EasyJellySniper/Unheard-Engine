@@ -1,0 +1,15 @@
+Viking_Hut/Albedo
+Viking_Hut/Diffuse
+Viking_Hut/Diffuse_Moss
+Viking_Hut/Diffuse_Snow
+Viking_Hut/Fern_Albedo
+Viking_Hut/ID4
+Viking_Hut/Ivy_Diffuse
+Viking_Hut/Snow_Base_Color
+Viking_Hut/Soil_basecolor
+Daylight Box_Pieces/negx
+Daylight Box_Pieces/negy
+Daylight Box_Pieces/negz
+Daylight Box_Pieces/posx
+Daylight Box_Pieces/posy
+Daylight Box_Pieces/posz

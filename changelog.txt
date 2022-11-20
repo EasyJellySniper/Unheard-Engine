@@ -1,0 +1,111 @@
+24-09-2022: Add main engine class and simple settings S/L.
+25-09-2022: Add main graphic class and initialize Vulkan device.
+30-09-2022: Add window surface and swap chain implementation.
+
+01-10-2022: Create SwapChain image views, frame buffers, render pass (similar to the RT part of D3D12 PSO, command pool and buffer (similar to command list allocator and command list), and fence.
+Also add a simple render loop for testing. I got some memory back when I was doing D3D12 stuffs!
+
+02-10-2022: Create multi-frame sync and swapchain resize workflow. Add exclusive fullscreen toggling!
+03-10-2022: Add raw input class and deal with input events. Add gametimer and simple FPS counter.
+I also corrected the message loop, so the engine will run on full speed. (use PeekMessage instead of GetMessage)
+
+04-10-2022: Start to add fbx importer and mesh class. Now meshes can be added successfully by per-vertex. Now it successfully import position/UV0/normal/tangents information.
+05-10-2022: Implement a simple cache method for mesh I/O. So it doesn't need to import from raw assets every time, which could be slow!
+Also added a config class, any settings I/O and applies should be there. From this change, I'll add utility functions in Utility.h
+
+06-10-2022: Kick off DeferredShadingRenderer implementation. Also added a GraphicBuilder class for clean code. Added a render thread for rendering. Added a render texture class for managing VkImage/VkImageView/VkImageBuffer...etc
+
+07-10-2022: Minor change for GameTimer class, stil choose performance counter timer. Added UHRenderResource for managing render textures. Added simple resource management in the engine.
+The vertex buffer/index buffer creation is separated from Mesh class, they will be created in renderer. Now, both VB/IB are uploaded to GPU sucessfully.
+
+11-10-2022: Kicked off the graphic state implemenation. The idea is to share the states as many as possible. Most state information are set properly. Started to compile HLSL shader in this change.
+Shader compiled and loaded to Vulkan successfully. Next is to create graphic state for it.
+This change also improves UHE_LOG.
+
+12-10-2022: Added simple cache workflow for shaders, so it won't be compiled again if it wasn't changed at all. Download dxc.exe from GitHub instead of using the one in VulkanSDK.
+Also added default materials. Added simple component management. Added a default scene and add mesh renderers to it. All getter member functions are end with "const" now.
+
+13-10-2022: Switch custom type to DirectXMath. Start to implement transform class. Which simply store scale/position/rotation and return world/rotation matrix, forward vector for now.
+Added simple property for material. Added camera implementation which is based on infinite far plane. Implemented simple update function as well. Use template implementation on UHRenderBuffer. Also implemented constant buffer behavior. All matrices are now tranposed before return.
+
+14-10-2022: Define SAFE_RELEASE for all classes which have Release() function. Start to add object/material constants in this change. From now on, use std::array if size of array is known. Only use std::vector for dynamic cases. Added render dirty workflow, so constant buffer can be updated on proper times. Enhanced the Resize() workflow, it should reset properly now. Reference another dxc release 2022-07-18. This one provides dxil.dll. Use two dx commandlines for shader compiling.
+
+15-10-2022: Set and get constant index when AddMeshRenderer. Also prepared Opaque/Translucent Renderers. Ready for sorting work. Enchanced the Release() functions, container also get cleared.
+Simply sorted Opaque/Translucent based on Z-distance to camera. Arranged Init/Create/Release implementations of DeferredShadingRenderer to another cpp. Corrected FBX imported transformations, rename LocalXXX in mesh class to ImportedXXX.
+
+16-10-2022: Start to create graphic states for renderers. Graphic state creation is failed due to HLSL shader (confirmed). Need to work on it. Fixed it!!!! Just add a space before " -spirv " and problem solved lol.
+Enhance all FindXXXX vectors utility functions. Now it considers T and T*, so it can compare value and pointer correctly. Big progress today!
+
+17-10-2022: Added scene depth image and image view. Creating RenderPass and FrameBuffer properly. Integrated CommandBuffer parameter of GraphBuilder to constructor, save the passing. Also started to create descriptor stuffs, so I can bind uniform buffer to rendering. Draw triangles successfully! But there are some ridiculous mesh inputs from test scene (2 millon triangles...), so FPS is dropped to 53.
+
+18-10-2022: Fixed import bug of FBX, calling FbxGeometryConverter::Triangulate() and making sure all meshes are triangle-based. But this is a time-consuming opearation! Start to add debug labels of GPU events, so I can differensiate them in RenderDoc. Also change the exe file output directory and the name. Arranged the color attachment info to UHTransition info. Fixed engine resize bug! It was actually resize multiple times a frame. Separate swap chain pass to blit and present, currently no other way to transit it.
+
+19-10-2022: Prepare to implement transition behavior. Implemennt simple ResourceBarrier, with unordered_map for mapping access flag and stage flag. Successfully to blit image from scene result to swapchain! Fixed View/Proj matrix bug, turns out they still need to be tranposed before multipication. Same for world matrix. Need to solve constant buffer issue, it's now use the first data only. Might need to create descriptors for all renderers instead of sharing it. Also apply unit scale to imported meshes, they're too big.
+
+20-10-2022: Fixed descriptor binding, but rendering isn't fully correct. Imported meshes with unit scale and X-Axis -90 rotatoin. Fixed indices importing issue! But FPS is a tradegy now due to 2 million polys tree. Transformation is still wrong, consider using other FBX for test. Found a perfect test assets!! But full screen bug is appeared again. Fixed a thread issue, now main thread actually waits render thread to signal. Also fix camera view matrix.
+
+21-10-2022: Define +Y as up but it still can work with Vulkan well. Flipped the up vector when creating ViewMatrix. Start to add other attributes in shader. Fix a transform typo. Fulfill basic Gbuffer output (without texture sampling). Started to add light pass. Added simply ini file I/O. Added simple engine settings (mainly for default camera).
+
+22-10-2022: Created rendering buffers with a fix resolution instead of following window size. Started to add light component implementation. Added directional light buffer upload.
+
+23-10-2022: Re-implement the mesh buffer creation, now it will follow the shading model settings. Re-implement the descriptor creation. It was really painful...Correct the register binding in the shader. Added shader include files caches. So modifiying shader includes will also trigger re-compiling. Enchance the calling of SetRenderDirties for light and material. Corrected the descriptor allocation, only sets need to follow GMaxFrameInFlight.
+
+24-10-2022: Restructured the descriptor creation. Define UHDescriptorUsage enum for them. Now I can vary the register space in UH! Arranged a few "Request" functions of Graphic class, only UHRenderBuffer will not be managed by Graphic class since it's template-based. Started to implement sampler as well. Fixed bug of depth store, it was "don't care".. Also fixed a bug regarding material file, it was not R/W material constants at all!
+
+25-10-2022: Restructured descriptor again! Each shader should contain the minimum descriptor set instead of sharing the table. Might consider integrating desciptor stuff in shader class. Added a helper class for descriptor writer, which made the workflow cleaner. Added BRDF calculation in the lighting pass! It's time to add texturing after this change.
+
+26-10-2022: Minor changes to FBXImporter, when reading data like normal/uv/tangent. I'll always map them as eByControlPoint and reference as eDirect. Separated light parameters and constant, it was a mess. Added simple sky lighting. Restructured Texture class, which is painful but good for future. Added WIC texture importer as editor class, cache system is used too. Also arranged most file path stuffs.
+
+27-10-2022: Added texture uploading flow, CPU data will be release right after uploading. Arranged initialization order, it won't show window until the initialization is done. Started to try importing material data from FBX.
+
+28-10-2022: Separate matearial props and constants, one for CPU another for GPU, don't use them together! Imported used texture file name also, made it easier to map. Bound texture to material sucessfully. Ready for modifying rendering system for textures. Arranged all for loop usage, which was painful but good for future. Toggling GPU labeling feature in the setting, since it can reduce performance. Tried to upload the textures that are really used in rendering. Wrote texture to descriptor binding successfully. Moved device extenstions define to cpp instead of header. Added shader variable in material class. Wrote defines to cache as well. Added simple hash system for shader variants.
+
+30-10-2022: Applied shader variants system. Now it can sample texture. However, anything besides control points are wrong. Need more R&D for FBX importer. Loaded FBX UV/Normal/Tangent successfully! Some conversions are needed, e.g. Invert UV.y. Also fixed normal and sky lighting bugs in the shader. Normal needs to be normalized before converting to [0,1]. And Up vector in sky lighting calculation doesn't need to convert to [0,1], otherwise it's always lit by sky. Imported bump scale as well.
+
+31-10-2022: Added more texture calculation. For now simply consider opacity map as alpha test map. Finished the texture sampling in deferred pass! Fixed a few importing bugs. However UVs are still wrong sometimes.
+
+01-11-2022: Fixed many bugs! The texture importing uses RGBA instead of BGRA now. Revisited FBX import again for AO map and real vertices. I found vertex buffer needs to be reconstructed based on UV element. Minor codestyle change, also added a UH coding rules document. Some meshes don't seem to be origin at (0,0,0), the renderer sorting could be incorrect. Considered mesh center for sort renderer as well.
+
+02-11-2022: Added UHTextureInfo for creation, reduced lots of parameter passed to creation functions. Added UHSamplerInfo as well, it also has MaxLod parameter. Finished mip map generation. New a mateial holds sampler array too, each type of texture sampler is separated. Removed the shared LinearWrappedSampler, now the system should use the sampler from different texture type. Also maded resource barrier and blit operate on specific mip slice. Added a geometry utility header for creating built-in mesh. Started to add skybox renderer. Rethink the usage of UHRenderPassTypes and UHShadingModel enum. Arranged render pass objects massively. Started to add sky pass stuffs.
+
+03-11-2022: Separated UHRenderpass/Descriptor object. It's really hard to arrange those stuffs without hating self..Added sky pass suceessully. Restructured the asset/cache folder output, they should maintain raw assets file structure. Also collect custom extension types in AssetPath.h. Arranged all DefaultXXX stuff to Scene.h, shouldn't be in Engine.h. Copy to texture cube successfully! Set anisotropic sampling as default option. But it seems to give me a false error about feature enable lol.
+
+04-11-2022: Applied per-object env cube mapping. Also corrected a bug regarding roughness. Didn't notice the shiness import from FBX is ranged in [0..255]. Try to differentiate linear/srgb format when requesting texture. Arranged descriptor initialization again. Ready for adding post process workflow. Rethink descriptor write helper structure at the moment. Moved shader define stuffs to material, should be there.
+
+05-11-2022: Added a UHShaderClass for high-level management of shader and its descriptor. Hopefully this makes initialization shorter. Massively reduces the smelly initialization code, they're initialized in where should make sense now! Reduced initialization code from 9xx lines to 4xx lines. Added the share usage of descriptor/pipeline layout in the shader class. Added tone mapping shader. Corrected shader subpath issue.
+
+06-11-2022: Added file extension check for all .uhxxx. In case it's loading the wrong files. Added fresnel factor in material props. Added simple shared function for post processing.
+
+07-11-2022: Started to add tone mapping shader implementation. Added jitter matrix for temporal effects. TAA worked! With motion issues. Will address it afterward. The TAA workflow also considered first-chance and resizing issues.
+
+08-11-2022: Added motion vector pass for opaque objects. Started to address ghosting issue in TAA, and I'd choose velocity difference for Disocclusion. Added non-jittered matrix for use. Completed TAA 1st version. Arranged layout binding codes.
+
+09-11-2022: Started to add ray tracing extension. Will try to build acceleration structures first. Integreated VB/IB buffer to UHMesh class.
+Added raytracing feature check and modify create info in CreateLogicalDevice(). Added UHAccelerationStructure for managing AS. Building both bottom/top level structures successfully, need to test them in actual rendering.
+
+10-11-2022: Started to add ray tracing shader implementation. Creating RT pipeline successfully. Added STORAGE_BIT for render texture when necessary. Built shader table for vk TraceRay call successfully. I can only debug RT result with debug view pass, RenderDoc can't catch it lol.
+
+11-11-2022: Fixed the bug of ray tracing incomplete! All bottom level AS must be creaeted before initializing top level AS. Removed huge scale for skybox, shader calculation already dealt with it.
+
+12-11-2022: Figured out how to generate ray for orthographic projection, suitable for non-negative near plane only. Ready for creating light matrix.
+
+13-11-2022: Started to add light view/proj matrix. Started to sample shadow map, but it had issues. Found it was caused by weird matrix issue, consisting view/project light matrix would work. But separting them didn't..I must be a tired.
+
+14-11-2022: Reverted orthographic ray shadows, I think screen space shadow still works better. Added sampler to debug view PS. Added PCSS shadow sampling! Despite there are a few hard-code stuffs. Renamed all GBuffer to a meaningful name. Added a UVGrad GBuffer for storing UV ddx/ddy. Now penumbra will be lerpped based on UVGrad, so distant pixels won't use high penumbra. Finialized RT shadow mapping. Enhanced debug view mode. Added simple game script management. Used material buffers as storage buffer instead of constant, it's ready for RT shaders accessing.
+
+15-11-2022: Default material to masked if there is any opacity texture during import FBX. Added any hit shader, ready for brining in material buffer. Bind material buffer to hit group shader successfully! BindStorage() function adds the full range binding, otherwise only the first element in the StructuredBuffer would work. Enabled the descriptor indexing feature. Trying to deal with texture binding in RT. Minor change to UV gradient texture storage.
+
+16-11-2022: Started to add VB/IB table binding for RT hit group shader. Bound both VB/IB successfully. Bound all necessary data to RT hit groups! Finalized RT shahdows, used vertex normal for offset ray instead. Added enable ray tracing setting in config file. Tried to build top level AS every frame, but it slowed down FPS a lot. Rebuild top level AS successfully, consider updating it in the future.
+
+17-11-2022: Started to add per-object motion pass. Fixed shader cache bug if a shader uses different entry point in one file. Finalize the motion object pass and TAA issue for dynamic object is concluded! Optimized a few MathHelpers computation. Trying to add editor lol, removed resource.h out of UnheardEngine.h. Swtiching view mode in window menu succeed!
+
+18-11-2022: Added metallic material texture type. Metallic textures are not loaded by FBX, I assign to material maually for test in game script. Removed CreateSwapChain call during initialization, since ResizeSwapChain will be called immediately afterward. Initialized setting window successfully. Fulfilled most editor setting. Fixed normal issue in RT, no need another vertex normal buffer. Fixed mesh normal issue, some of them have zero normal vector.
+
+19-11-2022: Improved RT shadow sampling with depth diff check. Multiple lights test ok. Added roughness texture. Ready for documentation.
+
+20-11-2022: Minor bug fixes.
+
+
+
+
+

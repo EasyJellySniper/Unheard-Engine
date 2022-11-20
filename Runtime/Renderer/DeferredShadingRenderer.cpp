@@ -1,0 +1,256 @@
+#include "DeferredShadingRenderer.h"
+
+void UHDeferredShadingRenderer::SetCurrentScene(UHScene* InScene)
+{
+	CurrentScene = InScene;
+}
+
+bool UHDeferredShadingRenderer::IsNeedReset()
+{
+	// read Shared value to GT
+	bool bIsNeedResetGT = bIsResetNeededShared;
+	return bIsNeedResetGT;
+}
+
+// function for resize buffers, called when rendering resolution changes
+void UHDeferredShadingRenderer::Resize()
+{
+	GraphicInterface->WaitGPU();
+
+	// resize buffers only otherwise
+	ReleaseRenderPassObjects(true);
+	RelaseRenderingBuffers();
+	CreateRenderingBuffers();
+
+	// need to rewrite descriptors after resize
+	UpdateDescriptors();
+
+	bIsTemporalReset = true;
+}
+
+// function for reset this interface, assume release is called
+void UHDeferredShadingRenderer::Reset()
+{
+	GraphicInterface->WaitGPU();
+
+	// reset simply reset all stuffs when bad things happened
+	if (IsNeedReset())
+	{
+		Initialize(CurrentScene);
+	}
+}
+
+// update function of renderer, mostly for data uploading before rendering
+void UHDeferredShadingRenderer::Update()
+{
+	if (!CurrentScene)
+	{
+		// don't update without a scene
+		UHE_LOG(L"Scene is not set!\n");
+		return;
+	}
+
+	UploadDataBuffers();
+}
+
+void UHDeferredShadingRenderer::NotifyRenderThread()
+{
+	if (!CurrentScene)
+	{
+		// don't render without a scene
+		UHE_LOG(L"Scene is not set!\n");
+		return;
+	}
+
+	// wake render thread
+	std::unique_lock<std::mutex> Lock(RenderMutex);
+	bIsThisFrameRenderedShared = false;
+	WaitRenderThread.notify_one();
+
+	// wait render thread done
+	RenderThreadFinished.wait(Lock, [this] {return bIsThisFrameRenderedShared; });
+}
+
+#if WITH_DEBUG
+void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
+{
+	DebugViewIndex = Idx;
+	if (DebugViewIndex > 0)
+	{
+		// wait before new binding
+		GraphicInterface->WaitGPU();
+		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse,SceneNormal,SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
+		DebugViewShader.BindImage(Buffers[DebugViewIndex], 0);
+	}
+}
+#endif
+
+void UHDeferredShadingRenderer::UploadDataBuffers()
+{
+	UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
+	if (!CurrentCamera)
+	{
+		// don't update without a camera
+		UHE_LOG(L"Camera is not set!\n");
+		return;
+	}
+
+	// setup system constants and upload
+	SystemConstantsCPU.UHViewProj = CurrentCamera->GetViewProjMatrix();
+	SystemConstantsCPU.UHViewProjInv = CurrentCamera->GetInvViewProjMatrix();
+	SystemConstantsCPU.UHPrevViewProj_NonJittered = CurrentCamera->GetPrevViewProjMatrixNonJittered();
+	SystemConstantsCPU.UHViewProj_NonJittered = CurrentCamera->GetViewProjMatrixNonJittered();
+	SystemConstantsCPU.UHViewProjInv_NonJittered = CurrentCamera->GetInvViewProjMatrixNonJittered();
+
+	SystemConstantsCPU.UHResolution.x = static_cast<float>(RenderResolution.width);
+	SystemConstantsCPU.UHResolution.y = static_cast<float>(RenderResolution.height);
+	SystemConstantsCPU.UHResolution.z = 1.0f / SystemConstantsCPU.UHResolution.x;
+	SystemConstantsCPU.UHResolution.w = 1.0f / SystemConstantsCPU.UHResolution.y;
+
+	SystemConstantsCPU.UHCameraPos = CurrentCamera->GetPosition();
+	SystemConstantsCPU.UHCameraDir = CurrentCamera->GetForward();
+	SystemConstantsCPU.NumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
+
+	// set sky light data
+	UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
+	SystemConstantsCPU.UHAmbientSky = SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity();
+	SystemConstantsCPU.UHAmbientGround = SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity();
+
+	SystemConstantsCPU.UHShadowResolution.x = static_cast<float>(RTShadowExtent.width);
+	SystemConstantsCPU.UHShadowResolution.y = static_cast<float>(RTShadowExtent.height);
+	SystemConstantsCPU.UHShadowResolution.z = 1.0f / SystemConstantsCPU.UHShadowResolution.x;
+	SystemConstantsCPU.UHShadowResolution.w = 1.0f / SystemConstantsCPU.UHShadowResolution.y;
+
+	SystemConstantsGPU[CurrentFrame]->UploadAllData(&SystemConstantsCPU);
+
+	// upload object constants, only upload if transform is changed
+	std::vector<UHMeshRendererComponent*> Renderers = CurrentScene->GetAllRenderers();
+	std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
+	for (UHMeshRendererComponent* Renderer : Renderers)
+	{
+		// only copy when frame is dirty, clear dirty after copying
+		// the dirty flag is marked in UHMeshRendererComponent::Update()
+		if (Renderer->IsRenderDirty(CurrentFrame))
+		{
+			UHObjectConstants ObjCB = Renderer->GetConstants();
+
+			// must copy to proper offset
+			ObjectConstantsGPU[CurrentFrame]->UploadData(&ObjCB, Renderer->GetBufferDataIndex());
+
+			Renderer->SetRenderDirty(false, CurrentFrame);
+		}
+
+		// copy material data
+		UHMaterial* Mat = Renderer->GetMaterial();
+		if (Mat->IsRenderDirty(CurrentFrame))
+		{
+			// transfer material CB
+			UHMaterialConstants MatCB;
+			UHMaterialProperty MatProps = Mat->GetMaterialProps();
+
+			MatCB.DiffuseColor = XMFLOAT4(MatProps.Diffuse.x, MatProps.Diffuse.y, MatProps.Diffuse.z, MatProps.Opacity);
+			MatCB.EmissiveColor = XMFLOAT3(MatProps.Emissive.x, MatProps.Emissive.y, MatProps.Emissive.z) * MatProps.EmissiveIntensity;
+			MatCB.AmbientOcclusion = MatProps.Occlusion;
+			MatCB.Metallic = MatProps.Metallic;
+			MatCB.Roughness = MatProps.Roughness;
+			MatCB.SpecularColor = MatProps.Specular;
+			MatCB.BumpScale = MatProps.BumpScale;
+			MatCB.Cutoff = MatProps.Cutoff;
+			MatCB.FresnelFactor = MatProps.FresnelFactor;
+			MatCB.ReflectionFactor = MatProps.ReflectionFactor;
+
+			if (UHTexture* EnvCube = Mat->GetTex(UHMaterialTextureType::SkyCube))
+			{
+				MatCB.EnvCubeMipMapCount = static_cast<float>(EnvCube->GetMipMapCount());
+			}
+
+			// set texture index
+			MatCB.OpacityTexIndex = Mat->GetTextureIndex(UHMaterialTextureType::Opacity);
+
+			// find sampler index in sampler pool
+			if (UHSampler* Sampler = Mat->GetSampler(UHMaterialTextureType::Opacity))
+			{
+				MatCB.OpacitySamplerIndex = UHUtilities::FindIndex(Samplers, Sampler);
+			}
+
+			// must copy to proper offset
+			MaterialConstantsGPU[CurrentFrame]->UploadData(&MatCB, Mat->GetBufferDataIndex());
+
+			Mat->SetRenderDirty(false, CurrentFrame);
+		}
+	}
+
+	// upload light data
+	std::vector<UHDirectionalLightComponent*> DirLights = CurrentScene->GetDirLights();
+	for (UHDirectionalLightComponent* Light : DirLights)
+	{
+		if (Light->IsRenderDirty(CurrentFrame))
+		{
+			UHDirectionalLightConstants DirLightC = Light->GetConstants();
+			DirectionalLightBuffer[CurrentFrame]->UploadData(&DirLightC, Light->GetBufferDataIndex());
+			Light->SetRenderDirty(false, CurrentFrame);
+		}
+	}
+}
+
+void UHDeferredShadingRenderer::RenderThreadLoop()
+{
+	/** Render steps **/
+	// Wait for the previous frame to finish
+	// Acquire an image from the swap chain
+	// Record a command buffer which draws the scene onto that image
+	// Submit the recorded command buffer
+	// Present the swap chain image
+	UHE_LOG(L"Render thread created.\n");
+
+	while (true)
+	{
+		// wait until main thread notify
+		std::unique_lock<std::mutex> Lock(RenderMutex);
+		WaitRenderThread.wait(Lock, [this] {return !bIsThisFrameRenderedShared; });
+
+		if (bIsRenderThreadDoneShared)
+		{
+			break;
+		}
+
+		// prepare necessary variable
+		UHGraphicBuilder GraphBuilder(GraphicInterface, MainCommandBuffers[CurrentFrame]);
+
+		// similar to D3D12 fence wait/reset
+		GraphBuilder.WaitFence(MainFences[CurrentFrame]);
+		GraphBuilder.ResetFence(MainFences[CurrentFrame]);
+
+		// begin command buffer, it will reset command buffer inline
+		GraphBuilder.BeginCommandBuffer();
+		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
+	
+		// ****************************** start scene rendering
+		RenderBasePass(GraphBuilder);
+		BuildTopLevelAS(GraphBuilder);
+		DispatchRayPass(GraphBuilder);
+		RenderLightPass(GraphBuilder);
+		RenderSkyPass(GraphBuilder);
+		RenderMotionPass(GraphBuilder);
+		RenderPostProcessing(GraphBuilder);
+
+		// blit scene to swap chain
+		uint32_t PresentIndex = RenderSceneToSwapChain(GraphBuilder);
+
+		// ****************************** end scene rendering
+		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		GraphBuilder.EndCommandBuffer();
+		GraphBuilder.ExecuteCmd(MainFences[CurrentFrame], SwapChainAvailableSemaphores[CurrentFrame], RenderFinishedSemaphores[CurrentFrame]);
+
+		// present
+		bIsResetNeededShared = !GraphBuilder.Present(RenderFinishedSemaphores[CurrentFrame], PresentIndex);
+
+		// advance frame
+		CurrentFrame = (CurrentFrame + 1) % GMaxFrameInFlight;
+
+		// tell main thread to continue
+		bIsThisFrameRenderedShared = true;
+		Lock.unlock();
+		RenderThreadFinished.notify_one();
+	}
+}

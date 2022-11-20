@@ -1,0 +1,77 @@
+#include "DeferredShadingRenderer.h"
+
+// implementation of RenderBasePass(), this pass is a deferred rendering with GBuffers and depth buffer
+void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
+{
+	if (CurrentScene == nullptr)
+	{
+		return;
+	}
+
+	// setup clear value
+	std::vector<VkClearValue> ClearValues;
+	ClearValues.resize(GNumOfGBuffers + 1);
+
+	// clear GBuffer with pure black
+	for (size_t Idx = 0; Idx < GNumOfGBuffers; Idx++)
+	{
+		ClearValues[Idx].color = { {0.0f, 0.0f, 0.0f, 0.0f} };
+	}
+
+	// clear depth with 0 since reversed-z is used
+	ClearValues[GNumOfGBuffers].depthStencil = { 0.0f,0 };
+
+	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Base Pass");
+	GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
+
+	// setup viewport and scissor
+	GraphBuilder.SetViewport(RenderResolution);
+	GraphBuilder.SetScissor(RenderResolution);
+
+	// get all opaque renderers from scene
+	for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+	{
+		const UHMaterial* Mat = Renderer->GetMaterial();
+		const UHMesh* Mesh = Renderer->GetMesh();
+
+		// skip materials which are not default lit
+		if (Mat->GetShadingModel() != UHShadingModel::DefaultLit)
+		{
+			continue;
+		}
+
+		int32_t RendererIdx = Renderer->GetBufferDataIndex();
+		if (BasePassShaders.find(RendererIdx) == BasePassShaders.end())
+		{
+			// unlikely to happen, but printing a message for debug
+			UHE_LOG(L"[RenderBasePass] Can't find base pass shader for material: \n");
+			continue;
+		}
+		UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
+
+		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+
+		// bind pipelines
+		GraphBuilder.BindGraphicState(BaseShader.GetState());
+		GraphBuilder.BindVertexBuffer(Mesh->GetVertexBuffer()->GetBuffer());
+		GraphBuilder.BindIndexBuffer(Mesh->GetIndexBuffer()->GetBuffer(), Mesh->GetIndexBuffer()->GetBufferStride());
+		GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
+
+		// draw call
+		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+
+		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	}
+
+	GraphBuilder.EndRenderPass();
+
+	// transition states of Gbuffer after base pass, they will be used in the shader
+	GraphBuilder.ResourceBarrier(SceneDiffuse, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(SceneNormal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(SceneMaterial, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(SceneMip, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+}
