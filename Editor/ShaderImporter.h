@@ -33,7 +33,7 @@ struct UHRawShaderAssetCache
 			&& (InCache.EntryName == EntryName)
 			&& (InCache.ProfileName == ProfileName);
 
-		return bIsCacheEqual;
+		return bIsCacheEqual && bDefineEqual;
 	}
 
 	std::filesystem::path SourcePath;

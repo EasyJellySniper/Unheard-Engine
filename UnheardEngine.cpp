@@ -79,7 +79,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             if (GUnheardEngine)
             {
             #if WITH_DEBUG
+                // profile does not contain editor update time
                 GUnheardEngine->GetEditor()->OnEditorUpdate();
+                GUnheardEngine->BeginProfile();
             #endif
 
                 // update despite it's minimized (can be opt out in the future)
@@ -90,6 +92,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 {
                     GUnheardEngine->RenderLoop();
                 }
+
+            #if WITH_DEBUG
+                GUnheardEngine->EndProfile();
+            #endif
             }
         }
     }

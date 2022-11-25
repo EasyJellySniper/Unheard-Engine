@@ -11,6 +11,8 @@ public:
 
 	float GetTotalTime() const;
 	float GetDeltaTime() const;
+	int64_t GetTime() const;
+	double GetSecondsPerCount() const;
 
 	void Reset(); // Call before message loop.
 	void Start(); // Call when unpaused.

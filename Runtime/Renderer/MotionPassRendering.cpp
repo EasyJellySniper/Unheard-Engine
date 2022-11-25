@@ -9,6 +9,10 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Motion Pass");
 
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::MotionPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
 	// copy result to history velocity before rendering a new one
 	GraphBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	GraphBuilder.ResourceBarrier(PrevMotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -80,7 +84,9 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::MotionPass]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
 
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 }

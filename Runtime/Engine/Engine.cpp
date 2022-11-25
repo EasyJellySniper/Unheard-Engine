@@ -73,7 +73,8 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 #if WITH_DEBUG
 	// init profiler
-	UHEProfiler = std::make_unique<UHProfiler>();
+	UHEProfiler = std::make_unique<UHProfiler>(UHEGameTimer.get());
+	MainThreadProfile = UHProfiler(UHEGameTimer.get());
 #endif
 
 	// init default scene after all assets are loaded
@@ -83,7 +84,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	UHEGraphic->ToggleFullScreen(PresentationSettings.bFullScreen);
 
 	// init renderer
-	UHERenderer = std::make_unique<UHDeferredShadingRenderer>(UHEGraphic.get(), UHEAsset.get(), UHEConfig.get());
+	UHERenderer = std::make_unique<UHDeferredShadingRenderer>(UHEGraphic.get(), UHEAsset.get(), UHEConfig.get(), UHEGameTimer.get());
 	if (!UHERenderer->Initialize(&DefaultScene))
 	{
 		UHE_LOG(L"Can't initialize renderer class!\n");
@@ -109,7 +110,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 #if WITH_DEBUG
 	// init editor instance
-	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get());
+	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), UHEProfiler.get());
 #endif
 
 	bIsInitialized = true;
@@ -147,18 +148,12 @@ bool UHEngine::IsEngineInitialized()
 // engine updates
 void UHEngine::Update()
 {
+#if WITH_DEBUG
+	MainThreadProfile.Begin();
+#endif
+
 	// timer tick
 	UHEGameTimer->Tick();
-
-#if WITH_DEBUG
-	// show fps on window caption
-	float FPS = UHEProfiler->CalculateFPS(UHEGameTimer.get());
-	std::wstringstream FPSStream;
-	FPSStream << std::fixed << std::setprecision(2) << FPS;
-
-	std::wstring NewCaption = WindowCaption + L" - " + FPSStream.str() + L" FPS";
-	SetWindowText(UHEngineWindow, NewCaption.c_str());
-#endif
 
 	// update scripts
 	for (const auto Script : UHGameScripts)
@@ -210,6 +205,10 @@ void UHEngine::Update()
 	UHERawInput->CacheKeyStates();
 
 	GFrameNumber = (GFrameNumber + 1) & UINT32_MAX;
+
+#if WITH_DEBUG
+	MainThreadProfile.End();
+#endif
 }
 
 // engine render loop
@@ -246,8 +245,44 @@ UHRawInput* UHEngine::GetRawInput() const
 }
 
 #if WITH_DEBUG
+
 UHEditor* UHEngine::GetEditor() const
 {
 	return UHEEditor.get();
 }
+
+void UHEngine::BeginProfile()
+{
+	UHEProfiler->Begin();
+}
+
+void UHEngine::EndProfile()
+{
+	UHEProfiler->End();
+
+	// show fps on window caption
+	float FPS = UHEProfiler->CalculateFPS();
+	std::wstringstream FPSStream;
+	FPSStream << std::fixed << std::setprecision(2) << FPS;
+
+	std::wstring NewCaption = WindowCaption + L" - " + FPSStream.str() + L" FPS";
+	SetWindowText(UHEngineWindow, NewCaption.c_str());
+
+	// sync stats
+	UHStatistics& Stats = UHEProfiler->GetStatistics();
+	Stats.MainThreadTime = MainThreadProfile.GetDiff() * 1000.0f;
+	Stats.RenderThreadTime = UHERenderer->GetRenderThreadTime();
+	Stats.TotalTime = UHEProfiler->GetDiff() * 1000.0f;
+	Stats.FPS = FPS;
+	Stats.DrawCallCount = UHERenderer->GetDrawCallCount();
+	Stats.PSOCount = static_cast<int32_t>(UHEGraphic->StatePools.size());
+	Stats.ShaderCount = static_cast<int32_t>(UHEGraphic->ShaderPools.size());
+	Stats.RTCount = static_cast<int32_t>(UHEGraphic->RTPools.size());
+	Stats.SamplerCount = static_cast<int32_t>(UHEGraphic->SamplerPools.size());
+	Stats.TextureCount = static_cast<int32_t>(UHEGraphic->Texture2DPools.size());
+	Stats.TextureCubeCount = static_cast<int32_t>(UHEGraphic->TextureCubePools.size());
+	Stats.MateralCount = static_cast<int32_t>(UHEGraphic->MaterialPools.size());
+	Stats.GPUTimes = UHERenderer->GetGPUTimes();
+}
+
 #endif

@@ -15,7 +15,7 @@ public:
 		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 		CreateDescriptor();
-		ShaderVS = InGfx->RequestShader("PostProcessVS", "Shaders/PostProcessVS.hlsl", "PostProcessVS", "vs_6_0");
+		ShaderVS = InGfx->RequestShader("PostProcessVS", "Shaders/PostProcessing/PostProcessVS.hlsl", "PostProcessVS", "vs_6_0");
 		ShaderPS = InGfx->RequestShader("MotionCameraShader", "Shaders/MotionVectorShader.hlsl", "CameraMotionPS", "ps_6_0");
 
 		// states

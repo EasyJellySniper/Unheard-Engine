@@ -33,6 +33,19 @@ float UHGameTimer::GetDeltaTime() const
 	return static_cast<float>(DeltaTime * SecondsPerCount);
 }
 
+// get current time, GetCurrentTime() will conflict to other function, so I name it GetTime()
+int64_t UHGameTimer::GetTime() const
+{
+	int64_t CurrTime;
+	QueryPerformanceCounter((LARGE_INTEGER*)&CurrTime);
+	return CurrTime;
+}
+
+double UHGameTimer::GetSecondsPerCount() const
+{
+	return SecondsPerCount;
+}
+
 void UHGameTimer::Reset()
 {
 	QueryPerformanceCounter((LARGE_INTEGER*)&BaseTime);

@@ -3,10 +3,11 @@
 
 // all init/create/release implementations of DeferredShadingRenderer are put here
 
-UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAssetManager* InAssetManager, UHConfigManager* InConfig)
+UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAssetManager* InAssetManager, UHConfigManager* InConfig, UHGameTimer* InTimer)
 	: GraphicInterface(InGraphic)
 	, AssetManagerInterface(InAssetManager)
 	, ConfigInterface(InConfig)
+	, TimerInterface(InTimer)
 	, RenderResolution(VkExtent2D())
 	, RTShadowExtent(VkExtent2D())
 	, MainCommandPool(VK_NULL_HANDLE)
@@ -34,6 +35,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, RTInstanceCount(0)
 #if WITH_DEBUG
 	, DebugViewIndex(0)
+	, RenderThreadTime(0)
+	, DrawCalls(0)
 #endif
 {
 	// init static array pointers
@@ -69,6 +72,14 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 
 	// a buffer to store vertex normal (different than bump normal) and mip map level
 	SceneMipFormat = VK_FORMAT_R16_SFLOAT;
+
+#if WITH_DEBUG
+	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+	{
+		GPUTimeQueries[Idx] = nullptr;
+		GPUTimes[Idx] = 0.0f;
+	}
+#endif
 }
 
 bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
@@ -100,6 +111,13 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 
 		// update descriptor binding
 		UpdateDescriptors();
+
+	#if WITH_DEBUG
+		for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+		{
+			GPUTimeQueries[Idx] = GraphicInterface->RequestGPUQuery(2, VK_QUERY_TYPE_TIMESTAMP);
+		}
+	#endif
 
 		// init render thread, it will wait at the beginning
 		RenderThread = std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this);

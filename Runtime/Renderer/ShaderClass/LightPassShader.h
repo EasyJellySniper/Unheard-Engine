@@ -26,7 +26,7 @@ public:
 		{
 			Defines.push_back("WITH_RTSHADOWS");
 		}
-		ShaderVS = InGfx->RequestShader("PostProcessVS", "Shaders/PostProcessVS.hlsl", "PostProcessVS", "vs_6_0");
+		ShaderVS = InGfx->RequestShader("PostProcessVS", "Shaders/PostProcessing/PostProcessVS.hlsl", "PostProcessVS", "vs_6_0");
 		ShaderPS = InGfx->RequestShader("LightPixelShader", "Shaders/LightPixelShader.hlsl", "LightPS", "ps_6_0", Defines);
 
 		// states

@@ -105,6 +105,14 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 20-11-2022: Minor bug fixes.
 
+22-11-2022: Improved TAA blurry by unjitter UV. Move PostProcessVS.hlsl under PostProcessing folder. Started to add more profiling in UHE.
+
+23-11-2022: Arranged the dialog code. Added a new building configuration: Release_Editor, so it can have the similar performance to release build but keeps the editors.
+
+24-11-2022: Kicked off the implementation of GPU timing. Implemented a GPUQuery class.
+
+25-11-2022: Finished profile window for the moment. Added bEnableGPUTiming in the setting window.
+
 
 
 

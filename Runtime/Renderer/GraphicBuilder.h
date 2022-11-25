@@ -86,6 +86,13 @@ public:
 	// trace ray
 	void TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InHitGroupTable);
 
+	// write time stamp
+	void WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery);
+
+#if WITH_DEBUG
+	int32_t DrawCalls;
+#endif
+
 private:
 	UHGraphic* Gfx;
 	VkCommandBuffer CmdList;

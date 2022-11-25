@@ -44,10 +44,22 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 	// this index will toggle between 0 and 1 during the post processing
 	int32_t CurrentPostProcessRTIndex = 0;
 
+	// -------------------------- Tone Mapping --------------------------//
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
 	RenderEffect(&ToneMapShader, GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping", 0);
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
 
+	// -------------------------- Temporal AA --------------------------//
 	if (ConfigInterface->RenderingSetting().bTemporalAA)
 	{
+	#if WITH_DEBUG
+		GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
+	#endif
+
 		GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		if (!bIsTemporalReset)
 		{
@@ -62,6 +74,10 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 		GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 		bIsTemporalReset = false;
+
+	#if WITH_DEBUG
+		GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->EndTimeStamp(GraphBuilder.GetCmdList());
+	#endif
 	}
 
 #if WITH_DEBUG
@@ -81,6 +97,10 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 {
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Scene to SwapChain Pass");
 
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
 	uint32_t ImageIndex;
 	VkRenderPass SwapChainRenderPass = GraphicInterface->GetSwapChainRenderPass();
 	VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(SwapChainAvailableSemaphores[CurrentFrame], ImageIndex);
@@ -97,6 +117,10 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 
 	// end blit and transition swapchain to PRESENT_SRC_KHR
 	GraphBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
 
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 

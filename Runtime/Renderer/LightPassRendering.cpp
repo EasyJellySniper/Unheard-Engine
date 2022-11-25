@@ -8,6 +8,11 @@ void UHDeferredShadingRenderer::RenderLightPass(UHGraphicBuilder& GraphBuilder)
 	}
 
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Light Pass");
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::LightPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
 	GraphBuilder.BeginRenderPass(LightPassObj.RenderPass, LightPassObj.FrameBuffer, RenderResolution);
 
 	GraphBuilder.SetViewport(RenderResolution);
@@ -25,5 +30,10 @@ void UHDeferredShadingRenderer::RenderLightPass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.DrawFullScreenQuad();
 
 	GraphBuilder.EndRenderPass();
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::LightPass]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 }

@@ -1,4 +1,4 @@
-#include "UHInputs.hlsli"
+#include "../UHInputs.hlsli"
 
 static const float2 GTexCoords[6] =
 {

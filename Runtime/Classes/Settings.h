@@ -59,6 +59,8 @@ public:
 		, bTemporalAA(true)
 		, bEnableRayTracing(true)
 		, bEnableGPULabeling(true)
+		, bEnableLayerValidation(true)
+		, bEnableGPUTiming(true)
 		, RTDirectionalShadowQuality(0)
 	{
 
@@ -69,5 +71,7 @@ public:
 	bool bTemporalAA;
 	bool bEnableRayTracing;
 	bool bEnableGPULabeling;
+	bool bEnableLayerValidation;
+	bool bEnableGPUTiming;
 	int32_t RTDirectionalShadowQuality;
 };

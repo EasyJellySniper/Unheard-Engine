@@ -72,6 +72,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 }
 
 #if WITH_DEBUG
+
 void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 {
 	DebugViewIndex = Idx;
@@ -83,6 +84,22 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 		DebugViewShader.BindImage(Buffers[DebugViewIndex], 0);
 	}
 }
+
+float UHDeferredShadingRenderer::GetRenderThreadTime() const
+{
+	return RenderThreadTime;
+}
+
+int32_t UHDeferredShadingRenderer::GetDrawCallCount() const
+{
+	return DrawCalls;
+}
+
+std::array<float, UHRenderPassTypes::UHRenderPassMax> UHDeferredShadingRenderer::GetGPUTimes() const
+{
+	return GPUTimes;
+}
+
 #endif
 
 void UHDeferredShadingRenderer::UploadDataBuffers()
@@ -110,6 +127,13 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.UHCameraPos = CurrentCamera->GetPosition();
 	SystemConstantsCPU.UHCameraDir = CurrentCamera->GetForward();
 	SystemConstantsCPU.NumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
+
+	if (ConfigInterface->RenderingSetting().bTemporalAA)
+	{
+		XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
+		SystemConstantsCPU.JitterOffsetX = Offset.x * SystemConstantsCPU.UHResolution.z;
+		SystemConstantsCPU.JitterOffsetY = Offset.y * SystemConstantsCPU.UHResolution.w;
+	}
 
 	// set sky light data
 	UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
@@ -145,7 +169,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		if (Mat->IsRenderDirty(CurrentFrame))
 		{
 			// transfer material CB
-			UHMaterialConstants MatCB;
+			UHMaterialConstants MatCB{};
 			UHMaterialProperty MatProps = Mat->GetMaterialProps();
 
 			MatCB.DiffuseColor = XMFLOAT4(MatProps.Diffuse.x, MatProps.Diffuse.y, MatProps.Diffuse.z, MatProps.Opacity);
@@ -203,6 +227,12 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	// Present the swap chain image
 	UHE_LOG(L"Render thread created.\n");
 
+#if WITH_DEBUG
+	// hold a timer
+	UHGameTimer RTTimer;
+	UHProfiler RenderThreadProfile(&RTTimer);
+#endif
+
 	while (true)
 	{
 		// wait until main thread notify
@@ -214,6 +244,10 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			break;
 		}
 
+	#if WITH_DEBUG
+		RenderThreadProfile.Begin();
+	#endif
+
 		// prepare necessary variable
 		UHGraphicBuilder GraphBuilder(GraphicInterface, MainCommandBuffers[CurrentFrame]);
 
@@ -224,7 +258,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		// begin command buffer, it will reset command buffer inline
 		GraphBuilder.BeginCommandBuffer();
 		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
-	
+
 		// ****************************** start scene rendering
 		RenderBasePass(GraphBuilder);
 		BuildTopLevelAS(GraphBuilder);
@@ -237,10 +271,25 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		// blit scene to swap chain
 		uint32_t PresentIndex = RenderSceneToSwapChain(GraphBuilder);
 
+	#if WITH_DEBUG
+		// get GPU times
+		for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+		{
+			GPUTimes[Idx] = GPUTimeQueries[Idx]->GetTimeStamp(GraphBuilder.GetCmdList());
+		}
+	#endif
+
 		// ****************************** end scene rendering
 		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 		GraphBuilder.EndCommandBuffer();
 		GraphBuilder.ExecuteCmd(MainFences[CurrentFrame], SwapChainAvailableSemaphores[CurrentFrame], RenderFinishedSemaphores[CurrentFrame]);
+
+	#if WITH_DEBUG
+		// profile ends before Present() call, since it contains vsync time
+		RenderThreadProfile.End();
+		RenderThreadTime = RenderThreadProfile.GetDiff() * 1000.0f;
+		DrawCalls = GraphBuilder.DrawCalls;
+	#endif
 
 		// present
 		bIsResetNeededShared = !GraphBuilder.Present(RenderFinishedSemaphores[CurrentFrame], PresentIndex);

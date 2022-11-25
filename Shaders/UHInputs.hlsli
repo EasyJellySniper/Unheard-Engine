@@ -70,9 +70,9 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
 	uint UHNumDirLights;
 
 	float3 UHAmbientSky;
-	float Padding1;
+	float JitterOffsetX;
 	float3 UHAmbientGround;
-	float Padding2;
+	float JitterOffsetY;
 
 	float3 UHCameraDir;
 }

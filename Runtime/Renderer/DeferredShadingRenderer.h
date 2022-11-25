@@ -8,6 +8,7 @@
 #include "../Classes/Scene.h"
 #include "../Classes/GraphicState.h"
 #include "../Classes/Sampler.h"
+#include "../Classes/GPUQuery.h"
 #include "RenderingTypes.h"
 #include "GraphicBuilder.h"
 #include <thread>
@@ -29,13 +30,14 @@
 
 #if WITH_DEBUG
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
+#include "../../Editor/Profiler.h"
 #endif
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
 class UHDeferredShadingRenderer
 {
 public:
-	UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAssetManager* InAssetManager, UHConfigManager* InConfig);
+	UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAssetManager* InAssetManager, UHConfigManager* InConfig, UHGameTimer* InTimer);
 	bool Initialize(UHScene* InScene);
 	void Release();
 
@@ -52,6 +54,9 @@ public:
 
 #if WITH_DEBUG
 	void SetDebugViewIndex(int32_t Idx);
+	float GetRenderThreadTime() const;
+	int32_t GetDrawCallCount() const;
+	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
 #endif
 
 private:
@@ -118,6 +123,7 @@ private:
 	UHGraphic* GraphicInterface;
 	UHAssetManager* AssetManagerInterface;
 	UHConfigManager* ConfigInterface;
+	UHGameTimer* TimerInterface;
 	VkExtent2D RenderResolution;
 	VkExtent2D RTShadowExtent;
 
@@ -213,9 +219,9 @@ private:
 	// post process needs to use two textures and keep blit to each other, so the effects can be accumulated
 	static const int32_t NumOfPostProcessRT = 2;
 	int32_t PostProcessResultIdx;
-	UHRenderPassObject PostProcessPassObj[NumOfPostProcessRT];
+	std::array<UHRenderPassObject, NumOfPostProcessRT> PostProcessPassObj;
 	UHRenderTexture* PostProcessRT;
-	UHRenderTexture* PostProcessResults[NumOfPostProcessRT];
+	std::array<UHRenderTexture*, NumOfPostProcessRT> PostProcessResults;
 	UHRenderTexture* PreviousSceneResult;
 
 	UHToneMappingShader ToneMapShader;
@@ -226,6 +232,12 @@ private:
 	// debug view shader
 	UHDebugViewShader DebugViewShader;
 	int32_t DebugViewIndex;
+
+	// profiles
+	float RenderThreadTime;
+	int32_t DrawCalls;
+	std::array<UHGPUQuery*, UHRenderPassTypes::UHRenderPassMax> GPUTimeQueries;
+	std::array<float, UHRenderPassTypes::UHRenderPassMax> GPUTimes;
 #endif
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //

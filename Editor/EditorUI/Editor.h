@@ -3,40 +3,26 @@
 
 #if WITH_DEBUG
 #include <unordered_map>
+#include "../../Runtime/Engine/GameTimer.h"
+#include "../Dialog/ProfileDialog.h"
+#include "../Dialog/SettingDialog.h"
 
 class UHEngine;
 class UHConfigManager;
 class UHDeferredShadingRenderer;
 class UHRawInput;
+class UHProfiler;
 
 class UHEditor
 {
 public:
 	UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
-		, UHRawInput* InInput);
+		, UHRawInput* InInput, UHProfiler* InProfile);
 	void OnEditorUpdate();
 	void OnMenuSelection(int32_t WmId);
 
 private:
 	void SelectDebugViewModeMenu(int32_t WmId);
-	void ProcessSettingWindow(int32_t WmId);
-
-	// control functions
-	void ControlVsync();
-	void ControlFullScreen();
-	void ControlCameraSpeed();
-	void ControlMouseRotateSpeed();
-	void ControlForwardKey();
-	void ControlBackKey();
-	void ControlLeftKey();
-	void ControlRightKey();
-	void ControlDownKey();
-	void ControlUpKey();
-	void ControlResolution();
-	void ControlTAA();
-	void ControlRayTracing();
-	void ControlGPULabeling();
-	void ControlShadowQuality();
 
 	HINSTANCE HInstance;
 	HWND HWnd;
@@ -44,10 +30,13 @@ private:
 	UHConfigManager* Config;
 	UHDeferredShadingRenderer* DeferredRenderer;
 	UHRawInput* Input;
+	UHProfiler* Profile;
+	UHGameTimer ProfileTimer;
 	int32_t ViewModeMenuItem;
 
-	// declare function pointer type for editor control
-	std::unordered_map<int32_t, void(UHEditor::*)()> ControlCallbacks;
+	// custom dialogs
+	UHProfileDialog ProfileDialog;
+	UHSettingDialog SettingDialog;
 };
 
 #endif

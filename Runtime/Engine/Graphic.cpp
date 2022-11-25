@@ -59,7 +59,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 bool UHGraphic::InitGraphics(HWND Hwnd)
 {
 #if WITH_DEBUG
-	bUseValidationLayers = true;
+	bUseValidationLayers = ConfigInterface->RenderingSetting().bEnableLayerValidation;
 #else
 	bUseValidationLayers = false;
 #endif
@@ -146,6 +146,14 @@ void UHGraphic::Release()
 		Mat.reset();
 	}
 	MaterialPools.clear();
+
+	// release all queries
+	for (auto& Query : QueryPools)
+	{
+		Query->Release();
+		Query.reset();
+	}
+	QueryPools.clear();
 
 	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
 	vkDestroySurfaceKHR(VulkanInstance, MainSurface, nullptr);
@@ -494,6 +502,7 @@ bool UHGraphic::CreateLogicalDevice()
 	Props2.pNext = &RTPropsFeatures;
 	vkGetPhysicalDeviceProperties2(PhysicalDevice, &Props2);
 	ShaderRecordSize = RTPropsFeatures.shaderGroupHandleSize;
+	GPUTimeStampPeriod = Props2.properties.limits.timestampPeriod;
 
 	// device create info, pass raytracing feature to pNext of create info
 	VkDeviceCreateInfo CreateInfo{};
@@ -865,6 +874,17 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView,
 	}
 
 	return NewFrameBuffer;
+}
+
+UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
+{
+	std::unique_ptr<UHGPUQuery> NewQuery = std::make_unique<UHGPUQuery>();
+	NewQuery->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewQuery->SetGfxCache(this);
+	NewQuery->CreateQueryPool(Count, QueueType);
+
+	QueryPools.push_back(std::move(NewQuery));
+	return QueryPools.back().get();
 }
 
 // request render texture, this also sets device info to it
@@ -1243,6 +1263,11 @@ VkPhysicalDeviceMemoryProperties UHGraphic::GetDeviceMemProps() const
 uint32_t UHGraphic::GetShaderRecordSize() const
 {
 	return ShaderRecordSize;
+}
+
+float UHGraphic::GetGPUTimeStampPeriod() const
+{
+	return GPUTimeStampPeriod;
 }
 
 std::vector<UHSampler*> UHGraphic::GetSamplers() const

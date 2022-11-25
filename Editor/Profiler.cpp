@@ -4,14 +4,23 @@
 #if WITH_DEBUG
 
 UHProfiler::UHProfiler()
-	: FrameCounter(0)
-	, TimeElapsed(0.0f)
+	: UHProfiler(nullptr)
+{
+}
+
+UHProfiler::UHProfiler(UHGameTimer* InTimer)
+	: Timer(InTimer)
+	, FrameCounter(0)
+	, TimeElapsedThisFrame(0.0f)
 	, FPS(0.0f)
+	, Statistics(UHStatistics())
+	, BeginTime(0)
+	, EndTime(0)
 {
 
 }
 
-float UHProfiler::CalculateFPS(UHGameTimer* Timer)
+float UHProfiler::CalculateFPS()
 {
 	if (Timer == nullptr)
 	{
@@ -21,16 +30,36 @@ float UHProfiler::CalculateFPS(UHGameTimer* Timer)
 	FrameCounter++;
 
 	// Compute averages over one second period
-	if (Timer->GetTotalTime() - TimeElapsed >= 1.0f)
+	if (Timer->GetTotalTime() - TimeElapsedThisFrame >= 1.0f)
 	{
 		FPS = (float)FrameCounter;
 
 		// Reset for next average
 		FrameCounter = 0;
-		TimeElapsed += 1.0f;
+		TimeElapsedThisFrame += 1.0f;
 	}
 
 	return FPS;
+}
+
+UHStatistics& UHProfiler::GetStatistics()
+{
+	return Statistics;
+}
+
+void UHProfiler::Begin()
+{
+	BeginTime = Timer->GetTime();
+}
+
+void UHProfiler::End()
+{
+	EndTime = Timer->GetTime();
+}
+
+float UHProfiler::GetDiff()
+{
+	return static_cast<float>((EndTime - BeginTime) * Timer->GetSecondsPerCount());
 }
 
 #endif

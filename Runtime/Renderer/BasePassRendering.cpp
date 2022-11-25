@@ -22,6 +22,11 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 	ClearValues[GNumOfGBuffers].depthStencil = { 0.0f,0 };
 
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Base Pass");
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::BasePass]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
 	GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
 
 	// setup viewport and scissor
@@ -72,6 +77,10 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.ResourceBarrier(SceneMaterial, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	GraphBuilder.ResourceBarrier(SceneMip, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::BasePass]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
 
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 }

@@ -40,6 +40,9 @@ void BasePS(VertexOutput Vin
 {
 	UHMaterialConstants Material = UHMaterials[0];
 
+	// unjitter the UV for improving blurry texture
+	Vin.UV0 = Vin.UV0 - (ddx_fine(Vin.UV0) * JitterOffsetX + ddy_fine(Vin.UV0) * JitterOffsetY);
+
 	// if opacity is used, consider alpha test is needed
 	// might want to separate this behavior in the future
 #if WITH_OPACITY

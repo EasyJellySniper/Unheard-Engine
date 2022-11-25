@@ -9,6 +9,10 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHGraphicBuilder& GraphBuilder)
 
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Sky Pass");
 
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::SkyPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
 	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	GraphBuilder.BeginRenderPass(SkyboxPassObj.RenderPass, SkyboxPassObj.FrameBuffer, RenderResolution);
 
@@ -31,6 +35,10 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
 	GraphBuilder.EndRenderPass();
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::SkyPass]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
 
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 }

@@ -13,6 +13,7 @@
 #include "../Classes/Sampler.h"
 #include "../Classes/Texture2D.h"
 #include "../Classes/TextureCube.h"
+#include "../Classes/GPUQuery.h"
 #include "Asset.h"
 #include "Config.h"
 #include "../CoreGlobals.h"
@@ -82,6 +83,8 @@ struct UHTransitionInfo
 	VkImageLayout FinalLayout;
 };
 
+class UHEngine;
+
 // Unheard engine graphics class, mainly for device creation
 class UHGraphic
 {
@@ -112,6 +115,9 @@ public:
 	VkFramebuffer CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D InExtent) const;
 	VkFramebuffer CreateFrameBuffer(VkImageView InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent) const;
 	VkFramebuffer CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent) const;
+
+	// create query pool
+	UHGPUQuery* RequestGPUQuery(uint32_t Count, VkQueryType QueueType);
 
 	// request a managed render texture
 	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bIsReadWrite = false, bool bIsShadowRT = false);
@@ -188,6 +194,9 @@ public:
 
 	// get shader record size
 	uint32_t GetShaderRecordSize() const;
+
+	// get gpu time stamp period
+	float GetGPUTimeStampPeriod() const;
 
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
@@ -313,7 +322,9 @@ private:
 	UHAssetManager* AssetManagerInterface;
 	UHConfigManager* ConfigInterface;
 	uint32_t ShaderRecordSize;
+	float GPUTimeStampPeriod;
 
+protected:
 	// system managed pools
 	std::vector<std::unique_ptr<UHShader>> ShaderPools;
 	std::vector<std::unique_ptr<UHGraphicState>> StatePools;
@@ -322,4 +333,10 @@ private:
 	std::vector<std::unique_ptr<UHTexture2D>> Texture2DPools;
 	std::vector<std::unique_ptr<UHTextureCube>> TextureCubePools;
 	std::vector<std::unique_ptr<UHMaterial>> MaterialPools;
+	std::vector<std::unique_ptr<UHGPUQuery>> QueryPools;
+
+#if WITH_DEBUG
+	// give access for UHEngine in debug build
+	friend UHEngine;
+#endif
 };

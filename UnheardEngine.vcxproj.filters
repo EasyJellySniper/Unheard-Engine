@@ -204,6 +204,18 @@
     <ClInclude Include="Editor\EditorUI\EditorUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Editor\Dialog\Dialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Dialog\ProfileDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Dialog\SettingDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Classes\GPUQuery.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -347,6 +359,18 @@
     <ClCompile Include="Editor\EditorUI\EditorUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Editor\Dialog\Dialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Dialog\ProfileDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Dialog\SettingDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Classes\GPUQuery.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -365,7 +389,7 @@
     <None Include="Shaders\BasePixelShader.hlsl" />
     <None Include="Shaders\BaseVertexShader.hlsl" />
     <None Include="Shaders\LightPixelShader.hlsl" />
-    <None Include="Shaders\PostProcessVS.hlsl" />
+    <None Include="Shaders\PostProcessing\PostProcessVS.hlsl" />
     <None Include="Shaders\UHInputs.hlsli" />
     <None Include="Shaders\UHCommon.hlsli" />
     <None Include="Shaders\SkyboxVertexShader.hlsl" />

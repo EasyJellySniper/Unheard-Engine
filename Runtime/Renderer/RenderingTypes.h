@@ -27,9 +27,9 @@ struct UHSystemConstants
 	uint32_t NumDirLights;
 
 	XMFLOAT3 UHAmbientSky;
-	float Padding1;
+	float JitterOffsetX;
 	XMFLOAT3 UHAmbientGround;
-	float Padding2;
+	float JitterOffsetY;
 
 	XMFLOAT3 UHCameraDir;
 };
@@ -69,16 +69,15 @@ struct UHDirectionalLightConstants
 enum UHRenderPassTypes
 {
 	BasePass = 0,
+	UpdateTopLevelAS,
+	RayTracingShadow,
 	LightPass,
 	SkyPass,
-	PostProcessPass,
+	MotionPass,
+	ToneMappingPass,
+	TemporalAAPass,
+	PresentToSwapChain,
 	UHRenderPassMax
-};
-
-enum UHPostProcessType
-{
-	ToneMapping = 0,
-	UHPostProcessMax
 };
 
 struct UHDepthInfo

@@ -9,6 +9,7 @@
 #define IDD_ABOUTBOX                    103
 #define IDM_ABOUT                       104
 #define IDM_EXIT                        105
+#define IDD_PROFILE                     106
 #define IDI_UNHEARDENGINE               107
 #define IDI_SMALL                       108
 #define IDC_UNHEARDENGINE               109
@@ -29,8 +30,12 @@
 #define IDC_ENABLERAYTRACING            1014
 #define IDC_ENABLEGPULABELING           1015
 #define IDC_RTSHADOWQUALITY             1016
-#define IDC_BUTTON1                     1017
 #define IDC_APPLYRESOLUTION             1017
+#define IDC_ENABLELAYERVALIDATION       1018
+#define IDC_ENABLELAYERVALIDATION2      1019
+#define IDC_ENABLEGPUTIMING             1019
+#define IDC_PROFILEGPU                  1021
+#define IDC_PROFILECPU                  1022
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773
@@ -41,6 +46,7 @@
 #define ID_VIEWMODE_RTSHADOW            32778
 #define ID_WINDOW                       32779
 #define ID_WINDOW_SETTINGS              32780
+#define ID_WINDOW_PROFILES              32781
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -49,8 +55,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        129
-#define _APS_NEXT_COMMAND_VALUE         32781
-#define _APS_NEXT_CONTROL_VALUE         1018
+#define _APS_NEXT_COMMAND_VALUE         32782
+#define _APS_NEXT_CONTROL_VALUE         1022
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

@@ -4,6 +4,9 @@ UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InComma
 	: Gfx(InGraphic)
 	, CmdList(InCommandBuffer)
 	, LogicalDevice(InGraphic->GetLogicalDevice())
+#if WITH_DEBUG
+	, DrawCalls(0)
+#endif
 {
 	// resource barrier lookup build, not the best way but can get rid of plenty if-else blocks
 	LayoutToAccessFlags[VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL] = VK_ACCESS_TRANSFER_READ_BIT;
@@ -235,6 +238,10 @@ void UHGraphicBuilder::BindIndexBuffer(VkBuffer InBuffer, int64_t Stride)
 void UHGraphicBuilder::DrawIndexed(uint32_t IndicesCount)
 {
 	vkCmdDrawIndexed(CmdList, IndicesCount, 1, 0, 0, 0);
+
+#if WITH_DEBUG
+	DrawCalls++;
+#endif
 }
 
 void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet)
@@ -336,6 +343,11 @@ void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D
 
 	vkCmdBlitImage(CmdList, SrcImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, DstImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 		, 1, &BlitInfo, InFilter);
+
+#if WITH_DEBUG
+	// vkCmdBlitImage should be a kind of draw call, add to profile 
+	DrawCalls++;
+#endif
 }
 
 void UHGraphicBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint32_t MipLevel, uint32_t DstArray)
@@ -382,6 +394,10 @@ void UHGraphicBuilder::DrawFullScreenQuad()
 {
 	// simply draw 6 vertices, post process shader will setup with SV_VertexID
 	vkCmdDraw(CmdList, 6, 1, 0, 0);
+
+#if WITH_DEBUG
+	DrawCalls++;
+#endif
 }
 
 VkDeviceAddress GetDeviceAddress(VkDevice InDevice, VkBuffer InBuffer)
@@ -409,4 +425,12 @@ void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderReco
 
 	PFN_vkCmdTraceRaysKHR TraceRays = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(Gfx->GetInstance(), "vkCmdTraceRaysKHR");
 	TraceRays(CmdList, &RayGenAddress, &NullAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, 1);
+}
+
+void UHGraphicBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
+{
+#if WITH_DEBUG
+	vkCmdResetQueryPool(CmdList, InPool, InQuery, 1);
+	vkCmdWriteTimestamp(CmdList, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, InPool, InQuery);
+#endif
 }

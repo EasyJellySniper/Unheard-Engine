@@ -7,7 +7,7 @@
 #include <string>
 
 // debug define
-#define WITH_DEBUG !NDEBUG
+#define WITH_DEBUG !NDEBUG || WITH_EDITOR
 
 // ship define
 #define WITH_SHIP NDEBUG

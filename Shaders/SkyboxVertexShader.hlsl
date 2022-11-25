@@ -10,7 +10,9 @@ SkyVertexOutput SkyboxVS(VertexInput Vin)
 {
 	SkyVertexOutput Vout = (SkyVertexOutput)0;
 	float3 WorldPos = mul(float4(Vin.Position, 1.0f), UHWorld).xyz;
-	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj);
+
+	// doesn't need jitter VP for skybox
+	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
 
 	// always on the far plane (use 0 here since I use reversed-z)
 	Vout.Position.z = 0;

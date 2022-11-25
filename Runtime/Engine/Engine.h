@@ -58,6 +58,8 @@ public:
 
 #if WITH_DEBUG
 	UHEditor* GetEditor() const;
+	void BeginProfile();
+	void EndProfile();
 #endif
 
 private:
@@ -94,6 +96,7 @@ private:
 
 	// profiler class
 	std::unique_ptr<UHProfiler> UHEProfiler;
+	UHProfiler MainThreadProfile;
 	std::wstring WindowCaption;
 #endif
 
