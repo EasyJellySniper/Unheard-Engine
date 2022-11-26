@@ -36,7 +36,7 @@ void RTShadowRayGen()
 
 	float MaxDist = 0;
 	float ShadowStrength = 0;
-	float HitCount = 0;
+
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
 		// shoot ray from world pos to light dir
@@ -61,11 +61,9 @@ void RTShadowRayGen()
 		if (Payload.IsHit())
 		{
 			MaxDist = max(MaxDist, Payload.HitT);
-			ShadowStrength += DirLight.Color.a;
-			HitCount++;
+			ShadowStrength = max(ShadowStrength, DirLight.Color.a);
 		}
 	}
 
-	ShadowStrength *= 1.0f / max(HitCount, 1.0f);
 	Result[PixelCoord] = float2(MaxDist, ShadowStrength);
 }

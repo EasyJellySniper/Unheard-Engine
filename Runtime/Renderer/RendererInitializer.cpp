@@ -434,12 +434,11 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	std::vector<UHTexture*> Textures = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip };
 	LightPassShader.BindImage(Textures, 2);
-	LightPassShader.BindSampler(PointClampedSampler, 3);
-	LightPassShader.BindSampler(LinearClampedSampler, 4);
+	LightPassShader.BindSampler(LinearClampedSampler, 3);
 
 	if (GEnableRayTracing && RTInstanceCount > 0)
 	{
-		LightPassShader.BindImage(RTShadowResult, 5);
+		LightPassShader.BindImage(RTShadowResult, 4);
 	}
 
 	// ------------------------------------------------ sky pass descriptor update
@@ -498,8 +497,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	TemporalAAShader.BindImage(MotionVectorRT, 3);
 	TemporalAAShader.BindImage(PrevMotionVectorRT, 4);
 	TemporalAAShader.BindImage(SceneDepth, 5);
-	TemporalAAShader.BindSampler(PointClampedSampler, 6);
-	TemporalAAShader.BindSampler(LinearClampedSampler, 7);
+	TemporalAAShader.BindSampler(LinearClampedSampler, 6);
 
 	// ------------------------------------------------ ray tracing pass descriptor update
 	if (GEnableRayTracing && TopLevelAS[0] && RTInstanceCount > 0)

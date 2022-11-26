@@ -5,15 +5,13 @@ Texture2D HistoryTexture : register(t2);
 Texture2D MotionTexture : register(t3);
 Texture2D HistoryMotionTexture : register(t4);
 Texture2D DepthTexture : register(t5);
-SamplerState PointSampler : register(s6);
-SamplerState LinearSampler : register(s7);
+SamplerState LinearSampler : register(s6);
 
 static const float GHistoryWeight = 0.8f;
 
 float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
 {
 	float2 Motion = MotionTexture.SampleLevel(LinearSampler, Vin.UV, 0).rg;
-	float3 Result = SceneTexture.SampleLevel(LinearSampler, Vin.UV, 0).rgb;
 
 	// sample history motion for solving disocclusion
 	float2 HistoryUV = Vin.UV - Motion;
@@ -35,7 +33,9 @@ float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
 		UHUNROLL
 		for (int Jdx = -1; Jdx <= 1; Jdx++)
 		{
-			Depth = max(DepthTexture.SampleLevel(PointSampler, Vin.UV + float2(Idx, Jdx) * UHResolution.zw, 0).r, Depth);
+			float2 DepthPos = Vin.Position.xy + float2(Idx, Jdx);
+			DepthPos = min(DepthPos, UHResolution.xy - 1);
+			Depth = max(DepthTexture[DepthPos].r, Depth);
 		}
 	}
 	Weight = lerp(0, Weight, Depth > 0);
@@ -43,6 +43,7 @@ float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
 	// if history UV is outside of the screen use the sample from current frame
 	Weight = lerp(Weight, 0, HistoryUV.x != saturate(HistoryUV.x) || HistoryUV.y != saturate(HistoryUV.y));
 
+	float3 Result = SceneTexture.SampleLevel(LinearSampler, Vin.UV, 0).rgb;
 	float3 HistoryResult = HistoryTexture.SampleLevel(LinearSampler, HistoryUV, 0).rgb;
 	float3 Accumulation = lerp(Result, HistoryResult, Weight);
 
