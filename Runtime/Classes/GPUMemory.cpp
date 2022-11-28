@@ -22,8 +22,6 @@ void UHGPUMemory::AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex)
     VkMemoryAllocateInfo AllocInfo{};
     AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     AllocInfo.allocationSize = MemoryBudgetByte;
-
-    // @TODO: Investigate if it's really okay to hard-code memory type index
     AllocInfo.memoryTypeIndex = MemTypeIndex;
 
     VkMemoryAllocateFlagsInfo MemFlagInfo{};

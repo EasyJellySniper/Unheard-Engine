@@ -55,6 +55,20 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	}
 }
 
+uint32_t GetMemoryTypeIndex(VkPhysicalDeviceMemoryProperties InProps, VkMemoryPropertyFlags InFlags)
+{
+	// note that this doesn't consider the resource bits
+	for (uint32_t Idx = 0; Idx < InProps.memoryTypeCount; Idx++)
+	{
+		if ((InProps.memoryTypes[Idx].propertyFlags & InFlags) == InFlags)
+		{
+			return Idx;
+		}
+	}
+
+	return ~0;
+}
+
 // init graphics
 bool UHGraphic::InitGraphics(HWND Hwnd)
 {
@@ -83,8 +97,11 @@ bool UHGraphic::InitGraphics(HWND Hwnd)
 		GGPUImageMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 		GGPUMeshBufferMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
-		GGPUImageMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, 1);
-		GGPUMeshBufferMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, 2);
+		uint32_t ImageMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		uint32_t BufferMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		GGPUImageMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, ImageMemoryType);
+		GGPUMeshBufferMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, BufferMemoryType);
 	}
 
 	return bInitSuccess;
