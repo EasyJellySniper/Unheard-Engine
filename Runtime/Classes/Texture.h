@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include "../../UnheardEngine.h"
+#include "GPUMemory.h"
 
 struct UHTextureInfo
 {
@@ -84,7 +85,7 @@ public:
 	bool operator==(const UHTexture& InTexture);
 
 protected:
-	bool Create(UHTextureInfo InInfo);
+	bool Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory);
 	std::string Name;
 	std::string SourcePath;
 

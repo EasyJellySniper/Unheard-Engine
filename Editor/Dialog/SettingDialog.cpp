@@ -35,6 +35,9 @@ UHSettingDialog::UHSettingDialog(HINSTANCE InInstance, HWND InWindow, UHConfigMa
     ControlCallbacks[IDC_RIGHTKEY] = { &UHSettingDialog::ControlRightKey };
     ControlCallbacks[IDC_DOWNKEY] = { &UHSettingDialog::ControlDownKey };
     ControlCallbacks[IDC_UPKEY] = { &UHSettingDialog::ControlUpKey };
+    ControlCallbacks[IDC_FPSLIMIT] = { &UHSettingDialog::ControlFPSLimit };
+    ControlCallbacks[IDC_MESHBUFFERMEMORYBUDGET] = { &UHSettingDialog::ControlBufferMemoryBudget };
+    ControlCallbacks[IDC_IMAGEMEMORYBUDGET] = { &UHSettingDialog::ControlImageMemoryBudget };
     ControlCallbacks[IDC_APPLYRESOLUTION] = { &UHSettingDialog::ControlResolution };
     ControlCallbacks[IDC_ENABLETAA] = { &UHSettingDialog::ControlTAA };
     ControlCallbacks[IDC_ENABLERAYTRACING] = { &UHSettingDialog::ControlRayTracing };
@@ -90,6 +93,9 @@ void UHSettingDialog::ShowDialog()
         UHEditorUtil::SetEditControlChar(SettingWindow, IDC_RIGHTKEY, EngineSettings.RightKey);
         UHEditorUtil::SetEditControlChar(SettingWindow, IDC_DOWNKEY, EngineSettings.DownKey);
         UHEditorUtil::SetEditControlChar(SettingWindow, IDC_UPKEY, EngineSettings.UpKey);
+        UHEditorUtil::SetEditControl(SettingWindow, IDC_FPSLIMIT, std::to_wstring((int)EngineSettings.FPSLimit));
+        UHEditorUtil::SetEditControl(SettingWindow, IDC_MESHBUFFERMEMORYBUDGET, std::to_wstring((int)EngineSettings.MeshBufferMemoryBudgetMB));
+        UHEditorUtil::SetEditControl(SettingWindow, IDC_IMAGEMEMORYBUDGET, std::to_wstring((int)EngineSettings.ImageMemoryBudgetMB));
 
         // rendering
         UHEditorUtil::SetEditControl(SettingWindow, IDC_RENDERWIDTH, std::to_wstring(RenderingSettings.RenderWidth));
@@ -209,6 +215,24 @@ void UHSettingDialog::ControlUpKey()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
     EngineSettings.UpKey = UHEditorUtil::GetEditControlChar(SettingWindow, IDC_UPKEY);
+}
+
+void UHSettingDialog::ControlFPSLimit()
+{
+    UHEngineSettings& EngineSettings = Config->EngineSetting();
+    EngineSettings.FPSLimit = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_FPSLIMIT);
+}
+
+void UHSettingDialog::ControlBufferMemoryBudget()
+{
+    UHEngineSettings& EngineSettings = Config->EngineSetting();
+    EngineSettings.MeshBufferMemoryBudgetMB = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_MESHBUFFERMEMORYBUDGET);
+}
+
+void UHSettingDialog::ControlImageMemoryBudget()
+{
+    UHEngineSettings& EngineSettings = Config->EngineSetting();
+    EngineSettings.ImageMemoryBudgetMB = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_IMAGEMEMORYBUDGET);
 }
 
 void UHSettingDialog::ControlResolution()

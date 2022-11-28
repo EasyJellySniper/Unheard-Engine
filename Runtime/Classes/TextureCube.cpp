@@ -53,5 +53,5 @@ bool UHTextureCube::CreateCube(std::vector<UHTexture2D*> InSlices)
 		, VK_IMAGE_VIEW_TYPE_CUBE, GetFormat(), GetExtent()
 		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, true);
 
-	return Create(Info);
+	return Create(Info, GGPUImageMemory.get());
 }

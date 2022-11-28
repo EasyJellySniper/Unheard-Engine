@@ -228,10 +228,17 @@ void UHGraphicBuilder::BindVertexBuffer(VkBuffer InBuffer)
 }
 
 // bind IB
-void UHGraphicBuilder::BindIndexBuffer(VkBuffer InBuffer, int64_t Stride)
+void UHGraphicBuilder::BindIndexBuffer(const UHMesh* InMesh)
 {
 	// select index format based on its stride
-	vkCmdBindIndexBuffer(CmdList, InBuffer, 0, (Stride == 4) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+	if (InMesh->IsIndexBufer32Bit())
+	{
+		vkCmdBindIndexBuffer(CmdList, InMesh->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+	}
+	else
+	{
+		vkCmdBindIndexBuffer(CmdList, InMesh->GetIndexBuffer16()->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+	}
 }
 
 // draw indexed

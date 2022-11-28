@@ -31,6 +31,9 @@ private:
 	void ControlRightKey();
 	void ControlDownKey();
 	void ControlUpKey();
+	void ControlFPSLimit();
+	void ControlBufferMemoryBudget();
+	void ControlImageMemoryBudget();
 	void ControlResolution();
 	void ControlTAA();
 	void ControlRayTracing();

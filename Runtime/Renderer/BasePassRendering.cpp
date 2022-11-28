@@ -59,8 +59,8 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 
 		// bind pipelines
 		GraphBuilder.BindGraphicState(BaseShader.GetState());
-		GraphBuilder.BindVertexBuffer(Mesh->GetVertexBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh->GetIndexBuffer()->GetBuffer(), Mesh->GetIndexBuffer()->GetBufferStride());
+		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		GraphBuilder.BindIndexBuffer(Mesh);
 		GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
 
 		// draw call

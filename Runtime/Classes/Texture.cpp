@@ -1,6 +1,7 @@
 #include "Texture.h"
 #include "../../UnheardEngine.h"
 #include "../Classes/Utility.h"
+#include "../CoreGlobals.h"
 
 UHTexture::UHTexture()
 	: UHTexture("", VkExtent2D(), VK_FORMAT_R8G8B8A8_SRGB, false)
@@ -42,7 +43,7 @@ void UHTexture::SetImage(VkImage InImage)
 	ImageSource = InImage;
 }
 
-bool UHTexture::Create(UHTextureInfo InInfo)
+bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 {
 	ImageFormat = InInfo.Format;
 	ImageExtent = InInfo.Extent;
@@ -90,25 +91,38 @@ bool UHTexture::Create(UHTextureInfo InInfo)
 			return false;
 		}
 
-		// actually allocate memory for the imamge, similiar to D3D12's "Committed Resources"
+		// try to commit image to GPU memory
 		VkMemoryRequirements MemRequirements;
 		vkGetImageMemoryRequirements(LogicalDevice, ImageSource, &MemRequirements);
 
-		VkMemoryAllocateInfo AllocInfo{};
-		AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		AllocInfo.allocationSize = MemRequirements.size;
-		AllocInfo.memoryTypeIndex = UHUtilities::FindMemoryTypes(&DeviceMemoryProperties, MemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-		if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &ImageMemory) != VK_SUCCESS)
+		// bind to shared memory if available, otherwise, creating memory individually
+		if (InSharedMemory)
 		{
-			UHE_LOG(L"Failed to commit image to GPU!\n");
-			return false;
+			uint64_t Offset = InSharedMemory->BindMemory(MemRequirements.size, ImageSource);
+			if (Offset == ~0)
+			{
+				UHE_LOG(L"Failed to bind image to GPU. Exceed image memory budget!\n");
+				return false;
+			}
 		}
-
-		if (vkBindImageMemory(LogicalDevice, ImageSource, ImageMemory, 0) != VK_SUCCESS)
+		else
 		{
-			UHE_LOG(L"Failed to bind image to GPU!\n");
-			return false;
+			VkMemoryAllocateInfo AllocInfo{};
+			AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			AllocInfo.allocationSize = MemRequirements.size;
+			AllocInfo.memoryTypeIndex = UHUtilities::FindMemoryTypes(&DeviceMemoryProperties, MemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &ImageMemory) != VK_SUCCESS)
+			{
+				UHE_LOG(L"Failed to commit image to GPU!\n");
+				return false;
+			}
+
+			if (vkBindImageMemory(LogicalDevice, ImageSource, ImageMemory, 0) != VK_SUCCESS)
+			{
+				UHE_LOG(L"Failed to bind image to GPU!\n");
+				return false;
+			}
 		}
 
 		bIsSourceCreatedByThis = true;

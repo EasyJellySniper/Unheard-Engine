@@ -14,6 +14,7 @@ UHEngine::UHEngine()
 	, UHWindowInstance(nullptr)
 	, bIsInitialized(false)
 	, bIsNeedResize(false)
+	, FrameBeginTime(0)
 #if WITH_DEBUG
 	, UHEEditor(nullptr)
 	, UHEProfiler(nullptr)
@@ -73,7 +74,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 #if WITH_DEBUG
 	// init profiler
-	UHEProfiler = std::make_unique<UHProfiler>(UHEGameTimer.get());
+	UHEProfiler = UHProfiler(UHEGameTimer.get());
 	MainThreadProfile = UHProfiler(UHEGameTimer.get());
 #endif
 
@@ -110,7 +111,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 #if WITH_DEBUG
 	// init editor instance
-	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), UHEProfiler.get());
+	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler);
 #endif
 
 	bIsInitialized = true;
@@ -136,7 +137,6 @@ void UHEngine::ReleaseEngine()
 
 #if WITH_DEBUG
 	UHEEditor.reset();
-	UHEProfiler.reset();
 #endif
 }
 
@@ -244,6 +244,29 @@ UHRawInput* UHEngine::GetRawInput() const
 	return nullptr;
 }
 
+void UHEngine::BeginFPSLimiter()
+{
+	FrameBeginTime = UHEGameTimer->GetTime();
+}
+
+void UHEngine::EndFPSLimiter()
+{
+	// if FPSLimit is 0, don't limit it
+	if (UHEConfig->EngineSetting().FPSLimit < std::numeric_limits<float>::epsilon())
+	{
+		return;
+	}
+
+	int64_t FrameEndTime = UHEGameTimer->GetTime();
+	float Duration = static_cast<float>((FrameEndTime - FrameBeginTime) * UHEGameTimer->GetSecondsPerCount()) * 1000.0f;
+	float DesiredDuration = (1.0f / UHEConfig->EngineSetting().FPSLimit) * 1000.0f;
+
+	if (DesiredDuration > Duration)
+	{
+		Sleep(static_cast<DWORD>(DesiredDuration - Duration));
+	}
+}
+
 #if WITH_DEBUG
 
 UHEditor* UHEngine::GetEditor() const
@@ -253,15 +276,15 @@ UHEditor* UHEngine::GetEditor() const
 
 void UHEngine::BeginProfile()
 {
-	UHEProfiler->Begin();
+	UHEProfiler.Begin();
 }
 
 void UHEngine::EndProfile()
 {
-	UHEProfiler->End();
+	UHEProfiler.End();
 
 	// show fps on window caption
-	float FPS = UHEProfiler->CalculateFPS();
+	float FPS = UHEProfiler.CalculateFPS();
 	std::wstringstream FPSStream;
 	FPSStream << std::fixed << std::setprecision(2) << FPS;
 
@@ -269,10 +292,10 @@ void UHEngine::EndProfile()
 	SetWindowText(UHEngineWindow, NewCaption.c_str());
 
 	// sync stats
-	UHStatistics& Stats = UHEProfiler->GetStatistics();
+	UHStatistics& Stats = UHEProfiler.GetStatistics();
 	Stats.MainThreadTime = MainThreadProfile.GetDiff() * 1000.0f;
 	Stats.RenderThreadTime = UHERenderer->GetRenderThreadTime();
-	Stats.TotalTime = UHEProfiler->GetDiff() * 1000.0f;
+	Stats.TotalTime = UHEProfiler.GetDiff() * 1000.0f;
 	Stats.FPS = FPS;
 	Stats.DrawCallCount = UHERenderer->GetDrawCallCount();
 	Stats.PSOCount = static_cast<int32_t>(UHEGraphic->StatePools.size());

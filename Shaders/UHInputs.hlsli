@@ -28,14 +28,6 @@
 #define UHFLATTEN [flatten]
 #define UHUNROLL [unroll]
 
-struct VertexInput
-{
-	float3 Position : POSITION;
-	float2 UV0 : TEXCOORD0;		
-	float3 Normal : NORMAL;
-	float4 Tangent : TANGENT;
-};
-
 struct VertexOutput
 {
 	float4 Position : SV_POSITION;

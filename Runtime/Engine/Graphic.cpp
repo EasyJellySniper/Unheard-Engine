@@ -67,12 +67,27 @@ bool UHGraphic::InitGraphics(HWND Hwnd)
 	// variable setting
 	WindowCache = Hwnd;
 
-	return CreateInstance()
+	bool bInitSuccess = CreateInstance()
 		&& CreatePhysicalDevice()
 		&& CreateWindowSurface()
 		&& CreateQueueFamily()
 		&& CreateLogicalDevice()
 		&& CreateSwapChain();
+
+	if (bInitSuccess)
+	{
+		// allocate shared GPU memory if initialization succeed
+		GGPUImageMemory = std::make_unique<UHGPUMemory>();
+		GGPUMeshBufferMemory = std::make_unique<UHGPUMemory>();
+
+		GGPUImageMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+		GGPUMeshBufferMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+
+		GGPUImageMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, 1);
+		GGPUMeshBufferMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, 2);
+	}
+
+	return bInitSuccess;
 }
 
 // release graphics
@@ -154,6 +169,12 @@ void UHGraphic::Release()
 		Query.reset();
 	}
 	QueryPools.clear();
+
+	// release GPU memory pool
+	GGPUImageMemory->Release();
+	GGPUImageMemory.reset();
+	GGPUMeshBufferMemory->Release();
+	GGPUMeshBufferMemory.reset();
 
 	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
 	vkDestroySurfaceKHR(VulkanInstance, MainSurface, nullptr);

@@ -48,6 +48,10 @@ public:
 		}
 		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+
+		// UV0 Buffer
+		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
 		CreateDescriptor();
 
 		ShaderVS = InGfx->RequestShader("MotionObjectVS", "Shaders/MotionVectorShader.hlsl", "MotionObjectVS", "vs_6_0");

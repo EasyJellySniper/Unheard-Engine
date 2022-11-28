@@ -30,8 +30,8 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHGraphicBuilder& GraphBuilder)
 	UHMaterial* Mat = SkyboxRenderer->GetMaterial();
 	UHMesh* Mesh = SkyboxRenderer->GetMesh();
 
-	GraphBuilder.BindVertexBuffer(Mesh->GetVertexBuffer()->GetBuffer());
-	GraphBuilder.BindIndexBuffer(Mesh->GetIndexBuffer()->GetBuffer(), Mesh->GetIndexBuffer()->GetBufferStride());
+	GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+	GraphBuilder.BindIndexBuffer(Mesh);
 	GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
 	GraphBuilder.EndRenderPass();

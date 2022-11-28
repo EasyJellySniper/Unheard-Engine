@@ -645,9 +645,6 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		// only create UH mesh if it's mesh node and valid transform
 		UHMesh NewMesh(InNode->GetName());
 
-		// ready to get point data
-		std::vector<UHMeshData> NewMeshData;
-
 		// prepare vertex data
 		int32_t VertexCount = InMesh->GetControlPointsCount();
 
@@ -680,7 +677,6 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		bool bIsReconstruct = ReconstructVerticesAndIndices(InMesh, MeshVertices, MeshIndices);
 		NewMesh.SetIndicesData(MeshIndices);
 		VertexCount = static_cast<int32_t>(MeshVertices.size());
-		NewMeshData.resize(VertexCount);
 
 		// get UV
 		std::vector<XMFLOAT2> MeshUV0 = ReadUVs(InMesh, VertexCount, bIsReconstruct, MeshIndices);
@@ -711,17 +707,11 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		XMFLOAT3 Scale = XMFLOAT3(static_cast<float>(FinalScale[0]), static_cast<float>(FinalScale[1]), static_cast<float>(FinalScale[2]));
 		NewMesh.SetImportedTransform(Pos, Rot, Scale);
 
-		// transfer to UH data
-		for (int32_t Idx = 0; Idx < VertexCount; Idx++)
-		{
-			NewMeshData[Idx].Position = MeshVertices[Idx];
-			NewMeshData[Idx].Normal = MeshNormal[Idx];
-			NewMeshData[Idx].Tangent = MeshTangent[Idx];
-			NewMeshData[Idx].UV0 = MeshUV0[Idx];
-		}
-
-		// set new mesh data and apply unit scale, export UHMesh format right after it's imported
-		NewMesh.SetMeshData(NewMeshData);
+		// set data to UHMesh class
+		NewMesh.SetPositionData(MeshVertices);
+		NewMesh.SetUV0Data(MeshUV0);
+		NewMesh.SetNormalData(MeshNormal);
+		NewMesh.SetTangentData(MeshTangent);
 
 		// at last, try to import material as well
 		UHMaterial NewMat = ImportMaterial(InNode);

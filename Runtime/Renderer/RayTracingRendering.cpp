@@ -42,8 +42,13 @@ void UHDeferredShadingRenderer::DispatchRayPass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	// bind descriptors and RT states
-	std::vector<VkDescriptorSet> DescriptorSets = { RTShadowShader.GetDescriptorSet(CurrentFrame), RTTextureTable.GetDescriptorSet(CurrentFrame), RTSamplerTable.GetDescriptorSet(CurrentFrame)
-		, RTVertexTable.GetDescriptorSet(CurrentFrame), RTIndicesTable.GetDescriptorSet(CurrentFrame) };
+	std::vector<VkDescriptorSet> DescriptorSets = { RTShadowShader.GetDescriptorSet(CurrentFrame)
+		, RTTextureTable.GetDescriptorSet(CurrentFrame)
+		, RTSamplerTable.GetDescriptorSet(CurrentFrame)
+		, RTVertexTable.GetDescriptorSet(CurrentFrame)
+		, RTIndicesTable.GetDescriptorSet(CurrentFrame)
+		, RTIndicesTypeTable.GetDescriptorSet(CurrentFrame) };
+
 	GraphBuilder.BindRTDescriptorSet(RTShadowShader.GetPipelineLayout(), DescriptorSets);
 	GraphBuilder.BindRTState(RTShadowShader.GetRTState());
 

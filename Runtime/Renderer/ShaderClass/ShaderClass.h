@@ -46,9 +46,20 @@ public:
 		}
 	}
 
+	// bind single storage
+	template <typename T>
+	void BindStorage(UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false)
+	{
+		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+			Helper.WriteStorageBuffer(InBuffer, DstBinding, InOffset, bFullRange);
+		}
+	}
+
 	// bind multiple storage
 	template <typename T>
-	void BindStorage(std::vector<UHRenderBuffer<T>*> InBuffers, int32_t DstBinding)
+	void BindStorage(std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -56,6 +67,19 @@ public:
 			if (InBuffers.size() > 0)
 			{
 				Helper.WriteStorageBuffer(InBuffers, DstBinding);
+			}
+		}
+	}
+
+	// bind multiple storage, but this one uses VkDescriptorBufferInfo as input directly
+	void BindStorage(std::vector<VkDescriptorBufferInfo>& InBufferInfos, int32_t DstBinding)
+	{
+		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+			if (InBufferInfos.size() > 0)
+			{
+				Helper.WriteStorageBuffer(InBufferInfos, DstBinding);
 			}
 		}
 	}

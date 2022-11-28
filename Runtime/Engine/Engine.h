@@ -56,6 +56,10 @@ public:
 	// get raw input
 	UHRawInput* GetRawInput() const;
 
+	// FPS limiter function
+	void BeginFPSLimiter();
+	void EndFPSLimiter();
+
 #if WITH_DEBUG
 	UHEditor* GetEditor() const;
 	void BeginProfile();
@@ -95,7 +99,7 @@ private:
 	std::unique_ptr<UHEditor> UHEEditor;
 
 	// profiler class
-	std::unique_ptr<UHProfiler> UHEProfiler;
+	UHProfiler UHEProfiler;
 	UHProfiler MainThreadProfile;
 	std::wstring WindowCaption;
 #endif
@@ -109,5 +113,7 @@ private:
 
 	// need resize?
 	bool bIsNeedResize;
+
+	int64_t FrameBeginTime;
 };
 

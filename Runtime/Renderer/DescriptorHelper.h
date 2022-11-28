@@ -56,7 +56,7 @@ public:
 
 	// write multiple storage buffer, this will always bind full range and 0 offset for individual buffer
 	template<typename T>
-	void WriteStorageBuffer(std::vector<UHRenderBuffer<T>*> InBuffers, uint32_t InDstBinding)
+	void WriteStorageBuffer(std::vector<UHRenderBuffer<T>*>& InBuffers, uint32_t InDstBinding)
 	{
 		std::vector<VkDescriptorBufferInfo> NewInfos(InBuffers.size());
 
@@ -76,6 +76,20 @@ public:
 		DescriptorWrite.dstBinding = InDstBinding;
 		DescriptorWrite.descriptorCount = static_cast<uint32_t>(NewInfos.size());
 		DescriptorWrite.pBufferInfo = NewInfos.data();
+
+		vkUpdateDescriptorSets(LogicalDevice, 1, &DescriptorWrite, 0, nullptr);
+	}
+
+	// write multiple storage buffer, but this uses VkDescriptorBufferInfo as input directly
+	void WriteStorageBuffer(std::vector<VkDescriptorBufferInfo>& InBufferInfos, uint32_t InDstBinding)
+	{
+		VkWriteDescriptorSet DescriptorWrite{};
+		DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		DescriptorWrite.dstSet = DescriptorSetToWrite;
+		DescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		DescriptorWrite.dstBinding = InDstBinding;
+		DescriptorWrite.descriptorCount = static_cast<uint32_t>(InBufferInfos.size());
+		DescriptorWrite.pBufferInfo = InBufferInfos.data();
 
 		vkUpdateDescriptorSets(LogicalDevice, 1, &DescriptorWrite, 0, nullptr);
 	}

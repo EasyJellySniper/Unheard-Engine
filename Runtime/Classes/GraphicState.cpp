@@ -1,7 +1,6 @@
 #include "GraphicState.h"
 #include <vector>
 #include "../../UnheardEngine.h"
-#include "MeshLayout.h"
 
 UHGraphicState::UHGraphicState()
 	: UHGraphicState(UHRenderPassInfo())
@@ -29,6 +28,33 @@ void UHGraphicState::Release()
 {
 	vkDestroyPipeline(LogicalDevice, GraphicsPipeline, nullptr);
 	vkDestroyPipeline(LogicalDevice, RTPipeline, nullptr);
+}
+
+VkPipelineVertexInputStateCreateInfo GetVertexInputInfo(VkVertexInputBindingDescription& OutBindingDesc, VkVertexInputAttributeDescription& OutAttributeDesc)
+{
+	VkPipelineVertexInputStateCreateInfo VertexInputInfo{};
+	OutBindingDesc = VkVertexInputBindingDescription{};
+
+	// get binding desc based on layout type
+	// in UHE, it uses only position in Input Assembly stage
+	// for other attribute such as UV, Normal, Tangent are stored in another buffer, and access via SV
+	OutBindingDesc.binding = 0;
+	OutBindingDesc.stride = sizeof(XMFLOAT3);
+	OutBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	OutAttributeDesc = VkVertexInputAttributeDescription{};
+	OutAttributeDesc.binding = 0;
+	OutAttributeDesc.location = 0;
+	OutAttributeDesc.format = VK_FORMAT_R32G32B32_SFLOAT;
+	OutAttributeDesc.offset = 0;
+
+	VertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	VertexInputInfo.vertexBindingDescriptionCount = 1;
+	VertexInputInfo.vertexAttributeDescriptionCount = 1;
+	VertexInputInfo.pVertexBindingDescriptions = &OutBindingDesc;
+	VertexInputInfo.pVertexAttributeDescriptions = &OutAttributeDesc;
+
+	return VertexInputInfo;
 }
 
 bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
@@ -73,8 +99,8 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	/*** Vertex input info, this should follow the input mesh layout ***/
 	// for now, use default lit layout, and prevent value gets cleared
 	VkVertexInputBindingDescription VertexInputBindingDescription;
-	std::vector<VkVertexInputAttributeDescription> AttributeDescription;
-	VkPipelineVertexInputStateCreateInfo VertexInputInfo = GetVertexInputInfo<UHDefaultLitMeshLayout>(VertexInputBindingDescription, AttributeDescription);
+	VkVertexInputAttributeDescription AttributeDescription;
+	VkPipelineVertexInputStateCreateInfo VertexInputInfo = GetVertexInputInfo(VertexInputBindingDescription, AttributeDescription);
 
 	/*** Input assembly, always use triangle list in UH engine ***/
 	VkPipelineInputAssemblyStateCreateInfo InputAssembly{};

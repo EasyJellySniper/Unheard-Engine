@@ -1,11 +1,10 @@
 #pragma once
-
+#define NOMINMAX
 #include <vector>
 #include <string>
 #include <filesystem>
 #include "Types.h"
 #include "RenderBuffer.h"
-#include "MeshLayout.h"
 #include "Object.h"
 #include "../../UnheardEngine.h"
 #include "AccelerationStructure.h"
@@ -23,15 +22,19 @@ public:
 	void ReleaseCPUMeshData();
 	void Release();
 
-	void SetMeshData(std::vector<UHMeshData> InMeshData);
+	void SetPositionData(std::vector<XMFLOAT3> InData);
+	void SetUV0Data(std::vector<XMFLOAT2> InData);
+	void SetNormalData(std::vector<XMFLOAT3> InData);
+	void SetTangentData(std::vector<XMFLOAT4> InData);
 	void SetIndicesData(std::vector<uint32_t> InIndicesData);
 
 	std::string GetName() const;
-	std::vector<UHMeshData> GetMeshData() const;
 	std::vector<uint32_t> GetIndicesData() const;
+	std::vector<uint16_t> GetIndicesData16() const;
 
 	uint32_t GetVertexCount() const;
 	uint32_t GetIndicesCount() const;
+	bool IsIndexBufer32Bit() const;
 
 	std::string GetImportedMaterialName() const;
 	XMFLOAT3 GetImportedTranslation() const;
@@ -39,8 +42,13 @@ public:
 	XMFLOAT3 GetImportedScale() const;
 	XMFLOAT3 GetMeshCenter() const;
 
-	UHRenderBuffer<UHDefaultLitMeshLayout>* GetVertexBuffer() const;
+	UHRenderBuffer<XMFLOAT3>* GetPositionBuffer() const;
+	UHRenderBuffer<XMFLOAT2>* GetUV0Buffer() const;
+	UHRenderBuffer<XMFLOAT3>* GetNormalBuffer() const;
+	UHRenderBuffer<XMFLOAT4>* GetTangentBuffer() const;
+
 	UHRenderBuffer<uint32_t>* GetIndexBuffer() const;
+	UHRenderBuffer<uint16_t>* GetIndexBuffer16() const;
 	UHAccelerationStructure* GetBottomLevelAS() const;
 	int32_t GetHighestIndex() const;
 
@@ -61,16 +69,27 @@ private:
 	XMFLOAT3 ImportedRotation;
 	XMFLOAT3 ImportedScale;
 
-	std::vector<UHMeshData> MeshData;
+	std::vector<XMFLOAT3> PositionData;
+	std::vector<XMFLOAT2> UV0Data;
+	std::vector<XMFLOAT3> NormalData;
+	std::vector<XMFLOAT4> TangentData;
+
 	std::vector<uint32_t> IndicesData;
+	std::vector<uint16_t> IndicesData16;
 	uint32_t VertexCount;
 	uint32_t IndiceCount;
 
 	XMFLOAT3 MeshCenter;
 	int32_t HighestIndex;
+	bool bIndexBuffer32Bit;
 
 	// GPU VB/IB buffer
-	std::unique_ptr<UHRenderBuffer<UHDefaultLitMeshLayout>> VertexBuffer;
+	std::unique_ptr<UHRenderBuffer<XMFLOAT3>> PositionBuffer;
+	std::unique_ptr<UHRenderBuffer<XMFLOAT2>> UV0Buffer;
+	std::unique_ptr<UHRenderBuffer<XMFLOAT3>> NormalBuffer;
+	std::unique_ptr<UHRenderBuffer<XMFLOAT4>> TangentBuffer;
+
 	std::unique_ptr<UHRenderBuffer<uint32_t>> IndexBuffer;
+	std::unique_ptr<UHRenderBuffer<uint16_t>> IndexBuffer16;
 	std::unique_ptr<UHAccelerationStructure> BottomLevelAS;
 };

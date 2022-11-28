@@ -244,11 +244,16 @@ private:
 	VkFormat RTShadowFormat;
 	std::array<std::unique_ptr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
 	UHRTDefaultHitGroupShader RTDefaultHitGroupShader;
+
 	UHRTShadowShader RTShadowShader;
 	UHRenderTexture* RTShadowResult;
+
 	UHRTTextureTable RTTextureTable;
 	UHRTSamplerTable RTSamplerTable;
 	UHRTVertexTable RTVertexTable;
 	UHRTIndicesTable RTIndicesTable;
+	UHRTIndicesTypeTable RTIndicesTypeTable;
+	std::unique_ptr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
+
 	uint32_t RTInstanceCount;
 };

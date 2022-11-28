@@ -35,6 +35,9 @@ void UHConfigManager::LoadConfig()
 			EngineSettings.RightKey = UHUtilities::ReadINIData<char>(FileIn, "RightKey");
 			EngineSettings.DownKey = UHUtilities::ReadINIData<char>(FileIn, "DownKey");
 			EngineSettings.UpKey = UHUtilities::ReadINIData<char>(FileIn, "UpKey");
+			EngineSettings.FPSLimit = UHUtilities::ReadINIData<float>(FileIn, "FPSLimit");
+			EngineSettings.MeshBufferMemoryBudgetMB = UHUtilities::ReadINIData<float>(FileIn, "MeshBufferMemoryBudgetMB");
+			EngineSettings.ImageMemoryBudgetMB = UHUtilities::ReadINIData<float>(FileIn, "ImageMemoryBudgetMB");
 		}
 
 		if (UHUtilities::SeekINISection(FileIn, "RenderingSettings"))
@@ -74,6 +77,9 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "RightKey", EngineSettings.RightKey);
 		UHUtilities::WriteINIData(FileOut, "DownKey", EngineSettings.DownKey);
 		UHUtilities::WriteINIData(FileOut, "UpKey", EngineSettings.UpKey);
+		UHUtilities::WriteINIData(FileOut, "FPSLimit", EngineSettings.FPSLimit);
+		UHUtilities::WriteINIData(FileOut, "MeshBufferMemoryBudgetMB", EngineSettings.MeshBufferMemoryBudgetMB);
+		UHUtilities::WriteINIData(FileOut, "ImageMemoryBudgetMB", EngineSettings.ImageMemoryBudgetMB);
 		FileOut << std::endl;
 
 		UHUtilities::WriteINISection(FileOut, "RenderingSettings");

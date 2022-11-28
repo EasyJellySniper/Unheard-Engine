@@ -8,3 +8,7 @@ bool GEnableRayTracing = true;
 #if WITH_DEBUG
 bool GEnableGPUTiming = true;
 #endif
+
+// shared use GPU memory
+std::unique_ptr<UHGPUMemory> GGPUMeshBufferMemory = nullptr;
+std::unique_ptr<UHGPUMemory> GGPUImageMemory = nullptr;

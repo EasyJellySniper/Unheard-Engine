@@ -83,6 +83,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 GUnheardEngine->GetEditor()->OnEditorUpdate();
                 GUnheardEngine->BeginProfile();
             #endif
+                GUnheardEngine->BeginFPSLimiter();
 
                 // update despite it's minimized (can be opt out in the future)
                 GUnheardEngine->Update();
@@ -93,6 +94,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                     GUnheardEngine->RenderLoop();
                 }
 
+                GUnheardEngine->EndFPSLimiter();
             #if WITH_DEBUG
                 GUnheardEngine->EndProfile();
             #endif

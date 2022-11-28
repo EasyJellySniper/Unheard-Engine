@@ -61,7 +61,7 @@ public:
 	void BindVertexBuffer(VkBuffer InBuffer);
 
 	// bind index buffer
-	void BindIndexBuffer(VkBuffer InBuffer, int64_t Stride);
+	void BindIndexBuffer(const UHMesh* InMesh);
 
 	// draw index
 	void DrawIndexed(uint32_t IndicesCount);

@@ -2,6 +2,7 @@
 #include "../Engine/RenderResource.h"
 #include "../Classes/Utility.h"
 #include "../../UnheardEngine.h"
+#include "GPUMemory.h"
 
 // class for managing render buffer (E.g. vertex buffer/index buffer)
 // make this template so we can decide the size dynamically
@@ -18,6 +19,7 @@ public:
         , DstData(nullptr)
         , BufferSize(0)
         , BufferStride(0)
+        , OffsetInSharedMemory(~0)
     {
 
     }
@@ -104,6 +106,44 @@ public:
         }
 	}
 
+    bool CreaetBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage, UHGPUMemory* SharedMemory)
+    {
+        // skip creaetion if it's empty
+        if (InElementCount == 0 || SharedMemory == nullptr)
+        {
+            return false;
+        }
+
+        ElementCount = InElementCount;
+        BufferStride = sizeof(T);
+        BufferSize = InElementCount * BufferStride;
+
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = BufferSize;
+        bufferInfo.usage = InUsage;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateBuffer(LogicalDevice, &bufferInfo, nullptr, &BufferSource) != VK_SUCCESS)
+        {
+            UHE_LOG(L"Failed to create buffer!\n");
+            return false;
+        }
+
+        VkMemoryRequirements MemRequirements;
+        vkGetBufferMemoryRequirements(LogicalDevice, BufferSource, &MemRequirements);
+
+        // bind to shared memory and keep the offset
+        OffsetInSharedMemory = SharedMemory->BindMemory(MemRequirements.size, BufferSource);
+        if (OffsetInSharedMemory == ~0)
+        {
+            UHE_LOG(L"Failed to bind buffer to GPU. Exceed mesh buffer memory budget!\n");
+            return false;
+        }
+
+        return true;
+    }
+
     void Release()
     {
         // an upload buffer will be mapped when initialization, unmap it before destroy
@@ -145,6 +185,19 @@ public:
 		vkUnmapMemory(LogicalDevice, BufferMemory);
 	}
 
+    // upload all data, but it's copying to shared memory
+    void UploadAllDataShared(void* SrcData, UHGPUMemory* InMemory)
+    {
+        if (OffsetInSharedMemory == ~0)
+        {
+            return;
+        }
+
+        vkMapMemory(LogicalDevice, InMemory->GetMemory(), OffsetInSharedMemory, BufferSize, 0, reinterpret_cast<void**>(&DstData));
+        memcpy(&DstData[0], SrcData, BufferSize);
+        vkUnmapMemory(LogicalDevice, InMemory->GetMemory());
+    }
+
     // upload data with individual offset, similar to upload all but copy a buffer stride instead
     void UploadData(void* SrcData, int64_t Offset)
     {
@@ -164,11 +217,6 @@ public:
     VkBuffer GetBuffer() const
     {
         return BufferSource;
-    }
-
-    VkDeviceMemory GetMemory() const
-    {
-        return BufferMemory;
     }
 
     int64_t GetBufferSize() const
@@ -191,4 +239,7 @@ private:
     bool bIsUploadBuffer;
     bool bIsShaderDeviceAddress;
     BYTE* DstData;
+
+    // for shared memory
+    uint64_t OffsetInSharedMemory;
 };

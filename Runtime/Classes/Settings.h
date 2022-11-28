@@ -35,6 +35,9 @@ public:
 		, RightKey('d')
 		, DownKey('q')
 		, UpKey('e')
+		, FPSLimit(60.0f)
+		, MeshBufferMemoryBudgetMB(512.0f)
+		, ImageMemoryBudgetMB(1024.0f)
 	{
 
 	}
@@ -47,6 +50,9 @@ public:
 	char RightKey;
 	char DownKey;
 	char UpKey;
+	float FPSLimit;
+	float MeshBufferMemoryBudgetMB;
+	float ImageMemoryBudgetMB;
 };
 
 // rendering settings

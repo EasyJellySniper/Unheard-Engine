@@ -13,6 +13,7 @@ Texture2D DepthTexture : register(t1);
 SamplerState PointSampler : register(s2);
 Texture2D OpacityTex : register(t3);
 SamplerState OpacitySampler : register(s4);
+StructuredBuffer<float2> UV0Buffer : register(t5);
 
 float4 CameraMotionPS(PostProcessVertexOutput Vin) : SV_Target
 {
@@ -43,15 +44,15 @@ float4 CameraMotionPS(PostProcessVertexOutput Vin) : SV_Target
 	return float4(Velocity, 0, 1);
 }
 
-MotionVertexOutput MotionObjectVS(VertexInput Vin)
+MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 {
 	MotionVertexOutput Vout = (MotionVertexOutput)0;
-	float3 WorldPos = mul(float4(Vin.Position, 1.0f), UHWorld).xyz;
-	float3 PrevWorldPos = mul(float4(Vin.Position, 1.0f), UHPrevWorld).xyz;
+	float3 WorldPos = mul(float4(Position, 1.0f), UHWorld).xyz;
+	float3 PrevWorldPos = mul(float4(Position, 1.0f), UHPrevWorld).xyz;
 
 	// pass through the vertex data
 	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj);
-	Vout.UV0 = Vin.UV0;
+	Vout.UV0 = UV0Buffer[Vid];
 	Vout.WorldPos = WorldPos;
 	Vout.PrevWorldPos = PrevWorldPos;
 

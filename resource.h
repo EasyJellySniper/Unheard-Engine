@@ -32,10 +32,13 @@
 #define IDC_RTSHADOWQUALITY             1016
 #define IDC_APPLYRESOLUTION             1017
 #define IDC_ENABLELAYERVALIDATION       1018
-#define IDC_ENABLELAYERVALIDATION2      1019
 #define IDC_ENABLEGPUTIMING             1019
+#define IDC_FPSLIMIT                    1020
 #define IDC_PROFILEGPU                  1021
+#define IDC_BUFFERMEMORYBUDGET          1021
+#define IDC_MESHBUFFERMEMORYBUDGET      1021
 #define IDC_PROFILECPU                  1022
+#define IDC_IMAGEMEMORYBUDGET           1022
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773

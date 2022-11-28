@@ -33,6 +33,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, PrevMotionVectorRT(nullptr)
 	, RTShadowResult(nullptr)
 	, RTInstanceCount(0)
+	, IndicesTypeBuffer(nullptr)
 #if WITH_DEBUG
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
@@ -177,6 +178,9 @@ void UHDeferredShadingRenderer::Release()
 			TopLevelAS[Idx].reset();
 		}
 	}
+
+	UH_SAFE_RELEASE(IndicesTypeBuffer);
+	IndicesTypeBuffer.reset();
 
 	vkDestroyCommandPool(LogicalDevice, MainCommandPool, nullptr);
 }
@@ -341,12 +345,23 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	{
 		RTVertexTable = UHRTVertexTable(GraphicInterface, "RTVertexTable", RTInstanceCount);
 		RTIndicesTable = UHRTIndicesTable(GraphicInterface, "RTIndicesTable", RTInstanceCount);
+
+		// buffer for storing index type, used in hit group shader
+		RTIndicesTypeTable = UHRTIndicesTypeTable(GraphicInterface, "RTIndicesTypeTable");
+		IndicesTypeBuffer = GraphicInterface->RequestRenderBuffer<int32_t>();
+		IndicesTypeBuffer->CreaetBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
 		RTTextureTable = UHRTTextureTable(GraphicInterface, "RTTextureTable", static_cast<uint32_t>(AssetManagerInterface->GetReferencedTexture2Ds().size()));
 		RTSamplerTable = UHRTSamplerTable(GraphicInterface, "RTSamplerTable", static_cast<uint32_t>(GraphicInterface->GetSamplers().size()));
 		RTDefaultHitGroupShader = UHRTDefaultHitGroupShader(GraphicInterface, "RTDefaultHitGroupShader");
 
 		// also send texture & VB/IB layout to RT shadow shader
-		std::vector<VkDescriptorSetLayout> Layouts = { RTTextureTable.GetDescriptorSetLayout(), RTSamplerTable.GetDescriptorSetLayout(),RTVertexTable.GetDescriptorSetLayout(), RTIndicesTable.GetDescriptorSetLayout() };
+		std::vector<VkDescriptorSetLayout> Layouts = { RTTextureTable.GetDescriptorSetLayout()
+			, RTSamplerTable.GetDescriptorSetLayout()
+			, RTVertexTable.GetDescriptorSetLayout()
+			, RTIndicesTable.GetDescriptorSetLayout()
+			, RTIndicesTypeTable.GetDescriptorSetLayout() };
+
 		RTShadowShader = UHRTShadowShader(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShader()
 			, Layouts);
 	}
@@ -426,6 +441,11 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 				BaseShader.BindSampler(Sampler, UHConstantTypes::ConstantTypeMax + 1 + Tdx * 2);
 			}
 		}
+
+		UHMesh* Mesh = Renderer->GetMesh();
+		BaseShader.BindStorage(Mesh->GetUV0Buffer(), 19, 0, true);
+		BaseShader.BindStorage(Mesh->GetNormalBuffer(), 20, 0, true);
+		BaseShader.BindStorage(Mesh->GetTangentBuffer(), 21, 0, true);
 	}
 
 	// ------------------------------------------------ Lighting pass descriptor update
@@ -459,6 +479,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
+		UHMesh* Mesh = Renderer->GetMesh();
 		if (Mat->IsSkybox())
 		{
 			continue;
@@ -485,6 +506,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		{
 			MotionObjectShader.BindSampler(OpacitySampler, 4);
 		}
+
+		MotionObjectShader.BindStorage(Mesh->GetUV0Buffer(), 5, 0, true);
 	}
 
 	// ------------------------------------------------ post process pass descriptor update
@@ -504,8 +527,9 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	{
 		// bind VB/IB table
 		std::vector<UHMeshRendererComponent*> Renderers = CurrentScene->GetAllRenderers();
-		std::vector<UHRenderBuffer<UHDefaultLitMeshLayout>*> VBs;
-		std::vector<UHRenderBuffer<uint32_t>*> IBs;
+		std::vector<UHRenderBuffer<XMFLOAT2>*> UVs;
+		std::vector<VkDescriptorBufferInfo> BufferInfos;
+		std::vector<int32_t> IndexTypes;
 
 		for (int32_t Idx = 0; Idx < static_cast<int32_t>(Renderers.size()); Idx++)
 		{
@@ -516,11 +540,29 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 				continue;
 			}
 
-			VBs.push_back(Mesh->GetVertexBuffer());
-			IBs.push_back(Mesh->GetIndexBuffer());
+			UVs.push_back(Mesh->GetUV0Buffer());
+
+			// collect index buffer info based on index type
+			VkDescriptorBufferInfo NewInfo{};
+			if (Mesh->IsIndexBufer32Bit())
+			{
+				NewInfo.buffer = Mesh->GetIndexBuffer()->GetBuffer();
+				NewInfo.range = Mesh->GetIndexBuffer()->GetBufferSize();
+				IndexTypes.push_back(1);
+			}
+			else
+			{
+				NewInfo.buffer = Mesh->GetIndexBuffer16()->GetBuffer();
+				NewInfo.range = Mesh->GetIndexBuffer16()->GetBufferSize();
+				IndexTypes.push_back(0);
+			}
+			BufferInfos.push_back(NewInfo);
 		}
-		RTVertexTable.BindStorage(VBs, 0);
-		RTIndicesTable.BindStorage(IBs, 0);
+		RTVertexTable.BindStorage(UVs, 0);
+		RTIndicesTable.BindStorage(BufferInfos, 0);
+
+		IndicesTypeBuffer->UploadAllData(IndexTypes.data());
+		RTIndicesTypeTable.BindStorage(IndicesTypeBuffer.get(), 0, 0, true);
 
 		// bind texture table
 		std::vector<UHTexture*> Texes(AssetManagerInterface->GetReferencedTexture2Ds().size());
@@ -584,6 +626,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		RTSamplerTable.Release();
 		RTVertexTable.Release();
 		RTIndicesTable.Release();
+		RTIndicesTypeTable.Release();
 	}
 
 #if WITH_DEBUG

@@ -22,5 +22,6 @@ bool UHRenderTexture::CreateRT()
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, ImageFormat, ImageExtent, Usage, true, false);
 	Info.bIsShadowRT = bIsShadowRT;
 
-	return Create(Info);
+	// UHE doesn't use shared memory for RTs at the momment, since they could resize
+	return Create(Info, nullptr);
 }

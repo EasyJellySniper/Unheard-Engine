@@ -61,11 +61,20 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 	// set format for Vertex position, which is float3
 	// with proper stride, system should fetch vertex pos properly
 	GeometryKHR.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-	GeometryKHR.geometry.triangles.vertexStride = InMesh->GetVertexBuffer()->GetBufferStride();
-	GeometryKHR.geometry.triangles.vertexData.deviceAddress = GetDeviceAddress(InMesh->GetVertexBuffer()->GetBuffer());
+	GeometryKHR.geometry.triangles.vertexStride = InMesh->GetPositionBuffer()->GetBufferStride();
+	GeometryKHR.geometry.triangles.vertexData.deviceAddress = GetDeviceAddress(InMesh->GetPositionBuffer()->GetBuffer());
 	GeometryKHR.geometry.triangles.maxVertex = InMesh->GetHighestIndex();
-	GeometryKHR.geometry.triangles.indexType = (InMesh->GetIndexBuffer()->GetBufferStride() == 4) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
-	GeometryKHR.geometry.triangles.indexData.deviceAddress = GetDeviceAddress(InMesh->GetIndexBuffer()->GetBuffer());
+
+	if (InMesh->IsIndexBufer32Bit())
+	{
+		GeometryKHR.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
+		GeometryKHR.geometry.triangles.indexData.deviceAddress = GetDeviceAddress(InMesh->GetIndexBuffer()->GetBuffer());
+	}
+	else
+	{
+		GeometryKHR.geometry.triangles.indexType = VK_INDEX_TYPE_UINT16;
+		GeometryKHR.geometry.triangles.indexData.deviceAddress = GetDeviceAddress(InMesh->GetIndexBuffer16()->GetBuffer());
+	}
 
 	// filling geometry info
 	VkAccelerationStructureBuildGeometryInfoKHR GeometryInfo{};

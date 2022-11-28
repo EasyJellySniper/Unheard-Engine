@@ -113,6 +113,12 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 25-11-2022: Finished profile window for the moment. Added bEnableGPUTiming in the setting window.
 
+26-11-2022: Minor performance and fix change for a few shaders.
+
+27-11-2022: Added FPS Limit feature. Setting FPSLimit to 0 indicates no limit.
+
+28-11-2022: Done both mesh and memory optimizations. For now, Input Assembly will have POSITION layout only. The other attributes like UV, Normal, Tangent are accessed via StructuredBuffer. Image and mesh memory are shared.
+
 
 
 

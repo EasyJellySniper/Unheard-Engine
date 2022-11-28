@@ -9,8 +9,12 @@ Texture2D UHTextureTable[] : register(t0, space1);
 SamplerState UHSamplerTable[] : register(t0, space2);
 
 // VB & IB data, access them with InstanceIndex()
-StructuredBuffer<VertexInput> UHVertexTable[] : register(t0, space3);
+StructuredBuffer<float2> UHUV0Table[] : register(t0, space3);
 ByteAddressBuffer UHIndicesTable[] : register(t0, space4);
+
+// there is no way to differentiate index type in DXR system for now, bind another indices type buffer
+// 0 for 16-bit index, 1 for 32-bit index
+ByteAddressBuffer UHIndicesType : register(t0, space5);
 
 // hit group shader, shared used for all RT shaders
 // attribute structure for feteching mesh data
@@ -19,25 +23,51 @@ struct Attribute
 	float2 Bary;
 };
 
-VertexInput GetHitVertex(uint InstanceIndex, uint PrimIndex, Attribute Attr)
+float2 GetHitUV0(uint InstanceIndex, uint PrimIndex, Attribute Attr)
 {
-	StructuredBuffer<VertexInput> Vertex = UHVertexTable[InstanceIndex];
+	StructuredBuffer<float2> UV0 = UHUV0Table[InstanceIndex];
 	ByteAddressBuffer Indices = UHIndicesTable[InstanceIndex];
+	int IndiceType = UHIndicesType.Load(InstanceIndex * 4);
 
-	// for now system uses 32-bit index, if 16-bit index is used in the future, some bit shift operation is needed
-	uint IbStride = 4;
+	// get index data based on indice type, it can be 16 or 32 bit
 	uint3 Index;
-	Index[0] = Indices.Load(PrimIndex * 3 * IbStride);
-	Index[1] = Indices.Load(PrimIndex * 3 * IbStride + IbStride);
-	Index[2] = Indices.Load(PrimIndex * 3 * IbStride + IbStride * 2);
+	if (IndiceType == 1)
+	{
+		uint IbStride = 4;
+		Index[0] = Indices.Load(PrimIndex * 3 * IbStride);
+		Index[1] = Indices.Load(PrimIndex * 3 * IbStride + IbStride);
+		Index[2] = Indices.Load(PrimIndex * 3 * IbStride + IbStride * 2);
+	}
+	else
+	{
+		uint IbStride = 2;
+		uint Offset = PrimIndex * 3 * IbStride;
 
-	VertexInput Input = (VertexInput)0;
+		const uint DwordAlignedOffset = Offset & ~3;
+		const uint2 Four16BitIndices = Indices.Load2(DwordAlignedOffset);
+
+		// Aligned: { 0 1 | 2 - } => retrieve first three 16bit indices
+		if (DwordAlignedOffset == Offset)
+		{
+			Index[0] = Four16BitIndices.x & 0xffff;
+			Index[1] = (Four16BitIndices.x >> 16) & 0xffff;
+			Index[2] = Four16BitIndices.y & 0xffff;
+		}
+		else // Not aligned: { - 0 | 1 2 } => retrieve last three 16bit indices
+		{
+			Index[0] = (Four16BitIndices.x >> 16) & 0xffff;
+			Index[1] = Four16BitIndices.y & 0xffff;
+			Index[2] = (Four16BitIndices.y >> 16) & 0xffff;
+		}
+	}
+
+	float2 OutUV = 0;
 
 	// interpolate data according to barycentric coordinate
-	Input.UV0 = Vertex[Index[0]].UV0 + Attr.Bary.x * (Vertex[Index[1]].UV0 - Vertex[Index[0]].UV0)
-		+ Attr.Bary.y * (Vertex[Index[2]].UV0 - Vertex[Index[0]].UV0);
+	OutUV = UV0[Index[0]] + Attr.Bary.x * (UV0[Index[1]] - UV0[Index[0]])
+		+ Attr.Bary.y * (UV0[Index[2]] - UV0[Index[0]]);
 
-	return Input;
+	return OutUV;
 }
 
 [shader("closesthit")]
@@ -60,9 +90,9 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 		// cutoff test
 		Texture2D OpacityTex = UHTextureTable[Mat.OpacityTexIndex];
 		SamplerState OpacitySampler = UHSamplerTable[Mat.OpacitySamplerIndex];
-		VertexInput Vin = GetHitVertex(InstanceIndex(), PrimitiveIndex(), Attr);
+		float2 UV0 = GetHitUV0(InstanceIndex(), PrimitiveIndex(), Attr);
 
-		float Opacity = OpacityTex.SampleLevel(OpacitySampler, Vin.UV0, 0).r * Mat.DiffuseColor.a;
+		float Opacity = OpacityTex.SampleLevel(OpacitySampler, UV0, 0).r * Mat.DiffuseColor.a;
 		if (Opacity < Mat.Cutoff)
 		{
 			// discard this hit if it's cut

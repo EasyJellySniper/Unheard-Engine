@@ -229,6 +229,7 @@
     <ClInclude Include="Game\UHDemoScript.h" />
     <ClInclude Include="Runtime\Classes\AccelerationStructure.h" />
     <ClInclude Include="Runtime\Classes\AssetPath.h" />
+    <ClInclude Include="Runtime\Classes\GPUMemory.h" />
     <ClInclude Include="Runtime\Classes\GPUQuery.h" />
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
@@ -241,7 +242,6 @@
     <ClInclude Include="Runtime\Classes\MaterialLayout.h" />
     <ClInclude Include="Runtime\Classes\GraphicState.h" />
     <ClInclude Include="Runtime\Classes\Object.h" />
-    <ClInclude Include="Runtime\Classes\MeshLayout.h" />
     <ClInclude Include="Runtime\Classes\RenderBuffer.h" />
     <ClInclude Include="Runtime\Engine\RenderResource.h" />
     <ClInclude Include="Runtime\Classes\RenderTexture.h" />
@@ -296,6 +296,7 @@
     <ClCompile Include="Editor\TextureImporter.cpp" />
     <ClCompile Include="Game\UHDemoScript.cpp" />
     <ClCompile Include="Runtime\Classes\AccelerationStructure.cpp" />
+    <ClCompile Include="Runtime\Classes\GPUMemory.cpp" />
     <ClCompile Include="Runtime\Classes\GPUQuery.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCube.cpp" />
     <ClCompile Include="Runtime\Classes\Types.cpp" />
