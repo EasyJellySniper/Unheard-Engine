@@ -39,8 +39,6 @@ public:
 	UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat)
 		: UHShaderClass(InGfx, Name, typeid(UHMotionObjectPassShader))
 	{
-		VkDescriptorSetLayoutBinding LayoutBinding{};
-
 		// Motion pass: constants + opacity image for cutoff (if there is any)
 		for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
 		{

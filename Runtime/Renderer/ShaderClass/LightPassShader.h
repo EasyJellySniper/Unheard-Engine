@@ -21,7 +21,7 @@ public:
 		CreateDescriptor();
 
 		std::vector<std::string> Defines;
-		if (GEnableRayTracing && RTInstanceCount > 0)
+		if (RTInstanceCount > 0)
 		{
 			Defines.push_back("WITH_RTSHADOWS");
 		}

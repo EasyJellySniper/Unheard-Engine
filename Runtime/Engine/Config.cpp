@@ -49,6 +49,7 @@ void UHConfigManager::LoadConfig()
 			RenderingSettings.bEnableGPULabeling = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPULabeling");
 			RenderingSettings.bEnableLayerValidation = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableLayerValidation");
 			RenderingSettings.bEnableGPUTiming = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPUTiming");
+			RenderingSettings.bEnableDepthPrePass = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableDepthPrePass");
 			RenderingSettings.RTDirectionalShadowQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTDirectionalShadowQuality");
 		}
 	}
@@ -90,6 +91,7 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "bEnableGPULabeling", RenderingSettings.bEnableGPULabeling);
 		UHUtilities::WriteINIData(FileOut, "bEnableLayerValidation", RenderingSettings.bEnableLayerValidation);
 		UHUtilities::WriteINIData(FileOut, "bEnableGPUTiming", RenderingSettings.bEnableGPUTiming);
+		UHUtilities::WriteINIData(FileOut, "bEnableDepthPrePass", RenderingSettings.bEnableDepthPrePass);
 		UHUtilities::WriteINIData(FileOut, "RTDirectionalShadowQuality", RenderingSettings.RTDirectionalShadowQuality);
 	}
 	FileOut.close();

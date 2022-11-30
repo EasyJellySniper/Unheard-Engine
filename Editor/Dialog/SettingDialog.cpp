@@ -44,6 +44,7 @@ UHSettingDialog::UHSettingDialog(HINSTANCE InInstance, HWND InWindow, UHConfigMa
     ControlCallbacks[IDC_ENABLEGPULABELING] = { &UHSettingDialog::ControlGPULabeling };
     ControlCallbacks[IDC_ENABLELAYERVALIDATION] = { &UHSettingDialog::ControlLayerValidation };
     ControlCallbacks[IDC_ENABLEGPUTIMING] = { &UHSettingDialog::ControlGPUTiming };
+    ControlCallbacks[IDC_ENABLEDEPTHPREPASS] = { &UHSettingDialog::ControlDepthPrePass };
     ControlCallbacks[IDC_RTSHADOWQUALITY] = { &UHSettingDialog::ControlShadowQuality };
 }
 
@@ -105,6 +106,7 @@ void UHSettingDialog::ShowDialog()
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPULABELING, RenderingSettings.bEnableGPULabeling);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLELAYERVALIDATION, RenderingSettings.bEnableLayerValidation);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPUTIMING, RenderingSettings.bEnableGPUTiming);
+        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEDEPTHPREPASS, RenderingSettings.bEnableDepthPrePass);
 
         std::vector<std::wstring> ShadowQualities = { L"Full", L"Half", L"Quarter" };
         UHEditorUtil::InitComboBox(SettingWindow, IDC_RTSHADOWQUALITY, ShadowQualities[RenderingSettings.RTDirectionalShadowQuality], ShadowQualities);
@@ -277,6 +279,12 @@ void UHSettingDialog::ControlGPUTiming()
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
     RenderingSettings.bEnableGPUTiming = !RenderingSettings.bEnableGPUTiming;
     GEnableGPUTiming = RenderingSettings.bEnableGPUTiming;
+}
+
+void UHSettingDialog::ControlDepthPrePass()
+{
+    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    RenderingSettings.bEnableDepthPrePass = !RenderingSettings.bEnableDepthPrePass;
 }
 
 void UHSettingDialog::ControlShadowQuality()

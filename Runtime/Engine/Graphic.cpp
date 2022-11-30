@@ -29,6 +29,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bUseValidationLayers(false)
 	, AssetManagerInterface(InAssetManager)
 	, ConfigInterface(InConfig)
+	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
 {
 	// extension defines, hard code for now
 	InstanceExtensions = { "VK_KHR_surface"
@@ -49,7 +50,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_pipeline_library" };
 
 	// push ray tracing extension
-	if (GEnableRayTracing)
+	if (bEnableRayTracing)
 	{
 		DeviceExtensions.insert(DeviceExtensions.end(), RayTracingExtensions.begin(), RayTracingExtensions.end());
 	}
@@ -91,17 +92,17 @@ bool UHGraphic::InitGraphics(HWND Hwnd)
 	if (bInitSuccess)
 	{
 		// allocate shared GPU memory if initialization succeed
-		GGPUImageMemory = std::make_unique<UHGPUMemory>();
-		GGPUMeshBufferMemory = std::make_unique<UHGPUMemory>();
+		ImageSharedMemory = std::make_unique<UHGPUMemory>();
+		MeshBufferSharedMemory = std::make_unique<UHGPUMemory>();
 
-		GGPUImageMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
-		GGPUMeshBufferMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+		ImageSharedMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+		MeshBufferSharedMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 		uint32_t ImageMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		uint32_t BufferMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		GGPUImageMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, ImageMemoryType);
-		GGPUMeshBufferMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, BufferMemoryType);
+		ImageSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, ImageMemoryType);
+		MeshBufferSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, BufferMemoryType);
 	}
 
 	return bInitSuccess;
@@ -188,10 +189,10 @@ void UHGraphic::Release()
 	QueryPools.clear();
 
 	// release GPU memory pool
-	GGPUImageMemory->Release();
-	GGPUImageMemory.reset();
-	GGPUMeshBufferMemory->Release();
-	GGPUMeshBufferMemory.reset();
+	ImageSharedMemory->Release();
+	ImageSharedMemory.reset();
+	MeshBufferSharedMemory->Release();
+	MeshBufferSharedMemory.reset();
 
 	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
 	vkDestroySurfaceKHR(VulkanInstance, MainSurface, nullptr);
@@ -361,7 +362,7 @@ bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, const std::vecto
 			if (UHUtilities::FindByElement(RayTracingExtensions, RequiredExtensions[Idx]))
 			{
 				UHE_LOG(L"Ray tracing not supported!\n");
-				GEnableRayTracing = false;
+				bEnableRayTracing = false;
 			}
 		}
 	}
@@ -528,7 +529,7 @@ bool UHGraphic::CreateLogicalDevice()
 	if (!RTFeatures.rayTracingPipeline)
 	{
 		UHE_LOG(L"Ray tracing pipeline not supported. System won't render ray tracing effects.\n");
-		GEnableRayTracing = false;
+		bEnableRayTracing = false;
 	}
 
 	// get RT feature props
@@ -784,6 +785,12 @@ VkRenderPass UHGraphic::CreateRenderPass(VkFormat InFormat, UHTransitionInfo InT
 	return CreateRenderPass(Format, InTransitionInfo, InDepthFormat);
 }
 
+// create render pass, depth only
+VkRenderPass UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const
+{
+	return CreateRenderPass(std::vector<VkFormat>(), InTransitionInfo, InDepthFormat);
+}
+
 // create render pass, multiple formats are possible
 VkRenderPass UHGraphic::CreateRenderPass(std::vector<VkFormat> InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const
 {
@@ -794,35 +801,38 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<VkFormat> InFormat, UHTrans
 	std::vector<VkAttachmentDescription> ColorAttachments;
 	std::vector<VkAttachmentReference> ColorAttachmentRefs;
 
-	ColorAttachments.resize(RTCount);
-	ColorAttachmentRefs.resize(RTCount);
-
-	for (size_t Idx = 0; Idx < RTCount; Idx++)
+	if (RTCount > 0)
 	{
-		// create color attachment, this part desides how RT is going to be used
-		VkAttachmentDescription ColorAttachment{};
-		ColorAttachment.format = InFormat[Idx];
-		ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		ColorAttachment.loadOp = InTransitionInfo.LoadOp;
-		ColorAttachment.storeOp = InTransitionInfo.StoreOp;
-		ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		ColorAttachment.initialLayout = InTransitionInfo.InitialLayout;
-		ColorAttachment.finalLayout = InTransitionInfo.FinalLayout;
-		ColorAttachments[Idx] = ColorAttachment;
+		ColorAttachments.resize(RTCount);
+		ColorAttachmentRefs.resize(RTCount);
 
-		// define attachment ref cor color attachment
-		VkAttachmentReference ColorAttachmentRef{};
-		ColorAttachmentRef.attachment = static_cast<uint32_t>(Idx);
-		ColorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		ColorAttachmentRefs[Idx] = ColorAttachmentRef;
+		for (size_t Idx = 0; Idx < RTCount; Idx++)
+		{
+			// create color attachment, this part desides how RT is going to be used
+			VkAttachmentDescription ColorAttachment{};
+			ColorAttachment.format = InFormat[Idx];
+			ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+			ColorAttachment.loadOp = InTransitionInfo.LoadOp;
+			ColorAttachment.storeOp = InTransitionInfo.StoreOp;
+			ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			ColorAttachment.initialLayout = InTransitionInfo.InitialLayout;
+			ColorAttachment.finalLayout = InTransitionInfo.FinalLayout;
+			ColorAttachments[Idx] = ColorAttachment;
+
+			// define attachment ref cor color attachment
+			VkAttachmentReference ColorAttachmentRef{};
+			ColorAttachmentRef.attachment = static_cast<uint32_t>(Idx);
+			ColorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			ColorAttachmentRefs[Idx] = ColorAttachmentRef;
+		}
 	}
 
 	// subpass desc
 	VkSubpassDescription Subpass{};
 	Subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	Subpass.colorAttachmentCount = RTCount;
-	Subpass.pColorAttachments = ColorAttachmentRefs.data();
+	Subpass.pColorAttachments = (RTCount > 0) ? ColorAttachmentRefs.data() : nullptr;
 
 	// consider depth attachment
 	VkAttachmentDescription DepthAttachment{};
@@ -831,7 +841,7 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<VkFormat> InFormat, UHTrans
 	{
 		DepthAttachment.format = InDepthFormat;
 		DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		DepthAttachment.loadOp = InTransitionInfo.LoadOp;
+		DepthAttachment.loadOp = InTransitionInfo.DepthLoadOp;
 		DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		DepthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		DepthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -991,6 +1001,7 @@ UHTexture2D* UHGraphic::RequestTexture2D(std::string InName, std::string InSourc
 
 	std::unique_ptr<UHTexture2D> NewTex = std::make_unique<UHTexture2D>(InName, InSourcePath, Extent, TexFormat, bIsLinear);
 	NewTex->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewTex->SetGfxCache(this);
 
 	if (NewTex->CreateTextureFromMemory(Width, Height, InData, bIsLinear))
 	{
@@ -1063,6 +1074,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 
 	std::unique_ptr<UHTextureCube> NewCube = std::make_unique<UHTextureCube>(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
 	NewCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewCube->SetGfxCache(this);
 
 	if (NewCube->CreateCube(InTextures))
 	{
@@ -1308,6 +1320,11 @@ float UHGraphic::GetGPUTimeStampPeriod() const
 	return GPUTimeStampPeriod;
 }
 
+bool UHGraphic::IsRayTracingEnabled() const
+{
+	return bEnableRayTracing;
+}
+
 std::vector<UHSampler*> UHGraphic::GetSamplers() const
 {
 	std::vector<UHSampler*> Samplers(SamplerPools.size());
@@ -1317,6 +1334,16 @@ std::vector<UHSampler*> UHGraphic::GetSamplers() const
 	}
 
 	return Samplers;
+}
+
+UHGPUMemory* UHGraphic::GetMeshSharedMemory() const
+{
+	return MeshBufferSharedMemory.get();
+}
+
+UHGPUMemory* UHGraphic::GetImageSharedMemory() const
+{
+	return ImageSharedMemory.get();
 }
 
 void UHGraphic::BeginCmdDebug(VkCommandBuffer InBuffer, std::string InName)

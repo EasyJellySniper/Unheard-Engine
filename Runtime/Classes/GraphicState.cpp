@@ -63,6 +63,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 
 	/*** cache variables for compare ***/
 	RenderPassInfo = InInfo;
+	bool bHasPixelShader = (RenderPassInfo.PS != nullptr);
 
 
 	/*** Shader Stage setup, in UHEngine, all states must have at least one VS and PS (or CS) ***/
@@ -73,12 +74,16 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	VSStageInfo.module = RenderPassInfo.VS->GetShader();
 	VSStageInfo.pName = VSEntryName.c_str();
 
-	std::string PSEntryName = RenderPassInfo.PS->GetEntryName();
 	VkPipelineShaderStageCreateInfo PSStageInfo{};
-	PSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	PSStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	PSStageInfo.module = RenderPassInfo.PS->GetShader();
-	PSStageInfo.pName = PSEntryName.c_str();
+	std::string PSEntryName;
+	if (bHasPixelShader)
+	{
+		PSEntryName = RenderPassInfo.PS->GetEntryName();
+		PSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		PSStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		PSStageInfo.module = RenderPassInfo.PS->GetShader();
+		PSStageInfo.pName = PSEntryName.c_str();
+	}
 
 	VkPipelineShaderStageCreateInfo ShaderStages[] = { VSStageInfo, PSStageInfo };
 
@@ -164,7 +169,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	/*** finally, create pipeline info ***/
 	VkGraphicsPipelineCreateInfo PipelineInfo{};
 	PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	PipelineInfo.stageCount = 2;
+	PipelineInfo.stageCount = bHasPixelShader ? 2 : 1;
 	PipelineInfo.pStages = ShaderStages;
 	PipelineInfo.pVertexInputState = &VertexInputInfo;
 	PipelineInfo.pInputAssemblyState = &InputAssembly;

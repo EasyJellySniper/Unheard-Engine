@@ -66,25 +66,27 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 	VkBufferUsageFlags VBFlags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	VkBufferUsageFlags IBFlags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-	if (GEnableRayTracing)
+	if (InGfx->IsRayTracingEnabled())
 	{
 		VBFlags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 		IBFlags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
 
+	UHGPUMemory* SharedMemory = InGfx->GetMeshSharedMemory();
+
 	bool bValid = true;
-	bValid &= PositionBuffer->CreaetBuffer(VertexCount, VBFlags, GGPUMeshBufferMemory.get());
-	bValid &= UV0Buffer->CreaetBuffer(VertexCount, VBFlags, GGPUMeshBufferMemory.get());
-	bValid &= NormalBuffer->CreaetBuffer(VertexCount, VBFlags, GGPUMeshBufferMemory.get());
-	bValid &= TangentBuffer->CreaetBuffer(VertexCount, VBFlags, GGPUMeshBufferMemory.get());
+	bValid &= PositionBuffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
+	bValid &= UV0Buffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
+	bValid &= NormalBuffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
+	bValid &= TangentBuffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
 
 	if (bIndexBuffer32Bit)
 	{
-		bValid &= IndexBuffer->CreaetBuffer(GetIndicesCount(), IBFlags, GGPUMeshBufferMemory.get());
+		bValid &= IndexBuffer->CreaetBuffer(GetIndicesCount(), IBFlags, SharedMemory);
 	}
 	else
 	{
-		bValid &= IndexBuffer16->CreaetBuffer(GetIndicesCount(), IBFlags, GGPUMeshBufferMemory.get());
+		bValid &= IndexBuffer16->CreaetBuffer(GetIndicesCount(), IBFlags, SharedMemory);
 	}
 
 	// don't upload to GPU if buffer is failed during initialization
@@ -94,18 +96,18 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 	}
 
 	// upload vb/ib data
-	PositionBuffer->UploadAllDataShared(PositionData.data(), GGPUMeshBufferMemory.get());
-	UV0Buffer->UploadAllDataShared(UV0Data.data(), GGPUMeshBufferMemory.get());
-	NormalBuffer->UploadAllDataShared(NormalData.data(), GGPUMeshBufferMemory.get());
-	TangentBuffer->UploadAllDataShared(TangentData.data(), GGPUMeshBufferMemory.get());
+	PositionBuffer->UploadAllDataShared(PositionData.data(), SharedMemory);
+	UV0Buffer->UploadAllDataShared(UV0Data.data(), SharedMemory);
+	NormalBuffer->UploadAllDataShared(NormalData.data(), SharedMemory);
+	TangentBuffer->UploadAllDataShared(TangentData.data(), SharedMemory);
 
 	if (bIndexBuffer32Bit)
 	{
-		IndexBuffer->UploadAllDataShared(GetIndicesData().data(), GGPUMeshBufferMemory.get());
+		IndexBuffer->UploadAllDataShared(GetIndicesData().data(), SharedMemory);
 	}
 	else
 	{
-		IndexBuffer16->UploadAllDataShared(GetIndicesData16().data(), GGPUMeshBufferMemory.get());
+		IndexBuffer16->UploadAllDataShared(GetIndicesData16().data(), SharedMemory);
 	}
 }
 

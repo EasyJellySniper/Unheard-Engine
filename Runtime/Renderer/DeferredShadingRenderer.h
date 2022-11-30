@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 // shader includes
+#include "ShaderClass/DepthPassShader.h"
 #include "ShaderClass/BasePassShader.h"
 #include "ShaderClass/LightPassShader.h"
 #include "ShaderClass/SkyPassShader.h"
@@ -107,9 +108,10 @@ private:
 
 
 	/************************************************ rendering functions ************************************************/
+	void RenderDepthPrePass(UHGraphicBuilder& GraphBuilder);
+	void RenderBasePass(UHGraphicBuilder& GraphBuilder);
 	void BuildTopLevelAS(UHGraphicBuilder& GraphBuilder);
 	void DispatchRayPass(UHGraphicBuilder& GraphBuilder);
-	void RenderBasePass(UHGraphicBuilder& GraphBuilder);
 	void RenderLightPass(UHGraphicBuilder& GraphBuilder);
 	void RenderSkyPass(UHGraphicBuilder& GraphBuilder);
 	void RenderMotionPass(UHGraphicBuilder& GraphBuilder);
@@ -174,6 +176,11 @@ private:
 
 
 	/************************************************ Render Pass stuffs ************************************************/
+
+	// -------------------------------------------- Depth Pass -------------------------------------------- //
+	std::unordered_map<int32_t, UHDepthPassShader> DepthPassShaders;
+	UHRenderPassObject DepthPassObj;
+	bool bEnableDepthPrePass;
 
 	// -------------------------------------------- Base Pass -------------------------------------------- //
 

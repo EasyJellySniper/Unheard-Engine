@@ -10,7 +10,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 
 	// setup clear value
 	std::vector<VkClearValue> ClearValues;
-	ClearValues.resize(GNumOfGBuffers + 1);
+	ClearValues.resize(GNumOfGBuffers);
 
 	// clear GBuffer with pure black
 	for (size_t Idx = 0; Idx < GNumOfGBuffers; Idx++)
@@ -19,7 +19,12 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 	}
 
 	// clear depth with 0 since reversed-z is used
-	ClearValues[GNumOfGBuffers].depthStencil = { 0.0f,0 };
+	if (!bEnableDepthPrePass)
+	{
+		VkClearValue DepthClear;
+		DepthClear.depthStencil = { 0.0f,0 };
+		ClearValues.push_back(DepthClear);
+	}
 
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Base Pass");
 
@@ -46,12 +51,16 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 		}
 
 		int32_t RendererIdx = Renderer->GetBufferDataIndex();
+
+	#if WITH_DEBUG
 		if (BasePassShaders.find(RendererIdx) == BasePassShaders.end())
 		{
 			// unlikely to happen, but printing a message for debug
 			UHE_LOG(L"[RenderBasePass] Can't find base pass shader for material: \n");
 			continue;
 		}
+	#endif
+
 		UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
 
 		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +

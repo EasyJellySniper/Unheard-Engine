@@ -189,5 +189,5 @@ bool UHTexture2D::CreateTextureFromMemory(uint32_t Width, uint32_t Height, std::
 		, VK_IMAGE_VIEW_TYPE_2D, (bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB, Extent
 		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, true);
 
-	return Create(Info, GGPUImageMemory.get());
+	return Create(Info, GfxCache->GetImageSharedMemory());
 }

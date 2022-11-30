@@ -25,6 +25,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, SceneDepth(nullptr)
 	, PointClampedSampler(nullptr)
 	, LinearClampedSampler(nullptr)
+	, bEnableDepthPrePass(false)
 	, PostProcessRT(nullptr)
 	, PreviousSceneResult(nullptr)
 	, PostProcessResultIdx(0)
@@ -89,6 +90,9 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	CurrentScene = InScene;
 	PrepareMeshes();
 	PrepareTextures();
+
+	// config setup
+	bEnableDepthPrePass = ConfigInterface->RenderingSetting().bEnableDepthPrePass;
 
 	// shared sampler requests
 	UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
@@ -172,7 +176,7 @@ void UHDeferredShadingRenderer::Release()
 		UH_SAFE_RELEASE(DirectionalLightBuffer[Idx]);
 		DirectionalLightBuffer[Idx].reset();
 
-		if (GEnableRayTracing)
+		if (GraphicInterface->IsRayTracingEnabled())
 		{
 			UH_SAFE_RELEASE(TopLevelAS[Idx]);
 			TopLevelAS[Idx].reset();
@@ -298,18 +302,26 @@ void UHDeferredShadingRenderer::PrepareTextures()
 
 void UHDeferredShadingRenderer::PrepareRenderingShaders()
 {
+	// depth pass shader, opaque only
+	if (bEnableDepthPrePass)
+	{
+		for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+		{
+			UHMaterial* Mat = Renderer->GetMaterial();
+			if (Mat && DepthPassShaders.find(Renderer->GetBufferDataIndex()) == DepthPassShaders.end())
+			{
+				DepthPassShaders[Renderer->GetBufferDataIndex()] = UHDepthPassShader(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, Mat);
+			}
+		}
+	}
+
 	// base pass shader, opaque only
 	for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->IsSkybox())
-		{
-			continue;
-		}
-
 		if (Mat && BasePassShaders.find(Renderer->GetBufferDataIndex()) == BasePassShaders.end())
 		{
-			BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat);
+			BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass);
 		}
 	}
 
@@ -341,7 +353,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	ToneMapShader = UHToneMappingShader(GraphicInterface, "ToneMapShader", PostProcessPassObj[0].RenderPass);
 
 	// RT shaders
-	if (GEnableRayTracing)
+	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		RTVertexTable = UHRTVertexTable(GraphicInterface, "RTVertexTable", RTInstanceCount);
 		RTIndicesTable = UHRTIndicesTable(GraphicInterface, "RTIndicesTable", RTInstanceCount);
@@ -409,16 +421,50 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 {
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 
+	// ------------------------------------------------ Depth pass descriptor update
+	if (bEnableDepthPrePass)
+	{
+		for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+		{
+	#if WITH_DEBUG
+			if (DepthPassShaders.find(Renderer->GetBufferDataIndex()) == DepthPassShaders.end())
+			{
+				// unlikely to happen, but printing a message for debug
+				UHE_LOG(L"[UpdateDescriptors] Can't find depth pass shader for renderer\n");
+				continue;
+			}
+	#endif
+
+			UHMaterial* Mat = Renderer->GetMaterial();
+			UHDepthPassShader& DepthShader = DepthPassShaders[Renderer->GetBufferDataIndex()];
+			DepthShader.BindConstant(SystemConstantsGPU, 0);
+			DepthShader.BindConstant(ObjectConstantsGPU, 1, Renderer->GetBufferDataIndex());
+			DepthShader.BindStorage(MaterialConstantsGPU, 2, Renderer->GetMaterial()->GetBufferDataIndex());
+
+			// check alpha test textures
+			if (UHTexture* Tex = Mat->GetTex(UHMaterialTextureType::Opacity))
+			{
+				DepthShader.BindImage(Tex, 3);
+				DepthShader.BindSampler(Mat->GetSampler(UHMaterialTextureType::Opacity), 4);
+			}
+
+			UHMesh* Mesh = Renderer->GetMesh();
+			DepthShader.BindStorage(Mesh->GetUV0Buffer(), 5, 0, true);
+		}
+	}
+
 	// ------------------------------------------------ Base pass descriptor update
 	// after creation, update descriptor info for all renderers
-	for(UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+	for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 	{
+	#if WITH_DEBUG
 		if (BasePassShaders.find(Renderer->GetBufferDataIndex()) == BasePassShaders.end())
 		{
 			// unlikely to happen, but printing a message for debug
 			UHE_LOG(L"[UpdateDescriptors] Can't find base pass shader for renderer\n");
 			continue;
 		}
+	#endif
 
 		UHMaterial* Mat = Renderer->GetMaterial();
 		UHBasePassShader& BaseShader = BasePassShaders[Renderer->GetBufferDataIndex()];
@@ -456,7 +502,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	LightPassShader.BindImage(Textures, 2);
 	LightPassShader.BindSampler(LinearClampedSampler, 3);
 
-	if (GEnableRayTracing && RTInstanceCount > 0)
+	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
 		LightPassShader.BindImage(RTShadowResult, 4);
 	}
@@ -523,7 +569,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	TemporalAAShader.BindSampler(LinearClampedSampler, 6);
 
 	// ------------------------------------------------ ray tracing pass descriptor update
-	if (GEnableRayTracing && TopLevelAS[0] && RTInstanceCount > 0)
+	if (GraphicInterface->IsRayTracingEnabled() && TopLevelAS[0] && RTInstanceCount > 0)
 	{
 		// bind VB/IB table
 		std::vector<UHMeshRendererComponent*> Renderers = CurrentScene->GetAllRenderers();
@@ -590,7 +636,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	// ------------------------------------------------ debug view pass descriptor update
 #if WITH_DEBUG
-	if (GEnableRayTracing && RTInstanceCount > 0)
+	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
 		DebugViewShader.BindImage(RTShadowResult, 0);
 	}
@@ -600,6 +646,15 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 void UHDeferredShadingRenderer::ReleaseShaders()
 {
+	if (bEnableDepthPrePass)
+	{
+		for (auto& DepthShader : DepthPassShaders)
+		{
+			DepthShader.second.Release();
+		}
+		DepthPassShaders.clear();
+	}
+
 	for (auto& BaseShader : BasePassShaders)
 	{
 		BaseShader.second.Release();
@@ -618,7 +673,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	TemporalAAShader.Release();
 	ToneMapShader.Release();
 
-	if (GEnableRayTracing)
+	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		RTDefaultHitGroupShader.Release();
 		RTShadowShader.Release();
@@ -695,7 +750,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	PrevMotionVectorRT = GraphicInterface->RequestRenderTexture("PrevMotionVectorRT", RenderResolution, MotionFormat, true);
 
 	// rt shadows buffer
-	if (GEnableRayTracing)
+	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
@@ -711,6 +766,12 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	Views.push_back(SceneResult->GetImageView());
 	Views.push_back(SceneMip->GetImageView());
 	Views.push_back(SceneDepth->GetImageView());
+
+	// depth frame buffer
+	if (bEnableDepthPrePass)
+	{
+		DepthPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(SceneDepth->GetImageView(), DepthPassObj.RenderPass, RenderResolution);
+	}
 
 	// create frame buffer, some of them can be shared, especially when the output target is the same
 	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
@@ -743,7 +804,7 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(MotionVectorRT);
 	GraphicInterface->RequestReleaseRT(PrevMotionVectorRT);
 
-	if (GEnableRayTracing)
+	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		GraphicInterface->RequestReleaseRT(RTShadowResult);
 	}
@@ -758,8 +819,16 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 	Formats.push_back(SceneResultFormat);
 	Formats.push_back(SceneMipFormat);
 
+	// depth prepass
+	if (bEnableDepthPrePass)
+	{
+		DepthPassObj.RenderPass = GraphicInterface->CreateRenderPass(UHTransitionInfo(), DepthFormat);
+	}
+
 	// create render pass based on output RT, render pass can be shared sometimes
-	BasePassObj.RenderPass = GraphicInterface->CreateRenderPass(Formats, UHTransitionInfo(), DepthFormat);
+	BasePassObj.RenderPass = GraphicInterface->CreateRenderPass(Formats, UHTransitionInfo(bEnableDepthPrePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
+		, DepthFormat);
+
 	LightPassObj.RenderPass = GraphicInterface->CreateRenderPass(SceneResultFormat
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 
@@ -785,6 +854,11 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
 
 	if (!bFrameBufferOnly)
 	{
+		if (bEnableDepthPrePass)
+		{
+			DepthPassObj.Release(LogicalDevice);
+		}
+
 		BasePassObj.Release(LogicalDevice);
 		LightPassObj.Release(LogicalDevice);
 		SkyboxPassObj.Release(LogicalDevice);
@@ -798,6 +872,11 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
 	}
 	else
 	{
+		if (bEnableDepthPrePass)
+		{
+			DepthPassObj.ReleaseFrameBuffer(LogicalDevice);
+		}
+
 		BasePassObj.ReleaseFrameBuffer(LogicalDevice);
 		LightPassObj.ReleaseFrameBuffer(LogicalDevice);
 		SkyboxPassObj.ReleaseFrameBuffer(LogicalDevice);
@@ -853,7 +932,7 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 
 void UHDeferredShadingRenderer::ResizeRTBuffers()
 {
-	if (GEnableRayTracing)
+	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		GraphicInterface->WaitGPU();
 		GraphicInterface->RequestReleaseRT(RTShadowResult);

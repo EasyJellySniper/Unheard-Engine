@@ -42,7 +42,7 @@ VkDeviceAddress UHAccelerationStructure::GetDeviceAddress(VkAccelerationStructur
 void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InBuffer)
 {
 	// prevent duplicate builds
-	if (!GEnableRayTracing || AccelerationStructure != VK_NULL_HANDLE)
+	if (!GfxCache->IsRayTracingEnabled() || AccelerationStructure != VK_NULL_HANDLE)
 	{
 		return;
 	}
@@ -127,7 +127,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(std::vector<UHMeshRendererComponen
 {
 	// prevent duplicate builds
 	// to update Top AS, call UpdateTopAS instead
-	if (!GEnableRayTracing || AccelerationStructure)
+	if (!GfxCache->IsRayTracingEnabled() || AccelerationStructure)
 	{
 		return 0;
 	}
@@ -280,7 +280,7 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t Curr
 
 void UHAccelerationStructure::Release()
 {
-    if (GEnableRayTracing)
+    if (GfxCache->IsRayTracingEnabled())
     {
 		UH_SAFE_RELEASE(ScratchBuffer);
 		ScratchBuffer.reset();
@@ -299,7 +299,7 @@ void UHAccelerationStructure::Release()
 // release scratch buffer only, this can be cleared after initialization
 void UHAccelerationStructure::ReleaseScratch()
 {
-	if (GEnableRayTracing)
+	if (GfxCache->IsRayTracingEnabled())
 	{
 		UH_SAFE_RELEASE(ScratchBuffer);
 		ScratchBuffer.reset();

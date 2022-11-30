@@ -43,13 +43,13 @@ void UHGPUQuery::BeginTimeStamp(VkCommandBuffer InBuffer)
 	{
 		return;
 	}
-#endif
 
 	if (State == UHGPUQueryState::Idle)
 	{
 		vkResetQueryPool(LogicalDevice, QueryPool, 0, QueryCount);
 		vkCmdWriteTimestamp(InBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, QueryPool, 0);
 	}
+#endif
 }
 
 void UHGPUQuery::EndTimeStamp(VkCommandBuffer InBuffer)
@@ -59,13 +59,13 @@ void UHGPUQuery::EndTimeStamp(VkCommandBuffer InBuffer)
 	{
 		return;
 	}
-#endif
 
 	if (State == UHGPUQueryState::Idle)
 	{
 		vkCmdWriteTimestamp(InBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, QueryPool, 1);
 		State = UHGPUQueryState::Requested;
 	}
+#endif
 }
 
 float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
@@ -75,7 +75,6 @@ float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 	{
 		return 0.0f;
 	}
-#endif
 
 	// try getting time stamp after request
 	if (State == UHGPUQueryState::Requested)
@@ -96,4 +95,7 @@ float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 
 	// return previous valid time stamp, I don't want to see the value keeps jumping with 0
 	return PreviousValidTimeStamp;
+#else
+	return 0.0f;
+#endif
 }

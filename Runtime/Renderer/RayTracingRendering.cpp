@@ -3,7 +3,7 @@
 
 void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 {
-	if (!GEnableRayTracing || RTInstanceCount == 0)
+	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
 	{
 		return;
 	}
@@ -29,7 +29,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 
 void UHDeferredShadingRenderer::DispatchRayPass(UHGraphicBuilder& GraphBuilder)
 {
-	if (!GEnableRayTracing || !TopLevelAS[CurrentFrame] || RTInstanceCount == 0)
+	if (!GraphicInterface->IsRayTracingEnabled() || !TopLevelAS[CurrentFrame] || RTInstanceCount == 0)
 	{
 		return;
 	}

@@ -68,7 +68,8 @@ struct UHDirectionalLightConstants
 
 enum UHRenderPassTypes
 {
-	BasePass = 0,
+	DepthPrePass = 0,
+	BasePass,
 	UpdateTopLevelAS,
 	RayTracingShadow,
 	LightPass,
@@ -139,16 +140,17 @@ struct UHRenderPassInfo
 			return false;
 		}
 
-		if (!InInfo.PS || !PS)
+		bool bPSEqual = true;
+		if (InInfo.PS && PS)
 		{
-			return false;
+			bPSEqual = (*InInfo.PS == *PS);
 		}
 
 		return InInfo.CullMode == CullMode
 			&& InInfo.BlendMode == BlendMode
 			&& InInfo.RenderPass == RenderPass
 			&& *InInfo.VS == *VS
-			&& *InInfo.PS == *PS
+			&& bPSEqual
 			&& InInfo.RTCount == RTCount
 			&& InInfo.PipelineLayout == PipelineLayout;
 	}

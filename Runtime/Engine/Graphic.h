@@ -18,6 +18,7 @@
 #include "Config.h"
 #include "../CoreGlobals.h"
 #include "../Classes/AccelerationStructure.h"
+#include "../Classes/GPUMemory.h"
 
 // queue family structure
 struct UHQueueFamily
@@ -50,6 +51,17 @@ struct UHTransitionInfo
 	// default to clearing RT and color attachment
 	UHTransitionInfo()
 		: LoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+		, DepthLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+		, StoreOp(VK_ATTACHMENT_STORE_OP_STORE)
+		, InitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+		, FinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+	{
+
+	}
+
+	UHTransitionInfo(VkAttachmentLoadOp InDepthLoadOp)
+		: LoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
+		, DepthLoadOp(InDepthLoadOp)
 		, StoreOp(VK_ATTACHMENT_STORE_OP_STORE)
 		, InitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 		, FinalLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -60,6 +72,7 @@ struct UHTransitionInfo
 	// override constructor for LoadOp/FinalLayout vary
 	UHTransitionInfo(VkAttachmentLoadOp InLoadOp, VkImageLayout InFinalLayout)
 		: LoadOp(InLoadOp)
+		, DepthLoadOp(VK_ATTACHMENT_LOAD_OP_LOAD)
 		, StoreOp(VK_ATTACHMENT_STORE_OP_STORE)
 		, InitialLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 		, FinalLayout(InFinalLayout)
@@ -70,6 +83,7 @@ struct UHTransitionInfo
 	// override constructor for LoadOp/Initial Layout/FinalLayout vary
 	UHTransitionInfo(VkAttachmentLoadOp InLoadOp, VkImageLayout InInitialLayout, VkImageLayout InFinalLayout)
 		: LoadOp(InLoadOp)
+		, DepthLoadOp(VK_ATTACHMENT_LOAD_OP_LOAD)
 		, StoreOp(VK_ATTACHMENT_STORE_OP_STORE)
 		, InitialLayout(InInitialLayout)
 		, FinalLayout(InFinalLayout)
@@ -78,6 +92,7 @@ struct UHTransitionInfo
 	}
 
 	VkAttachmentLoadOp LoadOp;
+	VkAttachmentLoadOp DepthLoadOp;
 	VkAttachmentStoreOp StoreOp;
 	VkImageLayout InitialLayout;
 	VkImageLayout FinalLayout;
@@ -109,6 +124,7 @@ public:
 	// create render pass object, allow imageless and both multiple and single creation
 	VkRenderPass CreateRenderPass(UHTransitionInfo InTransitionInfo) const;
 	VkRenderPass CreateRenderPass(VkFormat InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat = VK_FORMAT_UNDEFINED) const;
+	VkRenderPass CreateRenderPass(UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const;
 	VkRenderPass CreateRenderPass(std::vector<VkFormat> InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat = VK_FORMAT_UNDEFINED) const;
 
 	// create frame buffer, imageless/single/multiple
@@ -198,8 +214,15 @@ public:
 	// get gpu time stamp period
 	float GetGPUTimeStampPeriod() const;
 
+	// is ray tracing enabled
+	bool IsRayTracingEnabled() const;
+
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
+
+	// get shared memory
+	UHGPUMemory* GetMeshSharedMemory() const;
+	UHGPUMemory* GetImageSharedMemory() const;
 
 	// debug cmd functions
 	void BeginCmdDebug(VkCommandBuffer InBuffer, std::string InName);
@@ -323,6 +346,7 @@ private:
 	UHConfigManager* ConfigInterface;
 	uint32_t ShaderRecordSize;
 	float GPUTimeStampPeriod;
+	bool bEnableRayTracing;
 
 protected:
 	// system managed pools
@@ -334,6 +358,10 @@ protected:
 	std::vector<std::unique_ptr<UHTextureCube>> TextureCubePools;
 	std::vector<std::unique_ptr<UHMaterial>> MaterialPools;
 	std::vector<std::unique_ptr<UHGPUQuery>> QueryPools;
+
+	// shared GPU memory
+	std::unique_ptr<UHGPUMemory> MeshBufferSharedMemory = nullptr;
+	std::unique_ptr<UHGPUMemory> ImageSharedMemory = nullptr;
 
 #if WITH_DEBUG
 	// give access for UHEngine in debug build

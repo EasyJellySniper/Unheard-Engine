@@ -266,6 +266,7 @@
     <ClInclude Include="Runtime\Components\SkyLight.h" />
     <ClInclude Include="Editor\ShaderImporter.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\BasePassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
@@ -302,6 +303,7 @@
     <ClCompile Include="Runtime\Classes\Types.cpp" />
     <ClCompile Include="Runtime\Components\GameScript.cpp" />
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
+    <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\DescriptorHelper.cpp" />
     <ClCompile Include="Runtime\Components\Light.cpp" />
     <ClCompile Include="Runtime\Components\Camera.cpp" />
@@ -421,6 +423,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\PostProcessing\DebugViewPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\DepthPassShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

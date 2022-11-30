@@ -119,6 +119,8 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 28-11-2022: Done both mesh and memory optimizations. For now, Input Assembly will have POSITION layout only. The other attributes like UV, Normal, Tangent are accessed via StructuredBuffer. Image and mesh memory are shared.
 
+30-11-2022: Started to add depth prepass stuffs. Done! It's default to false, since current scene is small and can be benefit from depth pre pass. Also removed a few global variables in CoreGlobal.h. Minor constant optimization for vertex shader, it uses matrix WorldViewClip now for SV_POSITION instead of separating as world/viewclip.
+
 
 
 

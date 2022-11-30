@@ -46,7 +46,6 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	const UHPresentationSettings PresentationSettings = UHEConfig->PresentationSetting();
 	UHEngineWindow = EngineWindow;
 	UHWindowInstance = Instance;
-	GEnableRayTracing = UHEConfig->RenderingSetting().bEnableRayTracing;
 
 	UHEGraphic = std::make_unique<UHGraphic>(UHEAsset.get(), UHEConfig.get());
 	if (!UHEGraphic->InitGraphics(UHEngineWindow))

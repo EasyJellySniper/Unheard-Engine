@@ -85,7 +85,8 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         UHEditorUtil::SetEditControl(ProfileWindow, IDC_PROFILECPU, CPUStatTex.str());
 
         // GPU stat section
-        std::wstring GPUStatStrings[UHRenderPassMax] = { L"Base Pass"
+        std::wstring GPUStatStrings[UHRenderPassMax] = { L"Depth Pre Pass"
+            , L"Base Pass"
             , L"Update Top Level AS"
             , L"Ray Tracing Shadow"
             , L"Light Pass"

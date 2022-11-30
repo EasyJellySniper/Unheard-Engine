@@ -216,6 +216,9 @@
     <ClInclude Include="Runtime\Classes\GPUMemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -374,6 +377,9 @@
     <ClCompile Include="Runtime\Classes\GPUMemory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -405,5 +411,6 @@
     <None Include="Shaders\RayTracing\UHRTCommon.hlsli" />
     <None Include="Shaders\RayTracing\RayTracingHitGroup.hlsl" />
     <None Include="Shaders\PostProcessing\DebugViewPixelShader.hlsl" />
+    <None Include="Shaders\DepthPassShader.hlsl" />
   </ItemGroup>
 </Project>

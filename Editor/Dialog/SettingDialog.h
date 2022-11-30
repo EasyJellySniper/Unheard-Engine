@@ -40,6 +40,7 @@ private:
 	void ControlGPULabeling();
 	void ControlLayerValidation();
 	void ControlGPUTiming();
+	void ControlDepthPrePass();
 	void ControlShadowQuality();
 
 	UHConfigManager* Config;
