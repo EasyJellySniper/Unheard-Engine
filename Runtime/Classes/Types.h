@@ -1,8 +1,9 @@
 #pragma once
 
-// UH uses DX math library
+// UHE uses DX math library, it's not only a mature library but also well-optimized (with SSE instructions for example)
 #include <cmath>
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
 #include <limits>
 #include <algorithm>
 using namespace DirectX;

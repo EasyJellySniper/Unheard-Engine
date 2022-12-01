@@ -123,7 +123,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 }
 
 // this should be called by renderer
-uint32_t UHAccelerationStructure::CreateTopAS(std::vector<UHMeshRendererComponent*> InRenderers, VkCommandBuffer InBuffer)
+uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererComponent*>& InRenderers, VkCommandBuffer InBuffer)
 {
 	// prevent duplicate builds
 	// to update Top AS, call UpdateTopAS instead

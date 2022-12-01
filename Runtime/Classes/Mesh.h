@@ -41,6 +41,7 @@ public:
 	XMFLOAT3 GetImportedRotation() const;
 	XMFLOAT3 GetImportedScale() const;
 	XMFLOAT3 GetMeshCenter() const;
+	BoundingBox GetMeshBound() const;
 
 	UHRenderBuffer<XMFLOAT3>* GetPositionBuffer() const;
 	UHRenderBuffer<XMFLOAT2>* GetUV0Buffer() const;
@@ -92,4 +93,7 @@ private:
 	std::unique_ptr<UHRenderBuffer<uint32_t>> IndexBuffer;
 	std::unique_ptr<UHRenderBuffer<uint16_t>> IndexBuffer16;
 	std::unique_ptr<UHAccelerationStructure> BottomLevelAS;
+
+	// bound of the mesh
+	BoundingBox MeshBound;
 };

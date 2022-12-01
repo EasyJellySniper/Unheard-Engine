@@ -43,10 +43,11 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 	// -------------------- after motion camera pass is done, draw per-object motions -------------------- //
 	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	GraphBuilder.BeginRenderPass(MotionObjectPassObj.RenderPass, MotionObjectPassObj.FrameBuffer, RenderResolution);
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+
+	for (UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		const UHMesh* Mesh = Renderer->GetMesh();
+		UHMesh* Mesh = Renderer->GetMesh();
 
 		// skip skybox mat and only draw dirty renderer
 		if (Mat->IsSkybox() || !Renderer->IsMotionDirty(CurrentFrame))

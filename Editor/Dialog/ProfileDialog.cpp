@@ -61,7 +61,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
     }
 
     // convert stats to string and display them
-    UHStatistics Stats = InProfiler->GetStatistics();
+    const UHStatistics& Stats = InProfiler->GetStatistics();
 
     if (InGameTimer->GetTotalTime() > 1)
     {

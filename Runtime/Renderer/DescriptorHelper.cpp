@@ -13,7 +13,7 @@ UHDescriptorHelper::~UHDescriptorHelper()
 	DescriptorSetToWrite = VK_NULL_HANDLE;
 }
 
-void UHDescriptorHelper::WriteImage(UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite)
+void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite)
 {
 	VkDescriptorImageInfo NewInfo{};
 	NewInfo.imageLayout = (bIsReadWrite) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -31,7 +31,7 @@ void UHDescriptorHelper::WriteImage(UHTexture* InTexture, uint32_t InDstBinding,
 }
 
 // write multiple image at once for descriptor array
-void UHDescriptorHelper::WriteImage(std::vector<UHTexture*> InTextures, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteImage(const std::vector<UHTexture*>& InTextures, uint32_t InDstBinding)
 {
 	std::vector<VkDescriptorImageInfo> NewInfos(InTextures.size());
 	for (size_t Idx = 0; Idx < InTextures.size(); Idx++)
@@ -53,7 +53,7 @@ void UHDescriptorHelper::WriteImage(std::vector<UHTexture*> InTextures, uint32_t
 	vkUpdateDescriptorSets(LogicalDevice, 1, &DescriptorWrite, 0, nullptr);
 }
 
-void UHDescriptorHelper::WriteSampler(UHSampler* InSampler, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteSampler(const UHSampler* InSampler, uint32_t InDstBinding)
 {
 	VkDescriptorImageInfo NewInfo{};
 	NewInfo.sampler = InSampler->GetSampler();
@@ -70,7 +70,7 @@ void UHDescriptorHelper::WriteSampler(UHSampler* InSampler, uint32_t InDstBindin
 }
 
 // multiple sampler write
-void UHDescriptorHelper::WriteSampler(std::vector<UHSampler*> InSamplers, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteSampler(const std::vector<UHSampler*>& InSamplers, uint32_t InDstBinding)
 {
 	std::vector<VkDescriptorImageInfo> NewInfos(InSamplers.size());
 
@@ -92,7 +92,7 @@ void UHDescriptorHelper::WriteSampler(std::vector<UHSampler*> InSamplers, uint32
 	vkUpdateDescriptorSets(LogicalDevice, 1, &DescriptorWrite, 0, nullptr);
 }
 
-void UHDescriptorHelper::WriteTLAS(UHAccelerationStructure* InAS, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteTLAS(const UHAccelerationStructure* InAS, uint32_t InDstBinding)
 {
 	VkWriteDescriptorSet DescriptorWrite{};
 	DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

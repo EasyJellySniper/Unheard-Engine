@@ -52,7 +52,7 @@ void UHEditor::OnMenuSelection(int32_t WmId)
 
 void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
 {
-    std::vector<int32_t> ViewModeMenuIDs = { ID_VIEWMODE_FULLLIT
+    const std::vector<int32_t> ViewModeMenuIDs = { ID_VIEWMODE_FULLLIT
         , ID_VIEWMODE_DIFFUSE
         , ID_VIEWMODE_NORMAL
         , ID_VIEWMODE_PBR

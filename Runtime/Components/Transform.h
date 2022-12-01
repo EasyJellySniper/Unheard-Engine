@@ -13,7 +13,8 @@ enum UHTransformSpace
 };
 
 // Transform component of UH engine, some other components might inherit from this
-// based on right coordinate system
+// based on left coordinate system
+// while rendering related stuffs will be convert to RH to fit Vulkan spec
 // +X: right
 // +Y: down
 // +Z: forward

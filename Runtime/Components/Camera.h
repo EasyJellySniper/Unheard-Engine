@@ -14,6 +14,7 @@ public:
 	void SetFov(float InFov);
 	void SetUseJitter(bool bInFlag);
 	void SetResolution(int32_t RenderWidth, int32_t RenderHeight);
+	void SetCullingDistance(float InDistance);
 
 	XMFLOAT4X4 GetViewMatrix() const;
 	XMFLOAT4X4 GetProjectionMatrix() const;
@@ -24,6 +25,7 @@ public:
 	XMFLOAT4X4 GetInvViewProjMatrix() const;
 	XMFLOAT4X4 GetInvViewProjMatrixNonJittered() const;
 	XMFLOAT2 GetJitterOffset() const;
+	BoundingFrustum GetBoundingFrustum() const;
 
 private:
 	void BuildViewMatrix();
@@ -47,4 +49,7 @@ private:
 	int32_t Width;
 	int32_t Height;
 	XMFLOAT2 JitterOffset;
+
+	BoundingFrustum CameraFrustum;
+	float CullingDistance;
 };

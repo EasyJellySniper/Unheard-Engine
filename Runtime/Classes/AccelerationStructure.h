@@ -17,7 +17,7 @@ public:
 	void CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InBuffer);
 
 	// Create top level AS, return number of instance built
-	uint32_t CreateTopAS(std::vector<UHMeshRendererComponent*> InRenderers, VkCommandBuffer InBuffer);
+	uint32_t CreateTopAS(const std::vector<UHMeshRendererComponent*>& InRenderers, VkCommandBuffer InBuffer);
 	void UpdateTopAS(VkCommandBuffer InBuffer, int32_t CurrentFrame);
 
 	void Release();

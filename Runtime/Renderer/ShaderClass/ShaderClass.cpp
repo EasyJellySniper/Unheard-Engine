@@ -56,7 +56,7 @@ void UHShaderClass::Release()
 	HitGroupTable.reset();
 }
 
-void UHShaderClass::BindImage(UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame)
+void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame)
 {
 	if (CurrentFrame < 0)
 	{
@@ -79,7 +79,7 @@ void UHShaderClass::BindImage(UHTexture* InImage, int32_t DstBinding, int32_t Cu
 	}
 }
 
-void UHShaderClass::BindImage(std::vector<UHTexture*> InImages, int32_t DstBinding)
+void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -91,7 +91,7 @@ void UHShaderClass::BindImage(std::vector<UHTexture*> InImages, int32_t DstBindi
 	}
 }
 
-void UHShaderClass::BindRWImage(UHTexture* InImage, int32_t DstBinding)
+void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -103,7 +103,7 @@ void UHShaderClass::BindRWImage(UHTexture* InImage, int32_t DstBinding)
 	}
 }
 
-void UHShaderClass::BindSampler(UHSampler* InSampler, int32_t DstBinding)
+void UHShaderClass::BindSampler(const UHSampler* InSampler, int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -115,7 +115,7 @@ void UHShaderClass::BindSampler(UHSampler* InSampler, int32_t DstBinding)
 	}
 }
 
-void UHShaderClass::BindSampler(std::vector<UHSampler*> InSamplers, int32_t DstBinding)
+void UHShaderClass::BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -127,7 +127,7 @@ void UHShaderClass::BindSampler(std::vector<UHSampler*> InSamplers, int32_t DstB
 	}
 }
 
-void UHShaderClass::BindTLAS(UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame)
+void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame)
 {
 	UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrame]);
 	if (InTopAS)

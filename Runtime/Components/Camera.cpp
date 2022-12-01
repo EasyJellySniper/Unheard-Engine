@@ -17,6 +17,8 @@ UHCameraComponent::UHCameraComponent()
 	, JitterOffset(XMFLOAT2())
 	, Width(1)
 	, Height(1)
+	, CameraFrustum(BoundingFrustum())
+	, CullingDistance(1000.0f)
 {
 
 }
@@ -31,11 +33,11 @@ void UHCameraComponent::Update()
 	BuildProjectionMatrix();
 
 	// update ViewProj and inverse of it
-	XMMATRIX View = XMLoadFloat4x4(&ViewMatrix);
-	XMMATRIX Proj = XMLoadFloat4x4(&ProjectionMatrix);
-	XMMATRIX Proj_NonJittered = XMLoadFloat4x4(&ProjectionMatrix_NonJittered);
-	XMMATRIX ViewProj = XMMatrixTranspose(Proj) * XMMatrixTranspose(View);
-	XMMATRIX ViewProj_NonJittered = XMMatrixTranspose(Proj_NonJittered) * XMMatrixTranspose(View);
+	const XMMATRIX View = XMLoadFloat4x4(&ViewMatrix);
+	const XMMATRIX Proj = XMLoadFloat4x4(&ProjectionMatrix);
+	const XMMATRIX Proj_NonJittered = XMLoadFloat4x4(&ProjectionMatrix_NonJittered);
+	const XMMATRIX ViewProj = XMMatrixTranspose(Proj) * XMMatrixTranspose(View);
+	const XMMATRIX ViewProj_NonJittered = XMMatrixTranspose(Proj_NonJittered) * XMMatrixTranspose(View);
 
 	// return transposed view proj matrix, also stores previous view proj before update
 	PrevViewProjMatrix_NonJittered = ViewProjMatrix_NonJittered;
@@ -50,6 +52,16 @@ void UHCameraComponent::Update()
 	Det = XMMatrixDeterminant(ViewProj_NonJittered);
 	InvViewProj = XMMatrixInverse(&Det, ViewProj_NonJittered);
 	XMStoreFloat4x4(&InvViewProjMatrix_NonJittered, InvViewProj);
+
+	// update camera frustum, note that this is a bit different than rendering matrix
+	// in UHE, +X/+Y/+Z is used, so it needs to be left hand for culling
+	const XMMATRIX CullingProj = XMMatrixPerspectiveFovLH(FovY, Aspect, NearPlane, CullingDistance);
+	BoundingFrustum::CreateFromMatrix(CameraFrustum, CullingProj);
+
+	// let frustum be in world space
+	const XMFLOAT4X4& World = GetWorldMatrix();
+	const XMMATRIX W = XMLoadFloat4x4(&World);
+	CameraFrustum.Transform(CameraFrustum, XMMatrixTranspose(W));
 }
 
 void UHCameraComponent::SetNearPlane(float InNearZ)
@@ -77,6 +89,11 @@ void UHCameraComponent::SetResolution(int32_t RenderWidth, int32_t RenderHeight)
 {
 	Width = RenderWidth;
 	Height = RenderHeight;
+}
+
+void UHCameraComponent::SetCullingDistance(float InDistance)
+{
+	CullingDistance = InDistance;
 }
 
 XMFLOAT4X4 UHCameraComponent::GetViewMatrix() const
@@ -124,14 +141,19 @@ XMFLOAT2 UHCameraComponent::GetJitterOffset() const
 	return JitterOffset;
 }
 
+BoundingFrustum UHCameraComponent::GetBoundingFrustum() const
+{
+	return CameraFrustum;
+}
+
 void UHCameraComponent::BuildViewMatrix()
 {
 	// flip up vector since Vulkan want +Y down, but UH uses +Y up
-	XMVECTOR U = -XMLoadFloat3(&Up);
-	XMVECTOR F = XMLoadFloat3(&Forward);
-	XMVECTOR P = XMLoadFloat3(&Position);
+	const XMVECTOR U = -XMLoadFloat3(&Up);
+	const XMVECTOR F = XMLoadFloat3(&Forward);
+	const XMVECTOR P = XMLoadFloat3(&Position);
 
-	XMMATRIX View = XMMatrixLookToRH(P, F, U);
+	const XMMATRIX View = XMMatrixLookToRH(P, F, U);
 	XMStoreFloat4x4(&ViewMatrix, View);
 }
 
@@ -139,7 +161,7 @@ void UHCameraComponent::BuildProjectionMatrix()
 {
 	// based on right handed system
 	// far z value doesn't matter here, since I'll use infinte far plane
-	XMMATRIX P = XMMatrixPerspectiveFovRH(FovY, Aspect, NearPlane + 1, NearPlane);
+	const XMMATRIX P = XMMatrixPerspectiveFovRH(FovY, Aspect, NearPlane + 1, NearPlane);
 	XMStoreFloat4x4(&ProjectionMatrix_NonJittered, P);
 	XMStoreFloat4x4(&ProjectionMatrix, P);
 
@@ -147,11 +169,11 @@ void UHCameraComponent::BuildProjectionMatrix()
 	if (bUseJitterOffset)
 	{
 		// offset half pixel
-		XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
+		const XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
 		JitterOffset.x = Offset.x / Width;
 		JitterOffset.y = Offset.y / Height;
 
-		XMMATRIX JitterMatrix = XMMatrixTranslation(JitterOffset.x, JitterOffset.y, 0);
+		const XMMATRIX JitterMatrix = XMMatrixTranslation(JitterOffset.x, JitterOffset.y, 0);
 		XMStoreFloat4x4(&ProjectionMatrix, P * JitterMatrix);
 	}
 

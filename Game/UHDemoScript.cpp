@@ -178,8 +178,9 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	DefaultSkyLight.SetGroundIntensity(1.5f);
 	InScene->SetSkyLight(&DefaultSkyLight);
 
-	// setup default camera pos
+	// setup default camera
 	InScene->GetMainCamera()->SetPosition(XMFLOAT3(0, 2, -15));
+	InScene->GetMainCamera()->SetCullingDistance(100.0f);
 
 	// secondary light test
 	SecondDirectionalLight.SetLightColor(XMFLOAT4(1.0f, 0.55f, 0.0f, 0.4f));

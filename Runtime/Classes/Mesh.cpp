@@ -29,6 +29,7 @@ UHMesh::UHMesh(std::string InName)
 	, BottomLevelAS(nullptr)
 	, HighestIndex(-1)
 	, bIndexBuffer32Bit(false)
+	, MeshBound(BoundingBox())
 {
 
 }
@@ -240,6 +241,11 @@ XMFLOAT3 UHMesh::GetMeshCenter() const
 	return MeshCenter;
 }
 
+BoundingBox UHMesh::GetMeshBound() const
+{
+	return MeshBound;
+}
+
 UHRenderBuffer<XMFLOAT3>* UHMesh::GetPositionBuffer() const
 {
 	return PositionBuffer.get();
@@ -315,7 +321,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	VertexCount = static_cast<uint32_t>(PositionData.size());
 	IndiceCount = static_cast<uint32_t>(IndicesData.size());
 
-	// calc the mesh center
+	// calc the mesh center and mesh bound
 	constexpr float Inf = std::numeric_limits<float>::infinity();
 	XMFLOAT3 MinPoint = XMFLOAT3(Inf, Inf, Inf);
 	XMFLOAT3 MaxPoint = XMFLOAT3(-Inf, -Inf, -Inf);
@@ -327,6 +333,8 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	}
 
 	MeshCenter = (MinPoint + MaxPoint) * 0.5f;
+	XMFLOAT3 MeshExtent = (MaxPoint - MinPoint) * 0.5f;
+	MeshBound = BoundingBox(MeshCenter, MeshExtent);
 
 	// find the highest indice in the index buffer
 	HighestIndex = -1;

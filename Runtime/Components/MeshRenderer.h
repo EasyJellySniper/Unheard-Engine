@@ -15,8 +15,15 @@ public:
 	UHMesh* GetMesh() const;
 	UHMaterial* GetMaterial() const;
 	UHObjectConstants GetConstants() const;
+	BoundingBox GetRendererBound() const;
+
+	void SetVisible(bool bVisible);
+	bool IsVisible() const;
 
 private:
 	UHMesh* MeshCache;
 	UHMaterial* MaterialCache;
+
+	bool bIsVisible;
+	BoundingBox RendererBound;
 };

@@ -28,7 +28,7 @@ namespace UHUtilities
 
 	// find an element in a vector, pointer version
 	template<class T>
-	inline bool FindByElement(std::vector<T*>& InVector, T* InElement)
+	inline bool FindByElement(const std::vector<T*>& InVector, T* InElement)
 	{
 		for (auto& Element : InVector)
 		{
@@ -43,7 +43,7 @@ namespace UHUtilities
 
 	// find element in a vector, unique pointer version
 	template<class T>
-	inline bool FindByElement(std::vector<std::unique_ptr<T>>& InVector, T InElement)
+	inline bool FindByElement(const std::vector<std::unique_ptr<T>>& InVector, T InElement)
 	{
 		for (auto& Element : InVector)
 		{
@@ -59,7 +59,7 @@ namespace UHUtilities
 
 	// find index by element in a vector
 	template<class T>
-	inline int32_t FindIndex(std::vector<T>& InVector, T InElement)
+	inline int32_t FindIndex(const std::vector<T>& InVector, T InElement)
 	{
 		for (size_t Idx = 0; Idx < InVector.size(); Idx++)
 		{
@@ -75,7 +75,7 @@ namespace UHUtilities
 
 	// find index by element in a vector, pointer version
 	template<class T>
-	inline int32_t FindIndex(std::vector<T*>& InVector, T* InElement)
+	inline int32_t FindIndex(const std::vector<T*>& InVector, T* InElement)
 	{
 		for (size_t Idx = 0; Idx < InVector.size(); Idx++)
 		{
@@ -91,7 +91,7 @@ namespace UHUtilities
 
 	// find index by element in a vector, unique pointer version
 	template<class T>
-	inline int32_t FindIndex(std::vector<std::unique_ptr<T>>& InVector, T InElement)
+	inline int32_t FindIndex(const std::vector<std::unique_ptr<T>>& InVector, T InElement)
 	{
 		for (size_t Idx = 0; Idx < InVector.size(); Idx++)
 		{
@@ -150,7 +150,7 @@ namespace UHUtilities
 
 	// generic write vector data
 	template<class T>
-	inline void WriteVectorData(std::ofstream& FileOut, std::vector<T>& InVector)
+	inline void WriteVectorData(std::ofstream& FileOut, const std::vector<T>& InVector)
 	{
 		// don't write if file it's not opened
 		if (FileOut.fail())

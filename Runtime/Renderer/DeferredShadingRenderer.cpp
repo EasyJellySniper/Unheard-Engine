@@ -40,7 +40,7 @@ void UHDeferredShadingRenderer::Reset()
 	}
 }
 
-// update function of renderer, mostly for data uploading before rendering
+// update function of renderer, uploading or culling happens here
 void UHDeferredShadingRenderer::Update()
 {
 	if (!CurrentScene)
@@ -50,7 +50,11 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
+	// if updating has a huge spike in the future, consider assign the tasks to different worker thread
 	UploadDataBuffers();
+	FrustumCulling();
+	CollectVisibleRenderer();
+	SortRenderer();
 }
 
 void UHDeferredShadingRenderer::NotifyRenderThread()
@@ -148,8 +152,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsGPU[CurrentFrame]->UploadAllData(&SystemConstantsCPU);
 
 	// upload object constants, only upload if transform is changed
-	std::vector<UHMeshRendererComponent*> Renderers = CurrentScene->GetAllRenderers();
-	std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
+	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
+	const std::vector<UHSampler*>& Samplers = GraphicInterface->GetSamplers();
+
 	for (UHMeshRendererComponent* Renderer : Renderers)
 	{
 		// only copy when frame is dirty, clear dirty after copying
@@ -205,7 +210,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	}
 
 	// upload light data
-	std::vector<UHDirectionalLightComponent*> DirLights = CurrentScene->GetDirLights();
+	const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirLights();
 	for (UHDirectionalLightComponent* Light : DirLights)
 	{
 		if (Light->IsRenderDirty(CurrentFrame))
@@ -215,6 +220,79 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			Light->SetRenderDirty(false, CurrentFrame);
 		}
 	}
+}
+
+void UHDeferredShadingRenderer::FrustumCulling()
+{
+	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
+	if (!CurrentCamera)
+	{
+		// don't cull without a camera
+		UHE_LOG(L"Camera is not set!\n");
+		return;
+	}
+
+	const BoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
+	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
+
+	for (UHMeshRendererComponent* Renderer : Renderers)
+	{
+		// skip skybox renderer
+		if (Renderer->GetMaterial()->IsSkybox())
+		{
+			continue;
+		}
+
+		const BoundingBox& RendererBound = Renderer->GetRendererBound();
+		const bool bVisible = (CameraFrustum.Contains(RendererBound) != DirectX::DISJOINT);
+		Renderer->SetVisible(bVisible);
+	}
+}
+
+void UHDeferredShadingRenderer::CollectVisibleRenderer()
+{
+	// recommend to reserve capacity during initialization
+	OpaquesToRender.clear();
+	const std::vector<UHMeshRendererComponent*>& OpaqueRenderers = CurrentScene->GetOpaqueRenderers();
+
+	for (UHMeshRendererComponent* Renderer : OpaqueRenderers)
+	{
+		if (Renderer->IsVisible())
+		{
+			OpaquesToRender.push_back(Renderer);
+		}
+	}
+}
+
+void UHDeferredShadingRenderer::SortRenderer()
+{
+	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
+	if (!CurrentCamera)
+	{
+		// don't cull without a camera
+		UHE_LOG(L"Camera is not set!\n");
+		return;
+	}
+
+	float CameraZ = CurrentCamera->GetPosition().z;
+
+	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [&CameraZ](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+		{
+			// sort front-to-back for opaque, need to consider mesh center, not all meshes are imported with (0,0,0) centered
+			XMFLOAT3 CA = A->GetMesh()->GetMeshCenter();
+			XMFLOAT3 CB = B->GetMesh()->GetMeshCenter();
+
+			return std::abs(A->GetPosition().z + CA.z - CameraZ) < std::abs(B->GetPosition().z + CB.z - CameraZ);
+		});
+
+	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraZ](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+		{
+			// sort back-to-front for translucent
+			XMFLOAT3 CA = A->GetMesh()->GetMeshCenter();
+			XMFLOAT3 CB = B->GetMesh()->GetMeshCenter();
+
+			return std::abs(A->GetPosition().z + CA.z - CameraZ) > std::abs(B->GetPosition().z + CB.z - CameraZ);
+		});
 }
 
 void UHDeferredShadingRenderer::RenderThreadLoop()

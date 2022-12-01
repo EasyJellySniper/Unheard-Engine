@@ -33,7 +33,7 @@ public:
 	void BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, VkClearValue InClearValue);
 
 	// begin a pass (multiple RTs)
-	void BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, std::vector<VkClearValue> InClearValue);
+	void BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue);
 
 	// begin a pass (without clearing)
 	void BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent);
@@ -48,7 +48,7 @@ public:
 	bool Present(VkSemaphore InFinishSemaphore, uint32_t InImageIdx);
 
 	// bind states
-	void BindGraphicState(const UHGraphicState* InState);
+	void BindGraphicState(UHGraphicState* InState);
 	void BindRTState(const UHGraphicState* InState);
 
 	// set viewport
@@ -61,14 +61,14 @@ public:
 	void BindVertexBuffer(VkBuffer InBuffer);
 
 	// bind index buffer
-	void BindIndexBuffer(const UHMesh* InMesh);
+	void BindIndexBuffer(UHMesh* InMesh);
 
 	// draw index
 	void DrawIndexed(uint32_t IndicesCount);
 
 	// bind descriptors
 	void BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet);
-	void BindRTDescriptorSet(VkPipelineLayout InLayout, std::vector<VkDescriptorSet> InSets);
+	void BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets);
 
 	// transition image
 	void ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
@@ -101,4 +101,10 @@ private:
 	// lookup table for stage flag and access flag
 	std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;
 	std::unordered_map<VkImageLayout, VkAccessFlags> LayoutToAccessFlags;
+
+	VkExtent2D PrevViewport;
+	VkExtent2D PrevScissor;
+	UHGraphicState* PrevGraphicState;
+	VkBuffer PrevVertexBuffer;
+	UHMesh* PrevIndexBufferSource;
 };

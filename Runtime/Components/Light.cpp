@@ -75,20 +75,20 @@ XMFLOAT4X4 UHDirectionalLightComponent::GetLightViewProjInv() const
 void UHDirectionalLightComponent::BuildLightMatrix()
 {
 	// build light view matrix
-	XMVECTOR U = -XMLoadFloat3(&Up);
-	XMVECTOR F = XMLoadFloat3(&Forward);
-	XMVECTOR P = XMLoadFloat3(&Position);
+	const XMVECTOR U = -XMLoadFloat3(&Up);
+	const XMVECTOR F = XMLoadFloat3(&Forward);
+	const XMVECTOR P = XMLoadFloat3(&Position);
 
-	XMMATRIX View = XMMatrixLookToRH(P, F, U);
+	const XMMATRIX View = XMMatrixLookToRH(P, F, U);
 
 	// build light projection matrix, reversed orthographic one
-	XMMATRIX Proj = XMMatrixOrthographicRH(ShadowRange, ShadowRange, ShadowDistance, 0);
+	const XMMATRIX Proj = XMMatrixOrthographicRH(ShadowRange, ShadowRange, ShadowDistance, 0);
 
-	XMMATRIX ViewProj = XMMatrixTranspose(Proj) * XMMatrixTranspose(View);
+	const XMMATRIX ViewProj = XMMatrixTranspose(Proj) * XMMatrixTranspose(View);
 	XMStoreFloat4x4(&LightViewProj, ViewProj);
 
 	// build inv view proj as well
 	XMVECTOR Det = XMMatrixDeterminant(ViewProj);
-	XMMATRIX InvViewProj = XMMatrixInverse(&Det, ViewProj);
+	const XMMATRIX InvViewProj = XMMatrixInverse(&Det, ViewProj);
 	XMStoreFloat4x4(&LightViewProjInv, InvViewProj);
 }

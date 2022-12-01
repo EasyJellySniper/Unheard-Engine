@@ -106,6 +106,15 @@ private:
 	// upload data buffers
 	void UploadDataBuffers();
 
+	// frustum culling
+	void FrustumCulling();
+
+	// collect visible renderer
+	void CollectVisibleRenderer();
+
+	// sort renderer
+	void SortRenderer();
+
 
 	/************************************************ rendering functions ************************************************/
 	void RenderDepthPrePass(UHGraphicBuilder& GraphBuilder);
@@ -263,4 +272,8 @@ private:
 	std::unique_ptr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
 
 	uint32_t RTInstanceCount;
+
+	// -------------------------------------------- Culling related -------------------------------------------- //
+	std::vector<UHMeshRendererComponent*> OpaquesToRender;
+	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
 };

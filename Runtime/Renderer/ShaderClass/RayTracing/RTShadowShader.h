@@ -8,7 +8,7 @@ public:
 	UHRTShadowShader() {}
 
 	// this shader needs hit group
-	UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, UHShader* InAnyHit, std::vector<VkDescriptorSetLayout> ExtraLayouts)
+	UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, UHShader* InAnyHit, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 		: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader))
 	{
 		AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);

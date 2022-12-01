@@ -4,6 +4,11 @@ UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InComma
 	: Gfx(InGraphic)
 	, CmdList(InCommandBuffer)
 	, LogicalDevice(InGraphic->GetLogicalDevice())
+	, PrevViewport(VkExtent2D())
+	, PrevScissor(VkExtent2D())
+	, PrevGraphicState(nullptr)
+	, PrevVertexBuffer(VK_NULL_HANDLE)
+	, PrevIndexBufferSource(nullptr)
 #if WITH_DEBUG
 	, DrawCalls(0)
 #endif
@@ -90,7 +95,7 @@ void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer 
 }
 
 // begin a pass
-void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, std::vector<VkClearValue> InClearValue)
+void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue)
 {
 	// begin render pass
 	VkRenderPassBeginInfo RenderPassInfo{};
@@ -186,9 +191,17 @@ bool UHGraphicBuilder::Present(VkSemaphore InFinishSemaphore, uint32_t InImageId
 	return true;
 }
 
-void UHGraphicBuilder::BindGraphicState(const UHGraphicState* InState)
+void UHGraphicBuilder::BindGraphicState(UHGraphicState* InState)
 {
+	// prevent duplicate bind, should be okay with checking pointer only
+	// since each state is guaranteed to be unique during initialization
+	if (InState == PrevGraphicState)
+	{
+		return;
+	}
+
 	vkCmdBindPipeline(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InState->GetGraphicPipeline());
+	PrevGraphicState = InState;
 }
 
 void UHGraphicBuilder::BindRTState(const UHGraphicState* InState)
@@ -199,6 +212,12 @@ void UHGraphicBuilder::BindRTState(const UHGraphicState* InState)
 // set viewport
 void UHGraphicBuilder::SetViewport(VkExtent2D InExtent)
 {
+	// prevent duplicate setup
+	if (PrevViewport.width == InExtent.width && PrevViewport.height == InExtent.height)
+	{
+		return;
+	}
+
 	VkViewport Viewport{};
 	Viewport.x = 0.0f;
 	Viewport.y = 0.0f;
@@ -208,28 +227,47 @@ void UHGraphicBuilder::SetViewport(VkExtent2D InExtent)
 	Viewport.maxDepth = 1.0f;
 
 	vkCmdSetViewport(CmdList, 0, 1, &Viewport);
+	PrevViewport = InExtent;
 }
 
 // set scissor
 void UHGraphicBuilder::SetScissor(VkExtent2D InExtent)
 {
+	// prevent duplicate setup
+	if (PrevScissor.width == InExtent.width && PrevScissor.height == InExtent.height)
+	{
+		return;
+	}
+
 	VkRect2D Scissor{};
 	Scissor.offset = { 0, 0 };
 	Scissor.extent = InExtent;
 	vkCmdSetScissor(CmdList, 0, 1, &Scissor);
+	PrevScissor = InExtent;
 }
 
 // bind VB
 void UHGraphicBuilder::BindVertexBuffer(VkBuffer InBuffer)
 {
+	if (PrevVertexBuffer == InBuffer)
+	{
+		return;
+	}
+
 	VkBuffer VBs[] = { InBuffer };
 	VkDeviceSize Offsets[] = { 0 };
 	vkCmdBindVertexBuffers(CmdList, 0, 1, VBs, Offsets);
+	PrevVertexBuffer = InBuffer;
 }
 
 // bind IB
-void UHGraphicBuilder::BindIndexBuffer(const UHMesh* InMesh)
+void UHGraphicBuilder::BindIndexBuffer(UHMesh* InMesh)
 {
+	if (PrevIndexBufferSource == InMesh)
+	{
+		return;
+	}
+
 	// select index format based on its stride
 	if (InMesh->IsIndexBufer32Bit())
 	{
@@ -239,6 +277,8 @@ void UHGraphicBuilder::BindIndexBuffer(const UHMesh* InMesh)
 	{
 		vkCmdBindIndexBuffer(CmdList, InMesh->GetIndexBuffer16()->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 	}
+
+	PrevIndexBufferSource = InMesh;
 }
 
 // draw indexed
@@ -256,7 +296,7 @@ void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptor
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InLayout, 0, 1, &InSet, 0, nullptr);
 }
 
-void UHGraphicBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, std::vector<VkDescriptorSet> InSets)
+void UHGraphicBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets)
 {
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, InLayout, 0, static_cast<uint32_t>(InSets.size()), InSets.data(), 0, nullptr);
 }

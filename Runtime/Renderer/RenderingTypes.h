@@ -314,7 +314,7 @@ public:
 		BufferDataIndex = InIndex;
 	}
 
-	int32_t GetBufferDataIndex()
+	int32_t GetBufferDataIndex() const
 	{
 		return BufferDataIndex;
 	}

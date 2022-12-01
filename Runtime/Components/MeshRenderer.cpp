@@ -3,6 +3,8 @@
 UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InMaterial)
 	: MeshCache(InMesh)
 	, MaterialCache(InMaterial)
+	, bIsVisible(true)
+	, RendererBound(BoundingBox())
 {
 
 }
@@ -18,6 +20,12 @@ void UHMeshRendererComponent::Update()
 		SetRenderDirties(true);
 		SetRayTracingDirties(true);
 		SetMotionDirties(true);
+
+		// update renderer bound as well
+		const BoundingBox& MeshBound = MeshCache->GetMeshBound();
+		const XMFLOAT4X4& World = GetWorldMatrix();
+		const XMMATRIX W = XMLoadFloat4x4(&World);
+		MeshBound.Transform(RendererBound, XMMatrixTranspose(W));
 	}
 }
 
@@ -40,4 +48,19 @@ UHObjectConstants UHMeshRendererComponent::GetConstants() const
 	CB.UHPrevWorld = GetPrevWorldMatrix();
 
 	return CB;
+}
+
+BoundingBox UHMeshRendererComponent::GetRendererBound() const
+{
+	return RendererBound;
+}
+
+void UHMeshRendererComponent::SetVisible(bool bVisible)
+{
+	bIsVisible = bVisible;
+}
+
+bool UHMeshRendererComponent::IsVisible() const
+{
+	return bIsVisible;
 }

@@ -26,8 +26,8 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.BindDescriptorSet(SkyPassShader.GetPipelineLayout(), SkyPassShader.GetDescriptorSet(CurrentFrame));
 
 	// draw skybox renderer
-	UHMeshRendererComponent* SkyboxRenderer = CurrentScene->GetSkyboxRenderer();
-	UHMaterial* Mat = SkyboxRenderer->GetMaterial();
+	const UHMeshRendererComponent* SkyboxRenderer = CurrentScene->GetSkyboxRenderer();
+	const UHMaterial* Mat = SkyboxRenderer->GetMaterial();
 	UHMesh* Mesh = SkyboxRenderer->GetMesh();
 
 	GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());

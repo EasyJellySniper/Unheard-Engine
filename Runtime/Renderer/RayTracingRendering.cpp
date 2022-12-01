@@ -16,7 +16,6 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 	GPUTimeQueries[UHRenderPassTypes::UpdateTopLevelAS]->BeginTimeStamp(GraphBuilder.GetCmdList());
 #endif
 
-	std::vector<UHMeshRendererComponent*> Renderers = CurrentScene->GetAllRenderers();
 	TopLevelAS[CurrentFrame]->UpdateTopAS(GraphBuilder.GetCmdList(), CurrentFrame);
 
 	// after update, shader descriptor for TLAS needs to be bound again

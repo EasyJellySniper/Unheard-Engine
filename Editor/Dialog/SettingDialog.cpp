@@ -77,9 +77,9 @@ void UHSettingDialog::ShowDialog()
         SettingWindow = CreateDialog(Instance, MAKEINTRESOURCE(IDD_SETTING), Window, (DLGPROC)SettingProc);
 
         // sync ini settings to the window controls
-        UHPresentationSettings& PresentSettings = Config->PresentationSetting();
-        UHEngineSettings& EngineSettings = Config->EngineSetting();
-        UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+        const UHPresentationSettings& PresentSettings = Config->PresentationSetting();
+        const UHEngineSettings& EngineSettings = Config->EngineSetting();
+        const UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
 
         // presentation
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_VSYNC, PresentSettings.bVsync);
@@ -137,9 +137,9 @@ void UHSettingDialog::Update()
     }
 
     // sync settings from input event
-    UHPresentationSettings& PresentSettings = Config->PresentationSetting();
-    UHEngineSettings& EngineSettings = Config->EngineSetting();
-    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    const UHPresentationSettings& PresentSettings = Config->PresentationSetting();
+    const UHEngineSettings& EngineSettings = Config->EngineSetting();
+    const UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
 
     // full screen toggling
     if (Input->IsKeyHold(VK_MENU) && Input->IsKeyUp(VK_RETURN))

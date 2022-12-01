@@ -65,8 +65,6 @@ void UHScene::Update()
 	{
 		Light->Update();
 	}
-
-	SortRenderer();
 }
 
 UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial)
@@ -249,27 +247,4 @@ void UHScene::UpdateCamera()
 	}
 
 	DefaultCamera.Update();
-}
-
-void UHScene::SortRenderer()
-{
-	float CameraZ = DefaultCamera.GetPosition().z;
-
-	std::sort(OpaqueRenderers.begin(), OpaqueRenderers.end(), [&CameraZ](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
-		{
-			// sort front-to-back for opaque, need to consider mesh center, not all meshes are imported with (0,0,0) centered
-			XMFLOAT3 CA = A->GetMesh()->GetMeshCenter();
-			XMFLOAT3 CB = B->GetMesh()->GetMeshCenter();
-
-			return std::abs(A->GetPosition().z + CA.z - CameraZ) < std::abs(B->GetPosition().z + CB.z - CameraZ);
-		});
-
-	std::sort(TranslucentRenderers.begin(), TranslucentRenderers.end(), [&CameraZ](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
-		{
-			// sort back-to-front for translucent
-			XMFLOAT3 CA = A->GetMesh()->GetMeshCenter();
-			XMFLOAT3 CB = B->GetMesh()->GetMeshCenter();
-
-			return std::abs(A->GetPosition().z + CA.z - CameraZ) > std::abs(B->GetPosition().z + CB.z - CameraZ);
-		});
 }

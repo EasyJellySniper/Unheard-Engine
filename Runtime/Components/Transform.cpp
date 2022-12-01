@@ -42,17 +42,17 @@ void UHTransformComponent::Update()
 
 void UHTransformComponent::Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 {
-	XMVECTOR Dx = XMVectorReplicate(InDelta.x);
-	XMVECTOR Dy = XMVectorReplicate(InDelta.y);
-	XMVECTOR Dz = XMVectorReplicate(InDelta.z);
+	const XMVECTOR Dx = XMVectorReplicate(InDelta.x);
+	const XMVECTOR Dy = XMVectorReplicate(InDelta.y);
+	const XMVECTOR Dz = XMVectorReplicate(InDelta.z);
 	XMVECTOR P = XMLoadFloat3(&Position);
 
 	if (InSpace == UHTransformSpace::Local)
 	{
 		// move along up/right/front
-		XMVECTOR R = XMLoadFloat3(&Right);
-		XMVECTOR U = XMLoadFloat3(&Up);
-		XMVECTOR F = XMLoadFloat3(&Forward);
+		const XMVECTOR R = XMLoadFloat3(&Right);
+		const XMVECTOR U = XMLoadFloat3(&Up);
+		const XMVECTOR F = XMLoadFloat3(&Forward);
 
 		P += Dx * R + Dy * U + Dz * F;
 		XMStoreFloat3(&Position, P);
@@ -60,9 +60,9 @@ void UHTransformComponent::Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 	else
 	{
 		// move along world up/right/front
-		XMVECTOR R = XMLoadFloat3(&GWorldRight);
-		XMVECTOR U = XMLoadFloat3(&GWorldUp);
-		XMVECTOR F = XMLoadFloat3(&GWorldForward);
+		const XMVECTOR R = XMLoadFloat3(&GWorldRight);
+		const XMVECTOR U = XMLoadFloat3(&GWorldUp);
+		const XMVECTOR F = XMLoadFloat3(&GWorldForward);
 
 		P += Dx * R + Dy * U + Dz * F;
 		XMStoreFloat3(&Position, P);
@@ -79,9 +79,9 @@ void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 	if (InSpace == UHTransformSpace::Local)
 	{
 		// for local, rotation around current axis
-		XMMATRIX Rz = XMMatrixRotationAxis(XMLoadFloat3(&Forward), XMConvertToRadians(InDelta.z));
-		XMMATRIX Rx = XMMatrixRotationAxis(XMLoadFloat3(&Right), XMConvertToRadians(InDelta.x));
-		XMMATRIX Ry = XMMatrixRotationAxis(XMLoadFloat3(&Up), XMConvertToRadians(InDelta.y));
+		const XMMATRIX Rz = XMMatrixRotationAxis(XMLoadFloat3(&Forward), XMConvertToRadians(InDelta.z));
+		const XMMATRIX Rx = XMMatrixRotationAxis(XMLoadFloat3(&Right), XMConvertToRadians(InDelta.x));
+		const XMMATRIX Ry = XMMatrixRotationAxis(XMLoadFloat3(&Up), XMConvertToRadians(InDelta.y));
 		XMMATRIX NewRot = Rz * Rx * Ry;
 		
 		// transform vector
@@ -96,12 +96,12 @@ void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 	else
 	{
 		// for world space simply build matrix with delta
-		XMMATRIX R = XMMatrixRotationAxis(XMLoadFloat3(&GWorldForward), XMConvertToRadians(InDelta.z))
+		const XMMATRIX R = XMMatrixRotationAxis(XMLoadFloat3(&GWorldForward), XMConvertToRadians(InDelta.z))
 			* XMMatrixRotationAxis(XMLoadFloat3(&GWorldRight), XMConvertToRadians(InDelta.x))
 			* XMMatrixRotationAxis(XMLoadFloat3(&GWorldUp), XMConvertToRadians(InDelta.y));
 
 		// transform matrix
-		XMMATRIX NewRot = OldRot * R;
+		const XMMATRIX NewRot = OldRot * R;
 		XMStoreFloat4x4(&RotationMatrix, NewRot);
 
 		// transform vectors

@@ -121,6 +121,8 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 30-11-2022: Started to add depth prepass stuffs. Done! It's default to false, since current scene is small and can be benefit from depth pre pass. Also removed a few global variables in CoreGlobal.h. Minor constant optimization for vertex shader, it uses matrix WorldViewClip now for SV_POSITION instead of separating as world/viewclip.
 
+01-12-2022: Started to add frustum culling. Added mesh bound and renderer bound. And of course the bound frustum in camera component. Enhanced the const correctness in codebase. From now on, rendering should only iterate visible renderers in a vector.
+
 
 
 

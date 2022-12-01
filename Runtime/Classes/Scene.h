@@ -45,7 +45,6 @@ public:
 
 private:
 	void UpdateCamera();
-	void SortRenderer();
 
 	UHConfigManager* ConfigCache;
 	UHRawInput* Input;

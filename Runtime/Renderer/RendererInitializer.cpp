@@ -124,6 +124,9 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		}
 	#endif
 
+		// reserve enough space for renderers
+		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
+
 		// init render thread, it will wait at the beginning
 		RenderThread = std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this);
 	}
@@ -192,7 +195,7 @@ void UHDeferredShadingRenderer::Release()
 void UHDeferredShadingRenderer::PrepareMeshes()
 {
 	// create mesh buffer for all default lit renderers
-	std::vector<UHMeshRendererComponent*> Renderers = CurrentScene->GetAllRenderers();
+	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
 
 	if (Renderers.size() == 0)
 	{
@@ -202,7 +205,7 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	// needs the cmd buffer
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 
-	for (UHMeshRendererComponent* Renderer : Renderers)
+	for (const UHMeshRendererComponent* Renderer : Renderers)
 	{
 		UHMesh* Mesh = Renderer->GetMesh();
 		UHMaterial* Mat = Renderer->GetMaterial();
@@ -226,13 +229,13 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 
 	// release CPU mesh data after uploading
-	for (UHMeshRendererComponent* Renderer : Renderers)
+	for (const UHMeshRendererComponent* Renderer : Renderers)
 	{
 		Renderer->GetMesh()->ReleaseCPUMeshData();
 	}
 
 	// release scratch data of AS after creation
-	for (UHMeshRendererComponent* Renderer : Renderers)
+	for (const UHMeshRendererComponent* Renderer : Renderers)
 	{
 		if (Renderer->GetMesh()->GetBottomLevelAS())
 		{
@@ -250,7 +253,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
 
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
 		for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
@@ -264,7 +267,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	}
 	
 	// Step 2: Generate mip maps for all uploaded textures
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
 		for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
@@ -278,7 +281,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	}
 
 	// Step3: Build all cubemaps in use
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
 		if (Mat && Mat->GetTex(UHMaterialTextureType::SkyCube))
@@ -288,7 +291,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		}
 	}
 
-	if (UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer())
+	if (const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer())
 	{
 		if (SkyRenderer->GetMaterial() && SkyRenderer->GetMaterial()->GetTex(UHMaterialTextureType::SkyCube))
 		{
@@ -305,7 +308,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// depth pass shader, opaque only
 	if (bEnableDepthPrePass)
 	{
-		for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 		{
 			UHMaterial* Mat = Renderer->GetMaterial();
 			if (Mat && DepthPassShaders.find(Renderer->GetBufferDataIndex()) == DepthPassShaders.end())
@@ -316,7 +319,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	}
 
 	// base pass shader, opaque only
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
 		if (Mat && BasePassShaders.find(Renderer->GetBufferDataIndex()) == BasePassShaders.end())
@@ -329,12 +332,11 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	LightPassShader = UHLightPassShader(GraphicInterface, "LightPassShader", LightPassObj.RenderPass, RTInstanceCount);
 
 	// sky pass shader
-	UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer();
 	SkyPassShader = UHSkyPassShader(GraphicInterface, "SkyPassShader", SkyboxPassObj.RenderPass);
 
 	// motion pass shader
 	MotionCameraShader = UHMotionCameraPassShader(GraphicInterface, "MotionCameraPassShader", MotionCameraPassObj.RenderPass);
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
 		if (Mat->IsSkybox())
@@ -368,7 +370,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		RTDefaultHitGroupShader = UHRTDefaultHitGroupShader(GraphicInterface, "RTDefaultHitGroupShader");
 
 		// also send texture & VB/IB layout to RT shadow shader
-		std::vector<VkDescriptorSetLayout> Layouts = { RTTextureTable.GetDescriptorSetLayout()
+		const std::vector<VkDescriptorSetLayout> Layouts = { RTTextureTable.GetDescriptorSetLayout()
 			, RTSamplerTable.GetDescriptorSetLayout()
 			, RTVertexTable.GetDescriptorSetLayout()
 			, RTIndicesTable.GetDescriptorSetLayout()
@@ -424,7 +426,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// ------------------------------------------------ Depth pass descriptor update
 	if (bEnableDepthPrePass)
 	{
-		for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 		{
 	#if WITH_DEBUG
 			if (DepthPassShaders.find(Renderer->GetBufferDataIndex()) == DepthPassShaders.end())
@@ -455,7 +457,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	// ------------------------------------------------ Base pass descriptor update
 	// after creation, update descriptor info for all renderers
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 	{
 	#if WITH_DEBUG
 		if (BasePassShaders.find(Renderer->GetBufferDataIndex()) == BasePassShaders.end())
@@ -498,7 +500,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	LightPassShader.BindConstant(SystemConstantsGPU, 0);
 	LightPassShader.BindStorage(DirectionalLightBuffer, 1, 0, true);
 
-	std::vector<UHTexture*> Textures = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip };
+	const std::vector<UHTexture*> Textures = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip };
 	LightPassShader.BindImage(Textures, 2);
 	LightPassShader.BindSampler(LinearClampedSampler, 3);
 
@@ -508,7 +510,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	}
 
 	// ------------------------------------------------ sky pass descriptor update
-	UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer();
+	const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer();
 	if (SkyRenderer)
 	{
 		SkyPassShader.BindConstant(SystemConstantsGPU, 0);
@@ -522,7 +524,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	MotionCameraShader.BindImage(SceneDepth, 1);
 	MotionCameraShader.BindSampler(PointClampedSampler, 2);
 
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
 		UHMesh* Mesh = Renderer->GetMesh();
@@ -572,7 +574,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	if (GraphicInterface->IsRayTracingEnabled() && TopLevelAS[0] && RTInstanceCount > 0)
 	{
 		// bind VB/IB table
-		std::vector<UHMeshRendererComponent*> Renderers = CurrentScene->GetAllRenderers();
+		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
 		std::vector<UHRenderBuffer<XMFLOAT2>*> UVs;
 		std::vector<VkDescriptorBufferInfo> BufferInfos;
 		std::vector<int32_t> IndexTypes;

@@ -21,7 +21,7 @@ public:
 	void Release();
 
 	template <typename T>
-	void BindConstant(std::array<std::unique_ptr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
+	void BindConstant(const std::array<std::unique_ptr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -34,7 +34,7 @@ public:
 	}
 
 	template <typename T>
-	void BindStorage(std::array<std::unique_ptr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
+	void BindStorage(const std::array<std::unique_ptr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -48,7 +48,7 @@ public:
 
 	// bind single storage
 	template <typename T>
-	void BindStorage(UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false)
+	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -59,7 +59,7 @@ public:
 
 	// bind multiple storage
 	template <typename T>
-	void BindStorage(std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding)
+	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -72,7 +72,7 @@ public:
 	}
 
 	// bind multiple storage, but this one uses VkDescriptorBufferInfo as input directly
-	void BindStorage(std::vector<VkDescriptorBufferInfo>& InBufferInfos, int32_t DstBinding)
+	void BindStorage(const std::vector<VkDescriptorBufferInfo>& InBufferInfos, int32_t DstBinding)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -84,12 +84,12 @@ public:
 		}
 	}
 
-	void BindImage(UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame = -1);
-	void BindImage(std::vector<UHTexture*> InImages, int32_t DstBinding);
-	void BindRWImage(UHTexture* InImage, int32_t DstBinding);
-	void BindSampler(UHSampler* InSampler, int32_t DstBinding);
-	void BindSampler(std::vector<UHSampler*> InSamplers, int32_t DstBinding);
-	void BindTLAS(UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame);
+	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame = -1);
+	void BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding);
+	void BindRWImage(const UHTexture* InImage, int32_t DstBinding);
+	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
+	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
+	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame);
 
 	UHShader* GetVS();
 	UHShader* GetPS();

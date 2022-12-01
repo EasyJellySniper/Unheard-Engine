@@ -39,10 +39,10 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.SetScissor(RenderResolution);
 
 	// get all opaque renderers from scene
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+	for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		const UHMesh* Mesh = Renderer->GetMesh();
+		UHMesh* Mesh = Renderer->GetMesh();
 
 		// skip materials which are not default lit
 		if (Mat->GetShadingModel() != UHShadingModel::DefaultLit)

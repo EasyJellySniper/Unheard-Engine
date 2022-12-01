@@ -185,7 +185,7 @@ bool ReconstructVerticesAndIndices(FbxMesh* InMesh, std::vector<XMFLOAT3>& OutVe
 
 // read uv information, modification is made for outputing the same number UVs as vertexes
 // reference: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_mesh_8cxx_example_html
-std::vector<XMFLOAT2> ReadUVs(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, std::vector<uint32_t> Indices)
+std::vector<XMFLOAT2> ReadUVs(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, const std::vector<uint32_t>& Indices)
 {
 	// output the same counts as vertex buffer
 	std::vector<XMFLOAT2> Result;
@@ -261,7 +261,7 @@ std::vector<XMFLOAT2> ReadUVs(FbxMesh* InMesh, int32_t VertexCount, bool bMapToR
 }
 
 // the same method as read uvs but it's for normals
-std::vector<XMFLOAT3> ReadNormals(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, std::vector<uint32_t> Indices)
+std::vector<XMFLOAT3> ReadNormals(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, const std::vector<uint32_t>& Indices)
 {
 	// output the same counts as vertex buffer
 	std::vector<XMFLOAT3> Result;
@@ -339,7 +339,7 @@ std::vector<XMFLOAT3> ReadNormals(FbxMesh* InMesh, int32_t VertexCount, bool bMa
 	return Result;
 }
 
-std::vector<XMFLOAT4> ReadTangents(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, std::vector<uint32_t> Indices)
+std::vector<XMFLOAT4> ReadTangents(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, const std::vector<uint32_t>& Indices)
 {
 	// output the same counts as vertex buffer
 	std::vector<XMFLOAT4> Result;
