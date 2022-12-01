@@ -1,7 +1,8 @@
 # UnheardEngine
  Squall's custom Vulkan engine. <br>
  MIT licensed. <br>
- 
+
+2022-12-01: Add frustum culling. Enhance const corretness. Optimize a few vk command calls.
 2022-11-30: Add depth prepass. (Default disabled) Remove a few bad usages of global variables. <br>
 2022-11-28: Minor optimizations. <br>
 2022-11-25: The profile window. <br>
