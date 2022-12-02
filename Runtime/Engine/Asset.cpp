@@ -189,12 +189,18 @@ void UHAssetManager::ImportMaterials(UHGraphic* InGfx)
 				{
 					if (UHTexture2Ds[Jdx]->GetName() == TexName)
 					{
-						if (!UHUtilities::FindByElement(ReferencedTexture2Ds, UHTexture2Ds[Jdx]))
+						// find referenced texture and set index
+						// add to referenced texture list if doesn't exist
+						int32_t TextureIdx = UHUtilities::FindIndex(ReferencedTexture2Ds, UHTexture2Ds[Jdx]);
+
+						if (TextureIdx == -1)
 						{
-							// also set texture index for later use
-							Mat->SetTextureIndex(TexType, static_cast<int32_t>(ReferencedTexture2Ds.size()));
+							TextureIdx = static_cast<int32_t>(ReferencedTexture2Ds.size());
 							ReferencedTexture2Ds.push_back(UHTexture2Ds[Jdx]);
 						}
+
+						Mat->SetTextureIndex(TexType, TextureIdx);
+
 						break;
 					}
 				}

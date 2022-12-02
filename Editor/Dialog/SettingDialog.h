@@ -37,6 +37,7 @@ private:
 	void ControlResolution();
 	void ControlTAA();
 	void ControlRayTracing();
+	void ControlRayTracingOcclusionTest();
 	void ControlGPULabeling();
 	void ControlLayerValidation();
 	void ControlGPUTiming();

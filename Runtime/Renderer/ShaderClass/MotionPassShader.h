@@ -42,8 +42,22 @@ public:
 		// Motion pass: constants + opacity image for cutoff (if there is any)
 		for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
 		{
-			AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, (Idx == UHConstantTypes::Material) ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			if (Idx == UHConstantTypes::Material)
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+			}
+			else if (Idx == UHConstantTypes::Object)
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+			else
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
 		}
+
+		// occlusion buffer + opacity + sampler
+		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -52,7 +66,13 @@ public:
 
 		CreateDescriptor();
 
-		ShaderVS = InGfx->RequestShader("MotionObjectVS", "Shaders/MotionVectorShader.hlsl", "MotionObjectVS", "vs_6_0");
+		// check occlusion test define
+		std::vector<std::string> OcclusionTestDefine;
+		if (InGfx->IsRayTracingOcclusionTestEnabled())
+		{
+			OcclusionTestDefine.push_back("WITH_OCCLUSION_TEST");
+		}
+		ShaderVS = InGfx->RequestShader("MotionObjectVS", "Shaders/MotionVectorShader.hlsl", "MotionObjectVS", "vs_6_0", OcclusionTestDefine);
 
 		// find opacity define
 		std::vector<std::string> Defines = InMat->GetMaterialDefines(PS);

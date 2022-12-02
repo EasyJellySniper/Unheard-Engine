@@ -16,6 +16,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, PipelineLayout(VK_NULL_HANDLE)
 	, DescriptorPool(VK_NULL_HANDLE)
 	, ShaderVS(nullptr)
+	, ShaderGS(nullptr)
 	, ShaderPS(nullptr)
 	, RayGenShader(nullptr)
 	, ClosestHitShader(nullptr)
@@ -134,16 +135,6 @@ void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t Dst
 	{
 		Helper.WriteTLAS(InTopAS, DstBinding);
 	}
-}
-
-UHShader* UHShaderClass::GetVS()
-{
-	return ShaderVS;
-}
-
-UHShader* UHShaderClass::GetPS()
-{
-	return ShaderPS;
 }
 
 UHShader* UHShaderClass::GetRayGenShader()

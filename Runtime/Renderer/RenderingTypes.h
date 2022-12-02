@@ -32,6 +32,7 @@ struct UHSystemConstants
 	float JitterOffsetY;
 
 	XMFLOAT3 UHCameraDir;
+	uint32_t UHNumRTInstances;
 };
 
 struct UHObjectConstants
@@ -39,6 +40,7 @@ struct UHObjectConstants
 	XMFLOAT4X4 UHWorld;
 	XMFLOAT4X4 UHWorldIT;
 	XMFLOAT4X4 UHPrevWorld;
+	uint32_t InstanceIndex;
 };
 
 struct UHMaterialConstants
@@ -68,9 +70,10 @@ struct UHDirectionalLightConstants
 
 enum UHRenderPassTypes
 {
-	DepthPrePass = 0,
+	UpdateTopLevelAS = 0,
+	RayTracingOcclusionTest,
+	DepthPrePass,
 	BasePass,
-	UpdateTopLevelAS,
 	RayTracingShadow,
 	LightPass,
 	SkyPass,
@@ -127,6 +130,7 @@ struct UHRenderPassInfo
 		, DepthInfo(InDepthInfo)
 		, VS(InVS)
 		, PS(InPS)
+		, GS(nullptr)
 		, RTCount(InRTCount)
 		, PipelineLayout(InPipelineLayout)
 	{
@@ -146,11 +150,18 @@ struct UHRenderPassInfo
 			bPSEqual = (*InInfo.PS == *PS);
 		}
 
+		bool bGSEqual = true;
+		if (InInfo.GS && GS)
+		{
+			bGSEqual = (*InInfo.GS == *GS);
+		}
+
 		return InInfo.CullMode == CullMode
 			&& InInfo.BlendMode == BlendMode
 			&& InInfo.RenderPass == RenderPass
 			&& *InInfo.VS == *VS
 			&& bPSEqual
+			&& bGSEqual
 			&& InInfo.RTCount == RTCount
 			&& InInfo.PipelineLayout == PipelineLayout;
 	}
@@ -161,6 +172,7 @@ struct UHRenderPassInfo
 	UHDepthInfo DepthInfo;
 	UHShader* VS;
 	UHShader* PS;
+	UHShader* GS;
 	int32_t RTCount;
 	VkPipelineLayout PipelineLayout;
 };

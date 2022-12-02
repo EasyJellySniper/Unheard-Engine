@@ -123,6 +123,8 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 01-12-2022: Started to add frustum culling. Added mesh bound and renderer bound. And of course the bound frustum in camera component. Enhanced the const correctness in codebase. From now on, rendering should only iterate visible renderers in a vector.
 
+02-12-2022: Try to add ray tracing based occlusion test. Finished the RTOT implementation, it could be useful in some cases but further tests are needed. Fixed some serious bugs regarding texture index, didn't set them properly!
+
 
 
 

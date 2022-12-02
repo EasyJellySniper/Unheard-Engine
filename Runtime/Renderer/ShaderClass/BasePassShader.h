@@ -12,8 +12,22 @@ public:
 		// use storage buffer on materials
 		for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
 		{
-			AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, (Idx == UHConstantTypes::Material) ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			if (Idx == UHConstantTypes::Material)
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+			}
+			else if (Idx == UHConstantTypes::Object)
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+			else
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
 		}
+
+		// bind occlusion visible buffer
+		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 		// Bind texture/sampler inputs as well, following constants
 		for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
@@ -28,7 +42,15 @@ public:
 		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 		CreateDescriptor();
-		ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", InMat->GetMaterialDefines(VS));
+
+		// also check occlusion define for VS
+		std::vector<std::string> VSDefines = InMat->GetMaterialDefines(VS);
+		if (InGfx->IsRayTracingOcclusionTestEnabled())
+		{
+			VSDefines.push_back("WITH_OCCLUSION_TEST");
+		}
+
+		ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", VSDefines);
 		ShaderPS = InGfx->RequestShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", InMat->GetMaterialDefines(PS));
 
 		// states

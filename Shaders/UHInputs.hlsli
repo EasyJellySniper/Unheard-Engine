@@ -67,6 +67,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
 	float JitterOffsetY;
 
 	float3 UHCameraDir;
+	uint UHNumRTInstances;
 }
 
 // IT means inverse-transposed
@@ -75,6 +76,7 @@ cbuffer ObjectConstants : register(UHOBJ_BIND)
 	float4x4 UHWorld;
 	float4x4 UHWorldIT;
 	float4x4 UHPrevWorld;
+	uint UHInstanceIndex;
 }
 
 struct UHMaterialConstants

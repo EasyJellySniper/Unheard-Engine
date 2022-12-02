@@ -274,6 +274,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTTextureTable.h" />
@@ -428,6 +429,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\DepthPassShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RayTracingOcclusionTest.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

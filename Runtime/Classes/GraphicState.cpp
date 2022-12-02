@@ -64,6 +64,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	/*** cache variables for compare ***/
 	RenderPassInfo = InInfo;
 	bool bHasPixelShader = (RenderPassInfo.PS != nullptr);
+	bool bHasGeometryShader = (RenderPassInfo.GS != nullptr);
 
 
 	/*** Shader Stage setup, in UHEngine, all states must have at least one VS and PS (or CS) ***/
@@ -85,7 +86,28 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		PSStageInfo.pName = PSEntryName.c_str();
 	}
 
-	VkPipelineShaderStageCreateInfo ShaderStages[] = { VSStageInfo, PSStageInfo };
+	VkPipelineShaderStageCreateInfo GSStageInfo{};
+	std::string GSEntryName;
+	if (bHasGeometryShader)
+	{
+		GSEntryName = RenderPassInfo.GS->GetEntryName();
+		GSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		GSStageInfo.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+		GSStageInfo.module = RenderPassInfo.GS->GetShader();
+		GSStageInfo.pName = GSEntryName.c_str();
+	}
+
+	// collect shader stage
+	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages = { VSStageInfo };
+	if (bHasPixelShader)
+	{
+		ShaderStages.push_back(PSStageInfo);
+	}
+
+	if (bHasGeometryShader)
+	{
+		ShaderStages.push_back(GSStageInfo);
+	}
 
 
 	/*** Dynamic states, for now set viewportand scissor as dynamic usage ***/
@@ -169,8 +191,8 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	/*** finally, create pipeline info ***/
 	VkGraphicsPipelineCreateInfo PipelineInfo{};
 	PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	PipelineInfo.stageCount = bHasPixelShader ? 2 : 1;
-	PipelineInfo.pStages = ShaderStages;
+	PipelineInfo.stageCount = static_cast<uint32_t>(ShaderStages.size());
+	PipelineInfo.pStages = ShaderStages.data();
 	PipelineInfo.pVertexInputState = &VertexInputInfo;
 	PipelineInfo.pInputAssemblyState = &InputAssembly;
 	PipelineInfo.pViewportState = &ViewportState;

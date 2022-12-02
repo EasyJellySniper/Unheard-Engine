@@ -6,29 +6,29 @@
 // now these also have no reflection system, so I define all registers here
 // if texture is null, just don't write to descriptor and leave it as null, my shader keyword will prevent accessing null texture
 // these can be optimized in the future since samplers can be shared on CPU side
-Texture2D DiffuseTex : register(t3);
-SamplerState DiffuseSampler : register(s4);
+Texture2D DiffuseTex : register(t4);
+SamplerState DiffuseSampler : register(s5);
 
-Texture2D OcclusionTex : register(t5);
-SamplerState OcclusionSampler : register(s6);
+Texture2D OcclusionTex : register(t6);
+SamplerState OcclusionSampler : register(s7);
 
-Texture2D SpecularTex : register(t7);
-SamplerState SpecularSampler : register(s8);
+Texture2D SpecularTex : register(t8);
+SamplerState SpecularSampler : register(s9);
 
-Texture2D NormalTex : register(t9);
-SamplerState NormalSampler : register(s10);
+Texture2D NormalTex : register(t10);
+SamplerState NormalSampler : register(s11);
 
-Texture2D OpacityTex : register(t11);
-SamplerState OpacitySampler : register(s12);
+Texture2D OpacityTex : register(t12);
+SamplerState OpacitySampler : register(s13);
 
-TextureCube EnvCube : register(t13);
-SamplerState EnvSampler : register(s14);
+TextureCube EnvCube : register(t14);
+SamplerState EnvSampler : register(s15);
 
-Texture2D MetallicTex : register(t15);
-SamplerState MetallicSampler : register(s16);
+Texture2D MetallicTex : register(t16);
+SamplerState MetallicSampler : register(s17);
 
-Texture2D RoughnessTex : register(t17);
-SamplerState RoughnessSampler : register(s18);
+Texture2D RoughnessTex : register(t18);
+SamplerState RoughnessSampler : register(s19);
 
 void BasePS(VertexOutput Vin
 	, bool bIsFrontFace : SV_IsFrontFace

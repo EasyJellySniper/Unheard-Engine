@@ -74,6 +74,7 @@ float2 GetHitUV0(uint InstanceIndex, uint PrimIndex, Attribute Attr)
 void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
 	Payload.HitT = RayTCurrent();
+	Payload.HitInstance = InstanceIndex();
 }
 
 [shader("anyhit")]

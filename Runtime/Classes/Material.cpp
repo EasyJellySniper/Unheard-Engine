@@ -200,6 +200,14 @@ UHShader* UHMaterial::GetShader(UHMaterialShaderType InType) const
 
 int32_t UHMaterial::GetTextureIndex(UHMaterialTextureType InType) const
 {
+	// the texture index is set via asset manager
+	// but it could have no texture without setting properly
+	// in this case, return -1
+	if (Textures[InType] == nullptr)
+	{
+		return -1;
+	}
+
 	return TextureIndex[InType];
 }
 

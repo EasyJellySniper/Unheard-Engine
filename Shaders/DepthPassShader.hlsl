@@ -1,8 +1,9 @@
 #include "UHInputs.hlsli"
 
-Texture2D OpacityTex : register(t3);
-SamplerState OpacitySampler : register(s4);
-StructuredBuffer<float2> UV0Buffer : register(t5);
+ByteAddressBuffer OcclusionVisible : register(t3);
+Texture2D OpacityTex : register(t4);
+SamplerState OpacitySampler : register(s5);
+StructuredBuffer<float2> UV0Buffer : register(t6);
 
 // output uv for alpha test only
 struct DepthVertexOutput
@@ -16,6 +17,17 @@ struct DepthVertexOutput
 DepthVertexOutput DepthVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 {
 	DepthVertexOutput Vout = (DepthVertexOutput)0;
+
+#if WITH_OCCLUSION_TEST
+	uint IsVisible = OcclusionVisible.Load(UHInstanceIndex * 4);
+	UHBRANCH
+	if (IsVisible == 0)
+	{
+		Vout.Position = -10;
+		return Vout;
+	}
+#endif
+
 	float3 WorldPos = mul(float4(Position, 1.0f), UHWorld).xyz;
 
 	// pass through the vertex data

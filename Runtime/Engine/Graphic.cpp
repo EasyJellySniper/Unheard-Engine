@@ -30,6 +30,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, AssetManagerInterface(InAssetManager)
 	, ConfigInterface(InConfig)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
+	, bEnableRayTracingOcclusionTest(InConfig->RenderingSetting().bEnableRayTracingOcclusionTest)
 {
 	// extension defines, hard code for now
 	InstanceExtensions = { "VK_KHR_surface"
@@ -1323,6 +1324,11 @@ float UHGraphic::GetGPUTimeStampPeriod() const
 bool UHGraphic::IsRayTracingEnabled() const
 {
 	return bEnableRayTracing;
+}
+
+bool UHGraphic::IsRayTracingOcclusionTestEnabled() const
+{
+	return bEnableRayTracingOcclusionTest && bEnableRayTracing;
 }
 
 std::vector<UHSampler*> UHGraphic::GetSamplers() const

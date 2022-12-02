@@ -12,8 +12,22 @@ public:
 		// use storage buffer on materials
 		for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
 		{
-			AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, (Idx == UHConstantTypes::Material) ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			if (Idx == UHConstantTypes::Material)
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+			}
+			else if (Idx == UHConstantTypes::Object)
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
+			else
+			{
+				AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			}
 		}
+
+		// bind occlusion visible buffer
+		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 		// bind opacity 
 		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
@@ -29,6 +43,12 @@ public:
 		if (UHTexture* OpacityTex = InMat->GetTex(UHMaterialTextureType::Opacity))
 		{
 			OpacityDefine.push_back("WITH_OPACITY");
+		}
+
+		// check occlusion test define
+		if (InGfx->IsRayTracingOcclusionTestEnabled())
+		{
+			OpacityDefine.push_back("WITH_OCCLUSION_TEST");
 		}
 
 		ShaderVS = InGfx->RequestShader("DepthPassVS", "Shaders/DepthPassShader.hlsl", "DepthVS", "vs_6_0", OpacityDefine);

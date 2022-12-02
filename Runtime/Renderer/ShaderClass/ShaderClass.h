@@ -91,8 +91,6 @@ public:
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame);
 
-	UHShader* GetVS();
-	UHShader* GetPS();
 	UHShader* GetRayGenShader();
 	UHShader* GetClosestShader();
 	UHShader* GetAnyHitShader();
@@ -123,6 +121,7 @@ protected:
 	std::array<VkDescriptorSet, GMaxFrameInFlight> DescriptorSets;
 
 	UHShader* ShaderVS;
+	UHShader* ShaderGS;
 	UHShader* ShaderPS;
 	UHShader* RayGenShader;
 	UHShader* ClosestHitShader;

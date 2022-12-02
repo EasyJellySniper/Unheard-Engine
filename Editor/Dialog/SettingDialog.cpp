@@ -41,6 +41,7 @@ UHSettingDialog::UHSettingDialog(HINSTANCE InInstance, HWND InWindow, UHConfigMa
     ControlCallbacks[IDC_APPLYRESOLUTION] = { &UHSettingDialog::ControlResolution };
     ControlCallbacks[IDC_ENABLETAA] = { &UHSettingDialog::ControlTAA };
     ControlCallbacks[IDC_ENABLERAYTRACING] = { &UHSettingDialog::ControlRayTracing };
+    ControlCallbacks[IDC_ENABLERAYTRACINGOCCLUSIONTEST] = { &UHSettingDialog::ControlRayTracingOcclusionTest };
     ControlCallbacks[IDC_ENABLEGPULABELING] = { &UHSettingDialog::ControlGPULabeling };
     ControlCallbacks[IDC_ENABLELAYERVALIDATION] = { &UHSettingDialog::ControlLayerValidation };
     ControlCallbacks[IDC_ENABLEGPUTIMING] = { &UHSettingDialog::ControlGPUTiming };
@@ -103,6 +104,7 @@ void UHSettingDialog::ShowDialog()
         UHEditorUtil::SetEditControl(SettingWindow, IDC_RENDERHEIGHT, std::to_wstring(RenderingSettings.RenderHeight));
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLETAA, RenderingSettings.bTemporalAA);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLERAYTRACING, RenderingSettings.bEnableRayTracing);
+        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLERAYTRACINGOCCLUSIONTEST, RenderingSettings.bEnableRayTracingOcclusionTest);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPULABELING, RenderingSettings.bEnableGPULabeling);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLELAYERVALIDATION, RenderingSettings.bEnableLayerValidation);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPUTIMING, RenderingSettings.bEnableGPUTiming);
@@ -260,6 +262,12 @@ void UHSettingDialog::ControlRayTracing()
 {
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
     RenderingSettings.bEnableRayTracing = !RenderingSettings.bEnableRayTracing;
+}
+
+void UHSettingDialog::ControlRayTracingOcclusionTest()
+{
+    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    RenderingSettings.bEnableRayTracingOcclusionTest = !RenderingSettings.bEnableRayTracingOcclusionTest;
 }
 
 void UHSettingDialog::ControlGPULabeling()

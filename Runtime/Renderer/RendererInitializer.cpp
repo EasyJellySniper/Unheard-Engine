@@ -35,6 +35,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, RTShadowResult(nullptr)
 	, RTInstanceCount(0)
 	, IndicesTypeBuffer(nullptr)
+	, OcclusionVisibleBuffer(nullptr)
 #if WITH_DEBUG
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
@@ -188,6 +189,9 @@ void UHDeferredShadingRenderer::Release()
 
 	UH_SAFE_RELEASE(IndicesTypeBuffer);
 	IndicesTypeBuffer.reset();
+
+	UH_SAFE_RELEASE(OcclusionVisibleBuffer);
+	OcclusionVisibleBuffer.reset();
 
 	vkDestroyCommandPool(LogicalDevice, MainCommandPool, nullptr);
 }
@@ -376,6 +380,16 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 			, RTIndicesTable.GetDescriptorSetLayout()
 			, RTIndicesTypeTable.GetDescriptorSetLayout() };
 
+		// occlusion test shader
+		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+		{
+			RTOcclusionTestShader = UHRTOcclusionTestShader(GraphicInterface, "RTOcclusionTestShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShader()
+				, Layouts);
+			OcclusionVisibleBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
+			OcclusionVisibleBuffer->CreaetBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		}
+
+		// shadow shader
 		RTShadowShader = UHRTShadowShader(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShader()
 			, Layouts);
 	}
@@ -443,15 +457,20 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			DepthShader.BindConstant(ObjectConstantsGPU, 1, Renderer->GetBufferDataIndex());
 			DepthShader.BindStorage(MaterialConstantsGPU, 2, Renderer->GetMaterial()->GetBufferDataIndex());
 
+			if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+			{
+				DepthShader.BindStorage(OcclusionVisibleBuffer.get(), 3, 0, true);
+			}
+
 			// check alpha test textures
 			if (UHTexture* Tex = Mat->GetTex(UHMaterialTextureType::Opacity))
 			{
-				DepthShader.BindImage(Tex, 3);
-				DepthShader.BindSampler(Mat->GetSampler(UHMaterialTextureType::Opacity), 4);
+				DepthShader.BindImage(Tex, 4);
+				DepthShader.BindSampler(Mat->GetSampler(UHMaterialTextureType::Opacity), 5);
 			}
 
 			UHMesh* Mesh = Renderer->GetMesh();
-			DepthShader.BindStorage(Mesh->GetUV0Buffer(), 5, 0, true);
+			DepthShader.BindStorage(Mesh->GetUV0Buffer(), 6, 0, true);
 		}
 	}
 
@@ -474,26 +493,31 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		BaseShader.BindConstant(ObjectConstantsGPU, 1, Renderer->GetBufferDataIndex());
 		BaseShader.BindStorage(MaterialConstantsGPU, 2, Renderer->GetMaterial()->GetBufferDataIndex());
 
+		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+		{
+			BaseShader.BindStorage(OcclusionVisibleBuffer.get(), 3, 0, true);
+		}
+
 		// write textures/samplers when they are available
 		for (int32_t Tdx = 0; Tdx < UHMaterialTextureType::TextureTypeMax; Tdx++)
 		{
 			UHTexture* Tex = Mat->GetTex(static_cast<UHMaterialTextureType>(Tdx));
 			if (Tex)
 			{
-				BaseShader.BindImage(Tex, UHConstantTypes::ConstantTypeMax + Tdx * 2);
+				BaseShader.BindImage(Tex, UHConstantTypes::ConstantTypeMax + 1 + Tdx * 2);
 			}
 
 			UHSampler* Sampler = Mat->GetSampler(static_cast<UHMaterialTextureType>(Tdx));
 			if (Sampler)
 			{
-				BaseShader.BindSampler(Sampler, UHConstantTypes::ConstantTypeMax + 1 + Tdx * 2);
+				BaseShader.BindSampler(Sampler, UHConstantTypes::ConstantTypeMax + 2 + Tdx * 2);
 			}
 		}
 
 		UHMesh* Mesh = Renderer->GetMesh();
-		BaseShader.BindStorage(Mesh->GetUV0Buffer(), 19, 0, true);
-		BaseShader.BindStorage(Mesh->GetNormalBuffer(), 20, 0, true);
-		BaseShader.BindStorage(Mesh->GetTangentBuffer(), 21, 0, true);
+		BaseShader.BindStorage(Mesh->GetUV0Buffer(), 20, 0, true);
+		BaseShader.BindStorage(Mesh->GetNormalBuffer(), 21, 0, true);
+		BaseShader.BindStorage(Mesh->GetTangentBuffer(), 22, 0, true);
 	}
 
 	// ------------------------------------------------ Lighting pass descriptor update
@@ -545,17 +569,22 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		MotionObjectShader.BindConstant(ObjectConstantsGPU, 1, Renderer->GetBufferDataIndex());
 		MotionObjectShader.BindStorage(MaterialConstantsGPU, 2, Renderer->GetMaterial()->GetBufferDataIndex());
 
+		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+		{
+			MotionObjectShader.BindStorage(OcclusionVisibleBuffer.get(), 3, 0, true);
+		}
+
 		if (UHTexture* OpacityTex = Renderer->GetMaterial()->GetTex(UHMaterialTextureType::Opacity))
 		{
-			MotionObjectShader.BindImage(OpacityTex, 3);
+			MotionObjectShader.BindImage(OpacityTex, 4);
 		}
 
 		if (UHSampler* OpacitySampler = Renderer->GetMaterial()->GetSampler(UHMaterialTextureType::Opacity))
 		{
-			MotionObjectShader.BindSampler(OpacitySampler, 4);
+			MotionObjectShader.BindSampler(OpacitySampler, 5);
 		}
 
-		MotionObjectShader.BindStorage(Mesh->GetUV0Buffer(), 5, 0, true);
+		MotionObjectShader.BindStorage(Mesh->GetUV0Buffer(), 6, 0, true);
 	}
 
 	// ------------------------------------------------ post process pass descriptor update
@@ -624,7 +653,15 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
 		RTSamplerTable.BindSampler(Samplers, 0);
 
-		// bind shader parameters
+		// bin RT occlusion test
+		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+		{
+			RTOcclusionTestShader.BindConstant(SystemConstantsGPU, 0);
+			RTOcclusionTestShader.BindStorage(OcclusionVisibleBuffer.get(), 2, 0, true);
+			RTOcclusionTestShader.BindStorage(MaterialConstantsGPU, GMaterialSlotInRT, 0, true);
+		}
+
+		// bind RT shadow parameters
 		RTShadowShader.BindConstant(SystemConstantsGPU, 0);
 		RTShadowShader.BindRWImage(RTShadowResult, 2);
 		RTShadowShader.BindStorage(DirectionalLightBuffer, 3, 0, true);
@@ -678,6 +715,11 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		RTDefaultHitGroupShader.Release();
+		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+		{
+			RTOcclusionTestShader.Release();
+		}
+
 		RTShadowShader.Release();
 		RTTextureTable.Release();
 		RTSamplerTable.Release();

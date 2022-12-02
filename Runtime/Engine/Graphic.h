@@ -216,6 +216,7 @@ public:
 
 	// is ray tracing enabled
 	bool IsRayTracingEnabled() const;
+	bool IsRayTracingOcclusionTestEnabled() const;
 
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
@@ -347,6 +348,7 @@ private:
 	uint32_t ShaderRecordSize;
 	float GPUTimeStampPeriod;
 	bool bEnableRayTracing;
+	bool bEnableRayTracingOcclusionTest;
 
 protected:
 	// system managed pools

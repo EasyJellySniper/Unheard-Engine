@@ -19,6 +19,11 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 	TopLevelAS[CurrentFrame]->UpdateTopAS(GraphBuilder.GetCmdList(), CurrentFrame);
 
 	// after update, shader descriptor for TLAS needs to be bound again
+	if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+	{
+		RTOcclusionTestShader.BindTLAS(TopLevelAS[CurrentFrame].get(), 1, CurrentFrame);
+	}
+
 	RTShadowShader.BindTLAS(TopLevelAS[CurrentFrame].get(), 1, CurrentFrame);
 
 #if WITH_DEBUG
@@ -26,7 +31,40 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 #endif
 }
 
-void UHDeferredShadingRenderer::DispatchRayPass(UHGraphicBuilder& GraphBuilder)
+void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& GraphBuilder)
+{
+	if (!GraphicInterface->IsRayTracingOcclusionTestEnabled() || !TopLevelAS[CurrentFrame] || RTInstanceCount == 0)
+	{
+		return;
+	}
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
+	// bind descriptors and RT states
+	std::vector<VkDescriptorSet> DescriptorSets = { RTOcclusionTestShader.GetDescriptorSet(CurrentFrame)
+		, RTTextureTable.GetDescriptorSet(CurrentFrame)
+		, RTSamplerTable.GetDescriptorSet(CurrentFrame)
+		, RTVertexTable.GetDescriptorSet(CurrentFrame)
+		, RTIndicesTable.GetDescriptorSet(CurrentFrame)
+		, RTIndicesTypeTable.GetDescriptorSet(CurrentFrame) };
+
+	GraphBuilder.BindRTDescriptorSet(RTOcclusionTestShader.GetPipelineLayout(), DescriptorSets);
+	GraphBuilder.BindRTState(RTOcclusionTestShader.GetRTState());
+
+	// trace!
+	VkExtent2D RTOTExtent;
+	RTOTExtent.width = RenderResolution.width / 4;
+	RTOTExtent.height = RenderResolution.height / 4;
+	GraphBuilder.TraceRay(RTOTExtent, RTOcclusionTestShader.GetRayGenTable(), RTOcclusionTestShader.GetHitGroupTable());
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
+}
+
+void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder)
 {
 	if (!GraphicInterface->IsRayTracingEnabled() || !TopLevelAS[CurrentFrame] || RTInstanceCount == 0)
 	{

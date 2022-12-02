@@ -64,6 +64,7 @@ public:
 		, RenderHeight(1080)
 		, bTemporalAA(true)
 		, bEnableRayTracing(true)
+		, bEnableRayTracingOcclusionTest(true)
 		, bEnableGPULabeling(true)
 		, bEnableLayerValidation(true)
 		, bEnableGPUTiming(true)
@@ -77,6 +78,7 @@ public:
 	int32_t RenderHeight;
 	bool bTemporalAA;
 	bool bEnableRayTracing;
+	bool bEnableRayTracingOcclusionTest;
 	bool bEnableGPULabeling;
 	bool bEnableLayerValidation;
 	bool bEnableGPUTiming;

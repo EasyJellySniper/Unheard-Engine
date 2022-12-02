@@ -46,6 +46,7 @@ void UHConfigManager::LoadConfig()
 			RenderingSettings.RenderHeight = UHUtilities::ReadINIData<int32_t>(FileIn, "RenderHeight");
 			RenderingSettings.bTemporalAA = UHUtilities::ReadINIData<int32_t>(FileIn, "bTemporalAA");
 			RenderingSettings.bEnableRayTracing = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableRayTracing");
+			RenderingSettings.bEnableRayTracingOcclusionTest = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableRayTracingOcclusionTest");
 			RenderingSettings.bEnableGPULabeling = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPULabeling");
 			RenderingSettings.bEnableLayerValidation = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableLayerValidation");
 			RenderingSettings.bEnableGPUTiming = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPUTiming");
@@ -88,6 +89,7 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "RenderHeight", RenderingSettings.RenderHeight);
 		UHUtilities::WriteINIData(FileOut, "bTemporalAA", RenderingSettings.bTemporalAA);
 		UHUtilities::WriteINIData(FileOut, "bEnableRayTracing", RenderingSettings.bEnableRayTracing);
+		UHUtilities::WriteINIData(FileOut, "bEnableRayTracingOcclusionTest", RenderingSettings.bEnableRayTracingOcclusionTest);
 		UHUtilities::WriteINIData(FileOut, "bEnableGPULabeling", RenderingSettings.bEnableGPULabeling);
 		UHUtilities::WriteINIData(FileOut, "bEnableLayerValidation", RenderingSettings.bEnableLayerValidation);
 		UHUtilities::WriteINIData(FileOut, "bEnableGPUTiming", RenderingSettings.bEnableGPUTiming);

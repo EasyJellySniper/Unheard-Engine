@@ -25,6 +25,7 @@
 #include "ShaderClass/PostProcessing/ToneMappingShader.h"
 #include "ShaderClass/PostProcessing/TemporalAAShader.h"
 #include "ShaderClass/RayTracing/RTDefaultHitGroupShader.h"
+#include "ShaderClass/RayTracing/RTOcclusionTestShader.h"
 #include "ShaderClass/RayTracing/RTShadowShader.h"
 #include "ShaderClass/RayTracing/RTTextureTable.h"
 #include "ShaderClass/RayTracing/RTMeshTable.h"
@@ -117,10 +118,11 @@ private:
 
 
 	/************************************************ rendering functions ************************************************/
+	void BuildTopLevelAS(UHGraphicBuilder& GraphBuilder);
+	void DispatchRayOcclusionTestPass(UHGraphicBuilder& GraphBuilder);
 	void RenderDepthPrePass(UHGraphicBuilder& GraphBuilder);
 	void RenderBasePass(UHGraphicBuilder& GraphBuilder);
-	void BuildTopLevelAS(UHGraphicBuilder& GraphBuilder);
-	void DispatchRayPass(UHGraphicBuilder& GraphBuilder);
+	void DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder);
 	void RenderLightPass(UHGraphicBuilder& GraphBuilder);
 	void RenderSkyPass(UHGraphicBuilder& GraphBuilder);
 	void RenderMotionPass(UHGraphicBuilder& GraphBuilder);
@@ -260,6 +262,9 @@ private:
 	VkFormat RTShadowFormat;
 	std::array<std::unique_ptr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
 	UHRTDefaultHitGroupShader RTDefaultHitGroupShader;
+
+	UHRTOcclusionTestShader RTOcclusionTestShader;
+	std::unique_ptr<UHRenderBuffer<uint32_t>> OcclusionVisibleBuffer;
 
 	UHRTShadowShader RTShadowShader;
 	UHRenderTexture* RTShadowResult;

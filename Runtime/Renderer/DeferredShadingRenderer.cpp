@@ -149,6 +149,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.UHShadowResolution.z = 1.0f / SystemConstantsCPU.UHShadowResolution.x;
 	SystemConstantsCPU.UHShadowResolution.w = 1.0f / SystemConstantsCPU.UHShadowResolution.y;
 
+	SystemConstantsCPU.UHNumRTInstances = RTInstanceCount;
+
 	SystemConstantsGPU[CurrentFrame]->UploadAllData(&SystemConstantsCPU);
 
 	// upload object constants, only upload if transform is changed
@@ -338,10 +340,11 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
 
 		// ****************************** start scene rendering
+		BuildTopLevelAS(GraphBuilder);
+		DispatchRayOcclusionTestPass(GraphBuilder);
 		RenderDepthPrePass(GraphBuilder);
 		RenderBasePass(GraphBuilder);
-		BuildTopLevelAS(GraphBuilder);
-		DispatchRayPass(GraphBuilder);
+		DispatchRayShadowPass(GraphBuilder);
 		RenderLightPass(GraphBuilder);
 		RenderSkyPass(GraphBuilder);
 		RenderMotionPass(GraphBuilder);

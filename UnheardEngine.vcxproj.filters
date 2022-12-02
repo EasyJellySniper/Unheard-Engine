@@ -219,6 +219,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -412,5 +415,6 @@
     <None Include="Shaders\RayTracing\RayTracingHitGroup.hlsl" />
     <None Include="Shaders\PostProcessing\DebugViewPixelShader.hlsl" />
     <None Include="Shaders\DepthPassShader.hlsl" />
+    <None Include="Shaders\RayTracing\RayTracingOcclusionTest.hlsl" />
   </ItemGroup>
 </Project>

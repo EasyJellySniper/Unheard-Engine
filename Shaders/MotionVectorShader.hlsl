@@ -11,9 +11,11 @@ struct MotionVertexOutput
 
 Texture2D DepthTexture : register(t1);
 SamplerState PointSampler : register(s2);
-Texture2D OpacityTex : register(t3);
-SamplerState OpacitySampler : register(s4);
-StructuredBuffer<float2> UV0Buffer : register(t5);
+
+ByteAddressBuffer OcclusionVisible : register(t3);
+Texture2D OpacityTex : register(t4);
+SamplerState OpacitySampler : register(s5);
+StructuredBuffer<float2> UV0Buffer : register(t6);
 
 float4 CameraMotionPS(PostProcessVertexOutput Vin) : SV_Target
 {
@@ -47,6 +49,17 @@ float4 CameraMotionPS(PostProcessVertexOutput Vin) : SV_Target
 MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 {
 	MotionVertexOutput Vout = (MotionVertexOutput)0;
+
+#if WITH_OCCLUSION_TEST
+	uint IsVisible = OcclusionVisible.Load(UHInstanceIndex * 4);
+	UHBRANCH
+	if (IsVisible == 0)
+	{
+		Vout.Position = -10;
+		return Vout;
+	}
+#endif
+
 	float3 WorldPos = mul(float4(Position, 1.0f), UHWorld).xyz;
 	float3 PrevWorldPos = mul(float4(Position, 1.0f), UHPrevWorld).xyz;
 
