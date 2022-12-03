@@ -12,7 +12,7 @@
 // ship define
 #define WITH_SHIP NDEBUG
 
-#ifdef WITH_DEBUG
+#if WITH_DEBUG
 	#define LogMessage( str ) OutputDebugString( str );
 #else
 	#define LogMessage( str )

@@ -54,7 +54,7 @@ void RTShadowRayGen()
 		ShadowRay.TMax = float(1 << 20);
 
 		UHDefaultPayload Payload = (UHDefaultPayload)0;
-		TraceRay(TLAS, 0, 0xff, 0, 0, 0, ShadowRay, Payload);
+		TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
 
 		// store the max hit T to the result, system will perform PCSS later
 		// also output shadow strength (Color.a)
