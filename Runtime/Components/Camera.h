@@ -26,6 +26,8 @@ public:
 	XMFLOAT4X4 GetInvViewProjMatrixNonJittered() const;
 	XMFLOAT2 GetJitterOffset() const;
 	BoundingFrustum GetBoundingFrustum() const;
+	XMFLOAT3 GetScreenPos(XMFLOAT3 InWorld) const;
+	BoundingBox GetScreenBound(BoundingBox InWorldBound) const;
 
 private:
 	void BuildViewMatrix();

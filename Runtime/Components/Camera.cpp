@@ -146,6 +146,49 @@ BoundingFrustum UHCameraComponent::GetBoundingFrustum() const
 	return CameraFrustum;
 }
 
+XMFLOAT3 UHCameraComponent::GetScreenPos(XMFLOAT3 InWorld) const
+{
+	XMVECTOR P = XMLoadFloat3(&InWorld);
+	XMMATRIX VP = XMLoadFloat4x4(&ViewProjMatrix_NonJittered);
+
+	// convert to clip pos
+	P = XMVector3Transform(P, VP);
+
+	// perspective divide
+	P /= P.m128_f32[3];
+
+	// [-1,1] to [0,1] and to screen pos
+	P.m128_f32[0] = (P.m128_f32[0] * 0.5f + 0.5f) * static_cast<float>(Width);
+	P.m128_f32[1] = (P.m128_f32[1] * 0.5f + 0.5f) * static_cast<float>(Height);
+
+	XMFLOAT3 Result;
+	XMStoreFloat3(&Result, P);
+	return Result;
+}
+
+BoundingBox UHCameraComponent::GetScreenBound(BoundingBox InWorldBound) const
+{
+	// return screen space bound
+	XMFLOAT3 P[8];
+	InWorldBound.GetCorners(P);
+
+	constexpr float Inf = std::numeric_limits<float>::infinity();
+	XMFLOAT3 MinPoint = XMFLOAT3(Inf, Inf, Inf);
+	XMFLOAT3 MaxPoint = XMFLOAT3(-Inf, -Inf, -Inf);
+
+	for (int32_t Idx = 0; Idx < 8; Idx++)
+	{
+		P[Idx] = GetScreenPos(P[Idx]);
+		MinPoint = MathHelpers::MinVector(P[Idx], MinPoint);
+		MaxPoint = MathHelpers::MaxVector(P[Idx], MaxPoint);
+	}
+
+	BoundingBox Result;
+	Result.Center = (MinPoint + MaxPoint) * 0.5f;
+	Result.Extents = (MaxPoint - MinPoint) * 0.5f;
+	return Result;
+}
+
 void UHCameraComponent::BuildViewMatrix()
 {
 	// flip up vector since Vulkan want +Y down, but UH uses +Y up
