@@ -12,7 +12,6 @@ const uint32_t GMaxFrameInFlight = 2;
 
 // gbuffer counts, not including scene result
 const uint32_t GNumOfGBuffers = 5;
-const uint32_t GNumOfRTBuffers = 1;
 
 struct UHSystemConstants
 {

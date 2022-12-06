@@ -42,6 +42,8 @@ namespace MathHelpers
     float Halton(int32_t Index, int32_t Base);
 
     XMFLOAT3 LerpVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2, const float& T);
+
+    float VectorDistanceSqr(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
 }
 
 // operator for XMFLOAT3 multipication

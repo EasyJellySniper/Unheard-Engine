@@ -143,6 +143,14 @@ namespace MathHelpers
         XMStoreFloat3(&NewPos, Lerped);
         return NewPos;
     }
+
+    float VectorDistanceSqr(const XMFLOAT3& InVector, const XMFLOAT3& InVector2)
+    {
+        // return squared vector distance
+        XMVECTOR A = XMLoadFloat3(&InVector);
+        XMVECTOR B = XMLoadFloat3(&InVector2);
+        return XMVector3LengthSq(A - B).m128_f32[0];
+    }
 }
 
 // operator for XMFLOAT3 multipication

@@ -276,24 +276,23 @@ void UHDeferredShadingRenderer::SortRenderer()
 		return;
 	}
 
-	float CameraZ = CurrentCamera->GetPosition().z;
+	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
 
-	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [&CameraZ](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
-			// sort front-to-back for opaque, need to consider mesh center, not all meshes are imported with (0,0,0) centered
-			XMFLOAT3 CA = A->GetMesh()->GetMeshCenter();
-			XMFLOAT3 CB = B->GetMesh()->GetMeshCenter();
+			// sort front-to-back for opaque, rough z sort
+			XMFLOAT3 ZA = A->GetRendererBound().Center;
+			XMFLOAT3 ZB = B->GetRendererBound().Center;
 
-			return std::abs(A->GetPosition().z + CA.z - CameraZ) < std::abs(B->GetPosition().z + CB.z - CameraZ);
+			return MathHelpers::VectorDistanceSqr(ZA , CameraPos) < MathHelpers::VectorDistanceSqr(ZB, CameraPos);
 		});
 
-	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraZ](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
-			// sort back-to-front for translucent
-			XMFLOAT3 CA = A->GetMesh()->GetMeshCenter();
-			XMFLOAT3 CB = B->GetMesh()->GetMeshCenter();
+			XMFLOAT3 ZA = A->GetRendererBound().Center;
+			XMFLOAT3 ZB = B->GetRendererBound().Center;
 
-			return std::abs(A->GetPosition().z + CA.z - CameraZ) > std::abs(B->GetPosition().z + CB.z - CameraZ);
+			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) > MathHelpers::VectorDistanceSqr(ZB, CameraPos);
 		});
 }
 
