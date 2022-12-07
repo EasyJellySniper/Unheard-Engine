@@ -303,26 +303,44 @@ void UHGraphicBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, const std:
 
 void UHGraphicBuilder::ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
 {
-	VkImageMemoryBarrier Barrier{};
-	Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	Barrier.oldLayout = OldLayout;
-	Barrier.newLayout = NewLayout;
-	Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	std::vector<UHTexture*> Tex = { InTexture };
+	ResourceBarrier(Tex, OldLayout, NewLayout, BaseMipLevel, BaseArrayLayer);
+}
 
-	// similar to the setting in UHRenderTexture::CreateImageView, so get the image view info for setting
-	VkImageViewCreateInfo ImageViewInfo = InTexture->GetImageViewInfo();
+void UHGraphicBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
+{
+	if (InTextures.size() == 0)
+	{
+		return;
+	}
 
-	Barrier.image = InTexture->GetImage();
-	Barrier.subresourceRange = ImageViewInfo.subresourceRange;
+	std::vector<VkImageMemoryBarrier> Barriers(InTextures.size());
 
-	// this barrier will transition 1 mip slice only for now
-	Barrier.subresourceRange.baseMipLevel = BaseMipLevel;
-	Barrier.subresourceRange.levelCount = 1;
-	Barrier.subresourceRange.layerCount = 1;
-	Barrier.subresourceRange.baseArrayLayer = BaseArrayLayer;
-	Barrier.srcAccessMask = LayoutToAccessFlags[OldLayout];
-	Barrier.dstAccessMask = LayoutToAccessFlags[NewLayout];
+	for (size_t Idx = 0; Idx < InTextures.size(); Idx++)
+	{
+		VkImageMemoryBarrier Barrier{};
+		Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		Barrier.oldLayout = OldLayout;
+		Barrier.newLayout = NewLayout;
+		Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+		// similar to the setting in UHRenderTexture::CreateImageView, so get the image view info for setting
+		VkImageViewCreateInfo ImageViewInfo = InTextures[Idx]->GetImageViewInfo();
+
+		Barrier.image = InTextures[Idx]->GetImage();
+		Barrier.subresourceRange = ImageViewInfo.subresourceRange;
+
+		// this barrier will transition 1 mip slice only for now
+		Barrier.subresourceRange.baseMipLevel = BaseMipLevel;
+		Barrier.subresourceRange.levelCount = 1;
+		Barrier.subresourceRange.layerCount = 1;
+		Barrier.subresourceRange.baseArrayLayer = BaseArrayLayer;
+		Barrier.srcAccessMask = LayoutToAccessFlags[OldLayout];
+		Barrier.dstAccessMask = LayoutToAccessFlags[NewLayout];
+
+		Barriers[Idx] = Barrier;
+	}
 
 	VkPipelineStageFlags SourceStage = LayoutToStageFlags[OldLayout];
 	VkPipelineStageFlags DestStage = LayoutToStageFlags[NewLayout];
@@ -333,8 +351,7 @@ void UHGraphicBuilder::ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLa
 		0,
 		0, nullptr,
 		0, nullptr,
-		1, &Barrier
-	);
+		static_cast<uint32_t>(Barriers.size()), Barriers.data());
 }
 
 void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter)

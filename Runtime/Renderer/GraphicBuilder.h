@@ -72,6 +72,7 @@ public:
 
 	// transition image
 	void ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
+	void ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
 
 	// blit image
 	void Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter = VK_FILTER_LINEAR);
