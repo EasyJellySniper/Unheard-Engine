@@ -69,6 +69,7 @@ public:
 		, bEnableLayerValidation(true)
 		, bEnableGPUTiming(true)
 		, bEnableDepthPrePass(false)
+		, bEnableDrawBundles(true)
 		, RTDirectionalShadowQuality(0)
 	{
 
@@ -83,5 +84,6 @@ public:
 	bool bEnableLayerValidation;
 	bool bEnableGPUTiming;
 	bool bEnableDepthPrePass;
+	bool bEnableDrawBundles;
 	int32_t RTDirectionalShadowQuality;
 };

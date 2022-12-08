@@ -1331,6 +1331,11 @@ bool UHGraphic::IsRayTracingOcclusionTestEnabled() const
 	return bEnableRayTracingOcclusionTest && bEnableRayTracing;
 }
 
+bool UHGraphic::IsDebugLayerEnabled() const
+{
+	return bUseValidationLayers;
+}
+
 std::vector<UHSampler*> UHGraphic::GetSamplers() const
 {
 	std::vector<UHSampler*> Samplers(SamplerPools.size());

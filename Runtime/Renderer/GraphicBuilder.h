@@ -93,6 +93,9 @@ public:
 	// write time stamp
 	void WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery);
 
+	// execute bundle
+	void ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToExecute);
+
 #if WITH_DEBUG
 	int32_t DrawCalls;
 #endif

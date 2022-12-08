@@ -42,8 +42,12 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 
 	// -------------------- after motion camera pass is done, draw per-object motions -------------------- //
 	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-	GraphBuilder.BeginRenderPass(MotionObjectPassObj.RenderPass, MotionObjectPassObj.FrameBuffer, RenderResolution);
 
+	// begin for secondary cmd
+	GraphBuilder.BeginRenderPass(MotionObjectPassObj.RenderPass, MotionObjectPassObj.FrameBuffer, RenderResolution
+		, (ConfigInterface->RenderingSetting().bEnableDrawBundles) ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
+
+	std::vector<VkCommandBuffer> CmdToExecute;
 	for (UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMaterial* Mat = Renderer->GetMaterial();
@@ -63,23 +67,37 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 			continue;
 		}
 
-		const UHMotionObjectPassShader& MotionShader = MotionObjectShaders[RendererIdx];
+		if (!ConfigInterface->RenderingSetting().bEnableDrawBundles)
+		{
+			const UHMotionObjectPassShader& MotionShader = MotionObjectShaders[RendererIdx];
 
-		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+				std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
-		// bind pipelines
-		GraphBuilder.BindGraphicState(MotionShader.GetState());
-		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrame));
+			// bind pipelines
+			GraphBuilder.BindGraphicState(MotionShader.GetState());
+			GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+			GraphBuilder.BindIndexBuffer(Mesh);
+			GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrame));
 
-		// draw call
-		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+			// draw call
+			GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+
+			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		}
+		else
+		{
+			CmdToExecute.push_back(RendererBundles[CurrentFrame][RendererIdx * 3 + 2]);
+		}
 
 		Renderer->SetMotionDirty(false, CurrentFrame);
-		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 	}
+
+	if (ConfigInterface->RenderingSetting().bEnableDrawBundles)
+	{
+		GraphBuilder.ExecuteBundles(CmdToExecute);
+	}
+
 	GraphBuilder.EndRenderPass();
 
 	// depth/motion vector will be used in shader later, transition them

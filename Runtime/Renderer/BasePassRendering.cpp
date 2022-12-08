@@ -32,13 +32,16 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 	GPUTimeQueries[UHRenderPassTypes::BasePass]->BeginTimeStamp(GraphBuilder.GetCmdList());
 #endif
 
-	GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
-
 	// setup viewport and scissor
 	GraphBuilder.SetViewport(RenderResolution);
 	GraphBuilder.SetScissor(RenderResolution);
 
+	// begin for secondary cmd
+	GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues
+		, (ConfigInterface->RenderingSetting().bEnableDrawBundles) ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
+
 	// get all opaque renderers from scene
+	std::vector<VkCommandBuffer> CmdToExecute;
 	for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMaterial* Mat = Renderer->GetMaterial();
@@ -61,21 +64,33 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 		}
 	#endif
 
-		const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
+		if (!ConfigInterface->RenderingSetting().bEnableDrawBundles)
+		{
+			const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
 
-		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+				std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
-		// bind pipelines
-		GraphBuilder.BindGraphicState(BaseShader.GetState());
-		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
+			// bind pipelines
+			GraphBuilder.BindGraphicState(BaseShader.GetState());
+			GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+			GraphBuilder.BindIndexBuffer(Mesh);
+			GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
 
-		// draw call
-		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+			// draw call
+			GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		}
+		else
+		{
+			CmdToExecute.push_back(RendererBundles[CurrentFrame][RendererIdx * 3 + 1]);
+		}
+	}
+
+	if (ConfigInterface->RenderingSetting().bEnableDrawBundles)
+	{
+		GraphBuilder.ExecuteBundles(CmdToExecute);
 	}
 
 	GraphBuilder.EndRenderPass();

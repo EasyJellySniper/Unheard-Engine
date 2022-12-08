@@ -25,6 +25,9 @@ void UHDeferredShadingRenderer::Resize()
 	// need to rewrite descriptors after resize
 	UpdateDescriptors();
 
+	// need to record bundles again after resizing
+	UpdateRenderingBundles();
+
 	bIsTemporalReset = true;
 }
 

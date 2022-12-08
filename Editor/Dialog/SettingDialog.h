@@ -42,6 +42,7 @@ private:
 	void ControlLayerValidation();
 	void ControlGPUTiming();
 	void ControlDepthPrePass();
+	void ControlDrawBundles();
 	void ControlShadowQuality();
 
 	UHConfigManager* Config;

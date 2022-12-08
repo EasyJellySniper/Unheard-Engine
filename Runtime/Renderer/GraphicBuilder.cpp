@@ -507,3 +507,19 @@ void UHGraphicBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
 	vkCmdWriteTimestamp(CmdList, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, InPool, InQuery);
 #endif
 }
+
+void UHGraphicBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToExecute)
+{
+	if (CmdToExecute.size() == 0)
+	{
+		return;
+	}
+
+	// push secondary cmds
+	vkCmdExecuteCommands(CmdList, static_cast<uint32_t>(CmdToExecute.size()), CmdToExecute.data());
+
+#if WITH_DEBUG
+	// assume the bundle has draw calls for now
+	DrawCalls += static_cast<int32_t>(CmdToExecute.size());
+#endif
+}

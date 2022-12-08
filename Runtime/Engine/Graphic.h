@@ -218,6 +218,9 @@ public:
 	bool IsRayTracingEnabled() const;
 	bool IsRayTracingOcclusionTestEnabled() const;
 
+	// is debug layer enabled
+	bool IsDebugLayerEnabled() const;
+
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
 
