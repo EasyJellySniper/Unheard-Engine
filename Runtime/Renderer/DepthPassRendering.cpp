@@ -21,8 +21,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 	GraphBuilder.SetScissor(RenderResolution);
 
 	// begin as secondary
-	GraphBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue
-		, (ConfigInterface->RenderingSetting().bEnableDrawBundles) ? VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS : VK_SUBPASS_CONTENTS_INLINE);
+	GraphBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue);
 
 	// get all opaque renderers from scene
 	std::vector<VkCommandBuffer> CmdToExecute;
@@ -48,33 +47,21 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 		}
 	#endif
 
-		if (!ConfigInterface->RenderingSetting().bEnableDrawBundles)
-		{
-			const UHDepthPassShader& DepthShader = DepthPassShaders[RendererIdx];
+		const UHDepthPassShader& DepthShader = DepthPassShaders[RendererIdx];
 
-			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-				std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
-			// bind pipelines
-			GraphBuilder.BindGraphicState(DepthShader.GetState());
-			GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-			GraphBuilder.BindIndexBuffer(Mesh);
-			GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrame));
+		// bind pipelines
+		GraphBuilder.BindGraphicState(DepthShader.GetState());
+		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		GraphBuilder.BindIndexBuffer(Mesh);
+		GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrame));
 
-			// draw call
-			GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		// draw call
+		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-		}
-		else
-		{
-			CmdToExecute.push_back(RendererBundles[CurrentFrame][RendererIdx * 3]);
-		}
-	}
-
-	if (ConfigInterface->RenderingSetting().bEnableDrawBundles)
-	{
-		GraphBuilder.ExecuteBundles(CmdToExecute);
+		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 	}
 
 	GraphBuilder.EndRenderPass();

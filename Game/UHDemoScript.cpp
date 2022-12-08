@@ -64,93 +64,105 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	UHTexture2D* SoilRoughnessTex = InAsset->GetTexture2DByPath("Viking_Hut/Soil_roughness");
 	UHTexture2D* FernRoughnessTex = InAsset->GetTexture2DByPath("Viking_Hut/Soil_roughness");
 
+	// brutal test for renderers
+	float MarginX = 75.0f;
+	float MarginZ = 25.0f;
+	float OffsetX[] = { 0, -1,0,1,-1,1,-1,0,1 };
+	float OffsetZ[] = { 0, -1,-1,-1,0,0,1,1,1 };
+
 	// add mesh renderer for all loaded meshes
 	std::vector<UHMesh*> LoadedMeshes = InAsset->GetUHMeshes();
-	for (size_t Idx = 0; Idx < LoadedMeshes.size(); Idx++)
+
+	for (int32_t Offset = 0; Offset < sizeof(OffsetX) / sizeof(float); Offset++)
 	{
-		UHMaterial* Mat = InAsset->GetMaterial(LoadedMeshes[Idx]->GetImportedMaterialName());
-		if (Mat == nullptr)
+		for (size_t Idx = 0; Idx < LoadedMeshes.size(); Idx++)
 		{
-			continue;
-		}
-
-		// set texture and sampler to material before adding it to mesh renderer
-		for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
-		{
-			UHMaterialTextureType Type = static_cast<UHMaterialTextureType>(Idx);
-			Mat->SetTex(Type, InAsset->GetTexture2D(Mat->GetTexFileName(Type)));
-
-			if (Mat->GetTex(Type))
+			UHMaterial* Mat = InAsset->GetMaterial(LoadedMeshes[Idx]->GetImportedMaterialName());
+			if (Mat == nullptr)
 			{
-				UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
-					, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(Mat->GetTex(Type)->GetMipMapCount()));
-				UHSampler* Sampler = InGfx->RequestTextureSampler(InInfo);
-				Mat->SetSampler(Type, Sampler);
+				continue;
 			}
-		}
 
-		// set env cube
-		Mat->SetTex(UHMaterialTextureType::SkyCube, SkyCubeTex);
-		Mat->SetSampler(UHMaterialTextureType::SkyCube, SkyCubeSampler);
+			// set texture and sampler to material before adding it to mesh renderer
+			for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
+			{
+				UHMaterialTextureType Type = static_cast<UHMaterialTextureType>(Idx);
+				Mat->SetTex(Type, InAsset->GetTexture2D(Mat->GetTexFileName(Type)));
 
-		// set metallic texture
-		if (Mat->GetName() == "Main_Material_Summer" || Mat->GetName() == "Main_Material_Winter")
-		{
-			Mat->SetTex(UHMaterialTextureType::Metallic, MetallicTex);
+				if (Mat->GetTex(Type))
+				{
+					UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
+						, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(Mat->GetTex(Type)->GetMipMapCount()));
+					UHSampler* Sampler = InGfx->RequestTextureSampler(InInfo);
+					Mat->SetSampler(Type, Sampler);
+				}
+			}
 
+			// set env cube
+			Mat->SetTex(UHMaterialTextureType::SkyCube, SkyCubeTex);
+			Mat->SetSampler(UHMaterialTextureType::SkyCube, SkyCubeSampler);
+
+			// set metallic texture
+			if (Mat->GetName() == "Main_Material_Summer" || Mat->GetName() == "Main_Material_Winter")
+			{
+				Mat->SetTex(UHMaterialTextureType::Metallic, MetallicTex);
+
+				UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
+					, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(MetallicTex->GetMipMapCount()));
+
+				UHSampler* Sampler = InGfx->RequestTextureSampler(InInfo);
+				Mat->SetSampler(UHMaterialTextureType::Metallic, Sampler);
+			}
+
+			// set roughness texture
 			UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
-				, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(MetallicTex->GetMipMapCount()));
+				, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-			UHSampler* Sampler = InGfx->RequestTextureSampler(InInfo);
-			Mat->SetSampler(UHMaterialTextureType::Metallic , Sampler);
-		}
+			if (Mat->GetName() == "Fern")
+			{
+				InInfo.MaxLod = static_cast<float>(FernRoughnessTex->GetMipMapCount());
+				Mat->SetTex(UHMaterialTextureType::Roughness, FernRoughnessTex);
+				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
+			}
+			else if (Mat->GetName() == "ivy")
+			{
+				InInfo.MaxLod = static_cast<float>(IvyRoughnessTex->GetMipMapCount());
+				Mat->SetTex(UHMaterialTextureType::Roughness, IvyRoughnessTex);
+				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
+			}
+			else if (Mat->GetName() == "Main_Material_Summer")
+			{
+				InInfo.MaxLod = static_cast<float>(RoughnessMossTex->GetMipMapCount());
+				Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessMossTex);
+				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
+			}
+			else if (Mat->GetName() == "Main_Material_Winter")
+			{
+				InInfo.MaxLod = static_cast<float>(RoughnessWinterTex->GetMipMapCount());
+				Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessWinterTex);
+				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
+			}
+			else if (Mat->GetName() == "Snow")
+			{
+				InInfo.MaxLod = static_cast<float>(SnowRoughnessTex->GetMipMapCount());
+				Mat->SetTex(UHMaterialTextureType::Roughness, SnowRoughnessTex);
+				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
+			}
+			else if (Mat->GetName() == "Soil")
+			{
+				InInfo.MaxLod = static_cast<float>(SoilRoughnessTex->GetMipMapCount());
+				Mat->SetTex(UHMaterialTextureType::Roughness, SoilRoughnessTex);
+				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
+			}
 
-		UHMeshRendererComponent* NewRenderer = InScene->AddMeshRenderer(LoadedMeshes[Idx], Mat);
-		if (LoadedMeshes[Idx]->GetName() == "Geo364")
-		{
-			Geo364Renderer = NewRenderer;
-			Geo364OriginPos = Geo364Renderer->GetPosition();
-		}
+			UHMeshRendererComponent* NewRenderer = InScene->AddMeshRenderer(LoadedMeshes[Idx], Mat);
+			if (LoadedMeshes[Idx]->GetName() == "Geo364" && Offset == 0)
+			{
+				Geo364Renderer = NewRenderer;
+				Geo364OriginPos = Geo364Renderer->GetPosition();
+			}
 
-		// set roughness texture
-		UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
-			, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-		if (Mat->GetName() == "Fern")
-		{
-			InInfo.MaxLod = static_cast<float>(FernRoughnessTex->GetMipMapCount());
-			Mat->SetTex(UHMaterialTextureType::Roughness, FernRoughnessTex);
-			Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-		}
-		else if (Mat->GetName() == "ivy")
-		{
-			InInfo.MaxLod = static_cast<float>(IvyRoughnessTex->GetMipMapCount());
-			Mat->SetTex(UHMaterialTextureType::Roughness, IvyRoughnessTex);
-			Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-		}
-		else if (Mat->GetName() == "Main_Material_Summer")
-		{
-			InInfo.MaxLod = static_cast<float>(RoughnessMossTex->GetMipMapCount());
-			Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessMossTex);
-			Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-		}
-		else if (Mat->GetName() == "Main_Material_Winter")
-		{
-			InInfo.MaxLod = static_cast<float>(RoughnessWinterTex->GetMipMapCount());
-			Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessWinterTex);
-			Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-		}
-		else if (Mat->GetName() == "Snow")
-		{
-			InInfo.MaxLod = static_cast<float>(SnowRoughnessTex->GetMipMapCount());
-			Mat->SetTex(UHMaterialTextureType::Roughness, SnowRoughnessTex);
-			Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-		}
-		else if (Mat->GetName() == "Soil")
-		{
-			InInfo.MaxLod = static_cast<float>(SoilRoughnessTex->GetMipMapCount());
-			Mat->SetTex(UHMaterialTextureType::Roughness, SoilRoughnessTex);
-			Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
+			NewRenderer->Translate(XMFLOAT3(MarginX * OffsetX[Offset], 0, MarginZ * OffsetZ[Offset]), UHTransformSpace::World);
 		}
 	}
 
@@ -180,7 +192,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	// setup default camera
 	InScene->GetMainCamera()->SetPosition(XMFLOAT3(0, 2, -15));
-	InScene->GetMainCamera()->SetCullingDistance(100.0f);
+	InScene->GetMainCamera()->SetCullingDistance(1000.0f);
 
 	// secondary light test
 	SecondDirectionalLight.SetLightColor(XMFLOAT4(1.0f, 0.55f, 0.0f, 0.4f));

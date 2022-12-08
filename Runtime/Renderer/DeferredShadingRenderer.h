@@ -74,17 +74,11 @@ private:
 	// prepare rendering shaders
 	void PrepareRenderingShaders();
 
-	// prepare rendering bundles
-	void PrepareRenderingBundles();
-
 	// create command pool and buffer
 	bool CreateMainCommandPoolAndBuffer();
 
 	// update descriptors
 	void UpdateDescriptors();
-
-	// update rendering bundles
-	void UpdateRenderingBundles();
 
 	// release shaders
 	void ReleaseShaders();
@@ -287,10 +281,4 @@ private:
 	// -------------------------------------------- Culling related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
 	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
-
-	// -------------------------------------------- Bundle related -------------------------------------------- //
-	// Total Bundle counts = Num of Renderers * NumOfBundlePass
-	static const uint32_t NumOfBundlePass = 3;
-	std::array<VkCommandPool, GMaxFrameInFlight> BundlePools;
-	std::array<std::vector<VkCommandBuffer>, GMaxFrameInFlight> RendererBundles;
 };

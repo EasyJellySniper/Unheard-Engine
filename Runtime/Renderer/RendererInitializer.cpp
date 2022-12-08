@@ -50,7 +50,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 		RenderFinishedSemaphores[Idx] = VK_NULL_HANDLE;
 		MainFences[Idx] = VK_NULL_HANDLE;
 		TopLevelAS[Idx] = VK_NULL_HANDLE;
-		BundlePools[Idx] = VK_NULL_HANDLE;
 	}
 
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
@@ -112,7 +111,6 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		CreateRenderPasses();
 		CreateRenderingBuffers();
 		PrepareRenderingShaders();
-		PrepareRenderingBundles();
 
 		// create data buffers
 		CreateDataBuffers();
@@ -187,9 +185,6 @@ void UHDeferredShadingRenderer::Release()
 			UH_SAFE_RELEASE(TopLevelAS[Idx]);
 			TopLevelAS[Idx].reset();
 		}
-
-		vkDestroyCommandPool(LogicalDevice, BundlePools[Idx], nullptr);
-		RendererBundles[Idx].clear();
 	}
 
 	UH_SAFE_RELEASE(IndicesTypeBuffer);
@@ -402,43 +397,6 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 #if WITH_DEBUG
 	DebugViewShader = UHDebugViewShader(GraphicInterface, "DebugViewShader", PostProcessPassObj[0].RenderPass);
 #endif
-}
-
-void UHDeferredShadingRenderer::PrepareRenderingBundles()
-{
-	if (!CurrentScene)
-	{
-		return;
-	}
-
-	// now create command buffer
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
-		UHQueueFamily QueueFamily = GraphicInterface->GetQueueFamily();
-
-		VkCommandPoolCreateInfo PoolInfo{};
-		PoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		PoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		PoolInfo.queueFamilyIndex = QueueFamily.GraphicsFamily.value();
-
-		if (vkCreateCommandPool(LogicalDevice, &PoolInfo, nullptr, &BundlePools[Idx]) != VK_SUCCESS)
-		{
-			UHE_LOG(L"Failed to create bundle pool!\n");
-		}
-
-		VkCommandBufferAllocateInfo AllocInfo{};
-		AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		AllocInfo.commandPool = BundlePools[Idx];
-		AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-		AllocInfo.commandBufferCount = static_cast<uint32_t>(CurrentScene->GetAllRendererCount()) * NumOfBundlePass;
-		RendererBundles[Idx].resize(AllocInfo.commandBufferCount);
-
-		if (vkAllocateCommandBuffers(LogicalDevice, &AllocInfo, RendererBundles[Idx].data()) != VK_SUCCESS)
-		{
-			UHE_LOG(L"Failed to allocate command buffers!\n");
-		}
-	}
 }
 
 bool UHDeferredShadingRenderer::CreateMainCommandPoolAndBuffer()
@@ -723,127 +681,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	}
 	DebugViewShader.BindSampler(PointClampedSampler, 1);
 #endif
-}
-
-void UHDeferredShadingRenderer::UpdateRenderingBundles()
-{
-	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetOpaqueRenderers();
-	for (const UHMeshRendererComponent* Renderer : Renderers)
-	{
-		UHMesh* Mesh = Renderer->GetMesh();
-		if (Renderer->GetMaterial()->IsSkybox())
-		{
-			continue;
-		}
-
-		int32_t RendererIdx = Renderer->GetBufferDataIndex();
-		const UHDepthPassShader& DepthShader = DepthPassShaders[RendererIdx];
-		const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
-		const UHMotionObjectPassShader& MotionShader = MotionObjectShaders[RendererIdx];
-
-		for (int32_t Frame = 0; Frame < GMaxFrameInFlight; Frame++)
-		{
-			// record depth pass
-			if (bEnableDepthPrePass)
-			{
-				VkCommandBufferInheritanceInfo InheritanceInfo{};
-				InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-				InheritanceInfo.renderPass = DepthPassObj.RenderPass;
-				InheritanceInfo.framebuffer = DepthPassObj.FrameBuffer;
-
-				UHGraphicBuilder GraphBuilder(GraphicInterface, RendererBundles[Frame][RendererIdx * 3]);
-
-				GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
-				GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
-
-				if (GraphicInterface->IsDebugLayerEnabled())
-				{
-					// silence the viewport setting, it's also fine to not set it after testing
-					GraphBuilder.SetViewport(RenderResolution);
-					GraphBuilder.SetScissor(RenderResolution);
-				}
-
-				// bind pipelines
-				GraphBuilder.BindGraphicState(DepthShader.GetState());
-				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(Frame));
-
-				// draw call
-				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
-
-				GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-				GraphBuilder.EndCommandBuffer();
-			}
-
-			// record base pass
-			{
-				VkCommandBufferInheritanceInfo InheritanceInfo{};
-				InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-				InheritanceInfo.renderPass = BasePassObj.RenderPass;
-				InheritanceInfo.framebuffer = BasePassObj.FrameBuffer;
-
-				UHGraphicBuilder GraphBuilder(GraphicInterface, RendererBundles[Frame][RendererIdx * 3 + 1]);
-
-				GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
-				GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
-
-				if (GraphicInterface->IsDebugLayerEnabled())
-				{
-					// silence the viewport setting, it's also fine to not set it after testing
-					GraphBuilder.SetViewport(RenderResolution);
-					GraphBuilder.SetScissor(RenderResolution);
-				}
-
-				// bind pipelines
-				GraphBuilder.BindGraphicState(BaseShader.GetState());
-				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(Frame));
-
-				// draw call
-				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
-
-				GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-				GraphBuilder.EndCommandBuffer();
-			}
-
-			// record motion pass
-			{
-				VkCommandBufferInheritanceInfo InheritanceInfo{};
-				InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-				InheritanceInfo.renderPass = MotionObjectPassObj.RenderPass;
-				InheritanceInfo.framebuffer = MotionObjectPassObj.FrameBuffer;
-
-				UHGraphicBuilder GraphBuilder(GraphicInterface, RendererBundles[Frame][RendererIdx * 3 + 2]);
-
-				GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
-				GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
-
-				if (GraphicInterface->IsDebugLayerEnabled())
-				{
-					// silence the viewport setting, it's also fine to not set it after testing
-					GraphBuilder.SetViewport(RenderResolution);
-					GraphBuilder.SetScissor(RenderResolution);
-				}
-
-				// bind pipelines
-				GraphBuilder.BindGraphicState(MotionShader.GetState());
-				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(Frame));
-
-				// draw call
-				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
-
-				GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-				GraphBuilder.EndCommandBuffer();
-			}
-		}
-	}
 }
 
 void UHDeferredShadingRenderer::ReleaseShaders()
