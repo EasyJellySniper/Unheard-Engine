@@ -2,7 +2,6 @@
  Squall's custom Vulkan engine. <br>
  MIT licensed. <br>
 
-2022-12-08: Add draw bundle (secondary command buffer) usage.
 2022-12-02: Add ray tracing occlusion test. Bugfixes for texture index. Geometry shader compability.
 2022-12-01: Add frustum culling. Enhance const corretness. Optimize a few vk command calls.
 2022-11-30: Add depth prepass. (Default disabled) Remove a few bad usages of global variables. <br>
