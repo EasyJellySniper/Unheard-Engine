@@ -55,8 +55,8 @@ void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& G
 
 	// trace!
 	VkExtent2D RTOTExtent;
-	RTOTExtent.width = RenderResolution.width / 4;
-	RTOTExtent.height = RenderResolution.height / 4;
+	RTOTExtent.width = RenderResolution.width / 2;
+	RTOTExtent.height = RenderResolution.height / 2;
 	GraphBuilder.TraceRay(RTOTExtent, RTOcclusionTestShader.GetRayGenTable(), RTOcclusionTestShader.GetHitGroupTable());
 
 #if WITH_DEBUG

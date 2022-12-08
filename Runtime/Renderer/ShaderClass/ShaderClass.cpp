@@ -137,52 +137,52 @@ void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t Dst
 	}
 }
 
-UHShader* UHShaderClass::GetRayGenShader()
+UHShader* UHShaderClass::GetRayGenShader() const
 {
 	return RayGenShader;
 }
 
-UHShader* UHShaderClass::GetClosestShader()
+UHShader* UHShaderClass::GetClosestShader() const
 {
 	return ClosestHitShader;
 }
 
-UHShader* UHShaderClass::GetAnyHitShader()
+UHShader* UHShaderClass::GetAnyHitShader() const
 {
 	return AnyHitShader;
 }
 
-UHGraphicState* UHShaderClass::GetState()
+UHGraphicState* UHShaderClass::GetState() const
 {
 	return GraphicState;
 }
 
-UHGraphicState* UHShaderClass::GetRTState()
+UHGraphicState* UHShaderClass::GetRTState() const
 {
 	return RTState;
 }
 
-UHRenderBuffer<UHShaderRecord>* UHShaderClass::GetRayGenTable()
+UHRenderBuffer<UHShaderRecord>* UHShaderClass::GetRayGenTable() const
 {
 	return RayGenTable.get();
 }
 
-UHRenderBuffer<UHShaderRecord>* UHShaderClass::GetHitGroupTable()
+UHRenderBuffer<UHShaderRecord>* UHShaderClass::GetHitGroupTable() const
 {
 	return HitGroupTable.get();
 }
 
-VkDescriptorSetLayout UHShaderClass::GetDescriptorSetLayout()
+VkDescriptorSetLayout UHShaderClass::GetDescriptorSetLayout() const
 {
 	return SetLayoutTable[TypeIndexCache];
 }
 
-VkPipelineLayout UHShaderClass::GetPipelineLayout()
+VkPipelineLayout UHShaderClass::GetPipelineLayout() const
 {
 	return PipelineLayoutTable[TypeIndexCache];
 }
 
-VkDescriptorSet UHShaderClass::GetDescriptorSet(int32_t FrameIdx)
+VkDescriptorSet UHShaderClass::GetDescriptorSet(int32_t FrameIdx) const
 {
 	return DescriptorSets[FrameIdx];
 }

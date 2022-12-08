@@ -91,17 +91,17 @@ public:
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame);
 
-	UHShader* GetRayGenShader();
-	UHShader* GetClosestShader();
-	UHShader* GetAnyHitShader();
-	UHGraphicState* GetState();
-	UHGraphicState* GetRTState();
-	UHRenderBuffer<UHShaderRecord>* GetRayGenTable();
-	UHRenderBuffer<UHShaderRecord>* GetHitGroupTable();
+	UHShader* GetRayGenShader() const;
+	UHShader* GetClosestShader() const;
+	UHShader* GetAnyHitShader() const;
+	UHGraphicState* GetState() const;
+	UHGraphicState* GetRTState() const;
+	UHRenderBuffer<UHShaderRecord>* GetRayGenTable() const;
+	UHRenderBuffer<UHShaderRecord>* GetHitGroupTable() const;
 
-	VkDescriptorSetLayout GetDescriptorSetLayout();
-	VkPipelineLayout GetPipelineLayout();
-	VkDescriptorSet GetDescriptorSet(int32_t FrameIdx);
+	VkDescriptorSetLayout GetDescriptorSetLayout() const;
+	VkPipelineLayout GetPipelineLayout() const;
+	VkDescriptorSet GetDescriptorSet(int32_t FrameIdx) const;
 
 protected:
 	// add layout binding

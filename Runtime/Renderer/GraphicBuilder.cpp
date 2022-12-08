@@ -65,13 +65,18 @@ void UHGraphicBuilder::ResetCommandBuffer()
 	vkResetCommandBuffer(CmdList, 0);
 }
 
-void UHGraphicBuilder::BeginCommandBuffer()
+void UHGraphicBuilder::BeginCommandBuffer(VkCommandBufferInheritanceInfo* InInfo)
 {
 	// begin command buffer
 	VkCommandBufferBeginInfo BeginInfo{};
 	BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	BeginInfo.flags = 0; // Optional
-	BeginInfo.pInheritanceInfo = nullptr; // Optional
+
+	// assume secondary cmd is in render pass
+	if (InInfo != nullptr)
+	{
+		BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		BeginInfo.pInheritanceInfo = InInfo;
+	}
 
 	if (vkBeginCommandBuffer(CmdList, &BeginInfo) != VK_SUCCESS)
 	{
@@ -88,14 +93,16 @@ void UHGraphicBuilder::EndCommandBuffer()
 }
 
 // begin a pass
-void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, VkClearValue InClearValue)
+void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, VkClearValue InClearValue
+	, VkSubpassContents InSubPassContent)
 {
 	std::vector<VkClearValue> ClearValue{ InClearValue };
-	BeginRenderPass(InRenderPass, InFramebuffer, InExtent, ClearValue);
+	BeginRenderPass(InRenderPass, InFramebuffer, InExtent, ClearValue, InSubPassContent);
 }
 
 // begin a pass
-void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue)
+void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue
+	, VkSubpassContents InSubPassContent)
 {
 	// begin render pass
 	VkRenderPassBeginInfo RenderPassInfo{};
@@ -108,14 +115,15 @@ void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer 
 	RenderPassInfo.pClearValues = InClearValue.data();
 
 	// this should be just clearing the buffer
-	vkCmdBeginRenderPass(CmdList, &RenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(CmdList, &RenderPassInfo, InSubPassContent);
 }
 
 // begin a pass (without clearing)
-void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent)
+void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent
+	, VkSubpassContents InSubPassContent)
 {
 	std::vector<VkClearValue> ClearValue{};
-	BeginRenderPass(InRenderPass, InFramebuffer, InExtent, ClearValue);
+	BeginRenderPass(InRenderPass, InFramebuffer, InExtent, ClearValue, InSubPassContent);
 }
 
 // end a pass
@@ -249,7 +257,8 @@ void UHGraphicBuilder::SetScissor(VkExtent2D InExtent)
 // bind VB
 void UHGraphicBuilder::BindVertexBuffer(VkBuffer InBuffer)
 {
-	if (PrevVertexBuffer == InBuffer)
+	// need to set VB as null if it's really null
+	if (PrevVertexBuffer == InBuffer && InBuffer != nullptr)
 	{
 		return;
 	}

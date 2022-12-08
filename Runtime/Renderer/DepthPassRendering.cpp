@@ -45,7 +45,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 		}
 	#endif
 
-		UHDepthPassShader& DepthShader = DepthPassShaders[RendererIdx];
+		const UHDepthPassShader& DepthShader = DepthPassShaders[RendererIdx];
 
 		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");

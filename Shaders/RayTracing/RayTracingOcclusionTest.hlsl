@@ -5,7 +5,7 @@ RaytracingAccelerationStructure TLAS : register(t1);
 RWByteAddressBuffer OcclusionVisible : register(u2);
 
 // assume it's tested with a half resolution
-static const float GScale = 4;
+static const float GScale = 2;
 
 [shader("raygeneration")]
 void RTOcclusionTestRayGen()

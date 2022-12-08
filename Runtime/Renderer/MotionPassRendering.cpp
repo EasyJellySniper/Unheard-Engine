@@ -62,7 +62,8 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 			UHE_LOG(L"[MotionObjectPass] Can't find motion object pass shader for material: \n");
 			continue;
 		}
-		UHMotionObjectPassShader& MotionShader = MotionObjectShaders[RendererIdx];
+
+		const UHMotionObjectPassShader& MotionShader = MotionObjectShaders[RendererIdx];
 
 		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");

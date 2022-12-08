@@ -61,7 +61,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 		}
 	#endif
 
-		UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
+		const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
 
 		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
