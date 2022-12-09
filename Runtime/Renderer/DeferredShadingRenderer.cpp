@@ -50,6 +50,9 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
+	// sync config
+	bParallelSubmissionGT = ConfigInterface->RenderingSetting().bParallelSubmission;
+
 	// if updating has a huge spike in the future, consider assign the tasks to different worker thread
 	UploadDataBuffers();
 	FrustumCulling();
@@ -66,13 +69,14 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 		return;
 	}
 
+	// sync value before wake up RT thread
+	bParallelSubmissionRT = bParallelSubmissionGT;
+
 	// wake render thread
-	std::unique_lock<std::mutex> Lock(RenderMutex);
-	bIsThisFrameRenderedShared = false;
-	WaitRenderThread.notify_one();
+	RenderThread->WakeThread();
 
 	// wait render thread done
-	RenderThreadFinished.wait(Lock, [this] {return bIsThisFrameRenderedShared; });
+	RenderThread->WaitTask();
 }
 
 #if WITH_DEBUG
@@ -315,10 +319,9 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	while (true)
 	{
 		// wait until main thread notify
-		std::unique_lock<std::mutex> Lock(RenderMutex);
-		WaitRenderThread.wait(Lock, [this] {return !bIsThisFrameRenderedShared; });
+		RenderThread->WaitNotify();
 
-		if (bIsRenderThreadDoneShared)
+		if (RenderThread->IsTermindate())
 		{
 			break;
 		}
@@ -326,6 +329,13 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	#if WITH_DEBUG
 		RenderThreadProfile.Begin();
 	#endif
+
+		// collect worker bundle for this frame
+		if (bParallelSubmissionRT)
+		{
+			DepthParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+			BaseParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+		}
 
 		// prepare necessary variable
 		UHGraphicBuilder GraphBuilder(GraphicInterface, MainCommandBuffers[CurrentFrame]);
@@ -379,8 +389,36 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		CurrentFrame = (CurrentFrame + 1) % GMaxFrameInFlight;
 
 		// tell main thread to continue
-		bIsThisFrameRenderedShared = true;
-		Lock.unlock();
-		RenderThreadFinished.notify_one();
+		RenderThread->NotifyTaskDone();
+	}
+}
+
+void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
+{
+	/** Worker steps **/
+	// Specify the task id before wake it
+	// doing the task
+	// notify finished
+	UHE_LOG(L"Worker thread " + std::to_wstring(ThreadIdx) + L" created.\n");
+
+	while (true)
+	{
+		WorkerThreads[ThreadIdx]->WaitNotify();
+
+		if (WorkerThreads[ThreadIdx]->IsTermindate())
+		{
+			break;
+		}
+
+		if (RenderTask == UHRenderTask::DepthPassTask)
+		{
+			DepthPassTask(ThreadIdx);
+		}
+		else if (RenderTask == UHRenderTask::BasePassTask)
+		{
+			BasePassTask(ThreadIdx);
+		}
+
+		WorkerThreads[ThreadIdx]->NotifyTaskDone();
 	}
 }

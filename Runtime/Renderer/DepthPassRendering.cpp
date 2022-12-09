@@ -20,32 +20,119 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 	GraphBuilder.SetViewport(RenderResolution);
 	GraphBuilder.SetScissor(RenderResolution);
 
-	// begin as secondary
-	GraphBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue);
-
-	// get all opaque renderers from scene
-	std::vector<VkCommandBuffer> CmdToExecute;
-	for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
+	// begin render pass based on flag
+	if (bParallelSubmissionRT)
 	{
+		GraphBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	}
+	else
+	{
+		GraphBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue);
+	}
+
+	if (bParallelSubmissionRT)
+	{
+#if WITH_DEBUG
+		memset(ThreadDrawCalls.data(), 0, ThreadDrawCalls.size() * NumWorkerThreads);
+#endif
+
+		// wake all worker threads
+		RenderTask = UHRenderTask::DepthPassTask;
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		{
+			WorkerThreads[I]->WakeThread();
+		}
+
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		{
+			WorkerThreads[I]->WaitTask();
+		}
+
+#if WITH_DEBUG
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		{
+			GraphBuilder.DrawCalls += ThreadDrawCalls[I];
+		}
+#endif
+
+		// execute all recorded batches
+		GraphBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
+	}
+	else
+	{
+		// render all opaque renderers from scene
+		for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
+		{
+			const UHMaterial* Mat = Renderer->GetMaterial();
+			UHMesh* Mesh = Renderer->GetMesh();
+
+			int32_t RendererIdx = Renderer->GetBufferDataIndex();
+
+#if WITH_DEBUG
+			if (DepthPassShaders.find(RendererIdx) == DepthPassShaders.end())
+			{
+				// unlikely to happen, but printing a message for debug
+				UHE_LOG(L"[RenderDepthPass] Can't find base pass shader for material: \n");
+				continue;
+			}
+#endif
+
+			const UHDepthPassShader& DepthShader = DepthPassShaders[RendererIdx];
+
+			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+				std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+
+			// bind pipelines
+			GraphBuilder.BindGraphicState(DepthShader.GetState());
+			GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+			GraphBuilder.BindIndexBuffer(Mesh);
+			GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrame));
+
+			// draw call
+			GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+
+			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		}
+	}
+
+	GraphBuilder.EndRenderPass();
+
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::DepthPrePass]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
+
+	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+}
+
+// depth pass task, called by worker thread
+void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
+{
+	// simply separate buffer recording into N threads
+	int32_t RendererCount = static_cast<int32_t>(OpaquesToRender.size()) / NumWorkerThreads;
+	int32_t StartIdx = RendererCount * ThreadIdx;
+	int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? static_cast<int32_t>(OpaquesToRender.size()) : StartIdx + RendererCount;
+
+	VkCommandBufferInheritanceInfo InheritanceInfo{};
+	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	InheritanceInfo.renderPass = DepthPassObj.RenderPass;
+	InheritanceInfo.framebuffer = DepthPassObj.FrameBuffer;
+
+	UHGraphicBuilder GraphBuilder(GraphicInterface, DepthParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrame]);
+	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
+
+	// silence the false positive error regarding vp and scissor
+	if (GraphicInterface->IsDebugLayerEnabled())
+	{
+		GraphBuilder.SetViewport(RenderResolution);
+		GraphBuilder.SetScissor(RenderResolution);
+	}
+
+	for (int32_t I = StartIdx; I < EndIdx; I++)
+	{
+		const UHMeshRendererComponent* Renderer = OpaquesToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
 		UHMesh* Mesh = Renderer->GetMesh();
-
-		// skip materials which are not default lit
-		if (Mat->GetShadingModel() != UHShadingModel::DefaultLit)
-		{
-			continue;
-		}
-
 		int32_t RendererIdx = Renderer->GetBufferDataIndex();
-
-	#if WITH_DEBUG
-		if (DepthPassShaders.find(RendererIdx) == DepthPassShaders.end())
-		{
-			// unlikely to happen, but printing a message for debug
-			UHE_LOG(L"[RenderDepthPass] Can't find base pass shader for material: \n");
-			continue;
-		}
-	#endif
 
 		const UHDepthPassShader& DepthShader = DepthPassShaders[RendererIdx];
 
@@ -64,11 +151,8 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 	}
 
-	GraphBuilder.EndRenderPass();
-
+	GraphBuilder.EndCommandBuffer();
 #if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::DepthPrePass]->EndTimeStamp(GraphBuilder.GetCmdList());
+	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
 #endif
-
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 }

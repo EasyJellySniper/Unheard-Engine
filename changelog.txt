@@ -125,6 +125,7 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 02-12-2022: Try to add ray tracing based occlusion test. Finished the RTOT implementation, it could be useful in some cases but further tests are needed. Fixed some serious bugs regarding texture index, didn't set them properly!
 
+09-12-2022: Added parallel submission feature! Only apply to heavy rendering pass now. Create a UHThread class as thread wrapper.
 
 
 

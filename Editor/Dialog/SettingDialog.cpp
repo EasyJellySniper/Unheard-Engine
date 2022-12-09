@@ -46,6 +46,8 @@ UHSettingDialog::UHSettingDialog(HINSTANCE InInstance, HWND InWindow, UHConfigMa
     ControlCallbacks[IDC_ENABLELAYERVALIDATION] = { &UHSettingDialog::ControlLayerValidation };
     ControlCallbacks[IDC_ENABLEGPUTIMING] = { &UHSettingDialog::ControlGPUTiming };
     ControlCallbacks[IDC_ENABLEDEPTHPREPASS] = { &UHSettingDialog::ControlDepthPrePass };
+    ControlCallbacks[IDC_ENABLEPARALLELSUBMISSION] = { &UHSettingDialog::ControlParallelSubmission };
+    ControlCallbacks[IDC_PARALLELTHREADS] = { &UHSettingDialog::ControlParallelThread };
     ControlCallbacks[IDC_RTSHADOWQUALITY] = { &UHSettingDialog::ControlShadowQuality };
 }
 
@@ -108,6 +110,8 @@ void UHSettingDialog::ShowDialog()
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPULABELING, RenderingSettings.bEnableGPULabeling);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLELAYERVALIDATION, RenderingSettings.bEnableLayerValidation);
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPUTIMING, RenderingSettings.bEnableGPUTiming);
+        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEPARALLELSUBMISSION, RenderingSettings.bParallelSubmission);
+        UHEditorUtil::SetEditControl(SettingWindow, IDC_PARALLELTHREADS, std::to_wstring(RenderingSettings.ParallelThreads));
         UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEDEPTHPREPASS, RenderingSettings.bEnableDepthPrePass);
 
         std::vector<std::wstring> ShadowQualities = { L"Full", L"Half", L"Quarter" };
@@ -293,6 +297,18 @@ void UHSettingDialog::ControlDepthPrePass()
 {
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
     RenderingSettings.bEnableDepthPrePass = !RenderingSettings.bEnableDepthPrePass;
+}
+
+void UHSettingDialog::ControlParallelSubmission()
+{
+    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    RenderingSettings.bParallelSubmission = !RenderingSettings.bParallelSubmission;
+}
+
+void UHSettingDialog::ControlParallelThread()
+{
+    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    RenderingSettings.ParallelThreads = UHEditorUtil::GetEditControl<int32_t>(SettingWindow, IDC_PARALLELTHREADS);
 }
 
 void UHSettingDialog::ControlShadowQuality()

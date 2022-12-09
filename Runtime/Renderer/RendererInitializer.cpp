@@ -12,8 +12,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, RTShadowExtent(VkExtent2D())
 	, MainCommandPool(VK_NULL_HANDLE)
 	, CurrentFrame(0)
-	, bIsThisFrameRenderedShared(true)
-	, bIsRenderThreadDoneShared(false)
 	, bIsResetNeededShared(false)
 	, CurrentScene(nullptr)
 	, SystemConstantsCPU(UHSystemConstants())
@@ -36,6 +34,11 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, RTInstanceCount(0)
 	, IndicesTypeBuffer(nullptr)
 	, OcclusionVisibleBuffer(nullptr)
+	, NumWorkerThreads(0)
+	, RenderThread(nullptr)
+	, bParallelSubmissionGT(false)
+	, bParallelSubmissionRT(false)
+	, RenderTask(UHRenderTask::None)
 #if WITH_DEBUG
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
@@ -94,6 +97,7 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 
 	// config setup
 	bEnableDepthPrePass = ConfigInterface->RenderingSetting().bEnableDepthPrePass;
+	NumWorkerThreads = ConfigInterface->RenderingSetting().ParallelThreads;
 
 	// shared sampler requests
 	UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
@@ -123,13 +127,22 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		{
 			GPUTimeQueries[Idx] = GraphicInterface->RequestGPUQuery(2, VK_QUERY_TYPE_TIMESTAMP);
 		}
+		ThreadDrawCalls.resize(NumWorkerThreads);
 	#endif
 
 		// reserve enough space for renderers
 		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
 
-		// init render thread, it will wait at the beginning
-		RenderThread = std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this);
+		// init threads, it will wait at the beginning
+		RenderThread = std::make_unique<UHThread>();
+		RenderThread->BeginThread(std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this));
+		WorkerThreads.resize(NumWorkerThreads);
+
+		for (int32_t Idx = 0; Idx < NumWorkerThreads; Idx++)
+		{
+			WorkerThreads[Idx] = std::make_unique<UHThread>();
+			WorkerThreads[Idx]->BeginThread(std::thread(&UHDeferredShadingRenderer::WorkerThreadLoop, this, Idx));
+		}
 	}
 
 	return bIsRendererSuccess;
@@ -143,13 +156,14 @@ void UHDeferredShadingRenderer::Release()
 	GraphicInterface->WaitGPU();
 
 	// end render thread
-	if (RenderThread.joinable())
+	RenderThread->EndThread();
+	RenderThread.reset();
+	for (auto& WorkerThread : WorkerThreads)
 	{
-		bIsThisFrameRenderedShared = false;
-		bIsRenderThreadDoneShared = true;
-		WaitRenderThread.notify_one();
-		RenderThread.join();
+		WorkerThread->EndThread();
+		WorkerThread.reset();
 	}
+	WorkerThreads.clear();
 
 	// release GBuffers
 	RelaseRenderingBuffers();
@@ -194,6 +208,8 @@ void UHDeferredShadingRenderer::Release()
 	OcclusionVisibleBuffer.reset();
 
 	vkDestroyCommandPool(LogicalDevice, MainCommandPool, nullptr);
+	DepthParallelSubmitter.Release();
+	BaseParallelSubmitter.Release();
 }
 
 void UHDeferredShadingRenderer::PrepareMeshes()
@@ -429,6 +445,10 @@ bool UHDeferredShadingRenderer::CreateMainCommandPoolAndBuffer()
 		UHE_LOG(L"Failed to allocate command buffers!\n");
 		return false;
 	}
+
+	// create parallel submitter
+	DepthParallelSubmitter.Initialize(LogicalDevice, QueueFamily, NumWorkerThreads);
+	BaseParallelSubmitter.Initialize(LogicalDevice, QueueFamily, NumWorkerThreads);
 
 	return true;
 }

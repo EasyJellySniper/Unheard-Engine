@@ -69,6 +69,8 @@ public:
 		, bEnableLayerValidation(true)
 		, bEnableGPUTiming(true)
 		, bEnableDepthPrePass(false)
+		, bParallelSubmission(false)
+		, ParallelThreads(0)
 		, RTDirectionalShadowQuality(0)
 	{
 
@@ -83,5 +85,7 @@ public:
 	bool bEnableLayerValidation;
 	bool bEnableGPUTiming;
 	bool bEnableDepthPrePass;
+	bool bParallelSubmission;
+	int32_t ParallelThreads;
 	int32_t RTDirectionalShadowQuality;
 };

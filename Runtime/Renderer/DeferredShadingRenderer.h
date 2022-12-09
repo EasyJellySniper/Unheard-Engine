@@ -9,10 +9,10 @@
 #include "../Classes/GraphicState.h"
 #include "../Classes/Sampler.h"
 #include "../Classes/GPUQuery.h"
+#include "../Classes/Thread.h"
 #include "RenderingTypes.h"
 #include "GraphicBuilder.h"
-#include <thread>
-#include <mutex>
+#include "ParallelSubmitter.h"
 #include <memory>
 #include <unordered_map>
 
@@ -34,6 +34,13 @@
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
 #include "../../Editor/Profiler.h"
 #endif
+
+enum UHRenderTask
+{
+	None = -1,
+	DepthPassTask,
+	BasePassTask
+};
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
 class UHDeferredShadingRenderer
@@ -64,6 +71,7 @@ public:
 private:
 	/************************************************ functions ************************************************/
 	void RenderThreadLoop();
+	void WorkerThreadLoop(int32_t ThreadIdx);
 
 	// prepare meshes
 	void PrepareMeshes();
@@ -131,6 +139,11 @@ private:
 	uint32_t RenderSceneToSwapChain(UHGraphicBuilder& GraphBuilder);
 
 
+	/************************************************ rendering task functions ************************************************/
+	void DepthPassTask(int32_t ThreadIdx);
+	void BasePassTask(int32_t ThreadIdx);
+
+
 	/************************************************ variables ************************************************/
 
 	UHGraphic* GraphicInterface;
@@ -146,6 +159,9 @@ private:
 	// similar to D3D12 command list
 	std::array<VkCommandBuffer, GMaxFrameInFlight> MainCommandBuffers;
 
+	UHParallelSubmitter DepthParallelSubmitter;
+	UHParallelSubmitter BaseParallelSubmitter;
+
 	// similar to D3D12 Fence (GPU Fence)
 	std::array<VkSemaphore, GMaxFrameInFlight> SwapChainAvailableSemaphores;
 	std::array<VkSemaphore, GMaxFrameInFlight> RenderFinishedSemaphores;
@@ -156,16 +172,14 @@ private:
 	// current frame count
 	uint32_t CurrentFrame = 0;
 
-	// UH engine will always use a thread for rendering
-	std::thread RenderThread;
-	std::condition_variable WaitRenderThread;
-	std::condition_variable RenderThreadFinished;
-	std::mutex RenderMutex;
-
-	// shared variables
-	bool bIsThisFrameRenderedShared;
-	bool bIsRenderThreadDoneShared;
+	// Render thread defines, UH engine will always use a thread for rendering, and doing parallel submission with worker threads
+	std::unique_ptr<UHThread> RenderThread;
+	int32_t NumWorkerThreads;
+	std::vector<std::unique_ptr<UHThread>> WorkerThreads;
 	bool bIsResetNeededShared;
+	UHRenderTask RenderTask;
+	bool bParallelSubmissionGT;
+	bool bParallelSubmissionRT;
 
 	// current scene
 	UHScene* CurrentScene;
@@ -254,6 +268,7 @@ private:
 	// profiles
 	float RenderThreadTime;
 	int32_t DrawCalls;
+	std::vector<int32_t> ThreadDrawCalls;
 	std::array<UHGPUQuery*, UHRenderPassTypes::UHRenderPassMax> GPUTimeQueries;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GPUTimes;
 #endif

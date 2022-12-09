@@ -46,7 +46,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 	// begin for secondary cmd
 	GraphBuilder.BeginRenderPass(MotionObjectPassObj.RenderPass, MotionObjectPassObj.FrameBuffer, RenderResolution);
 
-	std::vector<VkCommandBuffer> CmdToExecute;
 	for (UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMaterial* Mat = Renderer->GetMaterial();

@@ -20,13 +20,6 @@ enum UHConstantTypes
 	ConstantTypeMax
 };
 
-// shading model define, this is mainly used for creating rendering related stuff, e.g. DefaultLitMeshBuffer
-enum UHShadingModel
-{
-	DefaultLit,
-	ShadingModelMax
-};
-
 // texture type used for material
 enum UHMaterialTextureType
 {

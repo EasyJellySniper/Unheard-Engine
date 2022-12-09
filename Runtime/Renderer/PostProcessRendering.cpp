@@ -54,12 +54,11 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 #endif
 
 	// -------------------------- Temporal AA --------------------------//
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
+#endif
 	if (ConfigInterface->RenderingSetting().bTemporalAA)
 	{
-	#if WITH_DEBUG
-		GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
-	#endif
-
 		GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		if (!bIsTemporalReset)
 		{
@@ -74,11 +73,10 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 		GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 		bIsTemporalReset = false;
-
-	#if WITH_DEBUG
-		GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->EndTimeStamp(GraphBuilder.GetCmdList());
-	#endif
 	}
+#if WITH_DEBUG
+	GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->EndTimeStamp(GraphBuilder.GetCmdList());
+#endif
 
 #if WITH_DEBUG
 	if (DebugViewIndex > 0)

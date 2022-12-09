@@ -72,7 +72,6 @@ public:
 	void SetName(std::string InName);
 	void SetCullMode(VkCullModeFlagBits InCullMode);
 	void SetBlendMode(UHBlendMode InBlendMode);
-	void SetShadingModel(UHShadingModel InShadingModel);
 	void SetMaterialProps(UHMaterialProperty InProp);
 	void SetTex(UHMaterialTextureType InType, UHTexture* InTex);
 	void SetSampler(UHMaterialTextureType InType, UHSampler* InSampler);
@@ -84,7 +83,6 @@ public:
 	VkCullModeFlagBits GetCullMode() const;
 	UHBlendMode GetBlendMode() const;
 	UHMaterialProperty GetMaterialProps() const;
-	UHShadingModel GetShadingModel() const;
 	bool IsSkybox() const;
 
 	std::string GetTexFileName(UHMaterialTextureType InType) const;
@@ -104,7 +102,6 @@ private:
 	// material state variables
 	VkCullModeFlagBits CullMode;
 	UHBlendMode BlendMode;
-	UHShadingModel ShadingModel;
 
 	// skybox variable, the tex cube will be used as reflection source if it's not a skybox material
 	bool bIsSkybox;

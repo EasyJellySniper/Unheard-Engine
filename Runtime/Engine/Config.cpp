@@ -38,6 +38,10 @@ void UHConfigManager::LoadConfig()
 			EngineSettings.FPSLimit = UHUtilities::ReadINIData<float>(FileIn, "FPSLimit");
 			EngineSettings.MeshBufferMemoryBudgetMB = UHUtilities::ReadINIData<float>(FileIn, "MeshBufferMemoryBudgetMB");
 			EngineSettings.ImageMemoryBudgetMB = UHUtilities::ReadINIData<float>(FileIn, "ImageMemoryBudgetMB");
+
+			// clamp a few parameters
+			EngineSettings.MeshBufferMemoryBudgetMB = std::clamp(EngineSettings.MeshBufferMemoryBudgetMB, 0.1f, std::numeric_limits<float>::max());
+			EngineSettings.ImageMemoryBudgetMB = std::clamp(EngineSettings.ImageMemoryBudgetMB, 256.0f, std::numeric_limits<float>::max());
 		}
 
 		if (UHUtilities::SeekINISection(FileIn, "RenderingSettings"))
@@ -51,7 +55,14 @@ void UHConfigManager::LoadConfig()
 			RenderingSettings.bEnableLayerValidation = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableLayerValidation");
 			RenderingSettings.bEnableGPUTiming = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPUTiming");
 			RenderingSettings.bEnableDepthPrePass = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableDepthPrePass");
+			RenderingSettings.bParallelSubmission = UHUtilities::ReadINIData<int32_t>(FileIn, "bParallelSubmission");
+			RenderingSettings.ParallelThreads = UHUtilities::ReadINIData<int32_t>(FileIn, "ParallelThreads");
 			RenderingSettings.RTDirectionalShadowQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTDirectionalShadowQuality");
+
+			// clamp a few parameters
+			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
+			RenderingSettings.RenderHeight = std::clamp(RenderingSettings.RenderHeight, 480, 16384);
+			RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, 8);
 		}
 	}
 	FileIn.close();
@@ -94,6 +105,8 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "bEnableLayerValidation", RenderingSettings.bEnableLayerValidation);
 		UHUtilities::WriteINIData(FileOut, "bEnableGPUTiming", RenderingSettings.bEnableGPUTiming);
 		UHUtilities::WriteINIData(FileOut, "bEnableDepthPrePass", RenderingSettings.bEnableDepthPrePass);
+		UHUtilities::WriteINIData(FileOut, "bParallelSubmission", RenderingSettings.bParallelSubmission);
+		UHUtilities::WriteINIData(FileOut, "ParallelThreads", RenderingSettings.ParallelThreads);
 		UHUtilities::WriteINIData(FileOut, "RTDirectionalShadowQuality", RenderingSettings.RTDirectionalShadowQuality);
 	}
 	FileOut.close();

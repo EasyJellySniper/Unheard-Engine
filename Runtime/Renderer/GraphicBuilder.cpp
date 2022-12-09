@@ -517,9 +517,4 @@ void UHGraphicBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToE
 
 	// push secondary cmds
 	vkCmdExecuteCommands(CmdList, static_cast<uint32_t>(CmdToExecute.size()), CmdToExecute.data());
-
-#if WITH_DEBUG
-	// assume the bundle has draw calls for now
-	DrawCalls += static_cast<int32_t>(CmdToExecute.size());
-#endif
 }

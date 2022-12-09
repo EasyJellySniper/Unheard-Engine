@@ -8,7 +8,6 @@
 UHMaterial::UHMaterial()
 	: CullMode(VK_CULL_MODE_NONE)
 	, BlendMode(UHBlendMode::Opaque)
-	, ShadingModel(UHShadingModel::DefaultLit)
 	, MaterialProps(UHMaterialProperty())
 	, bIsSkybox(false)
 {
@@ -112,11 +111,6 @@ void UHMaterial::SetBlendMode(UHBlendMode InBlendMode)
 	BlendMode = InBlendMode;
 }
 
-void UHMaterial::SetShadingModel(UHShadingModel InShadingModel)
-{
-	ShadingModel = InShadingModel;
-}
-
 void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
 {
 	MaterialProps = InProp;
@@ -166,11 +160,6 @@ UHBlendMode UHMaterial::GetBlendMode() const
 UHMaterialProperty UHMaterial::GetMaterialProps() const
 {
 	return MaterialProps;
-}
-
-UHShadingModel UHMaterial::GetShadingModel() const
-{
-	return ShadingModel;
 }
 
 bool UHMaterial::IsSkybox() const
