@@ -12,7 +12,7 @@ Brutal test with 13435 draw calls, cost only 2.6 - 3.6 ms with parallel submissi
 - PrePass Z rendering.
 - FPS limiter.
 - Memory optimization.
-- Parallel submission.
+- Parallel command buffer recording.
 
 ![IMAGE ALT TEXT HERE](https://i.imgur.com/DzTlln4.jpg)
 <br><br>
