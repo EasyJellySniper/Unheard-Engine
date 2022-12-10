@@ -12,13 +12,6 @@ void RTOcclusionTestRayGen()
 {
 	uint2 PixelCoord = DispatchRaysIndex().xy;
 
-	// marking the result as non-visible
-	uint Index = PixelCoord.x + UHResolution.x / GScale * PixelCoord.y;
-	if (Index < UHNumRTInstances)
-	{
-		OcclusionVisible.Store(Index * 4, 0);
-	}
-
 	// to UV
 	float2 ScreenUV = (PixelCoord + 0.5f) * UHResolution.zw * GScale;
 	RayDesc CameraRay = GenerateCameraRay_UV(ScreenUV);
@@ -30,6 +23,7 @@ void RTOcclusionTestRayGen()
 	{
 		// simply shooting a ray from camera and finding the closest object
 		// those closest objects are considered as visible, and the other which are failed with ray test are considered as occluded
+		// the visibility will be reset in C++ side
 		OcclusionVisible.Store(Payload.HitInstance * 4, 1);
 	}
 }

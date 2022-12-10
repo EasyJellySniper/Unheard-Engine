@@ -279,7 +279,7 @@ private:
 	UHRTDefaultHitGroupShader RTDefaultHitGroupShader;
 
 	UHRTOcclusionTestShader RTOcclusionTestShader;
-	std::unique_ptr<UHRenderBuffer<uint32_t>> OcclusionVisibleBuffer;
+	std::array<std::unique_ptr<UHRenderBuffer<uint32_t>>, GMaxFrameInFlight> OcclusionVisibleBuffer;
 
 	UHRTShadowShader RTShadowShader;
 	UHRenderTexture* RTShadowResult;

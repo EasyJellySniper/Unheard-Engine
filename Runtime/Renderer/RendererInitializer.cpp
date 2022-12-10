@@ -33,7 +33,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, RTShadowResult(nullptr)
 	, RTInstanceCount(0)
 	, IndicesTypeBuffer(nullptr)
-	, OcclusionVisibleBuffer(nullptr)
 	, NumWorkerThreads(0)
 	, RenderThread(nullptr)
 	, bParallelSubmissionGT(false)
@@ -199,13 +198,13 @@ void UHDeferredShadingRenderer::Release()
 			UH_SAFE_RELEASE(TopLevelAS[Idx]);
 			TopLevelAS[Idx].reset();
 		}
+
+		UH_SAFE_RELEASE(OcclusionVisibleBuffer[Idx]);
+		OcclusionVisibleBuffer[Idx].reset();
 	}
 
 	UH_SAFE_RELEASE(IndicesTypeBuffer);
 	IndicesTypeBuffer.reset();
-
-	UH_SAFE_RELEASE(OcclusionVisibleBuffer);
-	OcclusionVisibleBuffer.reset();
 
 	vkDestroyCommandPool(LogicalDevice, MainCommandPool, nullptr);
 	DepthParallelSubmitter.Release();
@@ -401,8 +400,12 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		{
 			RTOcclusionTestShader = UHRTOcclusionTestShader(GraphicInterface, "RTOcclusionTestShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShader()
 				, Layouts);
-			OcclusionVisibleBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
-			OcclusionVisibleBuffer->CreaetBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+			for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+			{
+				OcclusionVisibleBuffer[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>();
+				OcclusionVisibleBuffer[Idx]->CreaetBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+			}
 		}
 
 		// shadow shader
@@ -479,7 +482,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 			if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
 			{
-				DepthShader.BindStorage(OcclusionVisibleBuffer.get(), 3, 0, true);
+				DepthShader.BindStorage(OcclusionVisibleBuffer, 3, 0, true);
 			}
 
 			// check alpha test textures
@@ -515,7 +518,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
 		{
-			BaseShader.BindStorage(OcclusionVisibleBuffer.get(), 3, 0, true);
+			BaseShader.BindStorage(OcclusionVisibleBuffer, 3, 0, true);
 		}
 
 		// write textures/samplers when they are available
@@ -591,7 +594,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
 		{
-			MotionObjectShader.BindStorage(OcclusionVisibleBuffer.get(), 3, 0, true);
+			MotionObjectShader.BindStorage(OcclusionVisibleBuffer, 3, 0, true);
 		}
 
 		if (UHTexture* OpacityTex = Renderer->GetMaterial()->GetTex(UHMaterialTextureType::Opacity))
@@ -677,7 +680,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
 		{
 			RTOcclusionTestShader.BindConstant(SystemConstantsGPU, 0);
-			RTOcclusionTestShader.BindStorage(OcclusionVisibleBuffer.get(), 2, 0, true);
+			RTOcclusionTestShader.BindStorage(OcclusionVisibleBuffer, 2, 0, true);
 			RTOcclusionTestShader.BindStorage(MaterialConstantsGPU, GMaterialSlotInRT, 0, true);
 		}
 

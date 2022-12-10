@@ -33,7 +33,10 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 	if (bParallelSubmissionRT)
 	{
 #if WITH_DEBUG
-		memset(ThreadDrawCalls.data(), 0, ThreadDrawCalls.size() * NumWorkerThreads);
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		{
+			ThreadDrawCalls[I] = 0;
+		}
 #endif
 
 		// wake all worker threads

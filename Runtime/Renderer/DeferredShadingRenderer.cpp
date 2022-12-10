@@ -226,6 +226,13 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			Light->SetRenderDirty(false, CurrentFrame);
 		}
 	}
+
+	// reset occlusion visibility
+	if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+	{
+		std::vector<uint32_t> Visible(RTInstanceCount);
+		OcclusionVisibleBuffer[CurrentFrame]->UploadAllData(Visible.data());
+	}
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
