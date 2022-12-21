@@ -127,6 +127,7 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 09-12-2022: Added parallel submission feature! Only apply to heavy rendering pass now. Create a UHThread class as thread wrapper.
 
+21-12-2022: Arranged shader class implementation. Separated as header and cpp. Implemented BindParameters() function too.
 
 
 

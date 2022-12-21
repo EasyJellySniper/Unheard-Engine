@@ -343,6 +343,16 @@
     <ClCompile Include="Runtime\Classes\Texture2D.cpp" />
     <ClCompile Include="Runtime\Classes\Texture.cpp" />
     <ClCompile Include="Editor\ShaderImporter.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\BasePassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\DepthPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\LightPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\MotionPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\SkyPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\SkyPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ShaderClass.cpp" />
     <ClCompile Include="UnheardEngine.cpp" />

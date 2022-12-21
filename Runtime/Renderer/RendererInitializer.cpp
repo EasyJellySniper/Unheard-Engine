@@ -474,26 +474,9 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			}
 	#endif
 
-			UHMaterial* Mat = Renderer->GetMaterial();
 			UHDepthPassShader& DepthShader = DepthPassShaders[Renderer->GetBufferDataIndex()];
-			DepthShader.BindConstant(SystemConstantsGPU, 0);
-			DepthShader.BindConstant(ObjectConstantsGPU, 1, Renderer->GetBufferDataIndex());
-			DepthShader.BindStorage(MaterialConstantsGPU, 2, Renderer->GetMaterial()->GetBufferDataIndex());
-
-			if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
-			{
-				DepthShader.BindStorage(OcclusionVisibleBuffer, 3, 0, true);
-			}
-
-			// check alpha test textures
-			if (UHTexture* Tex = Mat->GetTex(UHMaterialTextureType::Opacity))
-			{
-				DepthShader.BindImage(Tex, 4);
-				DepthShader.BindSampler(Mat->GetSampler(UHMaterialTextureType::Opacity), 5);
-			}
-
-			UHMesh* Mesh = Renderer->GetMesh();
-			DepthShader.BindStorage(Mesh->GetUV0Buffer(), 6, 0, true);
+			DepthShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
+				, OcclusionVisibleBuffer, Renderer);
 		}
 	}
 
@@ -510,71 +493,28 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		}
 	#endif
 
-		UHMaterial* Mat = Renderer->GetMaterial();
 		UHBasePassShader& BaseShader = BasePassShaders[Renderer->GetBufferDataIndex()];
-		BaseShader.BindConstant(SystemConstantsGPU, 0);
-		BaseShader.BindConstant(ObjectConstantsGPU, 1, Renderer->GetBufferDataIndex());
-		BaseShader.BindStorage(MaterialConstantsGPU, 2, Renderer->GetMaterial()->GetBufferDataIndex());
-
-		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
-		{
-			BaseShader.BindStorage(OcclusionVisibleBuffer, 3, 0, true);
-		}
-
-		// write textures/samplers when they are available
-		for (int32_t Tdx = 0; Tdx < UHMaterialTextureType::TextureTypeMax; Tdx++)
-		{
-			UHTexture* Tex = Mat->GetTex(static_cast<UHMaterialTextureType>(Tdx));
-			if (Tex)
-			{
-				BaseShader.BindImage(Tex, UHConstantTypes::ConstantTypeMax + 1 + Tdx * 2);
-			}
-
-			UHSampler* Sampler = Mat->GetSampler(static_cast<UHMaterialTextureType>(Tdx));
-			if (Sampler)
-			{
-				BaseShader.BindSampler(Sampler, UHConstantTypes::ConstantTypeMax + 2 + Tdx * 2);
-			}
-		}
-
-		UHMesh* Mesh = Renderer->GetMesh();
-		BaseShader.BindStorage(Mesh->GetUV0Buffer(), 20, 0, true);
-		BaseShader.BindStorage(Mesh->GetNormalBuffer(), 21, 0, true);
-		BaseShader.BindStorage(Mesh->GetTangentBuffer(), 22, 0, true);
+		BaseShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
+			, OcclusionVisibleBuffer, Renderer);
 	}
 
 	// ------------------------------------------------ Lighting pass descriptor update
-	LightPassShader.BindConstant(SystemConstantsGPU, 0);
-	LightPassShader.BindStorage(DirectionalLightBuffer, 1, 0, true);
-
-	const std::vector<UHTexture*> Textures = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip };
-	LightPassShader.BindImage(Textures, 2);
-	LightPassShader.BindSampler(LinearClampedSampler, 3);
-
-	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
-	{
-		LightPassShader.BindImage(RTShadowResult, 4);
-	}
+	const std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip };
+	LightPassShader.BindParameters(SystemConstantsGPU, DirectionalLightBuffer, GBuffers, LinearClampedSampler
+		, RTInstanceCount, RTShadowResult);
 
 	// ------------------------------------------------ sky pass descriptor update
-	const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer();
-	if (SkyRenderer)
+	if (const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer())
 	{
-		SkyPassShader.BindConstant(SystemConstantsGPU, 0);
-		SkyPassShader.BindConstant(ObjectConstantsGPU, 1, SkyRenderer->GetBufferDataIndex());
-		SkyPassShader.BindImage(CurrentScene->GetSkyboxRenderer()->GetMaterial()->GetTex(UHMaterialTextureType::SkyCube), 2);
-		SkyPassShader.BindSampler(CurrentScene->GetSkyboxRenderer()->GetMaterial()->GetSampler(UHMaterialTextureType::SkyCube), 3);
+		SkyPassShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, SkyRenderer);
 	}
 
 	// ------------------------------------------------ motion pass descriptor update
-	MotionCameraShader.BindConstant(SystemConstantsGPU, 0);
-	MotionCameraShader.BindImage(SceneDepth, 1);
-	MotionCameraShader.BindSampler(PointClampedSampler, 2);
+	MotionCameraShader.BindParameters(SystemConstantsGPU, SceneDepth, PointClampedSampler);
 
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		UHMesh* Mesh = Renderer->GetMesh();
 		if (Mat->IsSkybox())
 		{
 			continue;
@@ -588,26 +528,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		}
 
 		UHMotionObjectPassShader& MotionObjectShader = MotionObjectShaders[Renderer->GetBufferDataIndex()];
-		MotionObjectShader.BindConstant(SystemConstantsGPU, 0);
-		MotionObjectShader.BindConstant(ObjectConstantsGPU, 1, Renderer->GetBufferDataIndex());
-		MotionObjectShader.BindStorage(MaterialConstantsGPU, 2, Renderer->GetMaterial()->GetBufferDataIndex());
-
-		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
-		{
-			MotionObjectShader.BindStorage(OcclusionVisibleBuffer, 3, 0, true);
-		}
-
-		if (UHTexture* OpacityTex = Renderer->GetMaterial()->GetTex(UHMaterialTextureType::Opacity))
-		{
-			MotionObjectShader.BindImage(OpacityTex, 4);
-		}
-
-		if (UHSampler* OpacitySampler = Renderer->GetMaterial()->GetSampler(UHMaterialTextureType::Opacity))
-		{
-			MotionObjectShader.BindSampler(OpacitySampler, 5);
-		}
-
-		MotionObjectShader.BindStorage(Mesh->GetUV0Buffer(), 6, 0, true);
+		MotionObjectShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
+			, OcclusionVisibleBuffer, Renderer);
 	}
 
 	// ------------------------------------------------ post process pass descriptor update
@@ -615,12 +537,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// the post process RT binding will be in PostProcessRendering.cpp
 	ToneMapShader.BindSampler(LinearClampedSampler, 1);
 
-	TemporalAAShader.BindConstant(SystemConstantsGPU, 0);
-	TemporalAAShader.BindImage(PreviousSceneResult, 2);
-	TemporalAAShader.BindImage(MotionVectorRT, 3);
-	TemporalAAShader.BindImage(PrevMotionVectorRT, 4);
-	TemporalAAShader.BindImage(SceneDepth, 5);
-	TemporalAAShader.BindSampler(LinearClampedSampler, 6);
+	TemporalAAShader.BindParameters(SystemConstantsGPU, PreviousSceneResult, MotionVectorRT, PrevMotionVectorRT
+		, SceneDepth, LinearClampedSampler);
 
 	// ------------------------------------------------ ray tracing pass descriptor update
 	if (GraphicInterface->IsRayTracingEnabled() && TopLevelAS[0] && RTInstanceCount > 0)
@@ -679,21 +597,13 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		// bin RT occlusion test
 		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
 		{
-			RTOcclusionTestShader.BindConstant(SystemConstantsGPU, 0);
-			RTOcclusionTestShader.BindStorage(OcclusionVisibleBuffer, 2, 0, true);
-			RTOcclusionTestShader.BindStorage(MaterialConstantsGPU, GMaterialSlotInRT, 0, true);
+			RTOcclusionTestShader.BindParameters(SystemConstantsGPU, OcclusionVisibleBuffer, MaterialConstantsGPU);
 		}
 
 		// bind RT shadow parameters
-		RTShadowShader.BindConstant(SystemConstantsGPU, 0);
-		RTShadowShader.BindRWImage(RTShadowResult, 2);
-		RTShadowShader.BindStorage(DirectionalLightBuffer, 3, 0, true);
-		RTShadowShader.BindImage(SceneMip, 4);
-		RTShadowShader.BindImage(SceneNormal, 5);
-		RTShadowShader.BindImage(SceneDepth, 6);
-		RTShadowShader.BindSampler(PointClampedSampler, 7);
-		RTShadowShader.BindSampler(LinearClampedSampler, 8);
-		RTShadowShader.BindStorage(MaterialConstantsGPU, GMaterialSlotInRT, 0, true);
+		RTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, DirectionalLightBuffer
+			, SceneMip, SceneNormal, SceneDepth
+			, PointClampedSampler, LinearClampedSampler, MaterialConstantsGPU);
 	}
 
 	// ------------------------------------------------ debug view pass descriptor update
