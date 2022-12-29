@@ -1,6 +1,6 @@
 # UnheardEngine
- Squall's custom Vulkan engine. <br>
- MIT licensed. <br>
+ Squall's custom Vulkan engine. Which is a RENDERING ONLY engine at the moment. <br>
+ Just for those who are interested in graphics programming :) MIT licensed. <br>
  Full project download link: https://mega.nz/file/NgZRDIwb#rO3m74IuX-5Yv64ArJXuNcWFrH8npB15k01RAIGGjO0 <br>
  
 # 2022-12-09: Preliminary Optimization. <br>
