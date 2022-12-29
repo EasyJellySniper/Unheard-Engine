@@ -1,7 +1,6 @@
 #pragma once
 #include "../../framework.h"
 #include "../Classes/Settings.h"
-#include "../Classes/Mesh.h"
 #include "Config.h"
 #include "Graphic.h"
 #include "Input.h"
@@ -9,9 +8,6 @@
 #include "Asset.h"
 #include "../Renderer/DeferredShadingRenderer.h"
 #include "../Classes/Scene.h"
-#include "../Components/Camera.h"
-#include "../Components/Light.h"
-#include "../Components/SkyLight.h"
 #include <memory>
 #include <string>
 
@@ -19,6 +15,15 @@
 #include "../../Editor/Profiler.h"
 #include "../../Editor/EditorUI/Editor.h"
 #endif
+
+enum UHEngineResizeReason
+{
+	NotResizing = 0,
+	FromWndMessage,
+	ToggleFullScreen,
+	ToggleVsync,
+	NewResolution
+};
 
 // Unheard engine class
 class UHEngine
@@ -51,7 +56,7 @@ public:
 	void ToggleFullScreen();
 
 	// set is need resize
-	void SetIsNeedResize(bool InFlag);
+	void SetResizeReason(UHEngineResizeReason InFlag);
 
 	// get raw input
 	UHRawInput* GetRawInput() const;
@@ -111,8 +116,8 @@ private:
 	// a flag which tells if the engine is initialized
 	bool bIsInitialized;
 
-	// need resize?
-	bool bIsNeedResize;
+	// resize reason
+	UHEngineResizeReason EngineResizeReason;
 
 	int64_t FrameBeginTime;
 };

@@ -34,7 +34,7 @@ public:
 			AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 			AllocInfo.commandBufferCount = GMaxFrameInFlight;
 
-			if (vkAllocateCommandBuffers(LogicalDevice, &AllocInfo, &WorkerCommandBuffers[Idx * GMaxFrameInFlight]) != VK_SUCCESS)
+			if (vkAllocateCommandBuffers(LogicalDevice, &AllocInfo, &WorkerCommandBuffers[Idx * (int32_t)GMaxFrameInFlight]) != VK_SUCCESS)
 			{
 				UHE_LOG(L"Failed to allocate worker command buffers!\n");
 				return;
@@ -54,7 +54,7 @@ public:
 	{
 		for (int32_t Idx = 0; Idx < NumWT; Idx++)
 		{
-			WorkerBundles[Idx] = WorkerCommandBuffers[Idx * GMaxFrameInFlight + CurrentFrame];
+			WorkerBundles[Idx] = WorkerCommandBuffers[Idx * (int32_t)GMaxFrameInFlight + CurrentFrame];
 		}
 	}
 

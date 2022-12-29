@@ -129,5 +129,7 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 21-12-2022: Arranged shader class implementation. Separated as header and cpp. Implemented BindParameters() function too.
 
+29-12-2022: Minor change to resizing workflow. It won't resize GBuffers if resolution isn't changed now. And only resize the swapchain buffer.
+
 
 

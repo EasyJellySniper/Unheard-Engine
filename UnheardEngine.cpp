@@ -224,7 +224,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             GIsMinimized = false;
             if (GUnheardEngine)
             {
-                GUnheardEngine->SetIsNeedResize(true);
+                GUnheardEngine->SetResizeReason(UHEngineResizeReason::FromWndMessage);
             }
         }
         break;

@@ -169,7 +169,7 @@ void UHSettingDialog::Update()
 void UHSettingDialog::ControlVsync()
 {
     Config->ToggleVsync();
-    Engine->SetIsNeedResize(true);
+    Engine->SetResizeReason(UHEngineResizeReason::ToggleVsync);
 }
 
 void UHSettingDialog::ControlFullScreen()
@@ -253,7 +253,7 @@ void UHSettingDialog::ControlResolution()
     {
         RenderingSettings.RenderWidth = Width;
         RenderingSettings.RenderHeight = Height;
-        Engine->SetIsNeedResize(true);
+        Engine->SetResizeReason(UHEngineResizeReason::NewResolution);
     }
 }
 

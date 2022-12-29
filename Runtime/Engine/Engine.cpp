@@ -13,7 +13,7 @@ UHEngine::UHEngine()
 	: UHEngineWindow(nullptr)
 	, UHWindowInstance(nullptr)
 	, bIsInitialized(false)
-	, bIsNeedResize(false)
+	, EngineResizeReason(UHEngineResizeReason::NotResizing)
 	, FrameBeginTime(0)
 #if WITH_DEBUG
 	, UHEEditor(nullptr)
@@ -176,13 +176,13 @@ void UHEngine::Update()
 	if (UHERawInput->IsKeyHold(VK_CONTROL) && UHERawInput->IsKeyUp('v'))
 	{
 		UHEConfig->ToggleVsync();
-		bIsNeedResize = true;
+		SetResizeReason(ToggleVsync);
 	}
 
-	if (bIsNeedResize)
+	if (EngineResizeReason != UHEngineResizeReason::NotResizing)
 	{
 		ResizeEngine();
-		bIsNeedResize = false;
+		EngineResizeReason = UHEngineResizeReason::NotResizing;
 	}
 
 	// update scene
@@ -219,7 +219,12 @@ void UHEngine::RenderLoop()
 void UHEngine::ResizeEngine()
 {
 	UHEGraphic->ResizeSwapChain();
-	UHERenderer->Resize();
+
+	// doesn't need to recreate rendering buffers if resolution is not changed
+	if (EngineResizeReason != UHEngineResizeReason::NewResolution)
+	{
+		UHERenderer->Resize();
+	}
 }
 
 void UHEngine::ToggleFullScreen()
@@ -229,9 +234,9 @@ void UHEngine::ToggleFullScreen()
 	UHEGraphic->ToggleFullScreen(UHEConfig->PresentationSetting().bFullScreen);
 }
 
-void UHEngine::SetIsNeedResize(bool InFlag)
+void UHEngine::SetResizeReason(UHEngineResizeReason InFlag)
 {
-	bIsNeedResize = InFlag;
+	EngineResizeReason = InFlag;
 }
 
 UHRawInput* UHEngine::GetRawInput() const
