@@ -27,6 +27,10 @@ void UHDirectionalLightComponent::Update()
 void UHDirectionalLightComponent::SetLightColor(XMFLOAT4 InLightColor)
 {
 	LightColor = InLightColor;
+
+	// clamp shadow atten
+	LightColor.w = std::clamp(LightColor.w, 0.0f, 1.0f);
+
 	SetRenderDirties(true);
 }
 

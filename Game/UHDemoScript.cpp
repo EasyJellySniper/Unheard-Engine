@@ -178,7 +178,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	InScene->AddMeshRenderer(SkyCube, SkyMat);
 
 	// setup default light
-	DefaultDirectionalLight.SetLightColor(XMFLOAT4(0.95f, 0.91f, 0.6f, 0.75f));
+	DefaultDirectionalLight.SetLightColor(XMFLOAT4(0.95f, 0.91f, 0.6f, 0.4f));
 	DefaultDirectionalLight.SetIntensity(2.5f);
 	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, 150, 0));
 	InScene->AddDirectionalLight(&DefaultDirectionalLight);
@@ -195,7 +195,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	InScene->GetMainCamera()->SetCullingDistance(1000.0f);
 
 	// secondary light test
-	SecondDirectionalLight.SetLightColor(XMFLOAT4(1.0f, 0.55f, 0.0f, 0.4f));
+	SecondDirectionalLight.SetLightColor(XMFLOAT4(1.0f, 0.55f, 0.0f, 0.7f));
 	SecondDirectionalLight.SetIntensity(2.5f);
 	SecondDirectionalLight.SetRotation(XMFLOAT3(45, -30, 0));
 	InScene->AddDirectionalLight(&SecondDirectionalLight);

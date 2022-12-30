@@ -58,11 +58,10 @@ float ShadowPCSS(Texture2D ShadowMap, Texture2D MipRateTex, float2 UV, float Bas
 			float2 Pos = UV * UHShadowResolution.xy + float2(I, J) * Penumbra;
 			Pos = min(Pos, UHShadowResolution.xy - 1);
 			float2 Shadow = RTShadow[Pos].rg;
-			Atten += (Shadow.r > 0) * Shadow.g;
+			Atten += lerp(1.0f, Shadow.g, Shadow.r > 0);
 		}
 	}
 	Atten *= PCSS_WEIGHT;
-	Atten = 1.0f - Atten;
 
 	return Atten;
 }

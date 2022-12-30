@@ -35,7 +35,7 @@ void RTShadowRayGen()
 	float MipRate = MipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
 
 	float MaxDist = 0;
-	float ShadowStrength = 0;
+	float Atten = 1;
 
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
@@ -57,13 +57,13 @@ void RTShadowRayGen()
 		TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
 
 		// store the max hit T to the result, system will perform PCSS later
-		// also output shadow strength (Color.a)
+		// also output shadow atten (Color.a)
 		if (Payload.IsHit())
 		{
 			MaxDist = max(MaxDist, Payload.HitT);
-			ShadowStrength = max(ShadowStrength, DirLight.Color.a);
+			Atten *= DirLight.Color.a;
 		}
 	}
 
-	Result[PixelCoord] = float2(MaxDist, ShadowStrength);
+	Result[PixelCoord] = float2(MaxDist, Atten);
 }
