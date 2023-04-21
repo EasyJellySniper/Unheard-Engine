@@ -14,7 +14,8 @@ Brutal test with 13435 draw calls, cost only 2.6 - 3.6 ms with parallel submissi
 - Memory optimization.
 - Parallel command buffer recording.
 
-![IMAGE ALT TEXT HERE](https://i.imgur.com/DzTlln4.jpg)
+<br> Implementation Details: <br>
+https://www.gamedev.net/blogs/entry/2274699-unheard-engine-preliminary-optimizations/
 <br><br>
  
 # 2022-11-20: The first version. <br>
@@ -30,5 +31,3 @@ Not many features in the first version, but covers all basic applications. <br>
 <br> Hopefully this can help all Vulkan learners :) <br>
 <br> Implementation Details: <br>
 https://gamedev.net/blogs/entry/2274455-unheard-engine-2-months-journey-of-vulkan-learning/
-<br><br> Demo Link: <br>
-https://www.youtube.com/watch?v=EtZUbPk3ZYA
