@@ -13,7 +13,7 @@
 
 #if WITH_DEBUG
 #include "../../Editor/Profiler.h"
-#include "../../Editor/EditorUI/Editor.h"
+#include "../../Editor/Editor/Editor.h"
 #endif
 
 enum UHEngineResizeReason

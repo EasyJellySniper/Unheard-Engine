@@ -4,11 +4,11 @@
 #include "../../resource.h"
 #include "../Profiler.h"
 #include "../../Runtime/Engine/Config.h"
-#include "../EditorUI/EditorUtils.h"
+#include "../Classes/EditorUtils.h"
 #include <sstream>
 #include <iomanip>
 
-HWND ProfileWindow = nullptr;
+HWND GProfileWindow = nullptr;
 
 UHProfileDialog::UHProfileDialog()
     : UHDialog(nullptr, nullptr)
@@ -36,7 +36,7 @@ INT_PTR CALLBACK ProfileProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
         if (LOWORD(wParam) == IDCANCEL)
         {
             EndDialog(hDlg, LOWORD(wParam));
-            ProfileWindow = nullptr;
+            GProfileWindow = nullptr;
             return (INT_PTR)TRUE;
         }
         break;
@@ -46,16 +46,16 @@ INT_PTR CALLBACK ProfileProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 
 void UHProfileDialog::ShowDialog()
 {
-    if (ProfileWindow == nullptr)
+    if (GProfileWindow == nullptr)
     {
-        ProfileWindow = CreateDialog(Instance, MAKEINTRESOURCE(IDD_PROFILE), Window, (DLGPROC)ProfileProc);
-        ShowWindow(ProfileWindow, SW_SHOW);
+        GProfileWindow = CreateDialog(Instance, MAKEINTRESOURCE(IDD_PROFILE), Window, (DLGPROC)ProfileProc);
+        ShowWindow(GProfileWindow, SW_SHOW);
     }
 }
 
 void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer* InGameTimer, UHConfigManager* InConfig)
 {
-    if (ProfileWindow == nullptr)
+    if (GProfileWindow == nullptr)
     {
         return;
     }
@@ -82,7 +82,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << "Number of texture cubes: " << Stats.TextureCubeCount << "\n";
         CPUStatTex << "Number of materials: " << Stats.MateralCount << "\n";
 
-        UHEditorUtil::SetEditControl(ProfileWindow, IDC_PROFILECPU, CPUStatTex.str());
+        UHEditorUtil::SetEditControl(GProfileWindow, IDC_PROFILECPU, CPUStatTex.str());
 
         // GPU stat section
         std::wstring GPUStatStrings[UHRenderPassMax] = { L"Update Top Level AS"
@@ -106,7 +106,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         }
         GPUStatTex << "Render Resolution: " << InConfig->RenderingSetting().RenderWidth << "x" << InConfig->RenderingSetting().RenderHeight;
 
-        UHEditorUtil::SetEditControl(ProfileWindow, IDC_PROFILEGPU, GPUStatTex.str());
+        UHEditorUtil::SetEditControl(GProfileWindow, IDC_PROFILEGPU, GPUStatTex.str());
 
         InGameTimer->Reset();
     }

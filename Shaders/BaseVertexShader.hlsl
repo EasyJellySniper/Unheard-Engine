@@ -2,9 +2,9 @@
 #include "UHCommon.hlsli"
 
 ByteAddressBuffer OcclusionVisible : register(t3);
-StructuredBuffer<float2> UV0Buffer : register(t20);
-StructuredBuffer<float3> NormalBuffer : register(t21);
-StructuredBuffer<float4> TangentBuffer : register(t22);
+StructuredBuffer<float2> UV0Buffer : register(t4);
+StructuredBuffer<float3> NormalBuffer : register(t5);
+StructuredBuffer<float4> TangentBuffer : register(t6);
 
 VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 {
@@ -29,7 +29,7 @@ VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 	// transform normal by world IT
 	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
 
-#if WITH_NORMAL
+#if WITH_TANGENT_SPACE
 	// calculate world TBN if normal map is used
 	Vout.WorldTBN = CreateTBN(Vout.Normal, TangentBuffer[Vid]);
 #endif

@@ -2,6 +2,9 @@
 #include <string>
 #include "Utility.h"
 
+// general paths
+static std::string GTempFilePath = "Temp/";
+
 // texture paths
 static std::string GTextureAssetFolder = "Assets/Textures/";
 static std::string GRawTexturePath = "RawAssets/Textures/";
@@ -21,6 +24,7 @@ static std::string GRawMeshAssetExtension = ".fbx";
 // shader paths
 static std::string GRawShaderCachePath = "AssetCaches/Shaders/";
 static std::string GRawShaderPath = "Shaders/";
+static std::string GRawShaderExtension = ".hlsl";
 static std::string GShaderAssetFolder = "Assets/Shaders/";
 static std::string GShaderAssetExtension = ".spv";
 static std::string GShaderAssetCacheExtension = ".uhshadercache";

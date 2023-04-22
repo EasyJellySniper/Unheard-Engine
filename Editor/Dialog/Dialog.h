@@ -9,6 +9,7 @@ class UHDialog
 public:
 	UHDialog(HINSTANCE InInstance, HWND InWindow);
 	virtual void ShowDialog() = 0;
+	virtual void Update() {};
 
 protected:
 	HINSTANCE Instance;

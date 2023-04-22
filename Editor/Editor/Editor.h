@@ -3,21 +3,26 @@
 
 #if WITH_DEBUG
 #include <unordered_map>
+#include <memory>
 #include "../../Runtime/Engine/GameTimer.h"
 #include "../Dialog/ProfileDialog.h"
 #include "../Dialog/SettingDialog.h"
+#include "../Dialog/MaterialDialog.h"
 
 class UHEngine;
 class UHConfigManager;
 class UHDeferredShadingRenderer;
 class UHRawInput;
 class UHProfiler;
+class UHAssetManager;
 
 class UHEditor
 {
 public:
 	UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
-		, UHRawInput* InInput, UHProfiler* InProfile);
+		, UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager);
+	~UHEditor();
+
 	void OnEditorUpdate();
 	void OnMenuSelection(int32_t WmId);
 
@@ -31,12 +36,14 @@ private:
 	UHDeferredShadingRenderer* DeferredRenderer;
 	UHRawInput* Input;
 	UHProfiler* Profile;
+	UHAssetManager* AssetManager;
 	UHGameTimer ProfileTimer;
 	int32_t ViewModeMenuItem;
 
 	// custom dialogs
 	UHProfileDialog ProfileDialog;
 	UHSettingDialog SettingDialog;
+	std::unique_ptr<UHMaterialDialog> MaterialDialog;
 };
 
 #endif

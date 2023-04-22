@@ -74,7 +74,7 @@ MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_Vert
 
 float4 MotionObjectPS(MotionVertexOutput Vin) : SV_Target
 {
-#if WITH_OPACITY
+#if WITH_OPACITY && !defined(WITH_DEPTHPREPASS)
 	UHMaterialConstants Material = UHMaterials[0];
 	float Opacity = OpacityTex.Sample(OpacitySampler, Vin.UV0).r * Material.DiffuseColor.a;
 	clip(Opacity - Material.Cutoff);

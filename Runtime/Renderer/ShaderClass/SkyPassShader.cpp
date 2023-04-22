@@ -23,7 +23,7 @@ UHSkyPassShader::UHSkyPassShader(UHGraphic* InGfx, std::string Name, VkRenderPas
 		, 1
 		, PipelineLayout);
 
-	GraphicState = InGfx->RequestGraphicState(Info);
+	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
 }
 
 void UHSkyPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

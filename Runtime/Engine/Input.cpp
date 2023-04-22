@@ -85,6 +85,8 @@ void UHRawInput::ResetMouseData()
 {
 	RawInputData.data.mouse.lLastX = 0;
 	RawInputData.data.mouse.lLastY = 0;
+	LastMousePos.x = 0;
+	LastMousePos.y = 0;
 }
 
 void UHRawInput::ResetMouseState()
@@ -94,6 +96,25 @@ void UHRawInput::ResetMouseState()
 	bIsRightMousePressed = false;
 	bPreviousRightMousePressed = false;
 	RawInputData.data.mouse = RAWMOUSE();
+}
+
+void UHRawInput::SetLeftMousePressed(bool bFlag)
+{
+	bIsLeftMousePressed = bFlag;
+}
+
+void UHRawInput::SetRightMousePressed(bool bFlag)
+{
+	bIsRightMousePressed = bFlag;
+}
+
+void UHRawInput::GetMouseDelta(uint32_t& X, uint32_t& Y) const
+{
+	POINT MousePos;
+	GetCursorPos(&MousePos);
+
+	X = MousePos.x - LastMousePos.x;
+	Y = MousePos.y - LastMousePos.y;
 }
 
 RAWMOUSE UHRawInput::GetMouseData() const
@@ -110,6 +131,12 @@ void UHRawInput::CacheKeyStates()
 	}
 	bPreviousLeftMousePressed = bIsLeftMousePressed;
 	bPreviousRightMousePressed = bIsRightMousePressed;
+
+	// cache last mouse pos too
+	POINT MousePos;
+	GetCursorPos(&MousePos);
+
+	LastMousePos = MousePos;
 }
 
 bool UHRawInput::IsKeyHold(char CharKey) const

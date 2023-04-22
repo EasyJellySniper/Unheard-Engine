@@ -131,5 +131,73 @@ Added raytracing feature check and modify create info in CreateLogicalDevice(). 
 
 29-12-2022: Minor change to resizing workflow. It won't resize GBuffers if resolution isn't changed now. And only resize the swapchain buffer.
 
+03-01-2023: Started the implementation of material editor. For now there is only one material editor window, and can edit only one material at the same time. Select the material in list box for switching.
+
+06-01-2023: Tried to add a few more UI controls for graph system. Added material inputs node in the graph successfully. Next I'd try to make it movable.
+
+07-01-2023: Implemented node GUI class. Creating movable GUI successfully. But repainting is a problem. Dealt with repainting sucessfully! Turns out I have to invalidate rect of whole dialog...reminds me of those days in school when learning window programming lol.
+
+08-01-2023: Added right mouse control in material graph for moving the working area.
+
+09-01-2023: Added add node and delete node options in popup menu. Ready for adding more nodes functions in.
+
+10-01-2023: Added parameter node (float/float2/float3/float4).
+
+11-01-2023: Implemented a few "Add Node" functionality. The workflow is done and it's just to add more functions in the future.
+
+13-01-2023: Tried to receive message when clicking on pins, ready for connection feature of node.
+
+16-01-2023: Done the pin connection functionality. Including pin type check. The type must be assigned as enum during initialization of node and pin. Ready for drawing connection lines.
+
+18-01-2023: Drawing the pin connection line successfully. Next is to handle node deletion and the radio button mark.
+
+20-01-2023: Deal with radio button mark. Start to add delete note function. Improved InvalidateRect() call a bit.
+
+22-01-2023: Finish node deletion. Still has a chance to cause flickering. Lower line drawing flickering. But controls will still flick after adding a certain number of them.
+
+23-01-2023: Minor change to invalidation of window. Now the only flickers are from high number of win32 controls.
+
+25-01-2023: Now the material GUI will be cleaned up if selected material is changed. Ready for syncing with material data. Fix a minor bug regarding mesh buffer. VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT is needed without ray tracing enabled.
+
+29-01-2023: Start to add material translation to HLSL. Currently apply it to base pass only. Now it renders flat color properly. Next is to generate a default "graph" for materials and save in asset.
+
+31-01-2023: Added math node GUI.
+
+14-02-2023: Fixed swapchain initialization bug regarding full screen. I let driver do the work now.
+
+16-02-2023: Added texture node GUI. Need to find a way to add scrollbar for drop down list.
+
+19-02-2023: Finished texture node roughly. Ready to add save/load workflow for material graph.
+
+22-02-2023: Always initialize material class with unique_ptr now, since it has to store graph node variables. Added simple versioning for material class.
+
+06-03-2023: Generate default material graph nodes after import, which includes GUI relative position as well. Expose default parameter in graph nodes for use. Ready for syncing with material editor.
+
+14-03-2023: Start to sync material nodes to editor. Expect it could initialize the proper GUIs. The value is sync to GUI as well. Ready to translate to HLSL based on the node information.
+Separated Utility implementations.
+
+15-03-2023: Start to translate graph nodes to HLSL. Every node will have EvalHLSL() for it.
+
+08-04-2023: Start to add node HLSL code. Math node is tricky since it can use any type as input, I need to think a way for checking types. Solved by recurssive check.
+
+13-04-2023: Completed node translation! Also adjusted descriptor, now UHE will create material descriptor that follows the texture usage in a material. Next is to apply the same rule for depth pre pass and motion shader pass.
+Also I need to think of a way for release build, as the node data is editor only.
+
+14-04-2023: Started to add compile button in material dialog. Fixed the correctness of releasing a shader. Graph translation succeed, need to refresh graphic states. Refreshing states done! Only texture isn't updated properly.
+All issues are solved! The recompiling function is basically done.
+
+17-04-2023: Added object management, mainly for referencing now.
+
+18-04-2023: Added material compile flag. It will differensiate full compile and bind only now. Finish full compile and bind only refresh. Despite it's a bit smelly.
+
+19-04-2023: Checked texture reference before refreshing material. Now they should always be uploaded to GPU before used. Finished node disconnection function, also arranged the enum used in WndProc, prevented use the same value as system ID.
+Started to add implementation for saving materials. Saving material works partially, now it needs to save the default value of the node as well.
+
+20-04-2023: Moved graph node classes to runtime. Added implemenation for node data I/O, mainly for default value.
+Data works fine in editor build, now I have to figure out a way to deal with relase build data. Added simple fallback shader for material.
+Next is to optimize the default graph node, don't give opacity if it's not alpha test object, and don't duplicate texture nodes.
+Sovled the texture node duplication. I wonder if parameter node can be solved too...Yes I solved it!
+Added shader cache for template as well.
 
 
+21-04-2023: Minor optimization for alpha test and TAA jitter offsets.

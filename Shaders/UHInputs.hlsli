@@ -79,6 +79,21 @@ cbuffer ObjectConstants : register(UHOBJ_BIND)
 	uint UHInstanceIndex;
 }
 
+// material inputs from graph system
+struct UHMaterialInputs
+{
+	float3 Diffuse;
+	float Occlusion;
+	float3 Specular;
+	float3 Normal;
+	float Opacity;
+	float Metallic;
+	float Roughness;
+	float FresnelFactor;
+	float ReflectionFactor;
+	float3 Emissive;
+};
+
 struct UHMaterialConstants
 {
 	float4 DiffuseColor;

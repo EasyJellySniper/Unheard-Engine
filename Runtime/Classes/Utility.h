@@ -7,6 +7,7 @@
 #include <memory>
 #include <filesystem>
 #include <string>
+#include <sstream>
 
 // a header for utilities
 namespace UHUtilities
@@ -107,46 +108,23 @@ namespace UHUtilities
 
 	// remove by index
 	template<class T>
-	inline void RemoveByIndex(std::vector<T>& InVector, int32_t InIndex)
+	inline void RemoveByIndex(std::vector<T>& InVector, int32_t InIndex, int32_t InLast = -1)
 	{
-		InVector.erase(InVector.begin() + InIndex);
+		if (InLast == -1)
+		{
+			InVector.erase(InVector.begin() + InIndex);
+		}
+		else
+		{
+			InVector.erase(InVector.begin() + InIndex, InVector.begin() + InLast);
+		}
 	}
 
 	// generic write string data
-	inline void WriteStringData(std::ofstream& FileOut, std::string InString)
-	{
-		// don't write if file it's not opened
-		if (FileOut.fail())
-		{
-			return;
-		}
-
-		size_t StringSize = InString.size();
-		FileOut.write(reinterpret_cast<const char*>(&StringSize), sizeof(StringSize));
-		FileOut.write(InString.c_str(), StringSize);
-	}
+	void WriteStringData(std::ofstream& FileOut, std::string InString);
 
 	// generic read string data
-	inline void ReadStringData(std::ifstream& FileIn, std::string& OutString)
-	{
-		// don't read if file it's not opened
-		if (FileIn.fail())
-		{
-			return;
-		}
-
-		// file must've written "string size" or this might fail
-		size_t StringSize;
-		FileIn.read(reinterpret_cast<char*>(&StringSize), sizeof(StringSize));
-
-		// create a char array buffer and read to string
-		char* TempBuffer = new char[StringSize + 1];
-		FileIn.read(TempBuffer, StringSize);
-		TempBuffer[StringSize] = '\0';
-
-		OutString = TempBuffer;
-		delete[]TempBuffer;
-	}
+	void ReadStringData(std::ifstream& FileIn, std::string& OutString);
 
 	// generic write vector data
 	template<class T>
@@ -183,60 +161,23 @@ namespace UHUtilities
 		FileIn.read(reinterpret_cast<char*>(&OutVector.data()[0]), ElementCount * sizeof(T));
 	}
 
+	void WriteStringVectorData(std::ofstream& FileOut, std::vector<std::string>& InVector);
+	void ReadStringVectorData(std::ifstream& FileIn, std::vector<std::string>& OutVector);
+
 	// find properties of a memory, mirror from Vulkan spec
-	inline int32_t FindMemoryTypes(const VkPhysicalDeviceMemoryProperties* MemoryProperties,
+	int32_t FindMemoryTypes(const VkPhysicalDeviceMemoryProperties* MemoryProperties,
 		uint32_t MemoryTypeBitsRequirement,
-		VkMemoryPropertyFlags RequiredProperties) 
-	{
-		const uint32_t MemoryCount = MemoryProperties->memoryTypeCount;
-		for (uint32_t MemoryIndex = 0; MemoryIndex < MemoryCount; ++MemoryIndex)
-		{
-			const uint32_t MemoryTypeBits = (1 << MemoryIndex);
-			const bool bIsRequiredMemoryType = MemoryTypeBitsRequirement & MemoryTypeBits;
+		VkMemoryPropertyFlags RequiredProperties);
 
-			const VkMemoryPropertyFlags Properties =
-				MemoryProperties->memoryTypes[MemoryIndex].propertyFlags;
-			const bool bHasRequiredProperties =
-				(Properties & RequiredProperties) == RequiredProperties;
+	std::string ToStringA(std::wstring InStringW);
 
-			if (bIsRequiredMemoryType && bHasRequiredProperties)
-				return static_cast<int32_t>(MemoryIndex);
-		}
+	std::wstring ToStringW(std::string InStringA);
 
-		// failed to find memory type
-		return -1;
-	}
+	std::string RemoveChars(std::string InString, std::string InChars);
 
-	inline std::string ToStringA(std::wstring InStringW)
-	{
-		return std::filesystem::path(InStringW).string();
-	}
+	std::string RemoveSubString(std::string InString, std::string InSubString);
 
-	inline std::wstring ToStringW(std::string InStringA)
-	{
-		return std::filesystem::path(InStringA).wstring();
-	}
-
-	inline std::string RemoveChars(std::string InString, std::string InChars)
-	{
-		for (size_t Idx = 0; Idx < InChars.length(); Idx++)
-		{
-			std::string::iterator EndPos = std::remove(InString.begin(), InString.end(), InChars[Idx]);
-			InString.erase(EndPos, InString.end());
-		}
-
-		return InString;
-	}
-
-	inline std::string RemoveSubString(std::string InString, std::string InSubString)
-	{
-		return InString.erase(InString.find(InSubString), InSubString.length());
-	}
-
-	inline void WriteINISection(std::ofstream& FileOut, std::string InSection)
-	{
-		FileOut << "[" << InSection << "]\n";
-	}
+	void WriteINISection(std::ofstream& FileOut, std::string InSection);
 
 	template<typename T>
 	inline void WriteINIData(std::ofstream& FileOut, std::string Key, T Value)
@@ -244,30 +185,7 @@ namespace UHUtilities
 		FileOut << Key << "=" << std::to_string(Value) << std::endl;
 	}
 
-	inline bool SeekINISection(std::ifstream& FileIn, std::string Section)
-	{
-		// this function will move the file pos to section
-		FileIn.seekg(0);
-
-		std::string Line;
-		std::string SectionFound;
-		while (std::getline(FileIn, Line))
-		{
-			Line = RemoveChars(Line, " \t");
-
-			if (Line.find('[') != std::string::npos && Line.find(']') != std::string::npos)
-			{
-				SectionFound = Line.substr(1, Line.length() - 2);
-			}
-
-			if (SectionFound == Section)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
+	bool SeekINISection(std::ifstream& FileIn, std::string Section);
 
 	template<typename T>
 	inline T ReadINIData(std::ifstream& FileIn, std::string Key)
@@ -304,42 +222,20 @@ namespace UHUtilities
 	}
 
 	// djb2 string to hash, reference: http://www.cse.yorku.ca/~oz/hash.html
-	inline size_t StringToHash(std::string InString)
-	{
-		size_t Hash = 5381;
-
-		for (const char& C : InString)
-		{
-			Hash = ((Hash << 5) + Hash) + C; /* Hash * 33 + c */
-		}
-		return Hash;
-	}
+	size_t StringToHash(std::string InString);
 
 	// inline function for convert shader defines to hash
-	inline size_t ShaderDefinesToHash(std::vector<std::string> Defines)
-	{
-		std::string MacroString;
-		for (const std::string& Str : Defines)
-		{
-			MacroString += Str;
-		}
+	size_t ShaderDefinesToHash(std::vector<std::string> Defines);
 
-		size_t MacroHash = (MacroString.size() > 0) ? UHUtilities::StringToHash(MacroString) : 0;
-		return MacroHash;
-	}
+	std::string ToLowerString(std::string InString);
 
-	inline std::string ToLowerString(std::string InString)
-	{
-		std::for_each(InString.begin(), InString.end(), [](char& C)
-			{
-				C = std::tolower(static_cast<unsigned char>(C));
-			});
+	bool StringFind(std::string InString, std::string InSearch);
 
-		return InString;
-	}
+	size_t StringFindIndex(std::string InString, std::string InSearch);
 
-	inline bool StringFind(std::string InString, std::string InSearch)
-	{
-		return InString.find(InSearch) != std::string::npos;
-	}
+	std::string StringReplace(std::string InString, std::string InKeyWord, std::string InValue);
+
+	std::wstring FloatToWString(float InValue, int32_t InPrecision = 2);
+
+	std::string FloatToString(float InValue, int32_t InPrecision = 2);
 }

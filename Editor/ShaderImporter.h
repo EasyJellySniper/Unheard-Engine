@@ -6,6 +6,8 @@
 #include <vector>
 #include "../Runtime/Classes/Utility.h"
 
+class UHMaterial;
+
 // shader asset cache
 struct UHRawShaderAssetCache
 {
@@ -54,7 +56,10 @@ public:
 	bool IsShaderIncludeCached();
 	bool IsShaderCached(std::filesystem::path SourcePath, std::filesystem::path UHShaderPath, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> Defines);
+	bool IsShaderTemplateCached(std::filesystem::path SourcePath, std::string EntryName, std::string ProfileName);
 	void CompileHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+		, std::vector<std::string> Defines);
+	void TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterial* InMat
 		, std::vector<std::string> Defines);
 
 private:

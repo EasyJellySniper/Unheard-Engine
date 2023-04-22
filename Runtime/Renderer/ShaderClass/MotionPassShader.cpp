@@ -22,7 +22,7 @@ UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string
 		, 1
 		, PipelineLayout);
 
-	GraphicState = InGfx->RequestGraphicState(Info);
+	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
 }
 
 void UHMotionCameraPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
@@ -34,7 +34,7 @@ void UHMotionCameraPassShader::BindParameters(const std::array<std::unique_ptr<U
 	BindSampler(PointClamppedSampler, 2);
 }
 
-UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat)
+UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass)
 	: UHShaderClass(InGfx, Name, typeid(UHMotionObjectPassShader))
 {
 	// Motion pass: constants + opacity image for cutoff (if there is any)
@@ -80,10 +80,15 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 	{
 		ActualDefines.push_back(OpacityDefine);
 	}
+	if (bEnableDepthPrePass)
+	{
+		ActualDefines.push_back("WITH_DEPTHPREPASS");
+	}
 	ShaderPS = InGfx->RequestShader("MotionObjectPS", "Shaders/MotionVectorShader.hlsl", "MotionObjectPS", "ps_6_0", ActualDefines);
 
 	// states, enable depth test but don't write it
-	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(true, false, VK_COMPARE_OP_GREATER_OR_EQUAL)
+	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, 
+		UHDepthInfo(true, false, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL)
 		, InMat->GetCullMode()
 		, InMat->GetBlendMode()
 		, ShaderVS
@@ -91,7 +96,7 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 		, 1
 		, PipelineLayout);
 
-	GraphicState = InGfx->RequestGraphicState(Info);
+	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
 }
 
 void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

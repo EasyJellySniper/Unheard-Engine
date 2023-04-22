@@ -19,6 +19,8 @@ namespace MathHelpers
 
     bool IsVectorNearlyZero(XMFLOAT4 InVector);
 
+    bool IsVectorEqual(XMFLOAT2 InA, XMFLOAT2 InB);
+
     bool IsVectorEqual(XMFLOAT3 InA, XMFLOAT3 InB);
 
     bool IsVectorEqual(XMFLOAT4 InA, XMFLOAT4 InB);

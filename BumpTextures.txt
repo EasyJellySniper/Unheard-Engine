@@ -1,0 +1,9 @@
+Fern_Normal
+Ivy_Bump
+Ivy_Normal
+NM_Y
+NM_Y_Moss
+NM_Z
+NM_Z_Moss
+Snow_Normal
+Soil_normal

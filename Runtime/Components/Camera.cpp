@@ -211,7 +211,6 @@ void UHCameraComponent::BuildProjectionMatrix()
 	// apply jitter offset if it's enabled
 	if (bUseJitterOffset)
 	{
-		// offset half pixel
 		const XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
 		JitterOffset.x = Offset.x / Width;
 		JitterOffset.y = Offset.y / Height;

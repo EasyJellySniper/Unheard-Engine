@@ -25,7 +25,7 @@ UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name, VkRen
 		, 1
 		, PipelineLayout);
 
-	GraphicState = InGfx->RequestGraphicState(Info);
+	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
 }
 
 void UHTemporalAAShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

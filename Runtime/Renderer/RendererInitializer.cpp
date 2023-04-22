@@ -23,6 +23,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, SceneDepth(nullptr)
 	, PointClampedSampler(nullptr)
 	, LinearClampedSampler(nullptr)
+	, AnisoClampedSampler(nullptr)
 	, bEnableDepthPrePass(false)
 	, PostProcessRT(nullptr)
 	, PreviousSceneResult(nullptr)
@@ -106,6 +107,9 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	UHSamplerInfo LinearClampedInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 	LinearClampedInfo.MaxAnisotropy = 1;
 	LinearClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
+
+	LinearClampedInfo.MaxAnisotropy = 16;
+	AnisoClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
 
 	bool bIsRendererSuccess = CreateMainCommandPoolAndBuffer() && CreateFences();
 	if (bIsRendererSuccess)
@@ -263,43 +267,39 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	}
 }
 
+void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
+{
+	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
+	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
+
+	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames())
+	{
+		UHTexture2D* Tex = AssetManagerInterface->GetTexture2D(RegisteredTexture);
+		if (Tex)
+		{
+			Tex->UploadToGPU(GraphicInterface, CreationCmd, GraphBuilder);
+			Tex->GenerateMipMaps(GraphicInterface, CreationCmd, GraphBuilder);
+		}
+	}
+
+	GraphicInterface->EndOneTimeCmd(CreationCmd);
+}
+
 void UHDeferredShadingRenderer::PrepareTextures()
 {
 	// instead of uploading to GPU right after import, I choose to upload textures if they're really in use
 	// this makes workflow complicated but good for GPU memory
 
 	// Step1: uploading all textures which are really using for rendering
-	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
-	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
-
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
-		{
-			UHTexture* Tex = Mat->GetTex(static_cast<UHMaterialTextureType>(Idx));
-			if (Tex)
-			{
-				Tex->UploadToGPU(GraphicInterface, CreationCmd, GraphBuilder);
-			}
-		}
+		CheckTextureReference(Mat);
 	}
 	
-	// Step 2: Generate mip maps for all uploaded textures
-	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
-	{
-		UHMaterial* Mat = Renderer->GetMaterial();
-		for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
-		{
-			UHTexture* Tex = Mat->GetTex(static_cast<UHMaterialTextureType>(Idx));
-			if (Tex)
-			{
-				Tex->GenerateMipMaps(GraphicInterface, CreationCmd, GraphBuilder);
-			}
-		}
-	}
-
-	// Step3: Build all cubemaps in use
+	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
+	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
+	// Step2: Build all cubemaps in use
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
@@ -365,7 +365,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 		if (Mat && MotionObjectShaders.find(Renderer->GetBufferDataIndex()) == MotionObjectShaders.end())
 		{
-			MotionObjectShaders[Renderer->GetBufferDataIndex()] = UHMotionObjectPassShader(GraphicInterface, "MotionObjectShader", MotionObjectPassObj.RenderPass, Mat);
+			MotionObjectShaders[Renderer->GetBufferDataIndex()] = UHMotionObjectPassShader(GraphicInterface, "MotionObjectShader", MotionObjectPassObj.RenderPass, Mat, bEnableDepthPrePass);
 		}
 	}
 
@@ -495,7 +495,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		UHBasePassShader& BaseShader = BasePassShaders[Renderer->GetBufferDataIndex()];
 		BaseShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-			, OcclusionVisibleBuffer, Renderer);
+			, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
 	}
 
 	// ------------------------------------------------ Lighting pass descriptor update
@@ -923,3 +923,55 @@ void UHDeferredShadingRenderer::ResizeRTBuffers()
 		UpdateDescriptors();
 	}
 }
+
+#if WITH_DEBUG
+void UHDeferredShadingRenderer::RefreshMaterialShaders()
+{
+	// recompile material shader if necessary
+	for (UHMaterial* Mat : AssetManagerInterface->GetMaterials())
+	{
+		if (Mat->GetCompileFlag() == UpToDate)
+		{
+			continue;
+		}
+
+		GraphicInterface->WaitGPU();
+		CheckTextureReference(Mat);
+
+		int32_t Idx = -1;
+		for (UHObject* RendererObj : Mat->GetReferenceObjects())
+		{
+			if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
+			{
+				if (Mat->GetCompileFlag() == FullCompile)
+				{
+					BasePassShaders[Renderer->GetBufferDataIndex()].Release();
+					Idx = Renderer->GetBufferDataIndex();
+				}
+				else if (Mat->GetCompileFlag() == BindOnly)
+				{
+					BasePassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
+						, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+				}
+			}
+		}
+
+		if (Mat->GetCompileFlag() == FullCompile)
+		{
+			GraphicInterface->RequestReleaseShader(BasePassShaders[Idx].GetPixelShader());
+
+			for (const UHObject* RendererObj : Mat->GetReferenceObjects())
+			{
+				if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
+				{
+					BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass);
+					BasePassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
+						, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+				}
+			}
+		}
+
+		Mat->SetCompileFlag(UpToDate);
+	}
+}
+#endif

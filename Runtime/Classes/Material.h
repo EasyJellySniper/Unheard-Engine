@@ -6,6 +6,21 @@
 #include "Shader.h"
 #include "Sampler.h"
 #include "TextureCube.h"
+#include "GraphNode/MaterialNode.h"
+
+enum UHMaterialVersion
+{
+	Initial,
+	AddMaterialGraph,
+	MaterialVersionMax
+};
+
+enum UHMaterialCompileFlag
+{
+	UpToDate,
+	FullCompile,
+	BindOnly
+};
 
 // UH material property, for CPU use
 struct UHMaterialProperty
@@ -64,9 +79,15 @@ public:
 	UHMaterial();
 
 	bool Import(std::filesystem::path InMatPath);
+	void ImportGraphData(std::ifstream& FileIn);
+	void PostImport();
+
 #if WITH_DEBUG
 	void SetTexFileName(UHMaterialTextureType TexType, std::string InName);
 	void Export();
+	void ExportGraphData(std::ofstream& FileOut);
+	std::string GetTextureDefineCode();
+	std::string GetMaterialInputCode();
 #endif
 
 	void SetName(std::string InName);
@@ -78,11 +99,14 @@ public:
 	void SetShader(UHMaterialShaderType InType, UHShader* InShader);
 	void SetTextureIndex(UHMaterialTextureType InType, int32_t InIndex);
 	void SetIsSkybox(bool InFlag);
+	void SetCompileFlag(UHMaterialCompileFlag InFlag);
 
 	std::string GetName() const;
 	VkCullModeFlagBits GetCullMode() const;
 	UHBlendMode GetBlendMode() const;
 	UHMaterialProperty GetMaterialProps() const;
+	UHMaterialCompileFlag GetCompileFlag() const;
+	UHMaterialVersion GetVersion() const;
 	bool IsSkybox() const;
 
 	std::string GetTexFileName(UHMaterialTextureType InType) const;
@@ -92,19 +116,35 @@ public:
 	int32_t GetTextureIndex(UHMaterialTextureType InType) const;
 	std::string GetTexDefineName(UHMaterialTextureType InType) const;
 	std::vector<std::string> GetMaterialDefines(UHMaterialShaderType InType) const;
+	std::vector<std::string> GetRegisteredTextureNames();
 
 	bool operator==(const UHMaterial& InMat);
 
+#if WITH_DEBUG
+	void GenerateDefaultMaterialNodes();
+	std::unique_ptr<UHMaterialNode>& GetMaterialNode();
+	std::vector<std::unique_ptr<UHGraphNode>>& GetEditNodes();
+
+	void SetGUIRelativePos(std::vector<POINT> InPos);
+	std::vector<POINT>& GetGUIRelativePos();
+	void SetDefaultMaterialNodePos(POINT InPos);
+	POINT GetDefaultMaterialNodePos();
+#endif
+
 private:
+	UHMaterialVersion Version;
 	std::string Name;
 	std::array<std::string, UHMaterialTextureType::TextureTypeMax> TexFileNames;
+	std::vector<std::string> RegisteredTextureNames;
 
 	// material state variables
 	VkCullModeFlagBits CullMode;
 	UHBlendMode BlendMode;
 
-	// skybox variable, the tex cube will be used as reflection source if it's not a skybox material
+	// material flags
+	UHMaterialCompileFlag CompileFlag;
 	bool bIsSkybox;
+	bool bIsTangentSpace;
 
 	UHMaterialProperty MaterialProps;
 	std::array<UHTexture*, UHMaterialTextureType::TextureTypeMax> Textures;
@@ -112,4 +152,11 @@ private:
 	std::array<int32_t, UHMaterialTextureType::TextureTypeMax> TextureIndex;
 	std::array<UHShader*, UHMaterialShaderType::MaterialShaderTypeMax> Shaders;
 	std::array<std::string, UHMaterialTextureType::TextureTypeMax> TexDefines;
+
+	std::unique_ptr<UHMaterialNode> MaterialNode;
+	std::vector<std::unique_ptr<UHGraphNode>> EditNodes;
+	std::vector<POINT> EditGUIRelativePos;
+
+	// GUI positions relative to material node
+	POINT DefaultMaterialNodePos;
 };

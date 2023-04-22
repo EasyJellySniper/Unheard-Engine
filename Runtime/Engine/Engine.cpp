@@ -96,8 +96,9 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	UHEConfig->ApplyPresentationSettings(UHEngineWindow);
 	UHEConfig->ApplyWindowStyle(UHWindowInstance, UHEngineWindow);
 
-	// release all CPU data for texture/meshes
-	// they shoule be uploaded to GPU at this point
+#if WITH_RELEASE
+	// release all CPU data for texture/meshes for ship build
+	// they should be uploaded to GPU at this point
 	for (UHTexture2D* Tex : UHEAsset->GetTexture2Ds())
 	{
 		Tex->ReleaseCPUTextureData();
@@ -107,10 +108,12 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	{
 		Mesh->ReleaseCPUMeshData();
 	}
+#endif
 
 #if WITH_DEBUG
 	// init editor instance
-	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler);
+	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
+		, UHEAsset.get());
 #endif
 
 	bIsInitialized = true;

@@ -50,6 +50,10 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
+#if WITH_DEBUG
+	RefreshMaterialShaders();
+#endif
+
 	// sync config
 	bParallelSubmissionGT = ConfigInterface->RenderingSetting().bParallelSubmission;
 
@@ -138,9 +142,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	if (ConfigInterface->RenderingSetting().bTemporalAA)
 	{
-		XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
-		SystemConstantsCPU.JitterOffsetX = Offset.x * SystemConstantsCPU.UHResolution.z;
-		SystemConstantsCPU.JitterOffsetY = Offset.y * SystemConstantsCPU.UHResolution.w;
+		XMFLOAT2 Offset = CurrentCamera->GetJitterOffset();
+		SystemConstantsCPU.JitterOffsetX = Offset.x;
+		SystemConstantsCPU.JitterOffsetY = Offset.y;
 	}
 
 	// set sky light data

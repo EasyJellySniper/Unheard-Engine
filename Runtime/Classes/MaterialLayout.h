@@ -1,6 +1,12 @@
 #pragma once
 #include "../Engine/RenderResource.h"
 #include <vector>
+#include <string>
+
+// hard code variables in shader
+const int32_t GMaterialTextureRegisterStart = 9;
+const std::string GDefaultSamplerName = "DefaultAniso16";
+const std::string GDefaultTextureChannel0Name = "UV0";
 
 // header for material layout defines
 enum UHBlendMode
@@ -41,6 +47,25 @@ enum UHMaterialShaderType
 	PS,
 	MaterialShaderTypeMax
 };
+
+// UH material inputs used for both runtime and editor
+namespace Experimental
+{
+	enum UHMaterialInputs
+	{
+		Diffuse = 0,
+		Occlusion,
+		Specular,
+		Normal,
+		Opacity,
+		Metallic,
+		Roughness,
+		FresnelFactor,
+		ReflectionFactor,
+		Emissive,
+		MaterialMax
+	};
+}
 
 // get blend state info based on input blend mode
 inline VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, int32_t RTCount, std::vector<VkPipelineColorBlendAttachmentState>& OutColorBlendAttachments)

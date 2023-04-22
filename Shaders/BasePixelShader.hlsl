@@ -1,34 +1,16 @@
-#include "UHInputs.hlsli"
-#include "UHCommon.hlsli"
+#include "../Shaders/UHInputs.hlsli"
+#include "../Shaders/UHCommon.hlsli"
 
-// it's better to organize the opacity into diffuse's alpha channel
-// for now just fits FBX's structure, this is art-driven
-// now these also have no reflection system, so I define all registers here
-// if texture is null, just don't write to descriptor and leave it as null, my shader keyword will prevent accessing null texture
-// these can be optimized in the future since samplers can be shared on CPU side
-Texture2D DiffuseTex : register(t4);
-SamplerState DiffuseSampler : register(s5);
+TextureCube EnvCube : register(t7);
+SamplerState EnvSampler : register(s8);
 
-Texture2D OcclusionTex : register(t6);
-SamplerState OcclusionSampler : register(s7);
+//%UHS_TEXTUREDEFINE
 
-Texture2D SpecularTex : register(t8);
-SamplerState SpecularSampler : register(s9);
-
-Texture2D NormalTex : register(t10);
-SamplerState NormalSampler : register(s11);
-
-Texture2D OpacityTex : register(t12);
-SamplerState OpacitySampler : register(s13);
-
-TextureCube EnvCube : register(t14);
-SamplerState EnvSampler : register(s15);
-
-Texture2D MetallicTex : register(t16);
-SamplerState MetallicSampler : register(s17);
-
-Texture2D RoughnessTex : register(t18);
-SamplerState RoughnessSampler : register(s19);
+UHMaterialInputs GetMaterialInput(float2 UV0)
+{
+	// material input code will be generated in C++ side
+	//%UHS_INPUT
+}
 
 void BasePS(VertexOutput Vin
 	, bool bIsFrontFace : SV_IsFrontFace
@@ -43,37 +25,19 @@ void BasePS(VertexOutput Vin
 	// unjitter the UV for improving blurry texture
 	Vin.UV0 = Vin.UV0 - (ddx_fine(Vin.UV0) * JitterOffsetX + ddy_fine(Vin.UV0) * JitterOffsetY);
 
-	// if opacity is used, consider alpha test is needed
-	// might want to separate this behavior in the future
-#if WITH_OPACITY
-	float Opacity = OpacityTex.Sample(OpacitySampler, Vin.UV0).r * Material.DiffuseColor.a;
-	clip(Opacity - Material.Cutoff);
+	// fetch material input
+	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
+
+	// only clip objects without prepass
+	// otherwise, the equal test will suffice
+#if WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS)
+	clip(MaterialInput.Opacity - Material.Cutoff);
 #endif
 
-	// simply output LDR color to 1st buffer (consider metallic), A is used as ao here
-#if WITH_DIFFUSE
-	float3 BaseColor = DiffuseTex.Sample(DiffuseSampler, Vin.UV0).rgb * Material.DiffuseColor.rgb;
-#else
-	float3 BaseColor = Material.DiffuseColor.rgb;
-#endif
-
-#if WITH_OCCLUSION
-	float Occlusion = OcclusionTex.Sample(OcclusionSampler, Vin.UV0).r * Material.AmbientOcclusion;
-#else
-	float Occlusion = Material.AmbientOcclusion;
-#endif
-
-#if WITH_METALLIC
-	float Metallic = MetallicTex.Sample(MetallicSampler, Vin.UV0).r;
-#else
-	float Metallic = Material.Metallic;
-#endif
-
-#if WITH_ROUGHNESS
-	float Roughness = RoughnessTex.Sample(RoughnessSampler, Vin.UV0).r * Material.Roughness;
-#else
-	float Roughness = Material.Roughness;
-#endif
+	float3 BaseColor = MaterialInput.Diffuse;
+	float Occlusion = MaterialInput.Occlusion;
+	float Metallic = MaterialInput.Metallic;
+	float Roughness = MaterialInput.Roughness;
 
 	BaseColor = BaseColor - BaseColor * Metallic;
 	OutColor = float4(saturate(BaseColor), Occlusion);
@@ -82,15 +46,11 @@ void BasePS(VertexOutput Vin
 	float3 VertexNormal = normalize(Vin.Normal);
 	VertexNormal *= (bIsFrontFace) ? 1 : -1;
 
-#if WITH_NORMAL
-	float3 BumpNormal = NormalTex.Sample(NormalSampler, Vin.UV0).xyz;
-	BumpNormal = BumpNormal * 2.0f - 1.0f;
-
-	// scale bump normal
-	BumpNormal *= Material.BumpScale;
+#if WITH_TANGENT_SPACE
+	float3 BumpNormal = MaterialInput.Normal;
 
 	// tangent to world space
-	BumpNormal = normalize(mul(BumpNormal, Vin.WorldTBN));
+	BumpNormal = mul(BumpNormal, Vin.WorldTBN);
 	BumpNormal *= (bIsFrontFace) ? 1 : -1;
 #else
 	float3 BumpNormal = VertexNormal;
@@ -99,13 +59,9 @@ void BasePS(VertexOutput Vin
 	OutNormal = float4(BumpNormal * 0.5f + 0.5f, 0);
 
 	// output specular color and roughness
-#if WITH_SPECULAR
-	float3 Specular = SpecularTex.Sample(SpecularSampler, Vin.UV0).rgb * Material.SpecularColor;
-#else
-	float3 Specular = Material.SpecularColor;
-#endif
-	Specular = ComputeSpecularColor(Specular, Material.DiffuseColor.rgb, Metallic);
-	OutMaterial = float4(Specular * Material.ReflectionFactor, Roughness);
+	float3 Specular = MaterialInput.Specular;
+	Specular = ComputeSpecularColor(Specular, MaterialInput.Diffuse, Metallic);
+	OutMaterial = float4(Specular * MaterialInput.ReflectionFactor, Roughness);
 
 	float3 IndirectSpecular = 0;
 #if WITH_ENVCUBE
@@ -121,14 +77,14 @@ void BasePS(VertexOutput Vin
 	// just don't want to declare another variable so simply use SpecFade
 	float SpecMip = (1.0f - SpecFade) * Material.EnvCubeMipMapCount;
 
-	IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, Material.FresnelFactor));
+	IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
 
 	// since indirect spec will be added directly and can't be scaled with NdotL, expose material parameter to scale down it
-	IndirectSpecular *= Material.ReflectionFactor;
+	IndirectSpecular *= MaterialInput.ReflectionFactor;
 #endif
 
 	// output emissive color, a is not used at the moment
-	OutEmissive = float4(Material.EmissiveColor.rgb + IndirectSpecular, 0);
+	OutEmissive = float4(MaterialInput.Emissive.rgb + IndirectSpecular, 0);
 
 	// store the max change rate of UV for mip outside pixel shader
 	float2 Dx = ddx_fine(Vin.UV0);

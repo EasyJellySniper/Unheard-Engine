@@ -4,6 +4,13 @@
 struct UHParallelSubmitter
 {
 public:
+	UHParallelSubmitter()
+		: LogicalDevice(VK_NULL_HANDLE)
+		, NumWT(0)
+	{
+
+	}
+
 	void Initialize(VkDevice InDevice, UHQueueFamily QueueFamily, int32_t NumWorkerThreads)
 	{
 		LogicalDevice = InDevice;

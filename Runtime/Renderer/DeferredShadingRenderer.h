@@ -77,6 +77,7 @@ private:
 	void PrepareMeshes();
 
 	// prepare textures
+	void CheckTextureReference(UHMaterial* InMat);
 	void PrepareTextures();
 
 	// prepare rendering shaders
@@ -123,6 +124,10 @@ private:
 
 	// sort renderer
 	void SortRenderer();
+
+#if WITH_DEBUG
+	void RefreshMaterialShaders();
+#endif
 
 
 	/************************************************ rendering functions ************************************************/
@@ -198,6 +203,7 @@ private:
 	// shared samplers
 	UHSampler* PointClampedSampler;
 	UHSampler* LinearClampedSampler;
+	UHSampler* AnisoClampedSampler;
 
 
 	/************************************************ Render Pass stuffs ************************************************/
@@ -224,7 +230,7 @@ private:
 	UHRenderTexture* SceneMip;
 	UHRenderTexture* SceneDepth;
 
-	// store different base pass object, the id is buffer data index(per renderer)
+	// store different base pass object, the id is renderer data index
 	std::unordered_map<int32_t, UHBasePassShader> BasePassShaders;
 	UHRenderPassObject BasePassObj;
 

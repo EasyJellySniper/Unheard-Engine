@@ -8,10 +8,10 @@
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "../../Runtime/Engine/Input.h"
 #include "../Editor/Profiler.h"
-#include "EditorUtils.h"
+#include "../Classes/EditorUtils.h"
 
 UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
-    , UHRawInput* InInput, UHProfiler* InProfile)
+    , UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager)
 	: HInstance(InInstance)
     , HWnd(InHwnd)
     , Engine(InEngine)
@@ -19,11 +19,18 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
 	, DeferredRenderer(InRenderer)
     , Input(InInput)
     , Profile(InProfile)
+    , AssetManager(InAssetManager)
     , ViewModeMenuItem(ID_VIEWMODE_FULLLIT)
 {
     ProfileTimer.Reset();
     SettingDialog = UHSettingDialog(HInstance, HWnd, Config, Engine, DeferredRenderer, Input);
     ProfileDialog = UHProfileDialog(HInstance, HWnd);
+    MaterialDialog = std::make_unique<UHMaterialDialog>(HInstance, HWnd, AssetManager);
+}
+
+UHEditor::~UHEditor()
+{
+    MaterialDialog.reset();
 }
 
 void UHEditor::OnEditorUpdate()
@@ -31,6 +38,7 @@ void UHEditor::OnEditorUpdate()
     ProfileTimer.Tick();
     SettingDialog.Update();
     ProfileDialog.SyncProfileStatistics(Profile, &ProfileTimer, Config);
+    MaterialDialog->Update();
 }
 
 void UHEditor::OnMenuSelection(int32_t WmId)
@@ -44,6 +52,9 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         break;
     case ID_WINDOW_PROFILES:
         ProfileDialog.ShowDialog();
+        break;
+    case ID_WINDOW_MATERIAL:
+        MaterialDialog->ShowDialog();
         break;
     default:
         break;

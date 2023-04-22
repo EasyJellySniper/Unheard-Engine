@@ -20,6 +20,6 @@ UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRende
 		, 1
 		, PipelineLayout);
 
-	GraphicState = InGfx->RequestGraphicState(Info);
+	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
 }
 #endif

@@ -4,6 +4,7 @@
 #include <typeindex>
 
 const int32_t GMaterialSlotInRT = 16;
+extern std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
 
 // 32 byte structure for shader table record
 struct UHShaderRecord
@@ -13,7 +14,7 @@ struct UHShaderRecord
 
 // high-level shader class, this will be actually used for rendering
 // descriptor is set here too, each shader class is aim for keeping a minium set of descriptors
-class UHShaderClass
+class UHShaderClass : public UHObject
 {
 public:
 	UHShaderClass();
@@ -91,6 +92,7 @@ public:
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame);
 
+	UHShader* GetPixelShader() const;
 	UHShader* GetRayGenShader() const;
 	UHShader* GetClosestShader() const;
 	UHShader* GetAnyHitShader() const;
@@ -111,9 +113,13 @@ protected:
 	// each shader is default to one layout, but it can use additional layouts
 	void CreateDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts = std::vector<VkDescriptorSetLayout>());
 
+	// create descriptor but for material
+	void CreateMaterialDescriptor();
+
 	UHGraphic* Gfx;
 	std::string Name;
 	std::type_index TypeIndexCache;
+	UHMaterial* MaterialCache;
 
 	std::vector<VkDescriptorSetLayoutBinding> LayoutBindings;
 	VkPipelineLayout PipelineLayout;
@@ -121,12 +127,10 @@ protected:
 	std::array<VkDescriptorSet, GMaxFrameInFlight> DescriptorSets;
 
 	UHShader* ShaderVS;
-	UHShader* ShaderGS;
 	UHShader* ShaderPS;
 	UHShader* RayGenShader;
 	UHShader* ClosestHitShader;
 	UHShader* AnyHitShader;
-	UHGraphicState* GraphicState;
 	UHGraphicState* RTState;
 
 	// shader table

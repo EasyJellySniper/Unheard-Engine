@@ -2,14 +2,14 @@
 
 #if WITH_DEBUG
 
-#include "../EditorUI/EditorUtils.h"
+#include "../Classes/EditorUtils.h"
 #include "../../Runtime/Engine/Config.h"
 #include "../../Runtime/Engine/Engine.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "../../resource.h"
 
-HWND SettingWindow = nullptr;
-WPARAM LatestControl = 0;
+HWND GSettingWindow = nullptr;
+WPARAM GLatestControl = 0;
 
 UHSettingDialog::UHSettingDialog()
 	: UHSettingDialog(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr)
@@ -61,11 +61,11 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
         return (INT_PTR)TRUE;
 
     case WM_COMMAND:
-        LatestControl = wParam;
+        GLatestControl = wParam;
         if (LOWORD(wParam) == IDCANCEL)
         {
             EndDialog(hDlg, LOWORD(wParam));
-            SettingWindow = nullptr;
+            GSettingWindow = nullptr;
             return (INT_PTR)TRUE;
         }
         break;
@@ -75,9 +75,9 @@ INT_PTR CALLBACK SettingProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 
 void UHSettingDialog::ShowDialog()
 {
-    if (SettingWindow == nullptr)
+    if (GSettingWindow == nullptr)
     {
-        SettingWindow = CreateDialog(Instance, MAKEINTRESOURCE(IDD_SETTING), Window, (DLGPROC)SettingProc);
+        GSettingWindow = CreateDialog(Instance, MAKEINTRESOURCE(IDD_SETTING), Window, (DLGPROC)SettingProc);
 
         // sync ini settings to the window controls
         const UHPresentationSettings& PresentSettings = Config->PresentationSetting();
@@ -85,61 +85,61 @@ void UHSettingDialog::ShowDialog()
         const UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
 
         // presentation
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_VSYNC, PresentSettings.bVsync);
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_FULLSCREEN, PresentSettings.bFullScreen);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_VSYNC, PresentSettings.bVsync);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_FULLSCREEN, PresentSettings.bFullScreen);
 
         // engine
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_CAMERASPEED, std::to_wstring((int)EngineSettings.DefaultCameraMoveSpeed));
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_MOUSEROTATESPEED, std::to_wstring((int)EngineSettings.MouseRotationSpeed));
-        UHEditorUtil::SetEditControlChar(SettingWindow, IDC_FORWARDKEY, EngineSettings.ForwardKey);
-        UHEditorUtil::SetEditControlChar(SettingWindow, IDC_BACKKEY, EngineSettings.BackKey);
-        UHEditorUtil::SetEditControlChar(SettingWindow, IDC_LEFTKEY, EngineSettings.LeftKey);
-        UHEditorUtil::SetEditControlChar(SettingWindow, IDC_RIGHTKEY, EngineSettings.RightKey);
-        UHEditorUtil::SetEditControlChar(SettingWindow, IDC_DOWNKEY, EngineSettings.DownKey);
-        UHEditorUtil::SetEditControlChar(SettingWindow, IDC_UPKEY, EngineSettings.UpKey);
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_FPSLIMIT, std::to_wstring((int)EngineSettings.FPSLimit));
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_MESHBUFFERMEMORYBUDGET, std::to_wstring((int)EngineSettings.MeshBufferMemoryBudgetMB));
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_IMAGEMEMORYBUDGET, std::to_wstring((int)EngineSettings.ImageMemoryBudgetMB));
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_CAMERASPEED, std::to_wstring((int)EngineSettings.DefaultCameraMoveSpeed));
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_MOUSEROTATESPEED, std::to_wstring((int)EngineSettings.MouseRotationSpeed));
+        UHEditorUtil::SetEditControlChar(GSettingWindow, IDC_FORWARDKEY, EngineSettings.ForwardKey);
+        UHEditorUtil::SetEditControlChar(GSettingWindow, IDC_BACKKEY, EngineSettings.BackKey);
+        UHEditorUtil::SetEditControlChar(GSettingWindow, IDC_LEFTKEY, EngineSettings.LeftKey);
+        UHEditorUtil::SetEditControlChar(GSettingWindow, IDC_RIGHTKEY, EngineSettings.RightKey);
+        UHEditorUtil::SetEditControlChar(GSettingWindow, IDC_DOWNKEY, EngineSettings.DownKey);
+        UHEditorUtil::SetEditControlChar(GSettingWindow, IDC_UPKEY, EngineSettings.UpKey);
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_FPSLIMIT, std::to_wstring((int)EngineSettings.FPSLimit));
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_MESHBUFFERMEMORYBUDGET, std::to_wstring((int)EngineSettings.MeshBufferMemoryBudgetMB));
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_IMAGEMEMORYBUDGET, std::to_wstring((int)EngineSettings.ImageMemoryBudgetMB));
 
         // rendering
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_RENDERWIDTH, std::to_wstring(RenderingSettings.RenderWidth));
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_RENDERHEIGHT, std::to_wstring(RenderingSettings.RenderHeight));
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLETAA, RenderingSettings.bTemporalAA);
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLERAYTRACING, RenderingSettings.bEnableRayTracing);
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLERAYTRACINGOCCLUSIONTEST, RenderingSettings.bEnableRayTracingOcclusionTest);
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPULABELING, RenderingSettings.bEnableGPULabeling);
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLELAYERVALIDATION, RenderingSettings.bEnableLayerValidation);
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEGPUTIMING, RenderingSettings.bEnableGPUTiming);
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEPARALLELSUBMISSION, RenderingSettings.bParallelSubmission);
-        UHEditorUtil::SetEditControl(SettingWindow, IDC_PARALLELTHREADS, std::to_wstring(RenderingSettings.ParallelThreads));
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLEDEPTHPREPASS, RenderingSettings.bEnableDepthPrePass);
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_RENDERWIDTH, std::to_wstring(RenderingSettings.RenderWidth));
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_RENDERHEIGHT, std::to_wstring(RenderingSettings.RenderHeight));
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLETAA, RenderingSettings.bTemporalAA);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLERAYTRACING, RenderingSettings.bEnableRayTracing);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLERAYTRACINGOCCLUSIONTEST, RenderingSettings.bEnableRayTracingOcclusionTest);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLEGPULABELING, RenderingSettings.bEnableGPULabeling);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLELAYERVALIDATION, RenderingSettings.bEnableLayerValidation);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLEGPUTIMING, RenderingSettings.bEnableGPUTiming);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLEPARALLELSUBMISSION, RenderingSettings.bParallelSubmission);
+        UHEditorUtil::SetEditControl(GSettingWindow, IDC_PARALLELTHREADS, std::to_wstring(RenderingSettings.ParallelThreads));
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLEDEPTHPREPASS, RenderingSettings.bEnableDepthPrePass);
 
         std::vector<std::wstring> ShadowQualities = { L"Full", L"Half", L"Quarter" };
-        UHEditorUtil::InitComboBox(SettingWindow, IDC_RTSHADOWQUALITY, ShadowQualities[RenderingSettings.RTDirectionalShadowQuality], ShadowQualities);
+        UHEditorUtil::InitComboBox(GSettingWindow, IDC_RTSHADOWQUALITY, ShadowQualities[RenderingSettings.RTDirectionalShadowQuality], ShadowQualities);
 
-        ShowWindow(SettingWindow, SW_SHOW);
+        ShowWindow(GSettingWindow, SW_SHOW);
     }
 }
 
 void UHSettingDialog::Update()
 {
-    if (!SettingWindow)
+    if (!GSettingWindow)
     {
         return;
     }
 
-    if (LatestControl != 0)
+    if (GLatestControl != 0)
     {
-        if (ControlCallbacks.find(LOWORD(LatestControl)) != ControlCallbacks.end())
+        if (ControlCallbacks.find(LOWORD(GLatestControl)) != ControlCallbacks.end())
         {
-            if (HIWORD(LatestControl) == EN_CHANGE || HIWORD(LatestControl) == BN_CLICKED
-                || HIWORD(LatestControl) == CBN_SELCHANGE)
+            if (HIWORD(GLatestControl) == EN_CHANGE || HIWORD(GLatestControl) == BN_CLICKED
+                || HIWORD(GLatestControl) == CBN_SELCHANGE)
             {
-                (this->*ControlCallbacks[LOWORD(LatestControl)])();
+                (this->*ControlCallbacks[LOWORD(GLatestControl)])();
             }
         }
 
-        LatestControl = 0;
+        GLatestControl = 0;
     }
 
     // sync settings from input event
@@ -150,19 +150,19 @@ void UHSettingDialog::Update()
     // full screen toggling
     if (Input->IsKeyHold(VK_MENU) && Input->IsKeyUp(VK_RETURN))
     {
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_FULLSCREEN, !PresentSettings.bFullScreen);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_FULLSCREEN, !PresentSettings.bFullScreen);
     }
 
     // TAA toggling
     if (Input->IsKeyHold(VK_CONTROL) && Input->IsKeyUp('t'))
     {
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_ENABLETAA, !RenderingSettings.bTemporalAA);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLETAA, !RenderingSettings.bTemporalAA);
     }
 
     // vsync toggling
     if (Input->IsKeyHold(VK_CONTROL) && Input->IsKeyUp('v'))
     {
-        UHEditorUtil::SetCheckedBox(SettingWindow, IDC_VSYNC, !PresentSettings.bVsync);
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_VSYNC, !PresentSettings.bVsync);
     }
 }
 
@@ -180,74 +180,74 @@ void UHSettingDialog::ControlFullScreen()
 void UHSettingDialog::ControlCameraSpeed()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.DefaultCameraMoveSpeed = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_CAMERASPEED);
+    EngineSettings.DefaultCameraMoveSpeed = UHEditorUtil::GetEditControl<float>(GSettingWindow, IDC_CAMERASPEED);
 }
 
 void UHSettingDialog::ControlMouseRotateSpeed()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.MouseRotationSpeed = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_MOUSEROTATESPEED);
+    EngineSettings.MouseRotationSpeed = UHEditorUtil::GetEditControl<float>(GSettingWindow, IDC_MOUSEROTATESPEED);
 }
 
 void UHSettingDialog::ControlForwardKey()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.ForwardKey = UHEditorUtil::GetEditControlChar(SettingWindow, IDC_FORWARDKEY);
+    EngineSettings.ForwardKey = UHEditorUtil::GetEditControlChar(GSettingWindow, IDC_FORWARDKEY);
 }
 
 void UHSettingDialog::ControlBackKey()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.BackKey = UHEditorUtil::GetEditControlChar(SettingWindow, IDC_BACKKEY);
+    EngineSettings.BackKey = UHEditorUtil::GetEditControlChar(GSettingWindow, IDC_BACKKEY);
 }
 
 void UHSettingDialog::ControlLeftKey()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.LeftKey = UHEditorUtil::GetEditControlChar(SettingWindow, IDC_LEFTKEY);
+    EngineSettings.LeftKey = UHEditorUtil::GetEditControlChar(GSettingWindow, IDC_LEFTKEY);
 }
 
 void UHSettingDialog::ControlRightKey()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.RightKey = UHEditorUtil::GetEditControlChar(SettingWindow, IDC_RIGHTKEY);
+    EngineSettings.RightKey = UHEditorUtil::GetEditControlChar(GSettingWindow, IDC_RIGHTKEY);
 }
 
 void UHSettingDialog::ControlDownKey()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.DownKey = UHEditorUtil::GetEditControlChar(SettingWindow, IDC_DOWNKEY);
+    EngineSettings.DownKey = UHEditorUtil::GetEditControlChar(GSettingWindow, IDC_DOWNKEY);
 }
 
 void UHSettingDialog::ControlUpKey()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.UpKey = UHEditorUtil::GetEditControlChar(SettingWindow, IDC_UPKEY);
+    EngineSettings.UpKey = UHEditorUtil::GetEditControlChar(GSettingWindow, IDC_UPKEY);
 }
 
 void UHSettingDialog::ControlFPSLimit()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.FPSLimit = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_FPSLIMIT);
+    EngineSettings.FPSLimit = UHEditorUtil::GetEditControl<float>(GSettingWindow, IDC_FPSLIMIT);
 }
 
 void UHSettingDialog::ControlBufferMemoryBudget()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.MeshBufferMemoryBudgetMB = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_MESHBUFFERMEMORYBUDGET);
+    EngineSettings.MeshBufferMemoryBudgetMB = UHEditorUtil::GetEditControl<float>(GSettingWindow, IDC_MESHBUFFERMEMORYBUDGET);
 }
 
 void UHSettingDialog::ControlImageMemoryBudget()
 {
     UHEngineSettings& EngineSettings = Config->EngineSetting();
-    EngineSettings.ImageMemoryBudgetMB = UHEditorUtil::GetEditControl<float>(SettingWindow, IDC_IMAGEMEMORYBUDGET);
+    EngineSettings.ImageMemoryBudgetMB = UHEditorUtil::GetEditControl<float>(GSettingWindow, IDC_IMAGEMEMORYBUDGET);
 }
 
 void UHSettingDialog::ControlResolution()
 {
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
-    int32_t Width = UHEditorUtil::GetEditControl<int32_t>(SettingWindow, IDC_RENDERWIDTH);
-    int32_t Height = UHEditorUtil::GetEditControl<int32_t>(SettingWindow, IDC_RENDERHEIGHT);
+    int32_t Width = UHEditorUtil::GetEditControl<int32_t>(GSettingWindow, IDC_RENDERWIDTH);
+    int32_t Height = UHEditorUtil::GetEditControl<int32_t>(GSettingWindow, IDC_RENDERHEIGHT);
 
     if (Width > 0 && Height > 0)
     {
@@ -308,13 +308,13 @@ void UHSettingDialog::ControlParallelSubmission()
 void UHSettingDialog::ControlParallelThread()
 {
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
-    RenderingSettings.ParallelThreads = UHEditorUtil::GetEditControl<int32_t>(SettingWindow, IDC_PARALLELTHREADS);
+    RenderingSettings.ParallelThreads = UHEditorUtil::GetEditControl<int32_t>(GSettingWindow, IDC_PARALLELTHREADS);
 }
 
 void UHSettingDialog::ControlShadowQuality()
 {
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
-    RenderingSettings.RTDirectionalShadowQuality = UHEditorUtil::GetComboBoxSelectedIndex(SettingWindow, IDC_RTSHADOWQUALITY);
+    RenderingSettings.RTDirectionalShadowQuality = UHEditorUtil::GetComboBoxSelectedIndex(GSettingWindow, IDC_RTSHADOWQUALITY);
     DeferredRenderer->ResizeRTBuffers();
 }
 

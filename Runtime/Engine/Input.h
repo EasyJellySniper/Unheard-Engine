@@ -18,6 +18,12 @@ public:
 	void ParseInputData(LPARAM LParam);
 	void ResetMouseData();
 	void ResetMouseState();
+
+	// set key state manually, can be useful for editor inputs
+	void SetLeftMousePressed(bool bFlag);
+	void SetRightMousePressed(bool bFlag);
+
+	void GetMouseDelta(uint32_t& X, uint32_t& Y) const;
 	RAWMOUSE GetMouseData() const;
 
 	void CacheKeyStates();
@@ -48,4 +54,6 @@ private:
 	bool bIsRightMousePressed;
 	bool bPreviousLeftMousePressed;
 	bool bPreviousRightMousePressed;
+
+	POINT LastMousePos;
 };

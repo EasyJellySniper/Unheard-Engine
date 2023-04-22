@@ -20,5 +20,5 @@ UHToneMappingShader::UHToneMappingShader(UHGraphic* InGfx, std::string Name, VkR
 		, 1
 		, PipelineLayout);
 
-	GraphicState = InGfx->RequestGraphicState(Info);
+	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
 }

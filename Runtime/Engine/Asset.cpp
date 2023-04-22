@@ -18,6 +18,7 @@ UHAssetManager::UHAssetManager()
 	// load shader cache after initialization
 	UHShaderImporterInterface = std::make_unique<UHShaderImporter>();
 	UHShaderImporterInterface->LoadShaderCache();
+	UHShaderImporterInterface->CompileHLSL("FallbackPixelShader", GRawShaderPath + "FallbackPixelShader.hlsl", "FallbackPS", "ps_6_0", std::vector<std::string>());
 
 	// generate built-in meshes
 	UHMesh BuiltInCube = UHGeometryHelper::CreateCubeMesh();
@@ -56,14 +57,21 @@ void UHAssetManager::ImportMeshes()
 	// importing from raw asset first
 	// it won't duplicate the import if mesh is cached
 #if WITH_DEBUG
-	std::vector<UHMaterial> ImportedMat;
+	std::vector<std::unique_ptr<UHMaterial>> ImportedMat;
 	UHFbxImporterInterface->ImportRawFbx(ImportedMat);
 
 	// FBX will also import material, so export as UH material right after import
-	for (UHMaterial& Mat : ImportedMat)
+	for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
 	{
-		Mat.Export();
+		Mat->GenerateDefaultMaterialNodes();
+		Mat->Export();
 	}
+
+	for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
+	{
+		Mat.reset();
+	}
+	ImportedMat.clear();
 #endif
 
 	// import UHMeshes
@@ -105,6 +113,18 @@ void UHAssetManager::ImportMeshes()
 	{
 		UHMeshesCache[Idx] = UHMeshes[Idx].get();
 	}
+}
+
+void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterial* InMat
+	, std::vector<std::string> Defines)
+{
+#if WITH_DEBUG
+	if (InMat->GetCompileFlag() == FullCompile || InMat->GetVersion() < AddMaterialGraph
+		|| !UHShaderImporterInterface->IsShaderTemplateCached(InSource, EntryName, ProfileName))
+	{
+		UHShaderImporterInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InMat, Defines);
+	}
+#endif
 }
 
 void UHAssetManager::CompileShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName

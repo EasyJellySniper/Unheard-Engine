@@ -184,7 +184,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WITH_RELEASE;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\VulkanSDK\1.3.224.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -219,11 +219,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Runtime\Classes\GraphNode\GraphNode.h" />
+    <ClInclude Include="Editor\Classes\GraphNodeGUI.h" />
+    <ClInclude Include="Runtime\Classes\GraphNode\GraphPin.h" />
+    <ClInclude Include="Editor\Classes\GUIDefines.h" />
+    <ClInclude Include="Runtime\Classes\GraphNode\MaterialNode.h" />
+    <ClInclude Include="Runtime\Classes\GraphNode\MathNode.h" />
+    <ClInclude Include="Editor\Classes\MathNodeGUI.h" />
+    <ClInclude Include="Editor\Classes\MenuGUI.h" />
+    <ClInclude Include="Runtime\Classes\GraphNode\ParameterNode.h" />
+    <ClInclude Include="Editor\Classes\ParameterNodeGUI.h" />
+    <ClInclude Include="Runtime\Classes\GraphNode\TextureNode.h" />
+    <ClInclude Include="Editor\Classes\TextureNodeGUI.h" />
     <ClInclude Include="Editor\Dialog\Dialog.h" />
+    <ClInclude Include="Editor\Dialog\MaterialDialog.h" />
     <ClInclude Include="Editor\Dialog\ProfileDialog.h" />
     <ClInclude Include="Editor\Dialog\SettingDialog.h" />
-    <ClInclude Include="Editor\EditorUI\Editor.h" />
-    <ClInclude Include="Editor\EditorUI\EditorUtils.h" />
+    <ClInclude Include="Editor\Editor\Editor.h" />
+    <ClInclude Include="Editor\Classes\EditorUtils.h" />
     <ClInclude Include="Editor\GeometryUtility.h" />
     <ClInclude Include="Editor\TextureImporter.h" />
     <ClInclude Include="Game\UHDemoScript.h" />
@@ -292,11 +305,23 @@
     <ClInclude Include="UnheardEngine.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Runtime\Classes\GraphNode\GraphNode.cpp" />
+    <ClCompile Include="Editor\Classes\GraphNodeGUI.cpp" />
+    <ClCompile Include="Runtime\Classes\GraphNode\GraphPin.cpp" />
+    <ClCompile Include="Runtime\Classes\GraphNode\MaterialNode.cpp" />
+    <ClCompile Include="Runtime\Classes\GraphNode\MathNode.cpp" />
+    <ClCompile Include="Editor\Classes\MathNodeGUI.cpp" />
+    <ClCompile Include="Editor\Classes\MenuGUI.cpp" />
+    <ClCompile Include="Runtime\Classes\GraphNode\ParameterNode.cpp" />
+    <ClCompile Include="Editor\Classes\ParameterNodeGUI.cpp" />
+    <ClCompile Include="Runtime\Classes\GraphNode\TextureNode.cpp" />
+    <ClCompile Include="Editor\Classes\TextureNodeGUI.cpp" />
     <ClCompile Include="Editor\Dialog\Dialog.cpp" />
+    <ClCompile Include="Editor\Dialog\MaterialDialog.cpp" />
     <ClCompile Include="Editor\Dialog\ProfileDialog.cpp" />
     <ClCompile Include="Editor\Dialog\SettingDialog.cpp" />
-    <ClCompile Include="Editor\EditorUI\Editor.cpp" />
-    <ClCompile Include="Editor\EditorUI\EditorUtils.cpp" />
+    <ClCompile Include="Editor\Editor\Editor.cpp" />
+    <ClCompile Include="Editor\Classes\EditorUtils.cpp" />
     <ClCompile Include="Editor\TextureImporter.cpp" />
     <ClCompile Include="Game\UHDemoScript.cpp" />
     <ClCompile Include="Runtime\Classes\AccelerationStructure.cpp" />
@@ -305,6 +330,7 @@
     <ClCompile Include="Runtime\Classes\TextureCube.cpp" />
     <ClCompile Include="Runtime\Classes\Thread.cpp" />
     <ClCompile Include="Runtime\Classes\Types.cpp" />
+    <ClCompile Include="Runtime\Classes\Utility.cpp" />
     <ClCompile Include="Runtime\Components\GameScript.cpp" />
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
     <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp" />
@@ -447,6 +473,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\RayTracing\RayTracingOcclusionTest.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\FallbackPixelShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -62,7 +62,7 @@ void UHConfigManager::LoadConfig()
 			// clamp a few parameters
 			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
 			RenderingSettings.RenderHeight = std::clamp(RenderingSettings.RenderHeight, 480, 16384);
-			RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, 8);
+			RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, 16);
 		}
 	}
 	FileIn.close();

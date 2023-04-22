@@ -162,11 +162,16 @@ public:
 	std::unique_ptr<UHAccelerationStructure> RequestAccelerationStructure();
 
 	// request a shader reference based on input
+	bool CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::filesystem::path OutputShaderPath);
 	UHShader* RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> InMacro = std::vector<std::string>());
+	UHShader* RequestMaterialPixelShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+		, UHMaterial* InMat, std::vector<std::string> InMacro = std::vector<std::string>());
+	void RequestReleaseShader(UHShader* InShader);
 
 	// request graphic/RT state
 	UHGraphicState* RequestGraphicState(UHRenderPassInfo InInfo);
+	void RequestReleaseGraphicState(UHGraphicState* InState);
 	UHGraphicState* RequestRTState(UHRayTracingInfo InInfo);
 
 	// request a texture sampler

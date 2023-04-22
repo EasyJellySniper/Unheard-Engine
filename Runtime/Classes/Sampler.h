@@ -8,7 +8,7 @@ struct UHSamplerInfo
 	UHSamplerInfo(VkFilter InFilter, VkSamplerAddressMode InAddressModeU, VkSamplerAddressMode InAddressModeV
 		, VkSamplerAddressMode InAddressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
 		, float InMaxLod = 0.0f
-		, float InMaxAnisotropy = 8.0f)
+		, float InMaxAnisotropy = 16.0f)
 		: FilterMode(InFilter)
 		, AddressModeU(InAddressModeU)
 		, AddressModeV(InAddressModeV)

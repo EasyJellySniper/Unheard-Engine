@@ -8,6 +8,20 @@ UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std
 	, EntryName(InEntryName)
 	, ProfileName(InProfileName)
 	, ShaderDefines(InMacro)
+	, bIsMaterialShader(false)
+{
+
+}
+
+UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
+	, bool bInIsMaterialShader, std::vector<std::string> InMacro)
+	: Shader(VK_NULL_HANDLE)
+	, ShaderName(InShaderName)
+	, SourcePath(InSource)
+	, EntryName(InEntryName)
+	, ProfileName(InProfileName)
+	, bIsMaterialShader(bInIsMaterialShader)
+	, ShaderDefines(InMacro)
 {
 
 }
@@ -54,5 +68,6 @@ bool UHShader::operator==(const UHShader& InShader)
 		&& InShader.EntryName == EntryName
 		&& InShader.ProfileName == ProfileName
 		&& InShader.ShaderName == ShaderName
-		&& InShader.SourcePath == SourcePath;
+		&& InShader.SourcePath == SourcePath
+		&& InShader.bIsMaterialShader == bIsMaterialShader;
 }

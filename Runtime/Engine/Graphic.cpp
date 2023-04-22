@@ -746,24 +746,6 @@ void UHGraphic::ToggleFullScreen(bool InFullScreenState)
 
 	// wait before toggling
 	WaitGPU();
-
-	if (!bIsFullScreen)
-	{
-		if (EnterFullScreenCallback(LogicalDevice, SwapChain) != VK_SUCCESS)
-		{
-			UHE_LOG(L"Enter fullscreen failed!\n");
-			return;
-		}
-	}
-	else
-	{
-		if (LeaveFullScreenCallback(LogicalDevice, SwapChain) != VK_SUCCESS)
-		{
-			UHE_LOG(L"Leave fullscreen failed!\n");
-			return;
-		}
-	}
-
 	bIsFullScreen = !bIsFullScreen;
 }
 
@@ -1102,6 +1084,7 @@ UHMaterial* UHGraphic::RequestMaterial(std::filesystem::path InPath)
 	std::unique_ptr<UHMaterial> NewMat = std::make_unique<UHMaterial>();
 	if (NewMat->Import(InPath))
 	{
+		NewMat->PostImport();
 		MaterialPools.push_back(std::move(NewMat));
 		return MaterialPools.back().get();
 	}
@@ -1117,6 +1100,42 @@ std::unique_ptr<UHAccelerationStructure> UHGraphic::RequestAccelerationStructure
 	NewAS->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 	return std::move(NewAS);
+}
+
+bool UHGraphic::CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::filesystem::path OutputShaderPath)
+{
+	// setup input shader path, read from compiled shader
+	if (!std::filesystem::exists(OutputShaderPath))
+	{
+		UHE_LOG(L"Failed to load shader " + OutputShaderPath.wstring() + L"!\n");
+		return false;
+	}
+
+	// load shader code
+	std::ifstream FileIn(OutputShaderPath.string(), std::ios::ate | std::ios::binary);
+
+	// get file size
+	size_t FileSize = static_cast<size_t>(FileIn.tellg());
+	std::vector<char> ShaderCode(FileSize);
+
+	// read data
+	FileIn.seekg(0);
+	FileIn.read(ShaderCode.data(), FileSize);
+
+	FileIn.close();
+
+	// start to create shader module
+	VkShaderModuleCreateInfo CreateInfo{};
+	CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	CreateInfo.codeSize = ShaderCode.size();
+	CreateInfo.pCode = reinterpret_cast<const uint32_t*>(ShaderCode.data());
+
+	if (!NewShader->Create(CreateInfo))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
@@ -1146,38 +1165,74 @@ UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pa
 
 	// setup input shader path, read from compiled shader
 	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OriginSubpath + InShaderName + MacroHashName + GShaderAssetExtension;
-	if (!std::filesystem::exists(OutputShaderPath))
-	{
-		UHE_LOG(L"Failed to load shader " + OutputShaderPath.wstring() + L"!\n");
-		return nullptr;
-	}
-
-	// load shader code
-	std::ifstream FileIn(OutputShaderPath.string(), std::ios::ate | std::ios::binary);
-
-	// get file size
-	size_t FileSize = static_cast<size_t>(FileIn.tellg());
-	std::vector<char> ShaderCode(FileSize);
-
-	// read data
-	FileIn.seekg(0);
-	FileIn.read(ShaderCode.data(), FileSize);
-
-	FileIn.close();
-
-	// start to create shader module
-	VkShaderModuleCreateInfo CreateInfo{};
-	CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	CreateInfo.codeSize = ShaderCode.size();
-	CreateInfo.pCode = reinterpret_cast<const uint32_t*>(ShaderCode.data());
-
-	if (!NewShader->Create(CreateInfo))
+	if (!CreateShaderModule(NewShader, OutputShaderPath))
 	{
 		return nullptr;
 	}
 
 	ShaderPools.push_back(std::move(NewShader));
 	return ShaderPools.back().get();
+}
+
+// request shader for material
+UHShader* UHGraphic::RequestMaterialPixelShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+	, UHMaterial* InMat, std::vector<std::string> InMacro)
+{
+	// if it's a release build, and material version is before graph system, it needs a fallback
+#if WITH_SHIP
+	if (InMat->GetVersion() < AddMaterialGraph)
+	{
+		InShaderName = "FallbackPixelShader";
+		EntryName = "FallbackPS";
+		InSource = GRawShaderPath + InShaderName;
+	}
+#endif
+
+	std::unique_ptr<UHShader> NewShader = std::make_unique<UHShader>(InShaderName + "_" + InMat->GetName(), InSource, EntryName, ProfileName, true, InMacro);
+	NewShader->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+
+	// early return if it's exist in pool and does not need recompile
+	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
+	if (PoolIdx != -1)
+	{
+		return ShaderPools[PoolIdx].get();
+	}
+
+	// almost the same as common shader flow, but this will go through HLSL translator instead
+	// only compile it when the compile flag or version is matched
+#if WITH_DEBUG
+	AssetManagerInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InMat, InMacro);
+#endif
+
+	std::filesystem::path OutputShaderPath = GShaderAssetFolder + InShaderName + "_" + InMat->GetName() + GShaderAssetExtension;
+
+#if WITH_SHIP
+	if (InMat->GetVersion() < AddMaterialGraph)
+	{
+		OutputShaderPath = GShaderAssetFolder + InShaderName + GShaderAssetExtension;
+	}
+#endif
+
+	if (!CreateShaderModule(NewShader, OutputShaderPath))
+	{
+		return nullptr;
+	}
+
+	ShaderPools.push_back(std::move(NewShader));
+	return ShaderPools.back().get();
+}
+
+void UHGraphic::RequestReleaseShader(UHShader* InShader)
+{
+	if (InShader)
+	{
+		int32_t Idx = UHUtilities::FindIndex(ShaderPools, *InShader);
+		if (Idx != -1)
+		{
+			ShaderPools[Idx]->Release();
+			UHUtilities::RemoveByIndex(ShaderPools, Idx);
+		}
+	}
 }
 
 // request a Graphic State object and return
@@ -1202,6 +1257,21 @@ UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 
 	StatePools.push_back(std::move(NewState));
 	return StatePools.back().get();
+}
+
+void UHGraphic::RequestReleaseGraphicState(UHGraphicState* InState)
+{
+	if (InState == nullptr)
+	{
+		return;
+	}
+
+	int32_t Idx = UHUtilities::FindIndex(StatePools, *InState);
+	if (Idx != -1)
+	{
+		StatePools[Idx]->Release();
+		UHUtilities::RemoveByIndex(StatePools, Idx);
+	}
 }
 
 UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
@@ -1479,10 +1549,11 @@ bool UHGraphic::CreateSwapChain()
 	Win32FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
 	Win32FullScreenInfo.hmonitor = MonitorFromWindow(WindowCache, MONITOR_DEFAULTTOPRIMARY);
 
-	// prepare fullscreen stuff, set to VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT, so I can toggle fullscreen myself
+	// prepare fullscreen stuff, set to VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT and let the driver do the work
+	// at the beginning it was controlled by app, but it could cause initialization failed for 4070 Ti 
 	VkSurfaceFullScreenExclusiveInfoEXT FullScreenInfo{};
 	FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-	FullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT;
+	FullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
 	FullScreenInfo.pNext = &Win32FullScreenInfo;
 	CreateInfo.pNext = &FullScreenInfo;
 

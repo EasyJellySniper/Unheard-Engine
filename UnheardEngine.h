@@ -5,12 +5,13 @@
 #include <cstdint>
 #include <Windows.h>
 #include <string>
+#include <filesystem>
 
 // debug define
 #define WITH_DEBUG !NDEBUG || WITH_EDITOR
 
 // ship define
-#define WITH_SHIP NDEBUG
+#define WITH_SHIP NDEBUG && !WITH_EDITOR
 
 #if WITH_DEBUG
 	#define LogMessage( str ) OutputDebugString( str );
@@ -27,4 +28,9 @@
 inline void UHE_LOG(std::wstring InString)
 {
 	LogMessage(InString.c_str());
+}
+
+inline void UHE_LOG(std::string InString)
+{
+	LogMessage(std::filesystem::path(InString).wstring().c_str());
 }

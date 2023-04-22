@@ -6,7 +6,7 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 	, bIsVisible(true)
 	, RendererBound(BoundingBox())
 {
-
+	MaterialCache->AddReferenceObject(this);
 }
 
 void UHMeshRendererComponent::Update()

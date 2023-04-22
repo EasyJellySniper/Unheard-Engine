@@ -16,7 +16,7 @@ public:
 	UHSettingDialog(HINSTANCE InInstance, HWND InWindow, UHConfigManager* InConfig, UHEngine* InEngine
 		, UHDeferredShadingRenderer* InRenderer, UHRawInput* InRawInput);
 	virtual void ShowDialog() override;
-	void Update();
+	virtual void Update() override;
 
 private:
 

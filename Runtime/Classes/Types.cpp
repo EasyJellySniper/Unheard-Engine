@@ -24,6 +24,14 @@ namespace MathHelpers
         return Result.m128_u32[0] > 0 && Result.m128_u32[1] > 0 && Result.m128_u32[2] > 0 && Result.m128_u32[3] > 0;
     }
 
+    bool IsVectorEqual(XMFLOAT2 InA, XMFLOAT2 InB)
+    {
+        XMVECTOR A = XMLoadFloat2(&InA);
+        XMVECTOR B = XMLoadFloat2(&InB);
+        XMVECTOR Result = XMVectorEqual(A, B);
+        return Result.m128_u32[0] > 0 && Result.m128_u32[1] > 0;
+    }
+
     bool IsVectorEqual(XMFLOAT3 InA, XMFLOAT3 InB)
     {
         XMVECTOR A = XMLoadFloat3(&InA);

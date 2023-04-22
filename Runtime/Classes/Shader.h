@@ -13,6 +13,8 @@ class UHShader : public UHRenderResource
 public:
 	UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
 		, std::vector<std::string> InMacro);
+	UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
+		, bool bInIsMaterialShader, std::vector<std::string> InMacro);
 	void Release();
 
 	VkShaderModule GetShader() const;
@@ -30,6 +32,7 @@ private:
 	std::string EntryName;
 	std::string ProfileName;
 	std::vector<std::string> ShaderDefines;
+	bool bIsMaterialShader;
 
 	friend UHGraphic;
 };

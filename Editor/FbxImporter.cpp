@@ -21,7 +21,7 @@ UHFbxImporter::~UHFbxImporter()
 	FbxSDKManager = nullptr;
 }
 
-void UHFbxImporter::ImportRawFbx(std::vector<UHMaterial>& InMatVector)
+void UHFbxImporter::ImportRawFbx(std::vector<std::unique_ptr<UHMaterial>>& InMatVector)
 {
 	// IO settings initialization
 	FbxIOSettings* FbxSDKIOSettings = FbxIOSettings::Create(FbxSDKManager, IOSROOT);
@@ -33,6 +33,8 @@ void UHFbxImporter::ImportRawFbx(std::vector<UHMaterial>& InMatVector)
 		std::filesystem::create_directories(GRawMeshAssetPath);
 		UHE_LOG(L"Empty mesh asset folder, please put some FBX files.\n");
 	}
+
+	ImportedMaterialNames.clear();
 
 	// importer initialization
 	for (std::filesystem::recursive_directory_iterator Idx(GRawMeshAssetPath.c_str()), end; Idx != end; Idx++)
@@ -87,6 +89,7 @@ void UHFbxImporter::ImportRawFbx(std::vector<UHMaterial>& InMatVector)
 	// finish importing, destroy them
 	FbxSDKIOSettings->Destroy();
 	FbxSDKIOSettings = nullptr;
+	ImportedMaterialNames.clear();
 
 	// output added caches
 	OutputCaches();
@@ -421,9 +424,9 @@ std::vector<XMFLOAT4> ReadTangents(FbxMesh* InMesh, int32_t VertexCount, bool bM
 }
 
 // mirror from FBX example: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_material_8cxx_example_html
-UHMaterial ImportMaterial(FbxNode* InNode)
+std::unique_ptr<UHMaterial> ImportMaterial(FbxNode* InNode)
 {
-	UHMaterial UHMat;
+	std::unique_ptr<UHMaterial> UHMat = std::make_unique<UHMaterial>();
 	int32_t MatCount = InNode->GetMaterialCount();
 
 	// only import single material per mesh at the moment
@@ -435,7 +438,7 @@ UHMaterial ImportMaterial(FbxNode* InNode)
 
 		FbxSurfaceMaterial* Mat = InNode->GetMaterial(0);
 		std::wstring MatName = UHUtilities::ToStringW(Mat->GetName());
-		UHMat.SetName(Mat->GetName());
+		UHMat->SetName(Mat->GetName());
 
 		// extract matarial props that are suitable for UH
 		UHMaterialProperty MatProps;
@@ -512,7 +515,7 @@ UHMaterial ImportMaterial(FbxNode* InNode)
 			UHE_LOG(L"Multiple materials detect: " + MatName + L". Only first material will be used.\n");
 		}
 
-		UHMat.SetMaterialProps(MatProps);
+		UHMat->SetMaterialProps(MatProps);
 
 		// try to iterate textures, reference: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_texture_8cxx_example_html
 		int32_t TextureIndex;
@@ -543,29 +546,29 @@ UHMaterial ImportMaterial(FbxNode* InNode)
 						
 						if (TexType == "DiffuseColor")
 						{
-							UHMat.SetTexFileName(UHMaterialTextureType::Diffuse, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialTextureType::Diffuse, TexFileName.stem().string());
 						}
 						else if (TexType == "DiffuseFactor")
 						{
 							// treat diffuse factor map as AO map
-							UHMat.SetTexFileName(UHMaterialTextureType::Occlusion, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialTextureType::Occlusion, TexFileName.stem().string());
 						}
 						else if (TexType == "SpecularColor")
 						{
-							UHMat.SetTexFileName(UHMaterialTextureType::Specular, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialTextureType::Specular, TexFileName.stem().string());
 						}
 						else if (TexType == "NormalMap" || TexType == "Bump")
 						{
 							// old Bump map (gray) will be used as normal in UH
 							// always ask artists use Normal map
-							UHMat.SetTexFileName(UHMaterialTextureType::Normal, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialTextureType::Normal, TexFileName.stem().string());
 						}
 						else if (TexType == "TransparentColor")
 						{
-							UHMat.SetTexFileName(UHMaterialTextureType::Opacity, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialTextureType::Opacity, TexFileName.stem().string());
 
 							// default to masked object if it contains opacity texture
-							UHMat.SetBlendMode(UHBlendMode::Masked);
+							UHMat->SetBlendMode(UHBlendMode::Masked);
 						}
 						else
 						{
@@ -580,7 +583,7 @@ UHMaterial ImportMaterial(FbxNode* InNode)
 	return UHMat;
 }
 
-void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath, std::vector<UHMaterial>& InMatVector, UHRawMeshAssetCache& Cache)
+void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath, std::vector<std::unique_ptr<UHMaterial>>& InMatVector, UHRawMeshAssetCache& Cache)
 {
 	// model loading here is straight forward, I only load what I need at the moment
 	// if normal/tangent data is missing, I'd rely on Fbx's generation only
@@ -714,11 +717,12 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		NewMesh.SetTangentData(MeshTangent);
 
 		// at last, try to import material as well
-		UHMaterial NewMat = ImportMaterial(InNode);
-		NewMesh.SetImportedMaterialName(NewMat.GetName());
-		if (!UHUtilities::FindByElement(InMatVector, NewMat))
+		std::unique_ptr<UHMaterial> NewMat = ImportMaterial(InNode);
+		NewMesh.SetImportedMaterialName(NewMat->GetName());
+		if (!UHUtilities::FindByElement(ImportedMaterialNames, NewMat->GetName()))
 		{
-			InMatVector.push_back(NewMat);
+			ImportedMaterialNames.push_back(NewMat->GetName());
+			InMatVector.push_back(std::move(NewMat));
 		}
 
 		// export to as UH mesh

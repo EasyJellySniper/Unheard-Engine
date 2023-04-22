@@ -1,7 +1,10 @@
 #include "ShaderClass.h"
 
-static std::unordered_map<std::type_index, VkDescriptorSetLayout> SetLayoutTable;
-static std::unordered_map<std::type_index, VkPipelineLayout> PipelineLayoutTable;
+static std::unordered_map<std::type_index, VkDescriptorSetLayout> GSetLayoutTable;
+static std::unordered_map<std::type_index, VkPipelineLayout> GPipelineLayoutTable;
+static std::unordered_map<uint32_t, VkDescriptorSetLayout> GMaterialSetLayoutTable;
+static std::unordered_map<uint32_t, VkPipelineLayout> GMaterialPipelineLayoutTable;
+std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
 
 UHShaderClass::UHShaderClass()
 	: UHShaderClass(nullptr, "", typeid(UHShaderClass))
@@ -16,15 +19,14 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, PipelineLayout(VK_NULL_HANDLE)
 	, DescriptorPool(VK_NULL_HANDLE)
 	, ShaderVS(nullptr)
-	, ShaderGS(nullptr)
 	, ShaderPS(nullptr)
 	, RayGenShader(nullptr)
 	, ClosestHitShader(nullptr)
 	, AnyHitShader(nullptr)
-	, GraphicState(nullptr)
 	, RTState(nullptr)
 	, RayGenTable(nullptr)
 	, HitGroupTable(nullptr)
+	, MaterialCache(nullptr)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -37,18 +39,42 @@ void UHShaderClass::Release()
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 	vkDestroyDescriptorPool(LogicalDevice, DescriptorPool, nullptr);
 
-	// release layout
-	for (auto& SetLayout : SetLayoutTable)
+	// release layout depending on type
+	if (MaterialCache != nullptr)
 	{
-		vkDestroyDescriptorSetLayout(LogicalDevice, SetLayout.second, nullptr);
-	}
-	SetLayoutTable.clear();
+		if (GMaterialSetLayoutTable.find(MaterialCache->GetId()) != GMaterialSetLayoutTable.end())
+		{
+			vkDestroyDescriptorSetLayout(LogicalDevice, GMaterialSetLayoutTable[MaterialCache->GetId()], nullptr);
+			GMaterialSetLayoutTable.erase(MaterialCache->GetId());
+		}
 
-	for (auto& PipelineLayout : PipelineLayoutTable)
-	{
-		vkDestroyPipelineLayout(LogicalDevice, PipelineLayout.second, nullptr);
+		if (GMaterialPipelineLayoutTable.find(MaterialCache->GetId()) != GMaterialPipelineLayoutTable.end())
+		{
+			vkDestroyPipelineLayout(LogicalDevice, GMaterialPipelineLayoutTable[MaterialCache->GetId()], nullptr);
+			GMaterialPipelineLayoutTable.erase(MaterialCache->GetId());
+		}
+
+		// remove state from lookup table
+		if (GGraphicStateTable.find(MaterialCache->GetId()) != GGraphicStateTable.end())
+		{
+			Gfx->RequestReleaseGraphicState(GGraphicStateTable[MaterialCache->GetId()]);
+			GGraphicStateTable.erase(MaterialCache->GetId());
+		}
 	}
-	PipelineLayoutTable.clear();
+	else
+	{
+		if (GSetLayoutTable.find(TypeIndexCache) != GSetLayoutTable.end())
+		{
+			vkDestroyDescriptorSetLayout(LogicalDevice, GSetLayoutTable[TypeIndexCache], nullptr);
+			GSetLayoutTable.erase(TypeIndexCache);
+		}
+
+		if (GPipelineLayoutTable.find(TypeIndexCache) != GPipelineLayoutTable.end())
+		{
+			vkDestroyPipelineLayout(LogicalDevice, GPipelineLayoutTable[TypeIndexCache], nullptr);
+			GPipelineLayoutTable.erase(TypeIndexCache);
+		}
+	}
 
 	UH_SAFE_RELEASE(RayGenTable);
 	RayGenTable.reset();
@@ -137,6 +163,11 @@ void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t Dst
 	}
 }
 
+UHShader* UHShaderClass::GetPixelShader() const
+{
+	return ShaderPS;
+}
+
 UHShader* UHShaderClass::GetRayGenShader() const
 {
 	return RayGenShader;
@@ -154,7 +185,7 @@ UHShader* UHShaderClass::GetAnyHitShader() const
 
 UHGraphicState* UHShaderClass::GetState() const
 {
-	return GraphicState;
+	return (MaterialCache) ? GGraphicStateTable[MaterialCache->GetId()] : GGraphicStateTable[GetId()];
 }
 
 UHGraphicState* UHShaderClass::GetRTState() const
@@ -174,12 +205,12 @@ UHRenderBuffer<UHShaderRecord>* UHShaderClass::GetHitGroupTable() const
 
 VkDescriptorSetLayout UHShaderClass::GetDescriptorSetLayout() const
 {
-	return SetLayoutTable[TypeIndexCache];
+	return (MaterialCache) ? GMaterialSetLayoutTable[MaterialCache->GetId()] : GSetLayoutTable[TypeIndexCache];
 }
 
 VkPipelineLayout UHShaderClass::GetPipelineLayout() const
 {
-	return PipelineLayoutTable[TypeIndexCache];
+	return (MaterialCache) ? GMaterialPipelineLayoutTable[MaterialCache->GetId()] : GPipelineLayoutTable[TypeIndexCache];
 }
 
 VkDescriptorSet UHShaderClass::GetDescriptorSet(int32_t FrameIdx) const
@@ -212,40 +243,40 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 
 	// don't duplicate layout
-	if (SetLayoutTable.find(TypeIndexCache) == SetLayoutTable.end())
+	if (GSetLayoutTable.find(TypeIndexCache) == GSetLayoutTable.end())
 	{
 		VkDescriptorSetLayoutCreateInfo LayoutInfo{};
 		LayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		LayoutInfo.bindingCount = static_cast<uint32_t>(LayoutBindings.size());
 		LayoutInfo.pBindings = LayoutBindings.data();
 
-		if (vkCreateDescriptorSetLayout(LogicalDevice, &LayoutInfo, nullptr, &SetLayoutTable[TypeIndexCache]) != VK_SUCCESS)
+		if (vkCreateDescriptorSetLayout(LogicalDevice, &LayoutInfo, nullptr, &GSetLayoutTable[TypeIndexCache]) != VK_SUCCESS)
 		{
 			UHE_LOG(L"Failed to create descriptor set layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
 		}
 	}
 
 	// don't duplicate layout
-	if (PipelineLayoutTable.find(TypeIndexCache) == PipelineLayoutTable.end())
+	if (GPipelineLayoutTable.find(TypeIndexCache) == GPipelineLayoutTable.end())
 	{
 		// one layout per set
 		VkPipelineLayoutCreateInfo PipelineLayoutInfo{};
 		PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		PipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(1 + AdditionalLayout.size());
 
-		std::vector<VkDescriptorSetLayout> Layouts = { SetLayoutTable[TypeIndexCache] };
+		std::vector<VkDescriptorSetLayout> Layouts = { GSetLayoutTable[TypeIndexCache] };
 		if (AdditionalLayout.size() > 0)
 		{
 			Layouts.insert(Layouts.end(), AdditionalLayout.begin(), AdditionalLayout.end());
 		}
 		PipelineLayoutInfo.pSetLayouts = Layouts.data();
 
-		if (vkCreatePipelineLayout(LogicalDevice, &PipelineLayoutInfo, nullptr, &PipelineLayoutTable[TypeIndexCache]) != VK_SUCCESS)
+		if (vkCreatePipelineLayout(LogicalDevice, &PipelineLayoutInfo, nullptr, &GPipelineLayoutTable[TypeIndexCache]) != VK_SUCCESS)
 		{
 			UHE_LOG(L"Failed to create pipeline layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
 		}
 	}
-	PipelineLayout = PipelineLayoutTable[TypeIndexCache];
+	PipelineLayout = GPipelineLayoutTable[TypeIndexCache];
 
 	// create DescriptorPools
 	std::vector<VkDescriptorPoolSize> PoolSizes;
@@ -270,7 +301,79 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 		UHE_LOG(L"Failed to create descriptor pool for shader: " + UHUtilities::ToStringW(Name) + L"\n");
 	}
 
-	std::vector<VkDescriptorSetLayout> SetLayouts(GMaxFrameInFlight, SetLayoutTable[TypeIndexCache]);
+	std::vector<VkDescriptorSetLayout> SetLayouts(GMaxFrameInFlight, GSetLayoutTable[TypeIndexCache]);
+	VkDescriptorSetAllocateInfo AllocInfo{};
+	AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	AllocInfo.descriptorPool = DescriptorPool;
+	AllocInfo.descriptorSetCount = GMaxFrameInFlight;
+	AllocInfo.pSetLayouts = SetLayouts.data();
+
+	if (vkAllocateDescriptorSets(LogicalDevice, &AllocInfo, DescriptorSets.data()) != VK_SUCCESS)
+	{
+		UHE_LOG(L"Failed to create descriptor sets for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+	}
+}
+
+void UHShaderClass::CreateMaterialDescriptor()
+{
+	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
+
+	// don't duplicate layout
+	if (GMaterialSetLayoutTable.find(MaterialCache->GetId()) == GMaterialSetLayoutTable.end())
+	{
+		VkDescriptorSetLayoutCreateInfo LayoutInfo{};
+		LayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		LayoutInfo.bindingCount = static_cast<uint32_t>(LayoutBindings.size());
+		LayoutInfo.pBindings = LayoutBindings.data();
+
+		if (vkCreateDescriptorSetLayout(LogicalDevice, &LayoutInfo, nullptr, &GMaterialSetLayoutTable[MaterialCache->GetId()]) != VK_SUCCESS)
+		{
+			UHE_LOG(L"Failed to create descriptor set layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+		}
+	}
+
+	// don't duplicate layout
+	if (GMaterialPipelineLayoutTable.find(MaterialCache->GetId()) == GMaterialPipelineLayoutTable.end())
+	{
+		// one layout per set
+		VkPipelineLayoutCreateInfo PipelineLayoutInfo{};
+		PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		PipelineLayoutInfo.setLayoutCount = 1;
+
+		std::vector<VkDescriptorSetLayout> Layouts = { GMaterialSetLayoutTable[MaterialCache->GetId()] };
+		PipelineLayoutInfo.pSetLayouts = Layouts.data();
+
+		if (vkCreatePipelineLayout(LogicalDevice, &PipelineLayoutInfo, nullptr, &GMaterialPipelineLayoutTable[MaterialCache->GetId()]) != VK_SUCCESS)
+		{
+			UHE_LOG(L"Failed to create pipeline layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+		}
+	}
+	PipelineLayout = GMaterialPipelineLayoutTable[MaterialCache->GetId()];
+
+	// create DescriptorPools
+	std::vector<VkDescriptorPoolSize> PoolSizes;
+
+	// pool type can be single or multiple
+	for (size_t Idx = 0; Idx < LayoutBindings.size(); Idx++)
+	{
+		VkDescriptorPoolSize PoolSize{};
+		PoolSize.type = LayoutBindings[Idx].descriptorType;
+		PoolSize.descriptorCount = GMaxFrameInFlight;
+		PoolSizes.push_back(PoolSize);
+	}
+
+	VkDescriptorPoolCreateInfo PoolInfo{};
+	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
+	PoolInfo.pPoolSizes = PoolSizes.data();
+	PoolInfo.maxSets = GMaxFrameInFlight;
+
+	if (vkCreateDescriptorPool(LogicalDevice, &PoolInfo, nullptr, &DescriptorPool) != VK_SUCCESS)
+	{
+		UHE_LOG(L"Failed to create descriptor pool for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+	}
+
+	std::vector<VkDescriptorSetLayout> SetLayouts(GMaxFrameInFlight, GMaterialSetLayoutTable[MaterialCache->GetId()]);
 	VkDescriptorSetAllocateInfo AllocInfo{};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	AllocInfo.descriptorPool = DescriptorPool;
