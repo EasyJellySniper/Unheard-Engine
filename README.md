@@ -2,6 +2,7 @@
  Squall's custom Vulkan engine. Which is a RENDERING ONLY engine at the moment. <br>
  For those who are interested in graphics programming :) MIT licensed. <br>
  Full project download link: https://mega.nz/file/NgZRDIwb#rO3m74IuX-5Yv64ArJXuNcWFrH8npB15k01RAIGGjO0 <br>
+ If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
 
 # 2023-04-22: Adding material graph system. <br>
 Added simple graph system for materials. Feature preview: <br>
