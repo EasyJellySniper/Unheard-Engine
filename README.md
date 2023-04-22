@@ -2,6 +2,13 @@
  Squall's custom Vulkan engine. Which is a RENDERING ONLY engine at the moment. <br>
  For those who are interested in graphics programming :) MIT licensed. <br>
  Full project download link: https://mega.nz/file/NgZRDIwb#rO3m74IuX-5Yv64ArJXuNcWFrH8npB15k01RAIGGjO0 <br>
+
+# 2023-04-22: Adding material graph system. <br>
+Added simple graph system for materials. Feature preview: <br>
+https://www.youtube.com/watch?v=0Qi0WXeB2yw
+<br><br> Implementation Details: <br>
+https://www.gamedev.net/blogs/entry/2275925-unheard-engine-build-a-material-graph-system-from-scratch/
+<br><br>
  
 # 2022-12-09: Preliminary Optimization. <br>
 Brutal test with 13435 draw calls, cost only 2.6 - 3.6 ms with parallel submission! <br>
