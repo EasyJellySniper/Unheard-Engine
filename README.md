@@ -3,6 +3,7 @@
  For those who are interested in graphics programming :) MIT licensed. <br>
  Full project download link: https://mega.nz/folder/stgwzQib#ct2EQZm5_w_M53RizRlGHw <br>
  If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
+ Recommended to use the full project link, as there are a few test assets. <br>
 
 # 2023-04-22: Adding material graph system. <br>
 Added simple graph system for materials. Feature preview: <br>
