@@ -8,6 +8,7 @@ Texture2D DepthTexture : register(t5);
 SamplerState LinearSampler : register(s6);
 
 static const float GHistoryWeight = 0.8f;
+static const float GMotionDiffScale = 5000.0f;
 
 float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
 {
@@ -20,7 +21,7 @@ float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
 
 	// solving disocclusion by comparing motion difference
 	float MotionDiff = length(Motion - HistoryMotion);
-	MotionDiff = saturate(MotionDiff * 1000.0f);
+	MotionDiff = saturate(MotionDiff * GMotionDiffScale);
 	Weight = lerp(Weight, 0, MotionDiff);
 
 	// last puzzle, addressing pixels without depth
