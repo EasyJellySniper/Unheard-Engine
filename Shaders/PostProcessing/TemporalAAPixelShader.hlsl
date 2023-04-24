@@ -7,7 +7,8 @@ Texture2D HistoryMotionTexture : register(t4);
 Texture2D DepthTexture : register(t5);
 SamplerState LinearSampler : register(s6);
 
-static const float GHistoryWeight = 0.8f;
+static const float GHistoryWeightMin = 0.65f;
+static const float GHistoryWeightMax = 0.8f;
 static const float GMotionDiffScale = 5000.0f;
 
 float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
@@ -17,7 +18,10 @@ float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
 	// sample history motion for solving disocclusion
 	float2 HistoryUV = Vin.UV - Motion;
 	float2 HistoryMotion = HistoryMotionTexture.SampleLevel(LinearSampler, HistoryUV, 0).rg;
-	float Weight = GHistoryWeight;
+
+	// first, adjust the history weight based on the motion amount
+	// so less blurry when moving the camera
+	float Weight = lerp(GHistoryWeightMax, GHistoryWeightMin, saturate(length(Motion) * GMotionDiffScale));
 
 	// solving disocclusion by comparing motion difference
 	float MotionDiff = length(Motion - HistoryMotion);
