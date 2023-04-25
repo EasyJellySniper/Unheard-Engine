@@ -34,6 +34,7 @@ struct UHSamplerInfo
 	VkSamplerAddressMode AddressModeU;
 	VkSamplerAddressMode AddressModeV;
 	VkSamplerAddressMode AddressModeW;
+	// @TODO: remove max lod as VK_LOD_CLAMP_NONE is already assigned
 	float MaxLod;
 	float MaxAnisotropy;
 	VkCompareOp CompareOp;

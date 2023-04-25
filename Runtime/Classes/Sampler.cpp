@@ -37,7 +37,7 @@ bool UHSampler::Create()
 	// intent to give a -1 bias for better quailty
 	SamplerCreateInfo.mipLodBias = -1.0f;
 	SamplerCreateInfo.minLod = 0.0f;
-	SamplerCreateInfo.maxLod = SamplerInfo.MaxLod;
+	SamplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
 
 	if (vkCreateSampler(LogicalDevice, &SamplerCreateInfo, nullptr, &TextureSampler) != VK_SUCCESS)
 	{
