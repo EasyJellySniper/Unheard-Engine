@@ -7,13 +7,11 @@ struct UHSamplerInfo
 {
 	UHSamplerInfo(VkFilter InFilter, VkSamplerAddressMode InAddressModeU, VkSamplerAddressMode InAddressModeV
 		, VkSamplerAddressMode InAddressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
-		, float InMaxLod = 0.0f
 		, float InMaxAnisotropy = 16.0f)
 		: FilterMode(InFilter)
 		, AddressModeU(InAddressModeU)
 		, AddressModeV(InAddressModeV)
 		, AddressModeW(InAddressModeW)
-		, MaxLod(InMaxLod)
 		, MaxAnisotropy(InMaxAnisotropy)
 		, CompareOp(VK_COMPARE_OP_ALWAYS)
 	{
@@ -26,7 +24,6 @@ struct UHSamplerInfo
 			&& InInfo.AddressModeV == AddressModeV
 			&& InInfo.AddressModeW == AddressModeW
 			&& InInfo.MaxAnisotropy == MaxAnisotropy
-			&& InInfo.MaxLod == MaxLod
 			&& InInfo.CompareOp == CompareOp;
 	}
 
@@ -34,8 +31,6 @@ struct UHSamplerInfo
 	VkSamplerAddressMode AddressModeU;
 	VkSamplerAddressMode AddressModeV;
 	VkSamplerAddressMode AddressModeW;
-	// @TODO: remove max lod as VK_LOD_CLAMP_NONE is already assigned
-	float MaxLod;
 	float MaxAnisotropy;
 	VkCompareOp CompareOp;
 };

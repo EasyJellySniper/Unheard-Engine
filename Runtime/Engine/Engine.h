@@ -12,7 +12,7 @@
 #include <string>
 
 #if WITH_DEBUG
-#include "../../Editor/Profiler.h"
+#include "../../Editor/Editor/Profiler.h"
 #include "../../Editor/Editor/Editor.h"
 #endif
 

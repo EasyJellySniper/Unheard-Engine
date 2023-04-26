@@ -369,9 +369,6 @@ void UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::
 		return;
 	}
 
-	// @TODO: Remove temp shader files in the future
-	//std::remove(TempShaderPath.c_str());
-
 	// write shader cache, the template doesn't need macro and output shader path
 	WriteShaderCache(InSource, "", EntryName, ProfileName);
 }

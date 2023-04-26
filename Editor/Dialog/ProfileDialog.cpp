@@ -2,7 +2,7 @@
 
 #if WITH_DEBUG
 #include "../../resource.h"
-#include "../Profiler.h"
+#include "../Editor/Profiler.h"
 #include "../../Runtime/Engine/Config.h"
 #include "../Classes/EditorUtils.h"
 #include <sstream>

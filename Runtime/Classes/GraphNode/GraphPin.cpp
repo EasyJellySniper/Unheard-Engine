@@ -1,5 +1,6 @@
 #include "GraphPin.h"
 #include "GraphNode.h"
+#include "../Utility.h"
 
 UHGraphPin::UHGraphPin(std::string InName, UHGraphNode* InNode, UHGraphPinType InType, bool bInNeedInputField)
 	: Name(InName)
@@ -61,11 +62,11 @@ void UHGraphPin::ConnectTo(UHGraphPin* InDestPin)
 
 void UHGraphPin::Disconnect(uint32_t DestPinID)
 {
-	for (int32_t Idx = static_cast<int32_t>(DestPins.size() - 1); Idx >= 0; Idx--)
+	for (int32_t Idx = static_cast<int32_t>(DestPins.size()) - 1; Idx >= 0; Idx--)
 	{
 		if (DestPins[Idx]->GetId() == DestPinID)
 		{
-			DestPins.erase(DestPins.begin() + Idx);
+			UHUtilities::RemoveByIndex(DestPins, Idx);
 			break;
 		}
 	}

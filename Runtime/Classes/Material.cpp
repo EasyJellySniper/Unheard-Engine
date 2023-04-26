@@ -65,15 +65,13 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	FileIn.read(reinterpret_cast<char*>(&MaterialProps), sizeof(MaterialProps));
 
 	// material graph data
-	if (Version >= AddMaterialGraph)
-	{
-		FileIn.read(reinterpret_cast<char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
-		UHUtilities::ReadStringVectorData(FileIn, RegisteredTextureNames);
-		ImportGraphData(FileIn);
-	}
+	FileIn.read(reinterpret_cast<char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
+	UHUtilities::ReadStringVectorData(FileIn, RegisteredTextureNames);
+	ImportGraphData(FileIn);
 
 	FileIn.close();
 
+	MaterialPath = InMatPath;
 	return true;
 }
 
@@ -144,10 +142,6 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 // post import callback
 void UHMaterial::PostImport()
 {
-#if WITH_DEBUG
-	GenerateDefaultMaterialNodes();
-#endif
-
 #if WITH_SHIP
 	// doesn't need these data in release build
 	EditGUIRelativePos.clear();
@@ -195,12 +189,9 @@ void UHMaterial::Export()
 	FileOut.write(reinterpret_cast<const char*>(&MaterialProps), sizeof(MaterialProps));
 
 	// material graph data
-	if (Version >= AddMaterialGraph)
-	{
-		FileOut.write(reinterpret_cast<const char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
-		UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
-		ExportGraphData(FileOut);
-	}
+	FileOut.write(reinterpret_cast<const char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
+	UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
+	ExportGraphData(FileOut);
 
 	FileOut.close();
 }
@@ -277,18 +268,40 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	FileOut.write(reinterpret_cast<const char*>(&DefaultMaterialNodePos), sizeof(DefaultMaterialNodePos));
 }
 
+void CollectTexDefinitions(const UHGraphPin* Pin, int32_t& RegisterStart, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	{
+		Code += "Texture2D Node_" + std::to_string(InputNode->GetId()) + " : register(t" + std::to_string(RegisterStart++) + ");\n";
+
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const std::unique_ptr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CollectTexDefinitions(InputPins.get(), RegisterStart, Code, OutDefTable);
+	}
+}
+
 std::string UHMaterial::GetTextureDefineCode()
 {
 	// get texture define code
 	int32_t RegisterStart = GMaterialTextureRegisterStart;
 	std::string Code;
+	std::unordered_map<uint32_t, bool> TexTable;
 
-	for (const std::unique_ptr<UHGraphNode>& Node : EditNodes)
+	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
 	{
-		if (Node->GetType() == Texture2DNode)
-		{
-			Code += "Texture2D Node_" + std::to_string(Node->GetId()) + " : register(t" + std::to_string(RegisterStart++) + ");\n";
-		}
+		CollectTexDefinitions(Input.get(), RegisterStart, Code, TexTable);
 	}
 
 	// @TODO: Differentiate sampler state in the future
@@ -394,6 +407,11 @@ UHMaterialVersion UHMaterial::GetVersion() const
 	return Version;
 }
 
+std::filesystem::path UHMaterial::GetPath() const
+{
+	return MaterialPath;
+}
+
 std::string UHMaterial::GetTexFileName(UHMaterialTextureType InType) const
 {
 	return TexFileNames[InType];
@@ -467,19 +485,44 @@ std::vector<std::string> UHMaterial::GetMaterialDefines(UHMaterialShaderType InT
 	return Defines;
 }
 
+void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std::unordered_map<uint32_t, bool>& OutDefTable)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	{
+		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
+		std::string TexName = TexNode->GetSelectedTextureName();
+		if (!TexName.empty())
+		{
+			Names.push_back(TexName);
+		}
+
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const std::unique_ptr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CollectTexNames(InputPins.get(), Names, OutDefTable);
+	}
+}
+
 std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
 {
 #if WITH_DEBUG
 	RegisteredTextureNames.clear();
+	std::unordered_map<uint32_t, bool> TexTable;
 
-	// register texture names from all nodes
-	for (const std::unique_ptr<UHGraphNode>& Node : EditNodes)
+	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
 	{
-		if (Node->GetType() == Texture2DNode)
-		{
-			const UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(Node.get());
-			RegisteredTextureNames.push_back(TexNode->GetSelectedTextureName());
-		}
+		CollectTexNames(Input.get(), RegisteredTextureNames, TexTable);
 	}
 #endif
 
@@ -499,11 +542,6 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 {
 	// generate default material graph
 	// for now, it automatically adds Diffuse/Occlusion/Specular/Normal/Opacity
-	if (Version >= UHMaterialVersion::AddMaterialGraph)
-	{
-		return;
-	}
-
 	EditGUIRelativePos.clear();
 	EditNodes.clear();
 	MaterialNode.reset();

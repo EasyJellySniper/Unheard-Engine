@@ -64,10 +64,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	DiffuseFormat = VK_FORMAT_R8G8B8A8_SRGB;
 	NormalFormat = VK_FORMAT_A2R10G10B10_UNORM_PACK32;
 	SpecularFormat = VK_FORMAT_R8G8B8A8_UNORM;
-	SceneResultFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-
-	// despite NVIDIA suggests 24-bit depth, I need 32-bit depth since it's needed to be sampled in shader
-	// and Vulkan currently supports sampling 16/32 bits depth only
+	SceneResultFormat = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 	DepthFormat = VK_FORMAT_X8_D24_UNORM_PACK32;
 
 	// half precision for motion vector
@@ -930,7 +927,8 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders()
 	// recompile material shader if necessary
 	for (UHMaterial* Mat : AssetManagerInterface->GetMaterials())
 	{
-		if (Mat->GetCompileFlag() == UpToDate)
+		UHMaterialCompileFlag CompileFlag = Mat->GetCompileFlag();
+		if (CompileFlag == UpToDate)
 		{
 			continue;
 		}
@@ -943,12 +941,12 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders()
 		{
 			if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
 			{
-				if (Mat->GetCompileFlag() == FullCompile)
+				if (CompileFlag == FullCompile || CompileFlag == FullCompileResave)
 				{
 					BasePassShaders[Renderer->GetBufferDataIndex()].Release();
 					Idx = Renderer->GetBufferDataIndex();
 				}
-				else if (Mat->GetCompileFlag() == BindOnly)
+				else if (CompileFlag == BindOnly)
 				{
 					BasePassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
 						, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
@@ -956,7 +954,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders()
 			}
 		}
 
-		if (Mat->GetCompileFlag() == FullCompile)
+		if (CompileFlag == FullCompile || CompileFlag == FullCompileResave)
 		{
 			GraphicInterface->RequestReleaseShader(BasePassShaders[Idx].GetPixelShader());
 

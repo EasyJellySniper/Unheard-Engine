@@ -32,6 +32,8 @@ static std::string GShaderAssetCacheExtension = ".uhshadercache";
 // material paths
 static std::string GMaterialAssetPath = "Assets/Materials/";
 static std::string GMaterialAssetExtension = ".uhmaterial";
+static std::string GMaterialCachePath = "AssetCaches/Materials/";
+static std::string GMaterialCacheExtension = ".uhmaterialcache";
 
 namespace UHAssetPath
 {
@@ -58,6 +60,15 @@ namespace UHAssetPath
 		std::filesystem::path OriginPath = InSource;
 		OriginPath = OriginPath.remove_filename();
 		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.string(), GRawTexturePath);
+
+		return OriginSubpath;
+	}
+
+	inline std::string GetMaterialOriginSubpath(std::filesystem::path InSource)
+	{
+		std::filesystem::path OriginPath = InSource;
+		OriginPath = OriginPath.remove_filename();
+		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.string(), GMaterialAssetPath);
 
 		return OriginSubpath;
 	}

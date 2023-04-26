@@ -32,7 +32,7 @@
 
 #if WITH_DEBUG
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
-#include "../../Editor/Profiler.h"
+#include "../../Editor/Editor/Profiler.h"
 #endif
 
 enum UHRenderTask

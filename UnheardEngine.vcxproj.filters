@@ -42,10 +42,10 @@
     <ClInclude Include="Runtime\Engine\GameTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\Profiler.h">
+    <ClInclude Include="Editor\Editor\Profiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\FbxImporter.h">
+    <ClInclude Include="Editor\Classes\FbxImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Classes\Mesh.h">
@@ -129,16 +129,16 @@
     <ClInclude Include="Runtime\Classes\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\TextureImporter.h">
+    <ClInclude Include="Editor\Classes\TextureImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\ShaderImporter.h">
+    <ClInclude Include="Editor\Classes\ShaderImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Classes\AssetPath.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\GeometryUtility.h">
+    <ClInclude Include="Editor\Classes\GeometryUtility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Classes\TextureCube.h">
@@ -267,6 +267,9 @@
     <ClInclude Include="Editor\Classes\GUIDefines.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Editor\Classes\MaterialImporter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -284,10 +287,10 @@
     <ClCompile Include="Runtime\Engine\GameTimer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Editor\Profiler.cpp">
+    <ClCompile Include="Editor\Editor\Profiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Editor\FbxImporter.cpp">
+    <ClCompile Include="Editor\Classes\FbxImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Classes\Mesh.cpp">
@@ -368,10 +371,10 @@
     <ClCompile Include="Runtime\Classes\Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Editor\TextureImporter.cpp">
+    <ClCompile Include="Editor\Classes\TextureImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Editor\ShaderImporter.cpp">
+    <ClCompile Include="Editor\Classes\ShaderImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\SkyPassRendering.cpp">
@@ -498,6 +501,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Classes\Utility.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Classes\MaterialImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

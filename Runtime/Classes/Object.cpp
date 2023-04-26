@@ -32,7 +32,7 @@ std::vector<UHObject*> UHObject::GetReferenceObjects() const
 	uint32_t ObjId = GetId();
 	if (GObjectReferences.find(ObjId) != GObjectReferences.end())
 	{
-		for (int32_t Idx = static_cast<int32_t>(GObjectReferences[ObjId].size() - 1); Idx >= 0; Idx--)
+		for (int32_t Idx = static_cast<int32_t>(GObjectReferences[ObjId].size()) - 1; Idx >= 0; Idx--)
 		{
 			uint32_t TargetId = GObjectReferences[ObjId][Idx];
 

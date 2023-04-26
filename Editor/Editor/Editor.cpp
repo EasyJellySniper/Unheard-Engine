@@ -7,7 +7,7 @@
 #include "../../Runtime/Engine/Config.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "../../Runtime/Engine/Input.h"
-#include "../Editor/Profiler.h"
+#include "Profiler.h"
 #include "../Classes/EditorUtils.h"
 
 UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer

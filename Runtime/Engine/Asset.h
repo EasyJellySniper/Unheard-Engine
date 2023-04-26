@@ -4,9 +4,10 @@
 #include "../Classes/Texture2D.h"
 
 #if WITH_DEBUG
-#include "../../Editor/FbxImporter.h"
-#include "../../Editor/TextureImporter.h"
-#include "../../Editor/ShaderImporter.h"
+#include "../../Editor/Classes/FbxImporter.h"
+#include "../../Editor/Classes/TextureImporter.h"
+#include "../../Editor/Classes/ShaderImporter.h"
+#include "../../Editor/Classes/MaterialImporter.h"
 #endif
 
 class UHGraphic;
@@ -50,6 +51,9 @@ private:
 
 	// shader importer, only compile shader in debug mode
 	std::unique_ptr<UHShaderImporter> UHShaderImporterInterface;
+
+	// material importer
+	std::unique_ptr<UHMaterialImporter> UHMaterialImporterInterface;
 #endif
 
 	// loaded & cached UH materials

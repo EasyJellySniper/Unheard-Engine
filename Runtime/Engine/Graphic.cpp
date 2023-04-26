@@ -1178,9 +1178,11 @@ UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pa
 UHShader* UHGraphic::RequestMaterialPixelShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 	, UHMaterial* InMat, std::vector<std::string> InMacro)
 {
-	// if it's a release build, and material version is before graph system, it needs a fallback
+	std::filesystem::path OutputShaderPath = GShaderAssetFolder + InShaderName + "_" + InMat->GetName() + GShaderAssetExtension;
+
+	// if it's a release build, and there is no material shader for it, use a fallback one
 #if WITH_SHIP
-	if (InMat->GetVersion() < AddMaterialGraph)
+	if (!std::filesystem::exists(OutputShaderPath))
 	{
 		InShaderName = "FallbackPixelShader";
 		EntryName = "FallbackPS";
@@ -1202,15 +1204,6 @@ UHShader* UHGraphic::RequestMaterialPixelShader(std::string InShaderName, std::f
 	// only compile it when the compile flag or version is matched
 #if WITH_DEBUG
 	AssetManagerInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InMat, InMacro);
-#endif
-
-	std::filesystem::path OutputShaderPath = GShaderAssetFolder + InShaderName + "_" + InMat->GetName() + GShaderAssetExtension;
-
-#if WITH_SHIP
-	if (InMat->GetVersion() < AddMaterialGraph)
-	{
-		OutputShaderPath = GShaderAssetFolder + InShaderName + GShaderAssetExtension;
-	}
 #endif
 
 	if (!CreateShaderModule(NewShader, OutputShaderPath))

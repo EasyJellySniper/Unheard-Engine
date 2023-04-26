@@ -120,37 +120,31 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 			if (Mat->GetName() == "Fern")
 			{
-				InInfo.MaxLod = static_cast<float>(FernRoughnessTex->GetMipMapCount());
 				Mat->SetTex(UHMaterialTextureType::Roughness, FernRoughnessTex);
 				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
 			}
 			else if (Mat->GetName() == "ivy")
 			{
-				InInfo.MaxLod = static_cast<float>(IvyRoughnessTex->GetMipMapCount());
 				Mat->SetTex(UHMaterialTextureType::Roughness, IvyRoughnessTex);
 				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
 			}
 			else if (Mat->GetName() == "Main_Material_Summer")
 			{
-				InInfo.MaxLod = static_cast<float>(RoughnessMossTex->GetMipMapCount());
 				Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessMossTex);
 				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
 			}
 			else if (Mat->GetName() == "Main_Material_Winter")
 			{
-				InInfo.MaxLod = static_cast<float>(RoughnessWinterTex->GetMipMapCount());
 				Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessWinterTex);
 				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
 			}
 			else if (Mat->GetName() == "Snow")
 			{
-				InInfo.MaxLod = static_cast<float>(SnowRoughnessTex->GetMipMapCount());
 				Mat->SetTex(UHMaterialTextureType::Roughness, SnowRoughnessTex);
 				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
 			}
 			else if (Mat->GetName() == "Soil")
 			{
-				InInfo.MaxLod = static_cast<float>(SoilRoughnessTex->GetMipMapCount());
 				Mat->SetTex(UHMaterialTextureType::Roughness, SoilRoughnessTex);
 				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
 			}

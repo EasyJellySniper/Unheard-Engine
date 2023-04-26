@@ -417,6 +417,13 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
         ScreenToClient(GMaterialDialogData->WorkArea, &P);
         NewGUI->Init(Instance, GMaterialDialogData->WorkArea, CurrentMaterial->GetEditNodes().back().get(), GUIName, P.x, P.y);
 
+        // syc the gui relative pos as well
+        RECT R;
+        UHEditorUtil::GetWindowSize(NewGUI->GetHWND(), R, EditNodeGUIs[0]->GetHWND());
+        P.x = R.left;
+        P.y = R.top;
+        CurrentMaterial->GetGUIRelativePos().push_back(P);
+
         EditNodeGUIs.push_back(std::move(NewGUI));
     }
 
@@ -450,21 +457,22 @@ void UHMaterialDialog::TryDeleteNodes()
     }
 
     // delete node
-    for (int32_t Idx = static_cast<int32_t>(CurrentMaterial->GetEditNodes().size() - 1); Idx >= 0; Idx--)
+    for (int32_t Idx = static_cast<int32_t>(CurrentMaterial->GetEditNodes().size()) - 1; Idx >= 0; Idx--)
     {
         if (CurrentMaterial->GetEditNodes()[Idx]->GetId() == NodeToDelete->GetId())
         {
-            CurrentMaterial->GetEditNodes().erase(CurrentMaterial->GetEditNodes().begin() + Idx);
+            UHUtilities::RemoveByIndex(CurrentMaterial->GetGUIRelativePos(), Idx);
+            UHUtilities::RemoveByIndex(CurrentMaterial->GetEditNodes(), Idx);
             break;
         }
     }
 
     // also delete GUI
-    for (int32_t Idx = static_cast<int32_t>(EditNodeGUIs.size() - 1); Idx >= 0; Idx--)
+    for (int32_t Idx = static_cast<int32_t>(EditNodeGUIs.size()) - 1; Idx >= 0; Idx--)
     {
         if (EditNodeGUIs[Idx]->GetNode()->GetId() == NodeToDelete->GetId())
         {
-            EditNodeGUIs.erase(EditNodeGUIs.begin() + Idx);
+            UHUtilities::RemoveByIndex(EditNodeGUIs, Idx);
             break;
         }
     }
@@ -699,6 +707,10 @@ void UHMaterialDialog::RecompileMaterial()
 
 void UHMaterialDialog::ResaveMaterial()
 {
+    // request a compile-resave
+    GMaterialDialogData->CompileFlag = FullCompileResave;
+    RecompileMaterial();
+
     // save current selected material
     // also sync the GUI position
     RECT Rect;

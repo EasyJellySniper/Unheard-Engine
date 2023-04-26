@@ -6,7 +6,8 @@
 #include "../Classes/AssetPath.h"
 
 #if WITH_DEBUG
-#include "../../Editor/GeometryUtility.h"
+#include "../../Editor/Classes/GeometryUtility.h"
+#include <chrono>
 #endif
 
 UHAssetManager::UHAssetManager()
@@ -19,6 +20,9 @@ UHAssetManager::UHAssetManager()
 	UHShaderImporterInterface = std::make_unique<UHShaderImporter>();
 	UHShaderImporterInterface->LoadShaderCache();
 	UHShaderImporterInterface->CompileHLSL("FallbackPixelShader", GRawShaderPath + "FallbackPixelShader.hlsl", "FallbackPS", "ps_6_0", std::vector<std::string>());
+
+	UHMaterialImporterInterface = std::make_unique<UHMaterialImporter>();
+	UHMaterialImporterInterface->LoadMaterialCache();
 
 	// generate built-in meshes
 	UHMesh BuiltInCube = UHGeometryHelper::CreateCubeMesh();
@@ -43,6 +47,7 @@ void UHAssetManager::Release()
 	UHShaderImporterInterface.reset();
 	UHFbxImporterInterface.reset();
 	UHTextureImporterInterface.reset();
+	UHMaterialImporterInterface.reset();
 #endif
 
 	// container cleanup
@@ -119,10 +124,18 @@ void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::pa
 	, std::vector<std::string> Defines)
 {
 #if WITH_DEBUG
-	if (InMat->GetCompileFlag() == FullCompile || InMat->GetVersion() < AddMaterialGraph
+	UHMaterialCompileFlag CompileFlag = InMat->GetCompileFlag();
+	if (CompileFlag == FullCompile
+		|| CompileFlag == FullCompileResave
+		|| !UHMaterialImporterInterface->IsMaterialCached(InMat, InShaderName)
 		|| !UHShaderImporterInterface->IsShaderTemplateCached(InSource, EntryName, ProfileName))
 	{
 		UHShaderImporterInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InMat, Defines);
+
+		if (CompileFlag == FullCompileResave)
+		{
+			UHMaterialImporterInterface->WriteMaterialCache(InMat, InShaderName);
+		}
 	}
 #endif
 }

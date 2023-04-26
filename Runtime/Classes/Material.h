@@ -11,7 +11,6 @@
 enum UHMaterialVersion
 {
 	Initial,
-	AddMaterialGraph,
 	MaterialVersionMax
 };
 
@@ -19,7 +18,8 @@ enum UHMaterialCompileFlag
 {
 	UpToDate,
 	FullCompile,
-	BindOnly
+	BindOnly,
+	FullCompileResave
 };
 
 // UH material property, for CPU use
@@ -107,6 +107,7 @@ public:
 	UHMaterialProperty GetMaterialProps() const;
 	UHMaterialCompileFlag GetCompileFlag() const;
 	UHMaterialVersion GetVersion() const;
+	std::filesystem::path GetPath() const;
 	bool IsSkybox() const;
 
 	std::string GetTexFileName(UHMaterialTextureType InType) const;
@@ -159,4 +160,6 @@ private:
 
 	// GUI positions relative to material node
 	POINT DefaultMaterialNodePos;
+
+	std::filesystem::path MaterialPath;
 };

@@ -201,3 +201,5 @@ Added shader cache for template as well.
 
 
 21-04-2023: Minor optimization for alpha test and TAA jitter offsets.
+
+24~26-04-2023: Minor bugfixes and code arrangement. Fix material editor issue.

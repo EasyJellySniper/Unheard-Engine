@@ -15,18 +15,22 @@ float4 TemporalAAPS(PostProcessVertexOutput Vin) : SV_Target
 {
 	float2 Motion = MotionTexture.SampleLevel(LinearSampler, Vin.UV, 0).rg;
 
-	// sample history motion for solving disocclusion
+	// sample history motion for solving static ghosting
 	float2 HistoryUV = Vin.UV - Motion;
 	float2 HistoryMotion = HistoryMotionTexture.SampleLevel(LinearSampler, HistoryUV, 0).rg;
 
-	// first, adjust the history weight based on the motion amount
-	// so less blurry when moving the camera
+	// adjust the history weight based on the motion amount
+	// make it less blurry when moving the camera
 	float Weight = lerp(GHistoryWeightMax, GHistoryWeightMin, saturate(length(Motion) * GMotionDiffScale));
 
 	// solving disocclusion by comparing motion difference
+	// also need to consider the case that an object suddenly changed its direction
 	float MotionDiff = length(Motion - HistoryMotion);
+	float MotionChanged = dot(Motion, HistoryMotion) < 0;
+
 	MotionDiff = saturate(MotionDiff * GMotionDiffScale);
 	Weight = lerp(Weight, 0, MotionDiff);
+	Weight = lerp(Weight, 0, MotionChanged);
 
 	// last puzzle, addressing pixels without depth
 	// use a 3x3 max filter and check if it needs to sample history, better than set weight to 0 when there is no depth

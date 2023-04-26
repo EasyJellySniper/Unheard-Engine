@@ -72,7 +72,7 @@ std::string UHMaterialNode::EvalHLSL()
 	std::string TabIdentifier = "\t";
 	std::string Code;
 
-	for (int32_t Idx = static_cast<int32_t>(Definitions.size() - 1); Idx >= 0; Idx--)
+	for (int32_t Idx = static_cast<int32_t>(Definitions.size()) - 1; Idx >= 0; Idx--)
 	{
 		if (Idx == Definitions.size() - 1)
 		{
