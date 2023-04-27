@@ -1,7 +1,7 @@
 #include "LightPassShader.h"
 
 UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, int32_t RTInstanceCount)
-	: UHShaderClass(InGfx, Name, typeid(UHLightPassShader))
+	: UHShaderClass(InGfx, Name, typeid(UHLightPassShader), nullptr)
 {
 	// Lighting pass: bind system, light buffer, GBuffers, and samplers, all fragment only since it's a full screen quad draw
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -32,7 +32,7 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, VkRende
 		, 1
 		, PipelineLayout);
 
-	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
+	CreateGraphicState(Info);
 }
 
 void UHLightPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

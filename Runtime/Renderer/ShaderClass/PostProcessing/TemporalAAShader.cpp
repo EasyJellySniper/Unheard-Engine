@@ -1,7 +1,7 @@
 #include "TemporalAAShader.h"
 
 UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
-	: UHShaderClass(InGfx, Name, typeid(UHTemporalAAShader))
+	: UHShaderClass(InGfx, Name, typeid(UHTemporalAAShader), nullptr)
 {
 	// a system buffer + one texture and one sampler for TAA
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -25,7 +25,7 @@ UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name, VkRen
 		, 1
 		, PipelineLayout);
 
-	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
+	CreateGraphicState(Info);
 }
 
 void UHTemporalAAShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

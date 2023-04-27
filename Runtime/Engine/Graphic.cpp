@@ -1176,9 +1176,15 @@ UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pa
 
 // request shader for material
 UHShader* UHGraphic::RequestMaterialPixelShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
-	, UHMaterial* InMat, std::vector<std::string> InMacro)
+	, UHMaterialCompileData InData, std::vector<std::string> InMacro)
 {
-	std::filesystem::path OutputShaderPath = GShaderAssetFolder + InShaderName + "_" + InMat->GetName() + GShaderAssetExtension;
+	// macro hash
+	size_t MacroHash = UHUtilities::ShaderDefinesToHash(InMacro);
+	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
+
+	UHMaterial* InMat = InData.MaterialCache;
+	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetName(), InShaderName, MacroHashName);
+	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OutName + GShaderAssetExtension;
 
 	// if it's a release build, and there is no material shader for it, use a fallback one
 #if WITH_SHIP
@@ -1190,7 +1196,7 @@ UHShader* UHGraphic::RequestMaterialPixelShader(std::string InShaderName, std::f
 	}
 #endif
 
-	std::unique_ptr<UHShader> NewShader = std::make_unique<UHShader>(InShaderName + "_" + InMat->GetName(), InSource, EntryName, ProfileName, true, InMacro);
+	std::unique_ptr<UHShader> NewShader = std::make_unique<UHShader>(OutName, InSource, EntryName, ProfileName, true, InMacro);
 	NewShader->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 	// early return if it's exist in pool and does not need recompile
@@ -1203,7 +1209,7 @@ UHShader* UHGraphic::RequestMaterialPixelShader(std::string InShaderName, std::f
 	// almost the same as common shader flow, but this will go through HLSL translator instead
 	// only compile it when the compile flag or version is matched
 #if WITH_DEBUG
-	AssetManagerInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InMat, InMacro);
+	AssetManagerInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InData, InMacro, OutputShaderPath);
 #endif
 
 	if (!CreateShaderModule(NewShader, OutputShaderPath))

@@ -203,3 +203,6 @@ Added shader cache for template as well.
 21-04-2023: Minor optimization for alpha test and TAA jitter offsets.
 
 24~26-04-2023: Minor bugfixes and code arrangement. Fix material editor issue.
+
+27-04-2023: Smoothed the edge of TAA. Applied material shader rules to depth pass. ShaderClass code arrangement.
+Added the macro hash to material shader as well. Enhanced the shader/materisl cache workflow.

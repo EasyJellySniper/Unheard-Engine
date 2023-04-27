@@ -166,7 +166,7 @@ public:
 	UHShader* RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> InMacro = std::vector<std::string>());
 	UHShader* RequestMaterialPixelShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
-		, UHMaterial* InMat, std::vector<std::string> InMacro = std::vector<std::string>());
+		, UHMaterialCompileData InData, std::vector<std::string> InMacro = std::vector<std::string>());
 	void RequestReleaseShader(UHShader* InShader);
 
 	// request graphic/RT state

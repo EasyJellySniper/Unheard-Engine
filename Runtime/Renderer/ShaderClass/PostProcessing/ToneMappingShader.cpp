@@ -1,7 +1,7 @@
 #include "ToneMappingShader.h"
 
 UHToneMappingShader::UHToneMappingShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
-	: UHShaderClass(InGfx, Name, typeid(UHToneMappingShader))
+	: UHShaderClass(InGfx, Name, typeid(UHToneMappingShader), nullptr)
 {
 	// one texture and one sampler for tone mapping
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
@@ -20,5 +20,5 @@ UHToneMappingShader::UHToneMappingShader(UHGraphic* InGfx, std::string Name, VkR
 		, 1
 		, PipelineLayout);
 
-	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
+	CreateGraphicState(Info);
 }

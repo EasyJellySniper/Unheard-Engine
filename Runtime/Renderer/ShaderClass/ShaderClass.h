@@ -5,6 +5,7 @@
 
 const int32_t GMaterialSlotInRT = 16;
 extern std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
+extern std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> GMaterialStateTable;
 
 // 32 byte structure for shader table record
 struct UHShaderRecord
@@ -18,7 +19,7 @@ class UHShaderClass : public UHObject
 {
 public:
 	UHShaderClass();
-	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType);
+	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType, UHMaterial* InMat);
 	void Release();
 
 	template <typename T>
@@ -115,6 +116,10 @@ protected:
 
 	// create descriptor but for material
 	void CreateMaterialDescriptor();
+
+	// create graphic state functions
+	void CreateGraphicState(UHRenderPassInfo InInfo);
+	void CreateMaterialState(UHRenderPassInfo InInfo);
 
 	UHGraphic* Gfx;
 	std::string Name;

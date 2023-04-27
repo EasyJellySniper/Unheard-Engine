@@ -67,6 +67,14 @@ namespace Experimental
 	};
 }
 
+enum UHMaterialCompileFlag
+{
+	UpToDate,
+	FullCompile,
+	BindOnly,
+	FullCompileResave
+};
+
 // get blend state info based on input blend mode
 inline VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, int32_t RTCount, std::vector<VkPipelineColorBlendAttachmentState>& OutColorBlendAttachments)
 {

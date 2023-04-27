@@ -19,8 +19,8 @@ public:
 	UHAssetManager();
 	void Release();
 	void ImportMeshes();
-	void TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterial* InMat
-		, std::vector<std::string> Defines);
+	void TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
+		, std::vector<std::string> Defines, std::filesystem::path& OutputShaderPath);
 	void CompileShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> Defines);
 	void ImportTextures(UHGraphic* InGfx);

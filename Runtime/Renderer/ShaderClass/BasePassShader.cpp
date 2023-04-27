@@ -2,10 +2,8 @@
 #include "../../Components/MeshRenderer.h"
 
 UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass)
-	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader))
+	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat)
 {
-	MaterialCache = InMat;
-
 	// DeferredPass: Bind all constants, visiable in VS/PS only
 	// use storage buffer on materials
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -26,11 +24,11 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 	// bind textures from material
 	int32_t TexSlot = GMaterialTextureRegisterStart;
-	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames())
+	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames(false))
 	{
-		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TexSlot++);
 	}
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER, TexSlot);
 
 	CreateMaterialDescriptor();
 
@@ -47,24 +45,23 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	}
 
 	ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", VSDefines);
-	ShaderPS = InGfx->RequestMaterialPixelShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", InMat, PSDefines);
 
-	// prevent duplicating
-	if (GGraphicStateTable.find(InMat->GetId()) == GGraphicStateTable.end())
-	{
-		// states
-		UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass
-			// adjust depth info based on depth pre pass setting
-			, UHDepthInfo(true, !bEnableDepthPrePass, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
-			, InMat->GetCullMode()
-			, InMat->GetBlendMode()
-			, ShaderVS
-			, ShaderPS
-			, GNumOfGBuffers
-			, PipelineLayout);
+	UHMaterialCompileData Data{};
+	Data.MaterialCache = InMat;
+	ShaderPS = InGfx->RequestMaterialPixelShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, PSDefines);
 
-		GGraphicStateTable[InMat->GetId()] = InGfx->RequestGraphicState(Info);
-	}
+	// states
+	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass
+		// adjust depth info based on depth pre pass setting
+		, UHDepthInfo(true, !bEnableDepthPrePass, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
+		, InMat->GetCullMode()
+		, InMat->GetBlendMode()
+		, ShaderVS
+		, ShaderPS
+		, GNumOfGBuffers
+		, PipelineLayout);
+
+	CreateMaterialState(Info);
 }
 
 void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
@@ -104,7 +101,7 @@ void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 
 	// bind textures from material
 	int32_t TexSlot = GMaterialTextureRegisterStart;
-	for (const std::string RegisteredTexture : InRenderer->GetMaterial()->GetRegisteredTextureNames())
+	for (const std::string RegisteredTexture : InRenderer->GetMaterial()->GetRegisteredTextureNames(false))
 	{
 		BindImage(InAssetMgr->GetTexture2D(RegisteredTexture), TexSlot);
 		TexSlot++;

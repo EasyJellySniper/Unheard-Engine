@@ -14,14 +14,6 @@ enum UHMaterialVersion
 	MaterialVersionMax
 };
 
-enum UHMaterialCompileFlag
-{
-	UpToDate,
-	FullCompile,
-	BindOnly,
-	FullCompileResave
-};
-
 // UH material property, for CPU use
 struct UHMaterialProperty
 {
@@ -86,8 +78,8 @@ public:
 	void SetTexFileName(UHMaterialTextureType TexType, std::string InName);
 	void Export();
 	void ExportGraphData(std::ofstream& FileOut);
-	std::string GetTextureDefineCode();
-	std::string GetMaterialInputCode();
+	std::string GetTextureDefineCode(bool bIsDepthOrMotionPass);
+	std::string GetMaterialInputCode(UHMaterialCompileData InData);
 #endif
 
 	void SetName(std::string InName);
@@ -117,7 +109,7 @@ public:
 	int32_t GetTextureIndex(UHMaterialTextureType InType) const;
 	std::string GetTexDefineName(UHMaterialTextureType InType) const;
 	std::vector<std::string> GetMaterialDefines(UHMaterialShaderType InType) const;
-	std::vector<std::string> GetRegisteredTextureNames();
+	std::vector<std::string> GetRegisteredTextureNames(bool bIsDepthOrMotionPass);
 
 	bool operator==(const UHMaterial& InMat);
 

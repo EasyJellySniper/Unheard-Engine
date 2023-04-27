@@ -2,9 +2,9 @@
 #include "../../Components/MeshRenderer.h"
 
 UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat)
-	: UHShaderClass(InGfx, Name, typeid(UHDepthPassShader))
+	: UHShaderClass(InGfx, Name, typeid(UHDepthPassShader), InMat)
 {
-	// DeferredPass: Bind all constants, visiable in VS/PS only
+	// Depth pass: Bind all constants, visiable in VS/PS only
 	// use storage buffer on materials
 	for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
 	{
@@ -25,21 +25,21 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 	// bind occlusion visible buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// bind opacity 
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
-
 	// bind UV0 Buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	CreateDescriptor();
+	// bind textures from material
+	int32_t TexSlot = GMaterialTextureRegisterStart;
+	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames(true))
+	{
+		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TexSlot++);
+	}
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER, TexSlot);
+
+	CreateMaterialDescriptor();
 
 	// check opacity texture
 	std::vector<std::string> OpacityDefine = {};
-	if (UHTexture* OpacityTex = InMat->GetTex(UHMaterialTextureType::Opacity))
-	{
-		OpacityDefine.push_back("WITH_OPACITY");
-	}
 
 	// check occlusion test define
 	if (InGfx->IsRayTracingOcclusionTestEnabled())
@@ -47,11 +47,17 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 		OpacityDefine.push_back("WITH_OCCLUSION_TEST");
 	}
 
-	ShaderVS = InGfx->RequestShader("DepthPassVS", "Shaders/DepthPassShader.hlsl", "DepthVS", "vs_6_0", OpacityDefine);
 	if (InMat->GetBlendMode() == UHBlendMode::Masked)
 	{
-		ShaderPS = InGfx->RequestShader("DepthPassPS", "Shaders/DepthPassShader.hlsl", "DepthPS", "ps_6_0", OpacityDefine);
+		OpacityDefine.push_back("WITH_ALPHATEST");
+
+		UHMaterialCompileData Data;
+		Data.MaterialCache = InMat;
+		Data.bIsDepthOrMotionPass = true;
+		ShaderPS = InGfx->RequestMaterialPixelShader("DepthPassPS", "Shaders/DepthPassShader.hlsl", "DepthPS", "ps_6_0", Data, OpacityDefine);
 	}
+
+	ShaderVS = InGfx->RequestShader("DepthPassVS", "Shaders/DepthPassShader.hlsl", "DepthVS", "vs_6_0", OpacityDefine);
 
 	// states
 	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)
@@ -62,14 +68,16 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 		, 1
 		, PipelineLayout);
 
-	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
+	CreateMaterialState(Info);
 }
 
 void UHDepthPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHMaterialConstants>>, GMaxFrameInFlight>& MatConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<uint32_t>>, GMaxFrameInFlight>& OcclusionConst
-	, const UHMeshRendererComponent* InRenderer)
+	, const UHMeshRendererComponent* InRenderer
+	, const UHAssetManager* InAssetMgr
+	, const UHSampler* InDefaultSampler)
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
@@ -80,13 +88,16 @@ void UHDepthPassShader::BindParameters(const std::array<std::unique_ptr<UHRender
 		BindStorage(OcclusionConst, 3, 0, true);
 	}
 
-	// check alpha test textures
-	if (UHTexture* Tex = InRenderer->GetMaterial()->GetTex(UHMaterialTextureType::Opacity))
+	UHMesh* Mesh = InRenderer->GetMesh();
+	BindStorage(Mesh->GetUV0Buffer(), 4, 0, true);
+
+	// bind textures from material
+	int32_t TexSlot = GMaterialTextureRegisterStart;
+	for (const std::string RegisteredTexture : InRenderer->GetMaterial()->GetRegisteredTextureNames(true))
 	{
-		BindImage(Tex, 4);
-		BindSampler(InRenderer->GetMaterial()->GetSampler(UHMaterialTextureType::Opacity), 5);
+		BindImage(InAssetMgr->GetTexture2D(RegisteredTexture), TexSlot);
+		TexSlot++;
 	}
 
-	UHMesh* Mesh = InRenderer->GetMesh();
-	BindStorage(Mesh->GetUV0Buffer(), 6, 0, true);
+	BindSampler(InDefaultSampler, TexSlot);
 }

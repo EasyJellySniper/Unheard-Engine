@@ -2,10 +2,12 @@
 #include "ParameterNode.h"
 #include "MathNode.h"
 #include "TextureNode.h"
+#include "../Material.h"
 #include <unordered_map>
 
-UHMaterialNode::UHMaterialNode()
+UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 	: UHGraphNode(false)
+	, MaterialCache(InMat)
 {
 	Name = "Material Inputs";
 
@@ -62,14 +64,23 @@ std::string UHMaterialNode::EvalHLSL()
 	std::vector<std::string> Definitions;
 	std::unordered_map<uint32_t, bool> DefinitionTable;
 
-	for (int32_t Idx = 0; Idx < Experimental::UHMaterialInputs::MaterialMax; Idx++)
+	if (CompileData.bIsDepthOrMotionPass)
 	{
-		CollectDefinitions(Inputs[Idx].get(), Definitions, DefinitionTable);
+		// collect opacity definition only.
+		CollectDefinitions(Inputs[Experimental::UHMaterialInputs::Opacity].get(), Definitions, DefinitionTable);
+	}
+	else
+	{
+		for (int32_t Idx = 0; Idx < Experimental::UHMaterialInputs::MaterialMax; Idx++)
+		{
+			CollectDefinitions(Inputs[Idx].get(), Definitions, DefinitionTable);
+		}
 	}
 
 	// Calculate property based on graph nodes
 	std::string EndOfLine = ";\n";
 	std::string TabIdentifier = "\t";
+	std::string ReturnCode = "\treturn Input;";
 	std::string Code;
 
 	for (int32_t Idx = static_cast<int32_t>(Definitions.size()) - 1; Idx >= 0; Idx--)
@@ -85,6 +96,23 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	Code += "\n\tUHMaterialInputs Input = (UHMaterialInputs)0;\n";
+
+	// Opacity
+	if (UHGraphPin* Opacity = Inputs[Experimental::UHMaterialInputs::Opacity]->GetSrcPin())
+	{
+		Code += "\tInput.Opacity = " + Opacity->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
+	}
+	else
+	{
+		Code += "\tInput.Opacity = 1.0f" + EndOfLine;
+	}
+
+	// ************** Early return if this is for depth or motion pass only ************** //
+	if (CompileData.bIsDepthOrMotionPass)
+	{
+		Code += ReturnCode;
+		return Code;
+	}
 
 	// Diffuse
 	if (UHGraphPin* DiffuseSrc = Inputs[Experimental::UHMaterialInputs::Diffuse]->GetSrcPin())
@@ -124,16 +152,6 @@ std::string UHMaterialNode::EvalHLSL()
 	else
 	{
 		Code += "\tInput.Normal = float3(0,0,1.0f)" + EndOfLine;
-	}
-
-	// Opacity
-	if (UHGraphPin* Opacity = Inputs[Experimental::UHMaterialInputs::Opacity]->GetSrcPin())
-	{
-		Code += "\tInput.Opacity = " + Opacity->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.Opacity = 1.0f" + EndOfLine;
 	}
 
 	// Metallic
@@ -186,7 +204,7 @@ std::string UHMaterialNode::EvalHLSL()
 		Code += "\tInput.Emissive = float3(0,0,0)" + EndOfLine;
 	}
 
-	Code += "\treturn Input;";
+	Code += ReturnCode;
 
 	return Code;
 }
@@ -218,4 +236,9 @@ std::unique_ptr<UHGraphNode> AllocateNewGraphNode(UHGraphNodeType InType)
 	}
 
 	return std::move(NewNode);
+}
+
+void UHMaterialNode::SetMaterialCompileData(UHMaterialCompileData InData)
+{
+	CompileData = InData;
 }

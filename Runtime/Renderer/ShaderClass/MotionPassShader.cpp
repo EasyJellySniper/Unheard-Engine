@@ -2,7 +2,7 @@
 #include "../../Components/MeshRenderer.h"
 
 UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
-	: UHShaderClass(InGfx, Name, typeid(UHMotionCameraPassShader))
+	: UHShaderClass(InGfx, Name, typeid(UHMotionCameraPassShader), nullptr)
 {
 	// system const + depth texture + sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -22,7 +22,7 @@ UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string
 		, 1
 		, PipelineLayout);
 
-	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
+	CreateGraphicState(Info);
 }
 
 void UHMotionCameraPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
@@ -35,7 +35,7 @@ void UHMotionCameraPassShader::BindParameters(const std::array<std::unique_ptr<U
 }
 
 UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass)
-	: UHShaderClass(InGfx, Name, typeid(UHMotionObjectPassShader))
+	: UHShaderClass(InGfx, Name, typeid(UHMotionObjectPassShader), nullptr)
 {
 	// Motion pass: constants + opacity image for cutoff (if there is any)
 	for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
@@ -96,7 +96,7 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 		, 1
 		, PipelineLayout);
 
-	GGraphicStateTable[GetId()] = InGfx->RequestGraphicState(Info);
+	CreateGraphicState(Info);
 }
 
 void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

@@ -35,7 +35,7 @@ UHMaterial::UHMaterial()
 
 	TexDefines = { "WITH_DIFFUSE", "WITH_OCCLUSION","WITH_SPECULAR","WITH_NORMAL","WITH_OPACITY", "WITH_ENVCUBE", "WITH_METALLIC", "WITH_ROUGHNESS" };
 
-	MaterialNode = std::make_unique<UHMaterialNode>();
+	MaterialNode = std::make_unique<UHMaterialNode>(this);
 	DefaultMaterialNodePos.x = 544;
 	DefaultMaterialNodePos.y = 208;
 }
@@ -292,16 +292,25 @@ void CollectTexDefinitions(const UHGraphPin* Pin, int32_t& RegisterStart, std::s
 	}
 }
 
-std::string UHMaterial::GetTextureDefineCode()
+std::string UHMaterial::GetTextureDefineCode(bool bIsDepthOrMotionPass)
 {
 	// get texture define code
 	int32_t RegisterStart = GMaterialTextureRegisterStart;
 	std::string Code;
 	std::unordered_map<uint32_t, bool> TexTable;
 
-	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
+	// only opacity is needed in depth or motion pass
+	if (bIsDepthOrMotionPass)
 	{
+		const std::unique_ptr<UHGraphPin>& Input = MaterialNode->GetInputs()[Experimental::Opacity];
 		CollectTexDefinitions(Input.get(), RegisterStart, Code, TexTable);
+	}
+	else
+	{
+		for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
+		{
+			CollectTexDefinitions(Input.get(), RegisterStart, Code, TexTable);
+		}
 	}
 
 	// @TODO: Differentiate sampler state in the future
@@ -310,8 +319,9 @@ std::string UHMaterial::GetTextureDefineCode()
 	return Code;
 }
 
-std::string UHMaterial::GetMaterialInputCode()
+std::string UHMaterial::GetMaterialInputCode(UHMaterialCompileData InData)
 {
+	MaterialNode->SetMaterialCompileData(InData);
 	return MaterialNode->EvalHLSL();
 }
 
@@ -514,15 +524,23 @@ void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std
 	}
 }
 
-std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
+std::vector<std::string> UHMaterial::GetRegisteredTextureNames(bool bIsDepthOrMotionPass)
 {
 #if WITH_DEBUG
 	RegisteredTextureNames.clear();
 	std::unordered_map<uint32_t, bool> TexTable;
 
-	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
+	if (bIsDepthOrMotionPass)
 	{
+		const std::unique_ptr<UHGraphPin>& Input = MaterialNode->GetInputs()[Experimental::Opacity];
 		CollectTexNames(Input.get(), RegisteredTextureNames, TexTable);
+	}
+	else
+	{
+		for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
+		{
+			CollectTexNames(Input.get(), RegisteredTextureNames, TexTable);
+		}
 	}
 #endif
 
@@ -545,7 +563,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	EditGUIRelativePos.clear();
 	EditNodes.clear();
 	MaterialNode.reset();
-	MaterialNode = std::make_unique<UHMaterialNode>();
+	MaterialNode = std::make_unique<UHMaterialNode>(this);
 
 	std::unique_ptr<UHGraphNode> NewNode;
 	std::vector<std::unique_ptr<UHGraphPin>>& MaterialPins = MaterialNode->GetInputs();
@@ -766,7 +784,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		bIsTangentSpace = true;
 	}
 
-	GetRegisteredTextureNames();
+	GetRegisteredTextureNames(false);
 }
 
 std::unique_ptr<UHMaterialNode>& UHMaterial::GetMaterialNode()

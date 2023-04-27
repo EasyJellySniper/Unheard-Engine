@@ -269,7 +269,7 @@ void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
 
-	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames())
+	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames(false))
 	{
 		UHTexture2D* Tex = AssetManagerInterface->GetTexture2D(RegisteredTexture);
 		if (Tex)
@@ -473,7 +473,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 			UHDepthPassShader& DepthShader = DepthPassShaders[Renderer->GetBufferDataIndex()];
 			DepthShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-				, OcclusionVisibleBuffer, Renderer);
+				, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
 		}
 	}
 
@@ -943,11 +943,22 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders()
 			{
 				if (CompileFlag == FullCompile || CompileFlag == FullCompileResave)
 				{
+					if (bEnableDepthPrePass)
+					{
+						DepthPassShaders[Renderer->GetBufferDataIndex()].Release();
+					}
+
 					BasePassShaders[Renderer->GetBufferDataIndex()].Release();
 					Idx = Renderer->GetBufferDataIndex();
 				}
 				else if (CompileFlag == BindOnly)
 				{
+					if (bEnableDepthPrePass)
+					{
+						DepthPassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
+							, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+					}
+
 					BasePassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
 						, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
 				}
@@ -956,12 +967,23 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders()
 
 		if (CompileFlag == FullCompile || CompileFlag == FullCompileResave)
 		{
+			if (bEnableDepthPrePass)
+			{
+				GraphicInterface->RequestReleaseShader(DepthPassShaders[Idx].GetPixelShader());
+			}
 			GraphicInterface->RequestReleaseShader(BasePassShaders[Idx].GetPixelShader());
 
 			for (const UHObject* RendererObj : Mat->GetReferenceObjects())
 			{
 				if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
 				{
+					if (bEnableDepthPrePass)
+					{
+						DepthPassShaders[Renderer->GetBufferDataIndex()] = UHDepthPassShader(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, Mat);
+						DepthPassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
+							, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+					}
+
 					BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass);
 					BasePassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
 						, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);

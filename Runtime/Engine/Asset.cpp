@@ -120,21 +120,23 @@ void UHAssetManager::ImportMeshes()
 	}
 }
 
-void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterial* InMat
-	, std::vector<std::string> Defines)
+void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
+	, std::vector<std::string> Defines, std::filesystem::path& OutputShaderPath)
 {
 #if WITH_DEBUG
+	UHMaterial* InMat = InData.MaterialCache;
 	UHMaterialCompileFlag CompileFlag = InMat->GetCompileFlag();
+
 	if (CompileFlag == FullCompile
 		|| CompileFlag == FullCompileResave
-		|| !UHMaterialImporterInterface->IsMaterialCached(InMat, InShaderName)
+		|| !UHMaterialImporterInterface->IsMaterialCached(InMat, InShaderName, Defines)
 		|| !UHShaderImporterInterface->IsShaderTemplateCached(InSource, EntryName, ProfileName))
 	{
-		UHShaderImporterInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InMat, Defines);
+		OutputShaderPath = UHShaderImporterInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InData, Defines);
 
 		if (CompileFlag == FullCompileResave)
 		{
-			UHMaterialImporterInterface->WriteMaterialCache(InMat, InShaderName);
+			UHMaterialImporterInterface->WriteMaterialCache(InMat, InShaderName, Defines);
 		}
 	}
 #endif

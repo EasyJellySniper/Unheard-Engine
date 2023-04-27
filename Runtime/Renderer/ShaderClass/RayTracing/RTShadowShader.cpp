@@ -1,7 +1,7 @@
 #include "RTShadowShader.h"
 
 UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, UHShader* InAnyHit, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader))
+	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader), nullptr)
 {
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);

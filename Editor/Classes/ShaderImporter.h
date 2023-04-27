@@ -7,6 +7,7 @@
 #include "../Runtime/Classes/Utility.h"
 
 class UHMaterial;
+struct UHMaterialCompileData;
 
 // shader asset cache
 struct UHRawShaderAssetCache
@@ -59,7 +60,7 @@ public:
 	bool IsShaderTemplateCached(std::filesystem::path SourcePath, std::string EntryName, std::string ProfileName);
 	void CompileHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> Defines);
-	void TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterial* InMat
+	std::string TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
 		, std::vector<std::string> Defines);
 
 private:

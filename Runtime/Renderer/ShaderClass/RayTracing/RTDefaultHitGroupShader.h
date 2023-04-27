@@ -6,7 +6,7 @@ class UHRTDefaultHitGroupShader : public UHShaderClass
 public:
 	UHRTDefaultHitGroupShader() {}
 	UHRTDefaultHitGroupShader(UHGraphic* InGfx, std::string Name)
-		: UHShaderClass(InGfx, Name, typeid(UHRTDefaultHitGroupShader))
+		: UHShaderClass(InGfx, Name, typeid(UHRTDefaultHitGroupShader), nullptr)
 	{
 		std::vector<std::string> Define = {"WITH_CLOSEST"};
 		ClosestHitShader = InGfx->RequestShader("RTDefaultHitGroup", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultClosestHit", "lib_6_3", Define);

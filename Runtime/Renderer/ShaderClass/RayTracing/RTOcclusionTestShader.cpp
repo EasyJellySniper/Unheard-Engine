@@ -1,7 +1,7 @@
 #include "RTOcclusionTestShader.h"
 
 UHRTOcclusionTestShader::UHRTOcclusionTestShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, UHShader* InAnyHit, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHRTOcclusionTestShader))
+	: UHShaderClass(InGfx, Name, typeid(UHRTOcclusionTestShader), nullptr)
 {
 	// Occlusion Test: system const + TLAS + result output + material slot
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);

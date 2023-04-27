@@ -299,7 +299,7 @@ void UHShaderImporter::CompileHLSL(std::string InShaderName, std::filesystem::pa
 	WriteShaderCache(InSource, OutputShaderPath, EntryName, ProfileName, Defines);
 }
 
-void UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterial* InMat
+std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
 	, std::vector<std::string> Defines)
 {
 	// Workflow of translate HLSL
@@ -322,12 +322,12 @@ void UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::
 	{
 		// failed to translate HLSL due to template not found
 		UHE_LOG("Shader template " + InShaderName + " not found.\n");
-		return;
+		return "";
 	}
 
 	// get source code returned from material, and replace it in template code
-	ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_TEXTUREDEFINE", InMat->GetTextureDefineCode());
-	ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_INPUT", InMat->GetMaterialInputCode());
+	ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_TEXTUREDEFINE", InData.MaterialCache->GetTextureDefineCode(InData.bIsDepthOrMotionPass));
+	ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_INPUT", InData.MaterialCache->GetMaterialInputCode(InData));
 
 	if (!std::filesystem::exists(GTempFilePath))
 	{
@@ -339,16 +339,26 @@ void UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::
 		std::filesystem::create_directories(GShaderAssetFolder);
 	}
 
+	// macro hash
+	size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
+	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
+	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetName(), InShaderName, MacroHashName);
+
 	// output temp shader file
-	std::string TempShaderPath = GTempFilePath + InShaderName + "_" + InMat->GetName() + GRawShaderExtension;
-	std::ofstream FileOut(TempShaderPath.c_str(), std::ios::out);
+	std::string TempShaderPath = GTempFilePath + InShaderName + "_" + InData.MaterialCache->GetName() + MacroHashName;
+
+	std::ofstream FileOut((TempShaderPath + GRawShaderExtension).c_str(), std::ios::out);
 	FileOut << ShaderCode;
 	FileOut.close();
-	std::string OutputShaderPath = GShaderAssetFolder + InShaderName + "_" + InMat->GetName() + GShaderAssetExtension;
+
+	// deside the output shader path based on the compile flag
+	// Hit compile but not save it, it shall not refresh the regular spv file
+	std::string OutputShaderPath = (InData.MaterialCache->GetCompileFlag() == FullCompileResave) ? GShaderAssetFolder + OutName + GShaderAssetExtension
+		: TempShaderPath + GShaderAssetExtension;
 
 	// compile, setup dx layout as well
 	std::string CompileCmd = " -spirv -T " + ProfileName + " -E " + EntryName + " "
-		+ std::filesystem::absolute(TempShaderPath).string()
+		+ std::filesystem::absolute(TempShaderPath + GRawShaderExtension).string()
 		+ " -Fo " + std::filesystem::absolute(OutputShaderPath).string()
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
@@ -366,11 +376,14 @@ void UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::
 	if (!std::filesystem::exists(OutputShaderPath) || !bCompileResult)
 	{
 		UHE_LOG("Failed to compile shader " + OutputShaderPath + "!\n");
-		return;
+		return "";
 	}
 
 	// write shader cache, the template doesn't need macro and output shader path
 	WriteShaderCache(InSource, "", EntryName, ProfileName);
+
+	// return the output shader path
+	return OutputShaderPath;
 }
 
 #endif

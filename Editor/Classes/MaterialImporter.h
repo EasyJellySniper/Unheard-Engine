@@ -13,8 +13,8 @@ class UHMaterial;
 struct UHMaterialAssetCache
 {
 	UHMaterialAssetCache()
-		: SourceLastModifiedTime(0)
-		, SpvGeneratedTime(0)
+		: SpvGeneratedTime(0)
+		, MacroHash(0)
 	{
 
 	}
@@ -22,13 +22,13 @@ struct UHMaterialAssetCache
 	inline bool operator==(UHMaterialAssetCache InCache)
 	{
 		return SourcePath == InCache.SourcePath
-			&& SourceLastModifiedTime == InCache.SourceLastModifiedTime
-			&& SpvGeneratedTime == InCache.SpvGeneratedTime;
+			&& SpvGeneratedTime == InCache.SpvGeneratedTime
+			&& MacroHash == InCache.MacroHash;
 	}
 
 	std::filesystem::path SourcePath;
-	int64_t SourceLastModifiedTime;
 	int64_t SpvGeneratedTime;
+	size_t MacroHash;
 };
 
 class UHMaterialImporter
@@ -36,8 +36,8 @@ class UHMaterialImporter
 public:
 	UHMaterialImporter();
 	void LoadMaterialCache();
-	void WriteMaterialCache(UHMaterial* InMat, std::string InShaderName);
-	bool IsMaterialCached(UHMaterial* InMat, std::string InShaderName);
+	void WriteMaterialCache(UHMaterial* InMat, std::string InShaderName, std::vector<std::string> Defines);
+	bool IsMaterialCached(UHMaterial* InMat, std::string InShaderName, std::vector<std::string> Defines);
 
 private:
 	std::vector<UHMaterialAssetCache> UHMaterialsCache;
