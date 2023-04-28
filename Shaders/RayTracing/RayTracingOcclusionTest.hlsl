@@ -23,7 +23,7 @@ void RTOcclusionTestRayGen()
 	{
 		// simply shooting a ray from camera and finding the closest object
 		// those closest objects are considered as visible, and the other which are failed with ray test are considered as occluded
-		// the visibility will be reset in C++ side
+		// the visibility will be reset via vkCmdFillBuffer()
 		OcclusionVisible.Store(Payload.HitInstance * 4, 1);
 	}
 }

@@ -113,7 +113,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 #if WITH_DEBUG
 	// init editor instance
 	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
-		, UHEAsset.get());
+		, UHEAsset.get(), UHEGraphic.get());
 #endif
 
 	bIsInitialized = true;

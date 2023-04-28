@@ -66,6 +66,7 @@ public:
 	float GetRenderThreadTime() const;
 	int32_t GetDrawCallCount() const;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
+	void RefreshMaterialShaders(UHMaterial* InMat);
 #endif
 
 private:
@@ -124,10 +125,6 @@ private:
 
 	// sort renderer
 	void SortRenderer();
-
-#if WITH_DEBUG
-	void RefreshMaterialShaders();
-#endif
 
 
 	/************************************************ rendering functions ************************************************/
@@ -285,7 +282,7 @@ private:
 	UHRTDefaultHitGroupShader RTDefaultHitGroupShader;
 
 	UHRTOcclusionTestShader RTOcclusionTestShader;
-	std::array<std::unique_ptr<UHRenderBuffer<uint32_t>>, GMaxFrameInFlight> OcclusionVisibleBuffer;
+	std::unique_ptr<UHRenderBuffer<uint32_t>> OcclusionVisibleBuffer;
 
 	UHRTShadowShader RTShadowShader;
 	UHRenderTexture* RTShadowResult;

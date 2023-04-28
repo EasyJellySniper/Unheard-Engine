@@ -42,6 +42,12 @@ public:
             bIsUploadBuffer = false;
         }
 
+        // for vkCmdFillBuffer()
+        if (InUsage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+        {
+            InUsage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+
         bIsShaderDeviceAddress = (InUsage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
         BufferStride = sizeof(T);
         

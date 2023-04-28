@@ -29,6 +29,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bUseValidationLayers(false)
 	, AssetManagerInterface(InAssetManager)
 	, ConfigInterface(InConfig)
+	, bEnableDepthPrePass(InConfig->RenderingSetting().bEnableDepthPrePass)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
 	, bEnableRayTracingOcclusionTest(InConfig->RenderingSetting().bEnableRayTracingOcclusionTest)
 {
@@ -1388,6 +1389,11 @@ uint32_t UHGraphic::GetShaderRecordSize() const
 float UHGraphic::GetGPUTimeStampPeriod() const
 {
 	return GPUTimeStampPeriod;
+}
+
+bool UHGraphic::IsDepthPrePassEnabled() const
+{
+	return bEnableDepthPrePass;
 }
 
 bool UHGraphic::IsRayTracingEnabled() const

@@ -36,6 +36,7 @@ void UHMaterialImporter::LoadMaterialCache()
 		// load last modified time of source
 		FileIn.read(reinterpret_cast<char*>(&Cache.SpvGeneratedTime), sizeof(Cache.SpvGeneratedTime));
 		FileIn.read(reinterpret_cast<char*>(&Cache.MacroHash), sizeof(Cache.MacroHash));
+		FileIn.read(reinterpret_cast<char*>(&Cache.SourceModifiedTime), sizeof(Cache.SourceModifiedTime));
 
 		FileIn.close();
 
@@ -62,10 +63,12 @@ void UHMaterialImporter::WriteMaterialCache(UHMaterial* InMat, std::string InSha
 	// get last modified time and spv generated shader time
 	std::string OutputShaderPath = GShaderAssetFolder + OutName + GShaderAssetExtension;
 	int64_t SpvGeneratedTime = std::filesystem::last_write_time(OutputShaderPath).time_since_epoch().count();
+	int64_t SourceModifiedTime = std::filesystem::last_write_time(InMat->GetPath()).time_since_epoch().count();
 
 	UHUtilities::WriteStringData(FileOut, InMat->GetPath().string());
 	FileOut.write(reinterpret_cast<const char*>(&SpvGeneratedTime), sizeof(SpvGeneratedTime));
 	FileOut.write(reinterpret_cast<const char*>(&MacroHash), sizeof(MacroHash));
+	FileOut.write(reinterpret_cast<const char*>(&SourceModifiedTime), sizeof(SourceModifiedTime));
 
 	FileOut.close();
 }
@@ -92,14 +95,9 @@ bool UHMaterialImporter::IsMaterialCached(UHMaterial* InMat, std::string InShade
 		return false;
 	}
 	Cache.SpvGeneratedTime = std::filesystem::last_write_time(OutputShaderPath).time_since_epoch().count();
+	Cache.SourceModifiedTime = std::filesystem::last_write_time(InMat->GetPath()).time_since_epoch().count();
 
-	const bool bIsCached = UHUtilities::FindByElement(UHMaterialsCache, Cache);
-	if (!bIsCached)
-	{
-		UHE_LOG("[Warning] The material " + InMat->GetName() + " needs a resave.\n");
-	}
-
-	return bIsCached;
+	return UHUtilities::FindByElement(UHMaterialsCache, Cache);
 }
 
 #endif

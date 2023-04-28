@@ -206,3 +206,5 @@ Added shader cache for template as well.
 
 27-04-2023: Smoothed the edge of TAA. Applied material shader rules to depth pass. ShaderClass code arrangement.
 Added the macro hash to material shader as well. Enhanced the shader/materisl cache workflow.
+
+28-04-2023: Improved material cache workflow. Improved compiling workflow. Fixed the flickering issue of RTOT when vsync is off.

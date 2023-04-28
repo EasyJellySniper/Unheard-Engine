@@ -15,6 +15,7 @@ struct UHMaterialAssetCache
 	UHMaterialAssetCache()
 		: SpvGeneratedTime(0)
 		, MacroHash(0)
+		, SourceModifiedTime(0)
 	{
 
 	}
@@ -23,12 +24,14 @@ struct UHMaterialAssetCache
 	{
 		return SourcePath == InCache.SourcePath
 			&& SpvGeneratedTime == InCache.SpvGeneratedTime
-			&& MacroHash == InCache.MacroHash;
+			&& MacroHash == InCache.MacroHash
+			&& SourceModifiedTime == InCache.SourceModifiedTime;
 	}
 
 	std::filesystem::path SourcePath;
 	int64_t SpvGeneratedTime;
 	size_t MacroHash;
+	int64_t SourceModifiedTime;
 };
 
 class UHMaterialImporter

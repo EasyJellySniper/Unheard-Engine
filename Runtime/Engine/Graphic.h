@@ -219,6 +219,9 @@ public:
 	// get gpu time stamp period
 	float GetGPUTimeStampPeriod() const;
 
+	// is depth pre pass enabled
+	bool IsDepthPrePassEnabled() const;
+
 	// is ray tracing enabled
 	bool IsRayTracingEnabled() const;
 	bool IsRayTracingOcclusionTestEnabled() const;
@@ -355,6 +358,7 @@ private:
 	UHConfigManager* ConfigInterface;
 	uint32_t ShaderRecordSize;
 	float GPUTimeStampPeriod;
+	bool bEnableDepthPrePass;
 	bool bEnableRayTracing;
 	bool bEnableRayTracingOcclusionTest;
 

@@ -48,10 +48,10 @@ UHRTOcclusionTestShader::UHRTOcclusionTestShader(UHGraphic* InGfx, std::string N
 }
 
 void UHRTOcclusionTestShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<uint32_t>>, GMaxFrameInFlight>& OcclusionConst
+	, const std::unique_ptr<UHRenderBuffer<uint32_t>>& OcclusionConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHMaterialConstants>>, GMaxFrameInFlight>& MatConst)
 {
 	BindConstant(SysConst, 0);
-	BindStorage(OcclusionConst, 2, 0, true);
+	BindStorage(OcclusionConst.get(), 2, 0, true);
 	BindStorage(MatConst, GMaterialSlotInRT, 0, true);
 }

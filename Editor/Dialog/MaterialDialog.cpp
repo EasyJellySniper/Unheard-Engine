@@ -9,6 +9,7 @@
 #include "../Classes/MathNodeGUI.h"
 #include "../Classes/TextureNodeGUI.h"
 #include "../../Runtime/Classes/Material.h"
+#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 
 enum UHNodeMenuAction
 {
@@ -53,14 +54,15 @@ struct UHMaterialDialogData
 std::unique_ptr<UHMaterialDialogData> GMaterialDialogData;
 
 UHMaterialDialog::UHMaterialDialog()
-	: UHMaterialDialog(nullptr, nullptr, nullptr)
+	: UHMaterialDialog(nullptr, nullptr, nullptr, nullptr)
 {
 
 }
 
-UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetManager)
+UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer)
 	: UHDialog(InInstance, InWindow)
     , AssetManager(InAssetManager)
+    , Renderer(InRenderer)
     , GUIToMove(nullptr)
     , MousePos(POINT())
     , MousePosWhenRightDown(POINT())
@@ -141,7 +143,7 @@ INT_PTR CALLBACK MaterialProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 
             if (LOWORD(wParam) == IDC_MATERIALCOMPILE && MatIndex != -1)
             {
-                GMaterialDialogData->CompileFlag = FullCompile;
+                GMaterialDialogData->CompileFlag = FullCompileTemporary;
                 return (INT_PTR)TRUE;
             }
             else if (LOWORD(wParam) == IDC_MATERIALSAVE && MatIndex != -1)
@@ -702,6 +704,7 @@ void UHMaterialDialog::RecompileMaterial()
             GUI->SetDefaultValueFromGUI();
         }
         CurrentMaterial->SetCompileFlag(GMaterialDialogData->CompileFlag);
+        Renderer->RefreshMaterialShaders(CurrentMaterial);
     }
 }
 

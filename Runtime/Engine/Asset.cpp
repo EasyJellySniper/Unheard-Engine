@@ -127,14 +127,15 @@ void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::pa
 	UHMaterial* InMat = InData.MaterialCache;
 	UHMaterialCompileFlag CompileFlag = InMat->GetCompileFlag();
 
-	if (CompileFlag == FullCompile
+	if (CompileFlag == FullCompileTemporary
 		|| CompileFlag == FullCompileResave
 		|| !UHMaterialImporterInterface->IsMaterialCached(InMat, InShaderName, Defines)
 		|| !UHShaderImporterInterface->IsShaderTemplateCached(InSource, EntryName, ProfileName))
 	{
 		OutputShaderPath = UHShaderImporterInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InData, Defines);
 
-		if (CompileFlag == FullCompileResave)
+		// don't write cache for temporrary compiliation
+		if (CompileFlag != FullCompileTemporary)
 		{
 			UHMaterialImporterInterface->WriteMaterialCache(InMat, InShaderName, Defines);
 		}

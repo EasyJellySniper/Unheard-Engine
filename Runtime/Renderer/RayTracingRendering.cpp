@@ -42,6 +42,9 @@ void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& G
 	GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]->BeginTimeStamp(GraphBuilder.GetCmdList());
 #endif
 
+	// reset occlusion buffer
+	GraphBuilder.ClearUAVBuffer(OcclusionVisibleBuffer->GetBuffer(), 0);
+
 	// bind descriptors and RT states
 	std::vector<VkDescriptorSet> DescriptorSets = { RTOcclusionTestShader.GetDescriptorSet(CurrentFrame)
 		, RTTextureTable.GetDescriptorSet(CurrentFrame)

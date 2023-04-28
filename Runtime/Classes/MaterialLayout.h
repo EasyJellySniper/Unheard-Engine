@@ -70,7 +70,7 @@ namespace Experimental
 enum UHMaterialCompileFlag
 {
 	UpToDate,
-	FullCompile,
+	FullCompileTemporary,
 	BindOnly,
 	FullCompileResave
 };

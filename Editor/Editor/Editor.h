@@ -10,6 +10,7 @@
 #include "../Dialog/MaterialDialog.h"
 
 class UHEngine;
+class UHGraphic;
 class UHConfigManager;
 class UHDeferredShadingRenderer;
 class UHRawInput;
@@ -20,7 +21,7 @@ class UHEditor
 {
 public:
 	UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
-		, UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager);
+		, UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager, UHGraphic* InGfx);
 	~UHEditor();
 
 	void OnEditorUpdate();
@@ -37,6 +38,7 @@ private:
 	UHRawInput* Input;
 	UHProfiler* Profile;
 	UHAssetManager* AssetManager;
+	UHGraphic* Gfx;
 	UHGameTimer ProfileTimer;
 	int32_t ViewModeMenuItem;
 

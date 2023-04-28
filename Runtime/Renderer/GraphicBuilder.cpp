@@ -518,3 +518,8 @@ void UHGraphicBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToE
 	// push secondary cmds
 	vkCmdExecuteCommands(CmdList, static_cast<uint32_t>(CmdToExecute.size()), CmdToExecute.data());
 }
+
+void UHGraphicBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)
+{
+	vkCmdFillBuffer(CmdList, InBuffer, 0, VK_WHOLE_SIZE, InValue);
+}

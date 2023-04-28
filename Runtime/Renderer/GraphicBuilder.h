@@ -96,6 +96,9 @@ public:
 	// execute bundle
 	void ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToExecute);
 
+	// clear storage buffer (must be uint32_t)
+	void ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue);
+
 #if WITH_DEBUG
 	int32_t DrawCalls;
 #endif

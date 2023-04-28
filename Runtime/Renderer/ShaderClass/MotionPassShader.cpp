@@ -102,7 +102,7 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHMaterialConstants>>, GMaxFrameInFlight>& MatConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<uint32_t>>, GMaxFrameInFlight>& OcclusionConst
+	, const std::unique_ptr<UHRenderBuffer<uint32_t>>& OcclusionConst
 	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);
@@ -111,7 +111,7 @@ void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<U
 
 	if (Gfx->IsRayTracingOcclusionTestEnabled())
 	{
-		BindStorage(OcclusionConst, 3, 0, true);
+		BindStorage(OcclusionConst.get(), 3, 0, true);
 	}
 
 	if (UHTexture* OpacityTex = InRenderer->GetMaterial()->GetTex(UHMaterialTextureType::Opacity))

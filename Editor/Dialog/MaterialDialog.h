@@ -13,6 +13,7 @@ using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")
 
 class UHAssetManager;
+class UHDeferredShadingRenderer;
 class UHMaterial;
 
 class UHMaterialNodeGUI : public UHGraphNodeGUI
@@ -26,7 +27,7 @@ class UHMaterialDialog : public UHDialog
 {
 public:
 	UHMaterialDialog();
-	UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetManager);
+	UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer);
 	~UHMaterialDialog();
 
 	virtual void ShowDialog() override;
@@ -65,6 +66,7 @@ private:
 	POINT MousePosWhenRightDown;
 
 	UHAssetManager* AssetManager;
+	UHDeferredShadingRenderer* Renderer;
 
 	// GDI stuff
 	GdiplusStartupInput GdiplusStartupInput;

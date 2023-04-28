@@ -50,10 +50,6 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
-#if WITH_DEBUG
-	RefreshMaterialShaders();
-#endif
-
 	// sync config
 	bParallelSubmissionGT = ConfigInterface->RenderingSetting().bParallelSubmission;
 
@@ -229,13 +225,6 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			DirectionalLightBuffer[CurrentFrame]->UploadData(&DirLightC, Light->GetBufferDataIndex());
 			Light->SetRenderDirty(false, CurrentFrame);
 		}
-	}
-
-	// reset occlusion visibility
-	if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
-	{
-		std::vector<uint32_t> Visible(RTInstanceCount);
-		OcclusionVisibleBuffer[CurrentFrame]->UploadAllData(Visible.data());
 	}
 }
 

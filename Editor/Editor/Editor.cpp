@@ -11,7 +11,7 @@
 #include "../Classes/EditorUtils.h"
 
 UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
-    , UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager)
+    , UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager, UHGraphic* InGfx)
 	: HInstance(InInstance)
     , HWnd(InHwnd)
     , Engine(InEngine)
@@ -20,12 +20,13 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     , Input(InInput)
     , Profile(InProfile)
     , AssetManager(InAssetManager)
+    , Gfx(InGfx)
     , ViewModeMenuItem(ID_VIEWMODE_FULLLIT)
 {
     ProfileTimer.Reset();
     SettingDialog = UHSettingDialog(HInstance, HWnd, Config, Engine, DeferredRenderer, Input);
     ProfileDialog = UHProfileDialog(HInstance, HWnd);
-    MaterialDialog = std::make_unique<UHMaterialDialog>(HInstance, HWnd, AssetManager);
+    MaterialDialog = std::make_unique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
 }
 
 UHEditor::~UHEditor()
