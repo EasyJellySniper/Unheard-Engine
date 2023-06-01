@@ -11,40 +11,21 @@ UHRTOcclusionTestShader::UHRTOcclusionTestShader(UHGraphic* InGfx, std::string N
 
 	CreateDescriptor(ExtraLayouts);
 	RayGenShader = InGfx->RequestShader("RTOcclusionTestShader", "Shaders/RayTracing/RayTracingOcclusionTest.hlsl", "RTOcclusionTestRayGen", "lib_6_3");
+	MissShader = InGfx->RequestShader("RTOcclusionTestShader", "Shaders/RayTracing/RayTracingOcclusionTest.hlsl", "RTOcclusionTestMiss", "lib_6_3");
 
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
 	RTInfo.RayGenShader = RayGenShader;
 	RTInfo.ClosestHitShader = InClosestHit;
 	RTInfo.AnyHitShader = InAnyHit;
+	RTInfo.MissShader = MissShader;
 	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
 	RTState = InGfx->RequestRTState(RTInfo);
 
-	// get shader group data for setting up shader table
-	std::vector<BYTE> TempData(InGfx->GetShaderRecordSize());
-
-	PFN_vkGetRayTracingShaderGroupHandlesKHR GetRTShaderGroupHandle = (PFN_vkGetRayTracingShaderGroupHandlesKHR)
-		vkGetInstanceProcAddr(InGfx->GetInstance(), "vkGetRayTracingShaderGroupHandlesKHR");
-	if (GetRTShaderGroupHandle(InGfx->GetLogicalDevice(), RTState->GetRTPipeline(), 0, 1, InGfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to get shader group handle!\n");
-	}
-
-	RayGenTable = InGfx->RequestRenderBuffer<UHShaderRecord>();
-	RayGenTable->CreaetBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-	RayGenTable->UploadAllData(TempData.data());
-
-	// get data for HG as well
-	if (GetRTShaderGroupHandle(InGfx->GetLogicalDevice(), RTState->GetRTPipeline(), 1, 1, InGfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to get shader group handle!\n");
-	}
-
-	// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group
-	HitGroupTable = InGfx->RequestRenderBuffer<UHShaderRecord>();
-	HitGroupTable->CreaetBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-	HitGroupTable->UploadAllData(TempData.data());
+	InitRayGenTable();
+	InitMissTable();
+	InitHitGroupTable();
 }
 
 void UHRTOcclusionTestShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

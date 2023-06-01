@@ -60,7 +60,7 @@ void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& G
 	VkExtent2D RTOTExtent;
 	RTOTExtent.width = RenderResolution.width / 2;
 	RTOTExtent.height = RenderResolution.height / 2;
-	GraphBuilder.TraceRay(RTOTExtent, RTOcclusionTestShader.GetRayGenTable(), RTOcclusionTestShader.GetHitGroupTable());
+	GraphBuilder.TraceRay(RTOTExtent, RTOcclusionTestShader.GetRayGenTable(), RTOcclusionTestShader.GetMissTable(), RTOcclusionTestShader.GetHitGroupTable());
 
 #if WITH_DEBUG
 	GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]->EndTimeStamp(GraphBuilder.GetCmdList());
@@ -93,7 +93,7 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 	GraphBuilder.BindRTState(RTShadowShader.GetRTState());
 
 	// trace!
-	GraphBuilder.TraceRay(RTShadowExtent, RTShadowShader.GetRayGenTable(), RTShadowShader.GetHitGroupTable());
+	GraphBuilder.TraceRay(RTShadowExtent, RTShadowShader.GetRayGenTable(), RTShadowShader.GetMissTable(), RTShadowShader.GetHitGroupTable());
 
 	// transition to shader read after tracing
 	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

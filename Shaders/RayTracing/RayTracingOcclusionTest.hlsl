@@ -27,3 +27,9 @@ void RTOcclusionTestRayGen()
 		OcclusionVisible.Store(Payload.HitInstance * 4, 1);
 	}
 }
+
+[shader("miss")]
+void RTOcclusionTestMiss(inout UHDefaultPayload Payload)
+{
+	// do nothing
+}

@@ -185,6 +185,7 @@ struct UHRayTracingInfo
 		, RayGenShader(nullptr)
 		, ClosestHitShader(nullptr)
 		, AnyHitShader(nullptr)
+		, MissShader(nullptr)
 		, PayloadSize(4)
 		, AttributeSize(8)
 	{
@@ -208,6 +209,11 @@ struct UHRayTracingInfo
 			return false;
 		}
 
+		if (InInfo.MissShader != MissShader)
+		{
+			return false;
+		}
+
 		return InInfo.PipelineLayout == PipelineLayout
 			&& InInfo.MaxRecursionDepth == MaxRecursionDepth
 			&& InInfo.PayloadSize == PayloadSize
@@ -219,6 +225,7 @@ struct UHRayTracingInfo
 	UHShader* RayGenShader;
 	UHShader* ClosestHitShader;
 	UHShader* AnyHitShader;
+	UHShader* MissShader;
 	uint32_t PayloadSize;
 	uint32_t AttributeSize;
 };

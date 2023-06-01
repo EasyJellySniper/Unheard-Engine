@@ -232,6 +232,14 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	RGStageInfo.module = InInfo.RayGenShader->GetShader();
 	RGStageInfo.pName = RGEntryName.c_str();
 
+	// set miss shader
+	std::string MissEntryName = InInfo.MissShader->GetEntryName();
+	VkPipelineShaderStageCreateInfo MissStageInfo{};
+	MissStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	MissStageInfo.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
+	MissStageInfo.module = InInfo.MissShader->GetShader();
+	MissStageInfo.pName = MissEntryName.c_str();
+
 	// set closest hit shader
 	std::string CHGEntryName = InInfo.ClosestHitShader->GetEntryName();
 	VkPipelineShaderStageCreateInfo CHGStageInfo{};
@@ -251,15 +259,15 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 		AHGStageInfo.pName = AHGEntryName.c_str();
 	}
 
-	VkPipelineShaderStageCreateInfo ShaderStages[] = { RGStageInfo, CHGStageInfo, AHGStageInfo };
-	CreateInfo.stageCount = 2;
+	VkPipelineShaderStageCreateInfo ShaderStages[] = { RGStageInfo, MissStageInfo, CHGStageInfo, AHGStageInfo };
+	CreateInfo.stageCount = 3;
 	if (InInfo.AnyHitShader != nullptr)
 	{
-		CreateInfo.stageCount = 3;
+		CreateInfo.stageCount = 4;
 	}
 	CreateInfo.pStages = ShaderStages;
 
-	// setup group info for both RG and HG
+	// setup group info for RG, MissG and HG
 	VkRayTracingShaderGroupCreateInfoKHR RGGroupInfo{};
 	RGGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 	RGGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
@@ -268,16 +276,24 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	RGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
 	RGGroupInfo.generalShader = 0;
 
+	VkRayTracingShaderGroupCreateInfoKHR MissGroupInfo{};
+	MissGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+	MissGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+	MissGroupInfo.closestHitShader = VK_SHADER_UNUSED_KHR;
+	MissGroupInfo.anyHitShader = VK_SHADER_UNUSED_KHR;
+	MissGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
+	MissGroupInfo.generalShader = 1;
+
 	VkRayTracingShaderGroupCreateInfoKHR HGGroupInfo{};
 	HGGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 	HGGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-	HGGroupInfo.closestHitShader = 1;
-	HGGroupInfo.anyHitShader = 2;
+	HGGroupInfo.closestHitShader = 2;
+	HGGroupInfo.anyHitShader = 3;
 	HGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
 	HGGroupInfo.generalShader = VK_SHADER_UNUSED_KHR;
 
-	VkRayTracingShaderGroupCreateInfoKHR GroupInfos[] = { RGGroupInfo , HGGroupInfo };
-	CreateInfo.groupCount = 2;
+	VkRayTracingShaderGroupCreateInfoKHR GroupInfos[] = { RGGroupInfo, MissGroupInfo, HGGroupInfo };
+	CreateInfo.groupCount = 3;
 	CreateInfo.pGroups = GroupInfos;
 
 	// set payload size

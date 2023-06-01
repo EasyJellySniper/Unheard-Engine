@@ -67,3 +67,9 @@ void RTShadowRayGen()
 
 	Result[PixelCoord] = float2(MaxDist, Atten);
 }
+
+[shader("miss")]
+void RTShadowMiss(inout UHDefaultPayload Payload)
+{
+	// do nothing
+}

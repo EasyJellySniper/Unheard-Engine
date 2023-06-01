@@ -88,7 +88,7 @@ public:
 	void DrawFullScreenQuad();
 
 	// trace ray
-	void TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InHitGroupTable);
+	void TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InMissTable, UHRenderBuffer<UHShaderRecord>* InHitGroupTable);
 
 	// write time stamp
 	void WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery);

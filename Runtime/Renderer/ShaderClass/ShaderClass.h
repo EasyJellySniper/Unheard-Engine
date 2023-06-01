@@ -97,10 +97,12 @@ public:
 	UHShader* GetRayGenShader() const;
 	UHShader* GetClosestShader() const;
 	UHShader* GetAnyHitShader() const;
+	UHShader* GetMissShader() const;
 	UHGraphicState* GetState() const;
 	UHGraphicState* GetRTState() const;
 	UHRenderBuffer<UHShaderRecord>* GetRayGenTable() const;
 	UHRenderBuffer<UHShaderRecord>* GetHitGroupTable() const;
+	UHRenderBuffer<UHShaderRecord>* GetMissTable() const;
 
 	VkDescriptorSetLayout GetDescriptorSetLayout() const;
 	VkPipelineLayout GetPipelineLayout() const;
@@ -121,6 +123,11 @@ protected:
 	void CreateGraphicState(UHRenderPassInfo InInfo);
 	void CreateMaterialState(UHRenderPassInfo InInfo);
 
+	// ray tracing functions
+	void InitRayGenTable();
+	void InitMissTable();
+	void InitHitGroupTable();
+
 	UHGraphic* Gfx;
 	std::string Name;
 	std::type_index TypeIndexCache;
@@ -136,10 +143,12 @@ protected:
 	UHShader* RayGenShader;
 	UHShader* ClosestHitShader;
 	UHShader* AnyHitShader;
+	UHShader* MissShader;
 	UHGraphicState* RTState;
 
 	// shader table
 	std::unique_ptr<UHRenderBuffer<UHShaderRecord>> RayGenTable;
 	std::unique_ptr<UHRenderBuffer<UHShaderRecord>> HitGroupTable;
+	std::unique_ptr<UHRenderBuffer<UHShaderRecord>> MissTable;
 };
 

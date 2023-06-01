@@ -482,12 +482,18 @@ VkDeviceAddress GetDeviceAddress(VkDevice InDevice, VkBuffer InBuffer)
 	return vkGetBufferDeviceAddress(InDevice, &AddressInfo);
 }
 
-void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InHitGroupTable)
+void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InMissTable
+	, UHRenderBuffer<UHShaderRecord>* InHitGroupTable)
 {
 	VkStridedDeviceAddressRegionKHR RayGenAddress{};
 	RayGenAddress.deviceAddress = GetDeviceAddress(LogicalDevice, InRayGenTable->GetBuffer());
 	RayGenAddress.size = InRayGenTable->GetBufferSize();
 	RayGenAddress.stride = RayGenAddress.size;
+
+	VkStridedDeviceAddressRegionKHR MissAddress{};
+	MissAddress.deviceAddress = GetDeviceAddress(LogicalDevice, InMissTable->GetBuffer());
+	MissAddress.size = InMissTable->GetBufferSize();
+	MissAddress.stride = MissAddress.size;
 
 	VkStridedDeviceAddressRegionKHR HitGroupAddress{};
 	HitGroupAddress.deviceAddress = GetDeviceAddress(LogicalDevice, InHitGroupTable->GetBuffer());
@@ -497,7 +503,7 @@ void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderReco
 	VkStridedDeviceAddressRegionKHR NullAddress{};
 
 	PFN_vkCmdTraceRaysKHR TraceRays = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(Gfx->GetInstance(), "vkCmdTraceRaysKHR");
-	TraceRays(CmdList, &RayGenAddress, &NullAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, 1);
+	TraceRays(CmdList, &RayGenAddress, &MissAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, 1);
 }
 
 void UHGraphicBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
