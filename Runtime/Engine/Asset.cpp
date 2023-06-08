@@ -132,6 +132,12 @@ void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::pa
 		|| !UHMaterialImporterInterface->IsMaterialCached(InMat, InShaderName, Defines)
 		|| !UHShaderImporterInterface->IsShaderTemplateCached(InSource, EntryName, ProfileName))
 	{
+		// mark as include changed when necessary
+		if (!UHShaderImporterInterface->IsShaderIncludeCached() && CompileFlag == UpToDate)
+		{
+			InMat->SetCompileFlag(IncludeChanged);
+		}
+
 		OutputShaderPath = UHShaderImporterInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InData, Defines);
 
 		// don't write cache for temporrary compiliation

@@ -26,12 +26,12 @@ VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj);
 	Vout.UV0 = UV0Buffer[Vid];
 
-	// transform normal by world IT
-	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
-
 #if WITH_TANGENT_SPACE
 	// calculate world TBN if normal map is used
-	Vout.WorldTBN = CreateTBN(Vout.Normal, TangentBuffer[Vid]);
+	Vout.WorldTBN = CreateTBN(LocalToWorldNormal(NormalBuffer[Vid]), TangentBuffer[Vid]);
+#else
+	// transform normal by world IT
+	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
 #endif
 
 #if WITH_ENVCUBE

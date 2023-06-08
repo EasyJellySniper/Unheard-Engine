@@ -45,9 +45,6 @@ void BasePS(VertexOutput Vin
 	OutColor = float4(saturate(BaseColor), Occlusion);
 
 	// output normal in [0,1], a is unused at the moment, also be sure to flip normal based on face
-	float3 VertexNormal = normalize(Vin.Normal);
-	VertexNormal *= (bIsFrontFace) ? 1 : -1;
-
 #if WITH_TANGENT_SPACE
 	float3 BumpNormal = MaterialInput.Normal;
 
@@ -55,7 +52,8 @@ void BasePS(VertexOutput Vin
 	BumpNormal = mul(BumpNormal, Vin.WorldTBN);
 	BumpNormal *= (bIsFrontFace) ? 1 : -1;
 #else
-	float3 BumpNormal = VertexNormal;
+	float3 BumpNormal = normalize(Vin.Normal);
+	BumpNormal *= (bIsFrontFace) ? 1 : -1;
 #endif
 
 	OutNormal = float4(BumpNormal * 0.5f + 0.5f, 0);

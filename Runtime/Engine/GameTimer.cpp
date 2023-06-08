@@ -98,4 +98,13 @@ void UHGameTimer::Tick()
 	{
 		DeltaTime = 0.0;
 	}
+
+	// check if the true delta time is larger than a threshold
+	// this can happen with debug breakpoint or some other pausing mechanisms, correct it to a constant rate
+	if (GetDeltaTime() > 1.0f)
+	{
+		// fix to 60hz should be fine for now, follow the target FPS in the future if needed
+		double DesiredDeltaTime = 0.0166;
+		DeltaTime = DesiredDeltaTime / SecondsPerCount;
+	}
 }

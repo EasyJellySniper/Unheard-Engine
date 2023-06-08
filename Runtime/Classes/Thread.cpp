@@ -9,9 +9,19 @@ UHThread::UHThread()
 }
 
 // begin thread, called during initialization, don't try to begin a new one every frame!
-void UHThread::BeginThread(std::thread InObj)
+void UHThread::BeginThread(std::thread InObj, uint32_t AffinityCore)
 {
 	ThreadObj = std::move(InObj);
+
+	// set affinity
+	uint32_t NumCores = std::thread::hardware_concurrency();
+	AffinityCore = AffinityCore % NumCores;
+
+	DWORD_PTR Result = SetThreadAffinityMask(ThreadObj.native_handle(), DWORD_PTR(1) << AffinityCore);
+	if (Result == 0)
+	{
+		UHE_LOG("Failed to set affinity for thread!\n");
+	}
 }
 
 // end thread, this should force infinite wait loop to finish and terminate the thread

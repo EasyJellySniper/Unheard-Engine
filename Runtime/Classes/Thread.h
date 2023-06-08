@@ -9,7 +9,7 @@ public:
 	UHThread();
 
 	// kick off a thread
-	void BeginThread(std::thread InObj);
+	void BeginThread(std::thread InObj, uint32_t AffinityCore);
 
 	// end a thread
 	void EndThread();

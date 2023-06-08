@@ -72,7 +72,8 @@ enum UHMaterialCompileFlag
 	UpToDate,
 	FullCompileTemporary,
 	BindOnly,
-	FullCompileResave
+	FullCompileResave,
+	IncludeChanged
 };
 
 // get blend state info based on input blend mode

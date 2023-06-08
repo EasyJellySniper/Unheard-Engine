@@ -210,3 +210,5 @@ Added the macro hash to material shader as well. Enhanced the shader/materisl ca
 28-04-2023: Improved material cache workflow. Improved compiling workflow. Fixed the flickering issue of RTOT when vsync is off.
 
 01-06-2023: Fixed a RT bug caused by NVIDIA driver. The miss shader is a must-have now in binding. Let Release_Editor build asserts too.
+
+08-06-2023: Set affinity for threads. Enhance delta time calculation and prevent a huge DT spike. Fixed an edge case for shader compilation, now compiling caused by include changes should be fine.

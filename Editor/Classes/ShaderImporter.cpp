@@ -353,7 +353,9 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 
 	// deside the output shader path based on the compile flag
 	// Hit compile but not save it, it shall not refresh the regular spv file
-	std::string OutputShaderPath = (InData.MaterialCache->GetCompileFlag() == FullCompileResave) ? GShaderAssetFolder + OutName + GShaderAssetExtension
+	// regular spv file should be also refreshed when include changes
+	std::string OutputShaderPath = (InData.MaterialCache->GetCompileFlag() == FullCompileResave || InData.MaterialCache->GetCompileFlag() == IncludeChanged)
+		? GShaderAssetFolder + OutName + GShaderAssetExtension
 		: TempShaderPath + GShaderAssetExtension;
 
 	// compile, setup dx layout as well

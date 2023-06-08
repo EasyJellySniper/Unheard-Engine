@@ -32,10 +32,11 @@ struct VertexOutput
 {
 	float4 Position : SV_POSITION;
 	float2 UV0 : TEXCOORD0;
-	float3 Normal : NORMAL;
-#if WITH_NORMAL
+#if WITH_TANGENT_SPACE
 	// output TBN if normal mapping enabled
 	float3x3 WorldTBN : TEXCOORD2;
+#else
+	float3 Normal : NORMAL;
 #endif
 
 #if WITH_ENVCUBE

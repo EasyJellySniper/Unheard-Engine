@@ -39,6 +39,9 @@ void UHEngine::SaveConfig()
 
 bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 {
+	// set affinity of current thread (main thread)
+	SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
+
 	// init asset manager
 	UHEAsset = std::make_unique<UHAssetManager>();
 

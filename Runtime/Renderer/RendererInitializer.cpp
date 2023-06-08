@@ -135,13 +135,13 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 
 		// init threads, it will wait at the beginning
 		RenderThread = std::make_unique<UHThread>();
-		RenderThread->BeginThread(std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this));
+		RenderThread->BeginThread(std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this), GRenderThreadAffinity);
 		WorkerThreads.resize(NumWorkerThreads);
 
 		for (int32_t Idx = 0; Idx < NumWorkerThreads; Idx++)
 		{
 			WorkerThreads[Idx] = std::make_unique<UHThread>();
-			WorkerThreads[Idx]->BeginThread(std::thread(&UHDeferredShadingRenderer::WorkerThreadLoop, this, Idx));
+			WorkerThreads[Idx]->BeginThread(std::thread(&UHDeferredShadingRenderer::WorkerThreadLoop, this, Idx), GWorkerThreadAffinity + 1);
 		}
 	}
 
