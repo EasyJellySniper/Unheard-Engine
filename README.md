@@ -5,7 +5,7 @@
  If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
  Recommended to use the full project link, as there are a few test assets. <br>
 
-# 2023-06-26: Refactoring material data
+# 2023-06-26: Refactoring material data.
 Besides refactoring, I also figure out a way to pass material data to the hit group shader. <br>
 Now the ray tracing shadow reacts to my material graph system too. <br>
 <br> Implementation Details: <br>
