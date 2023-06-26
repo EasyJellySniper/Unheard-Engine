@@ -307,7 +307,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 
 	std::vector<VkRayTracingShaderGroupCreateInfoKHR> GroupInfos = { RGGroupInfo, MissGroupInfo };
 	GroupInfos.insert(GroupInfos.end(), HGGroupInfos.begin(), HGGroupInfos.end());
-	CreateInfo.groupCount = static_cast<uint32_t>(HGGroupInfos.size());
+	CreateInfo.groupCount = static_cast<uint32_t>(GroupInfos.size());
 	CreateInfo.pGroups = GroupInfos.data();
 
 	// set payload size

@@ -492,9 +492,10 @@ void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 
 	for (size_t Idx = 0; Idx < NumMaterials; Idx++)
 	{
-		if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), 2, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+		if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), 2 + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 		{
 			UHE_LOG(L"Failed to get hit group handle!\n");
+			continue;
 		}
 
 		// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group

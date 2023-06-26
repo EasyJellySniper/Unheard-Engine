@@ -508,8 +508,6 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data());
 	if (RegisteredTextureIndexes.size() > 0)
 	{
-		// @TODO: Somehow the index feeds to storage buffer needs a reverse, investigate this in the future
-		std::reverse(TextureIndexData.begin(), TextureIndexData.end());
 		MaterialRTDataGPU->UploadAllData(TextureIndexData.data());
 	}
 }
