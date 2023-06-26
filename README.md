@@ -8,7 +8,7 @@
 # 2023-06-26: Refactoring material data
 Besides refactoring, I also figure out a way to pass material data to the hit group shader. <br>
 Now the ray tracing shadow reacts to my material graph system too. <br>
-<br><br> Implementation Details: <br>
+<br> Implementation Details: <br>
 https://www.gamedev.net/blogs/entry/2276272-vulkan-bringing-material-data-to-ray-tracing-shader-and-differentiate-them/
 <br><br>
 
