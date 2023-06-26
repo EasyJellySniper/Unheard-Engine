@@ -39,7 +39,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 	GraphBuilder.EndRenderPass();
 
 
-
 	// -------------------- after motion camera pass is done, draw per-object motions -------------------- //
 	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
@@ -71,10 +70,14 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 		// bind pipelines
+		std::vector<VkDescriptorSet> DescriptorSets = { MotionShader.GetDescriptorSet(CurrentFrame)
+			, TextureTable.GetDescriptorSet(CurrentFrame)
+			, SamplerTable.GetDescriptorSet(CurrentFrame) };
+
 		GraphBuilder.BindGraphicState(MotionShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), DescriptorSets);
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());

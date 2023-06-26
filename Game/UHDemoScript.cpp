@@ -56,14 +56,6 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	UHSampler* SkyCubeSampler = InGfx->RequestTextureSampler(UHSamplerInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT
 		, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(Slices[0]->GetMipMapCount())));
 
-	UHTexture2D* MetallicTex = InAsset->GetTexture2DByPath("Viking_Hut/Metallic");
-	UHTexture2D* IvyRoughnessTex = InAsset->GetTexture2DByPath("Viking_Hut/Ivy_Roughness");
-	UHTexture2D* RoughnessWinterTex = InAsset->GetTexture2DByPath("Viking_Hut/Roughness");
-	UHTexture2D* RoughnessMossTex = InAsset->GetTexture2DByPath("Viking_Hut/Roughness_Moss");
-	UHTexture2D* SnowRoughnessTex = InAsset->GetTexture2DByPath("Viking_Hut/Snow_Roughness");
-	UHTexture2D* SoilRoughnessTex = InAsset->GetTexture2DByPath("Viking_Hut/Soil_roughness");
-	UHTexture2D* FernRoughnessTex = InAsset->GetTexture2DByPath("Viking_Hut/Soil_roughness");
-
 	// brutal test for renderers
 	float MarginX = 75.0f;
 	float MarginZ = 25.0f;
@@ -83,71 +75,9 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				continue;
 			}
 
-			// set texture and sampler to material before adding it to mesh renderer
-			for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
-			{
-				UHMaterialTextureType Type = static_cast<UHMaterialTextureType>(Idx);
-				Mat->SetTex(Type, InAsset->GetTexture2D(Mat->GetTexFileName(Type)));
-
-				if (Mat->GetTex(Type))
-				{
-					UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
-						, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(Mat->GetTex(Type)->GetMipMapCount()));
-					UHSampler* Sampler = InGfx->RequestTextureSampler(InInfo);
-					Mat->SetSampler(Type, Sampler);
-				}
-			}
-
 			// set env cube
-			Mat->SetTex(UHMaterialTextureType::SkyCube, SkyCubeTex);
-			Mat->SetSampler(UHMaterialTextureType::SkyCube, SkyCubeSampler);
-
-			// set metallic texture
-			if (Mat->GetName() == "Main_Material_Summer" || Mat->GetName() == "Main_Material_Winter")
-			{
-				Mat->SetTex(UHMaterialTextureType::Metallic, MetallicTex);
-
-				UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
-					, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(MetallicTex->GetMipMapCount()));
-
-				UHSampler* Sampler = InGfx->RequestTextureSampler(InInfo);
-				Mat->SetSampler(UHMaterialTextureType::Metallic, Sampler);
-			}
-
-			// set roughness texture
-			UHSamplerInfo InInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT
-				, VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-			if (Mat->GetName() == "Fern")
-			{
-				Mat->SetTex(UHMaterialTextureType::Roughness, FernRoughnessTex);
-				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-			}
-			else if (Mat->GetName() == "ivy")
-			{
-				Mat->SetTex(UHMaterialTextureType::Roughness, IvyRoughnessTex);
-				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-			}
-			else if (Mat->GetName() == "Main_Material_Summer")
-			{
-				Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessMossTex);
-				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-			}
-			else if (Mat->GetName() == "Main_Material_Winter")
-			{
-				Mat->SetTex(UHMaterialTextureType::Roughness, RoughnessWinterTex);
-				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-			}
-			else if (Mat->GetName() == "Snow")
-			{
-				Mat->SetTex(UHMaterialTextureType::Roughness, SnowRoughnessTex);
-				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-			}
-			else if (Mat->GetName() == "Soil")
-			{
-				Mat->SetTex(UHMaterialTextureType::Roughness, SoilRoughnessTex);
-				Mat->SetSampler(UHMaterialTextureType::Roughness, InGfx->RequestTextureSampler(InInfo));
-			}
+			Mat->SetSystemTex(UHSystemTextureType::SkyCube, SkyCubeTex);
+			Mat->SetSystemSampler(UHSystemTextureType::SkyCube, SkyCubeSampler);
 
 			UHMeshRendererComponent* NewRenderer = InScene->AddMeshRenderer(LoadedMeshes[Idx], Mat);
 			if (LoadedMeshes[Idx]->GetName() == "Geo364" && Offset == 0)
@@ -166,8 +96,8 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	SkyMat->SetCullMode(VK_CULL_MODE_FRONT_BIT);
 	SkyMat->SetIsSkybox(true);
 	SkyMat->SetName("UHDefaultSky");
-	SkyMat->SetTex(UHMaterialTextureType::SkyCube, SkyCubeTex);
-	SkyMat->SetSampler(UHMaterialTextureType::SkyCube, SkyCubeSampler);
+	SkyMat->SetSystemTex(UHSystemTextureType::SkyCube, SkyCubeTex);
+	SkyMat->SetSystemSampler(UHSystemTextureType::SkyCube, SkyCubeSampler);
 
 	InScene->AddMeshRenderer(SkyCube, SkyMat);
 

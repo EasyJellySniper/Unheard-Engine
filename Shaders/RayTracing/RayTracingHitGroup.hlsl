@@ -1,10 +1,15 @@
-// descriptor binding are shared in Raytracing States
-// I've not found the similar usage to "Local Root Signature" of D3D12, so just make sure resource slots won't overlap with other resource
-#define UHMAT_BIND t16
+#if WITH_CLOSEST
 #include "../UHInputs.hlsli"
 #include "UHRTCommon.hlsli"
+#endif
+
+#if WITH_ANYHIT
+#include "../Shaders/UHInputs.hlsli"
+#include "../Shaders/RayTracing/UHRTCommon.hlsli"
+#endif
 
 // texture/sampler tables, access this with the index from material struct
+// access via the code calculated by system
 Texture2D UHTextureTable[] : register(t0, space1);
 SamplerState UHSamplerTable[] : register(t0, space2);
 
@@ -13,8 +18,20 @@ StructuredBuffer<float2> UHUV0Table[] : register(t0, space3);
 ByteAddressBuffer UHIndicesTable[] : register(t0, space4);
 
 // there is no way to differentiate index type in DXR system for now, bind another indices type buffer
-// 0 for 16-bit index, 1 for 32-bit index
+// 0 for 16-bit index, 1 for 32-bit index, access via InstanceIndex()
 ByteAddressBuffer UHIndicesType : register(t0, space5);
+
+// another 2D index array for matching, since Vulkan doesn't implement local descriptor yet, I need this to fetch data
+// each texture node takes one slot, and the value of Index will be updated in C++ side
+// access via InstanceID() first, then the index calculated by graph system
+struct MaterialData
+{
+	int TextureIndex;
+	int SamplerIndex;
+	float Cutoff;
+	float Padding;
+};
+StructuredBuffer<MaterialData> UHMaterialDataTable[] : register(t0, space6);
 
 // hit group shader, shared used for all RT shaders
 // attribute structure for feteching mesh data
@@ -22,6 +39,16 @@ struct Attribute
 {
 	float2 Bary;
 };
+
+// get material input, the simple version that has opacity only
+UHMaterialInputs GetMaterialInputSimple(float2 UV0, float MipLevel, out float Cutoff)
+{
+	Cutoff = UHMaterialDataTable[InstanceID()][0].Cutoff;
+
+	// material input code will be generated in C++ side
+	//%UHS_INPUT_Simple
+	return (UHMaterialInputs)0;
+}
 
 float2 GetHitUV0(uint InstanceIndex, uint PrimIndex, Attribute Attr)
 {
@@ -80,24 +107,16 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 [shader("anyhit")]
 void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
-	// fetch material with InstanceID, which is set to material buffer data index in C++ side
-	UHMaterialConstants Mat = UHMaterials[InstanceID()];
+#if WITH_ALPHATEST
+	// fetch material data and cutoff if it's alpha test
+	float2 UV0 = GetHitUV0(InstanceIndex(), PrimitiveIndex(), Attr);
+	float Cutoff;
+	UHMaterialInputs MaterialInput = GetMaterialInputSimple(UV0, Payload.MipLevel, Cutoff);
 
-	// on hardware that might have divergence issue when using index from structured buffer
-	// NonUniformResourceIndex() is needed (usually happpens on AMD GPUs)
-
-	if (Mat.OpacityTexIndex >= 0)
+	if (MaterialInput.Opacity < Cutoff)
 	{
-		// cutoff test
-		Texture2D OpacityTex = UHTextureTable[Mat.OpacityTexIndex];
-		SamplerState OpacitySampler = UHSamplerTable[Mat.OpacitySamplerIndex];
-		float2 UV0 = GetHitUV0(InstanceIndex(), PrimitiveIndex(), Attr);
-
-		float Opacity = OpacityTex.SampleLevel(OpacitySampler, UV0, 0).r * Mat.DiffuseColor.a;
-		if (Opacity < Mat.Cutoff)
-		{
-			// discard this hit if it's cut
-			IgnoreHit();
-		}
+		// discard this hit if it's cut
+		IgnoreHit();
 	}
+#endif
 }

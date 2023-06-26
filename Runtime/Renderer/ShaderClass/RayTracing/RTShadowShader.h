@@ -8,7 +8,8 @@ public:
 	UHRTShadowShader() {}
 
 	// this shader needs hit group
-	UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, UHShader* InAnyHit, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
+	UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, const std::vector<UHShader*>& InAnyHits
+		, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 
 	void BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const UHRenderTexture* RTShadowResult
@@ -17,6 +18,5 @@ public:
 		, const UHRenderTexture* SceneNormal
 		, const UHRenderTexture* SceneDepth
 		, const UHSampler* PointClampedSampler
-		, const UHSampler* LinearClampedSampler
-		, const std::array<std::unique_ptr<UHRenderBuffer<UHMaterialConstants>>, GMaxFrameInFlight>& MatConst);
+		, const UHSampler* LinearClampedSampler);
 };

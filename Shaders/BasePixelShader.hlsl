@@ -4,7 +4,14 @@
 TextureCube EnvCube : register(t7);
 SamplerState EnvSampler : register(s8);
 
-//%UHS_TEXTUREDEFINE
+// texture/sampler tables for bindless rendering
+Texture2D UHTextureTable[] : register(t0, space1);
+SamplerState UHSamplerTable[] : register(t0, space2);
+
+cbuffer PassConstant : register(UHMAT_BIND)
+{
+	//%UHS_CBUFFERDEFINE
+}
 
 UHMaterialInputs GetMaterialInput(float2 UV0)
 {
@@ -20,8 +27,6 @@ void BasePS(VertexOutput Vin
 	, out float4 OutEmissive : SV_Target3
 	, out float OutMipRate : SV_Target4)
 {
-	UHMaterialConstants Material = UHMaterials[0];
-
 	// unjitter the UV for improving blurry texture
 	float2 Dx = ddx_fine(Vin.UV0);
 	float2 Dy = ddy_fine(Vin.UV0);
@@ -33,7 +38,7 @@ void BasePS(VertexOutput Vin
 	// only clip objects without prepass
 	// otherwise, the equal test will suffice
 #if WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS)
-	clip(MaterialInput.Opacity - Material.Cutoff);
+	clip(MaterialInput.Opacity - GCutoff);
 #endif
 
 	float3 BaseColor = MaterialInput.Diffuse;
@@ -75,7 +80,7 @@ void BasePS(VertexOutput Vin
 
 	// use 1.0f - smooth * smooth as mip bias, so it will blurry with low smoothness
 	// just don't want to declare another variable so simply use SpecFade
-	float SpecMip = (1.0f - SpecFade) * Material.EnvCubeMipMapCount;
+	float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
 
 	IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
 

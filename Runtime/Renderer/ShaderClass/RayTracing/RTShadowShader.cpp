@@ -1,6 +1,7 @@
 #include "RTShadowShader.h"
 
-UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, UHShader* InAnyHit, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
+UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, const std::vector<UHShader*>& InAnyHits
+	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader), nullptr)
 {
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -13,9 +14,6 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader*
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
-	// define material buffer slot to a specific number
-	AddLayoutBinding(1, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, GMaterialSlotInRT);
-
 	CreateDescriptor(ExtraLayouts);
 	RayGenShader = InGfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowRayGen", "lib_6_3");
 	MissShader = InGfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowMiss", "lib_6_3");
@@ -24,7 +22,7 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader*
 	RTInfo.PipelineLayout = PipelineLayout;
 	RTInfo.RayGenShader = RayGenShader;
 	RTInfo.ClosestHitShader = InClosestHit;
-	RTInfo.AnyHitShader = InAnyHit;
+	RTInfo.AnyHitShaders = InAnyHits;
 	RTInfo.MissShader = MissShader;
 	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
@@ -32,7 +30,7 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader*
 
 	InitRayGenTable();
 	InitMissTable();
-	InitHitGroupTable();
+	InitHitGroupTable(InAnyHits.size());
 }
 
 void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
@@ -42,8 +40,7 @@ void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	, const UHRenderTexture* SceneNormal
 	, const UHRenderTexture* SceneDepth
 	, const UHSampler* PointClampedSampler
-	, const UHSampler* LinearClampedSampler
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHMaterialConstants>>, GMaxFrameInFlight>& MatConst)
+	, const UHSampler* LinearClampedSampler)
 {
 	BindConstant(SysConst, 0);
 	BindRWImage(RTShadowResult, 2);
@@ -53,5 +50,4 @@ void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	BindImage(SceneDepth, 6);
 	BindSampler(PointClampedSampler, 7);
 	BindSampler(LinearClampedSampler, 8);
-	BindStorage(MatConst, GMaterialSlotInRT, 0, true);
 }

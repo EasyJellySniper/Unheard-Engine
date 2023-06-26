@@ -188,9 +188,6 @@ void UHDeferredShadingRenderer::Release()
 		UH_SAFE_RELEASE(ObjectConstantsGPU[Idx]);
 		ObjectConstantsGPU[Idx].reset();
 
-		UH_SAFE_RELEASE(MaterialConstantsGPU[Idx]);
-		MaterialConstantsGPU[Idx].reset();
-
 		UH_SAFE_RELEASE(DirectionalLightBuffer[Idx]);
 		DirectionalLightBuffer[Idx].reset();
 
@@ -269,7 +266,7 @@ void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
 
-	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames(false))
+	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames())
 	{
 		UHTexture2D* Tex = AssetManagerInterface->GetTexture2D(RegisteredTexture);
 		if (Tex)
@@ -278,6 +275,8 @@ void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
 			Tex->GenerateMipMaps(GraphicInterface, CreationCmd, GraphBuilder);
 		}
 	}
+
+	AssetManagerInterface->MapTextureIndex(InMat);
 
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 }
@@ -300,18 +299,18 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && Mat->GetTex(UHMaterialTextureType::SkyCube))
+		if (Mat && Mat->GetSystemTex(UHSystemTextureType::SkyCube))
 		{
-			UHTextureCube* Cube = static_cast<UHTextureCube*>(Mat->GetTex(UHMaterialTextureType::SkyCube));
+			UHTextureCube* Cube = static_cast<UHTextureCube*>(Mat->GetSystemTex(UHSystemTextureType::SkyCube));
 			Cube->Build(GraphicInterface, CreationCmd, GraphBuilder);
 		}
 	}
 
 	if (const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer())
 	{
-		if (SkyRenderer->GetMaterial() && SkyRenderer->GetMaterial()->GetTex(UHMaterialTextureType::SkyCube))
+		if (SkyRenderer->GetMaterial() && SkyRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube))
 		{
-			UHTextureCube* Cube = static_cast<UHTextureCube*>(SkyRenderer->GetMaterial()->GetTex(UHMaterialTextureType::SkyCube));
+			UHTextureCube* Cube = static_cast<UHTextureCube*>(SkyRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube));
 			Cube->Build(GraphicInterface, CreationCmd, GraphBuilder);
 		}
 	}
@@ -321,6 +320,11 @@ void UHDeferredShadingRenderer::PrepareTextures()
 
 void UHDeferredShadingRenderer::PrepareRenderingShaders()
 {
+	// bindless table
+	TextureTable = UHTextureTable(GraphicInterface, "TextureTable", static_cast<uint32_t>(AssetManagerInterface->GetTexture2Ds().size()));
+	SamplerTable = UHSamplerTable(GraphicInterface, "SamplerTable", static_cast<uint32_t>(GraphicInterface->GetSamplers().size()));
+	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable.GetDescriptorSetLayout(), SamplerTable.GetDescriptorSetLayout()};
+
 	// depth pass shader, opaque only
 	if (bEnableDepthPrePass)
 	{
@@ -329,7 +333,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 			UHMaterial* Mat = Renderer->GetMaterial();
 			if (Mat && DepthPassShaders.find(Renderer->GetBufferDataIndex()) == DepthPassShaders.end())
 			{
-				DepthPassShaders[Renderer->GetBufferDataIndex()] = UHDepthPassShader(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, Mat);
+				DepthPassShaders[Renderer->GetBufferDataIndex()] = UHDepthPassShader(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, Mat, BindlessLayouts);
 			}
 		}
 	}
@@ -340,7 +344,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		UHMaterial* Mat = Renderer->GetMaterial();
 		if (Mat && BasePassShaders.find(Renderer->GetBufferDataIndex()) == BasePassShaders.end())
 		{
-			BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass);
+			BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass, BindlessLayouts);
 		}
 	}
 
@@ -362,7 +366,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 		if (Mat && MotionObjectShaders.find(Renderer->GetBufferDataIndex()) == MotionObjectShaders.end())
 		{
-			MotionObjectShaders[Renderer->GetBufferDataIndex()] = UHMotionObjectPassShader(GraphicInterface, "MotionObjectShader", MotionObjectPassObj.RenderPass, Mat, bEnableDepthPrePass);
+			MotionObjectShaders[Renderer->GetBufferDataIndex()] 
+				= UHMotionObjectPassShader(GraphicInterface, "MotionObjectShader", MotionObjectPassObj.RenderPass, Mat, bEnableDepthPrePass, BindlessLayouts);
 		}
 	}
 
@@ -373,37 +378,40 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
+		// buffer for storing mesh vertex and indices
 		RTVertexTable = UHRTVertexTable(GraphicInterface, "RTVertexTable", RTInstanceCount);
 		RTIndicesTable = UHRTIndicesTable(GraphicInterface, "RTIndicesTable", RTInstanceCount);
 
 		// buffer for storing index type, used in hit group shader
 		RTIndicesTypeTable = UHRTIndicesTypeTable(GraphicInterface, "RTIndicesTypeTable");
 		IndicesTypeBuffer = GraphicInterface->RequestRenderBuffer<int32_t>();
-		IndicesTypeBuffer->CreaetBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		IndicesTypeBuffer->CreateBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
-		RTTextureTable = UHRTTextureTable(GraphicInterface, "RTTextureTable", static_cast<uint32_t>(AssetManagerInterface->GetReferencedTexture2Ds().size()));
-		RTSamplerTable = UHRTSamplerTable(GraphicInterface, "RTSamplerTable", static_cast<uint32_t>(GraphicInterface->GetSamplers().size()));
-		RTDefaultHitGroupShader = UHRTDefaultHitGroupShader(GraphicInterface, "RTDefaultHitGroupShader");
+		// buffer for storing texture index
+		RTMaterialDataTable = UHRTMaterialDataTable(GraphicInterface, "RTIndicesTypeTable", static_cast<uint32_t>(CurrentScene->GetMaterialCount()));
+
+		RTDefaultHitGroupShader = UHRTDefaultHitGroupShader(GraphicInterface, "RTDefaultHitGroupShader", CurrentScene->GetMaterials());
 
 		// also send texture & VB/IB layout to RT shadow shader
-		const std::vector<VkDescriptorSetLayout> Layouts = { RTTextureTable.GetDescriptorSetLayout()
-			, RTSamplerTable.GetDescriptorSetLayout()
+		const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable.GetDescriptorSetLayout()
+			, SamplerTable.GetDescriptorSetLayout()
 			, RTVertexTable.GetDescriptorSetLayout()
 			, RTIndicesTable.GetDescriptorSetLayout()
-			, RTIndicesTypeTable.GetDescriptorSetLayout() };
+			, RTIndicesTypeTable.GetDescriptorSetLayout()
+			, RTMaterialDataTable.GetDescriptorSetLayout()};
 
 		// occlusion test shader
 		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
 		{
-			RTOcclusionTestShader = UHRTOcclusionTestShader(GraphicInterface, "RTOcclusionTestShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShader()
+			RTOcclusionTestShader = UHRTOcclusionTestShader(GraphicInterface, "RTOcclusionTestShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShaders()
 				, Layouts);
 
 			OcclusionVisibleBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
-			OcclusionVisibleBuffer->CreaetBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+			OcclusionVisibleBuffer->CreateBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		}
 
 		// shadow shader
-		RTShadowShader = UHRTShadowShader(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShader()
+		RTShadowShader = UHRTShadowShader(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShaders()
 			, Layouts);
 	}
 
@@ -454,6 +462,28 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 {
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 
+	// ------------------------------------------------ Bindless table update
+	// bind texture table
+	std::vector<UHTexture*> Texes(AssetManagerInterface->GetReferencedTexture2Ds().size());
+	for (size_t Idx = 0; Idx < Texes.size(); Idx++)
+	{
+		Texes[Idx] = AssetManagerInterface->GetReferencedTexture2Ds()[Idx];
+	}
+
+	size_t ReferencedSize = Texes.size();
+	while (ReferencedSize < AssetManagerInterface->GetTexture2Ds().size())
+	{
+		// fill with null image for non-referenced textures
+		Texes.push_back(nullptr);
+		ReferencedSize++;
+	}
+
+	TextureTable.BindImage(Texes, 0);
+
+	// bind sampler table
+	std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
+	SamplerTable.BindSampler(Samplers, 0);
+
 	// ------------------------------------------------ Depth pass descriptor update
 	if (bEnableDepthPrePass)
 	{
@@ -469,8 +499,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	#endif
 
 			UHDepthPassShader& DepthShader = DepthPassShaders[Renderer->GetBufferDataIndex()];
-			DepthShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-				, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+			DepthShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 		}
 	}
 
@@ -488,8 +517,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	#endif
 
 		UHBasePassShader& BaseShader = BasePassShaders[Renderer->GetBufferDataIndex()];
-		BaseShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-			, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+		BaseShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 	}
 
 	// ------------------------------------------------ Lighting pass descriptor update
@@ -522,8 +550,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		}
 
 		UHMotionObjectPassShader& MotionObjectShader = MotionObjectShaders[Renderer->GetBufferDataIndex()];
-		MotionObjectShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-			, OcclusionVisibleBuffer, Renderer);
+		MotionObjectShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 	}
 
 	// ------------------------------------------------ post process pass descriptor update
@@ -543,6 +570,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		std::vector<VkDescriptorBufferInfo> BufferInfos;
 		std::vector<int32_t> IndexTypes;
 
+		// don't need to create another buffer for VB/IB since they're already there
+		// simply setup VkDescriptorBufferInfo for them
 		for (int32_t Idx = 0; Idx < static_cast<int32_t>(Renderers.size()); Idx++)
 		{
 			const UHMaterial* Mat = Renderers[Idx]->GetMaterial();
@@ -573,31 +602,28 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		RTVertexTable.BindStorage(UVs, 0);
 		RTIndicesTable.BindStorage(BufferInfos, 0);
 
+		// upload index types
 		IndicesTypeBuffer->UploadAllData(IndexTypes.data());
 		RTIndicesTypeTable.BindStorage(IndicesTypeBuffer.get(), 0, 0, true);
 
-		// bind texture table
-		std::vector<UHTexture*> Texes(AssetManagerInterface->GetReferencedTexture2Ds().size());
-		for (size_t Idx = 0; Idx < Texes.size(); Idx++)
+		// collect and bind texture index data
+		std::vector<UHRenderBuffer<UHMaterialData>*> TextureIndexData;
+		const std::vector<UHMaterial*>& AllMaterials = CurrentScene->GetMaterials();
+		for (size_t Idx = 0; Idx < AllMaterials.size(); Idx++)
 		{
-			Texes[Idx] = AssetManagerInterface->GetReferencedTexture2Ds()[Idx];
+			TextureIndexData.push_back(AllMaterials[Idx]->GetRTMaterialDataGPU());
 		}
-		RTTextureTable.BindImage(Texes, 0);
-
-		// bind sampler table
-		std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
-		RTSamplerTable.BindSampler(Samplers, 0);
+		RTMaterialDataTable.BindStorage(TextureIndexData, 0);
 
 		// bin RT occlusion test
 		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
 		{
-			RTOcclusionTestShader.BindParameters(SystemConstantsGPU, OcclusionVisibleBuffer, MaterialConstantsGPU);
+			RTOcclusionTestShader.BindParameters(SystemConstantsGPU, OcclusionVisibleBuffer);
 		}
 
 		// bind RT shadow parameters
 		RTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, DirectionalLightBuffer
-			, SceneMip, SceneNormal, SceneDepth
-			, PointClampedSampler, LinearClampedSampler, MaterialConstantsGPU);
+			, SceneMip, SceneNormal, SceneDepth, PointClampedSampler, LinearClampedSampler);
 	}
 
 	// ------------------------------------------------ debug view pass descriptor update
@@ -648,12 +674,14 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		}
 
 		RTShadowShader.Release();
-		RTTextureTable.Release();
-		RTSamplerTable.Release();
 		RTVertexTable.Release();
 		RTIndicesTable.Release();
 		RTIndicesTypeTable.Release();
+		RTMaterialDataTable.Release();
 	}
+
+	TextureTable.Release();
+	SamplerTable.Release();
 
 #if WITH_DEBUG
 	DebugViewShader.Release();
@@ -873,16 +901,13 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		SystemConstantsGPU[Idx] = GraphicInterface->RequestRenderBuffer<UHSystemConstants>();
-		SystemConstantsGPU[Idx]->CreaetBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		SystemConstantsGPU[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
 		ObjectConstantsGPU[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>();
-		ObjectConstantsGPU[Idx]->CreaetBuffer(CurrentScene->GetAllRendererCount(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-		MaterialConstantsGPU[Idx] = GraphicInterface->RequestRenderBuffer<UHMaterialConstants>();
-		MaterialConstantsGPU[Idx]->CreaetBuffer(CurrentScene->GetMaterialCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		ObjectConstantsGPU[Idx]->CreateBuffer(CurrentScene->GetAllRendererCount(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
 		DirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>();
-		DirectionalLightBuffer[Idx]->CreaetBuffer(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		DirectionalLightBuffer[Idx]->CreateBuffer(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	}
 }
 
@@ -895,9 +920,6 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 
 		UH_SAFE_RELEASE(ObjectConstantsGPU[Idx]);
 		ObjectConstantsGPU[Idx].reset();
-
-		UH_SAFE_RELEASE(MaterialConstantsGPU[Idx]);
-		MaterialConstantsGPU[Idx].reset();
 	}
 }
 
@@ -931,31 +953,36 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
 	GraphicInterface->WaitGPU();
 	CheckTextureReference(Mat);
 
+	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable.GetDescriptorSetLayout(), SamplerTable.GetDescriptorSetLayout() };
 	int32_t Idx = -1;
 	for (UHObject* RendererObj : Mat->GetReferenceObjects())
 	{
 		if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
 		{
+			int32_t RendererBufferIndex = Renderer->GetBufferDataIndex();
+
 			if (CompileFlag == FullCompileTemporary || CompileFlag == FullCompileResave)
 			{
 				if (bEnableDepthPrePass)
 				{
-					DepthPassShaders[Renderer->GetBufferDataIndex()].Release();
+					DepthPassShaders[RendererBufferIndex].Release();
 				}
 
-				BasePassShaders[Renderer->GetBufferDataIndex()].Release();
-				Idx = Renderer->GetBufferDataIndex();
+				BasePassShaders[RendererBufferIndex].Release();
+				MotionObjectShaders[RendererBufferIndex].Release();
+				Idx = RendererBufferIndex;
 			}
 			else if (CompileFlag == BindOnly)
 			{
 				if (bEnableDepthPrePass)
 				{
-					DepthPassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-						, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+					DepthPassShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 				}
 
-				BasePassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-					, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+				BasePassShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU
+					, OcclusionVisibleBuffer, Renderer);
+
+				MotionObjectShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 			}
 		}
 	}
@@ -967,25 +994,63 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
 			GraphicInterface->RequestReleaseShader(DepthPassShaders[Idx].GetPixelShader());
 		}
 		GraphicInterface->RequestReleaseShader(BasePassShaders[Idx].GetPixelShader());
+		GraphicInterface->RequestReleaseShader(MotionObjectShaders[Idx].GetPixelShader());
 
 		for (const UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
 			if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
 			{
+				int32_t RendererBufferIndex = Renderer->GetBufferDataIndex();
+
 				if (bEnableDepthPrePass)
 				{
-					DepthPassShaders[Renderer->GetBufferDataIndex()] = UHDepthPassShader(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, Mat);
-					DepthPassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-						, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+					DepthPassShaders[RendererBufferIndex] = UHDepthPassShader(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, Mat, BindlessLayouts);
+					DepthPassShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 				}
 
-				BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass);
-				BasePassShaders[Renderer->GetBufferDataIndex()].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, MaterialConstantsGPU
-					, OcclusionVisibleBuffer, Renderer, AssetManagerInterface, AnisoClampedSampler);
+				BasePassShaders[RendererBufferIndex] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass, BindlessLayouts);
+				BasePassShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU
+					, OcclusionVisibleBuffer, Renderer);
+
+				MotionObjectShaders[RendererBufferIndex] = UHMotionObjectPassShader(GraphicInterface, "MotionObjectShader", MotionObjectPassObj.RenderPass, Mat, bEnableDepthPrePass, BindlessLayouts);
+				MotionObjectShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 			}
 		}
 	}
 
+	// update hit group shader as well
+	if (GraphicInterface->IsRayTracingEnabled() && CompileFlag != BindOnly)
+	{
+		RTShadowShader.Release();
+		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+		{
+			RTOcclusionTestShader.Release();
+		}
+
+		RTDefaultHitGroupShader.UpdateHitShader(GraphicInterface, Mat);
+
+		const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable.GetDescriptorSetLayout()
+			, SamplerTable.GetDescriptorSetLayout()
+			, RTVertexTable.GetDescriptorSetLayout()
+			, RTIndicesTable.GetDescriptorSetLayout()
+			, RTIndicesTypeTable.GetDescriptorSetLayout()
+			, RTMaterialDataTable.GetDescriptorSetLayout() };
+
+		RTShadowShader = UHRTShadowShader(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShaders()
+			, Layouts);
+
+		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
+		{
+			RTOcclusionTestShader = UHRTOcclusionTestShader(GraphicInterface, "RTOcclusionTestShader", RTDefaultHitGroupShader.GetClosestShader(), RTDefaultHitGroupShader.GetAnyHitShaders()
+				, Layouts);
+		}
+	}
+
 	Mat->SetCompileFlag(UpToDate);
+
+	// mark render dirties for reuploading constant
+	Mat->SetRenderDirties(true);
+
+	UpdateDescriptors();
 }
 #endif

@@ -27,8 +27,9 @@
 #include "ShaderClass/RayTracing/RTDefaultHitGroupShader.h"
 #include "ShaderClass/RayTracing/RTOcclusionTestShader.h"
 #include "ShaderClass/RayTracing/RTShadowShader.h"
-#include "ShaderClass/RayTracing/RTTextureTable.h"
+#include "ShaderClass/TextureSamplerTable.h"
 #include "ShaderClass/RayTracing/RTMeshTable.h"
+#include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 
 #if WITH_DEBUG
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -192,7 +193,6 @@ private:
 
 	// object & material constants, I'll create constant buffer which are big enough for all renderers
 	std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight> ObjectConstantsGPU;
-	std::array<std::unique_ptr<UHRenderBuffer<UHMaterialConstants>>, GMaxFrameInFlight> MaterialConstantsGPU;
 
 	// light buffers, this will be used as structure buffer instead of constant
 	std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight> DirectionalLightBuffer;
@@ -201,6 +201,10 @@ private:
 	UHSampler* PointClampedSampler;
 	UHSampler* LinearClampedSampler;
 	UHSampler* AnisoClampedSampler;
+
+	// bindless table
+	UHTextureTable TextureTable;
+	UHSamplerTable SamplerTable;
 
 
 	/************************************************ Render Pass stuffs ************************************************/
@@ -287,11 +291,10 @@ private:
 	UHRTShadowShader RTShadowShader;
 	UHRenderTexture* RTShadowResult;
 
-	UHRTTextureTable RTTextureTable;
-	UHRTSamplerTable RTSamplerTable;
 	UHRTVertexTable RTVertexTable;
 	UHRTIndicesTable RTIndicesTable;
 	UHRTIndicesTypeTable RTIndicesTypeTable;
+	UHRTMaterialDataTable RTMaterialDataTable;
 	std::unique_ptr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
 
 	uint32_t RTInstanceCount;

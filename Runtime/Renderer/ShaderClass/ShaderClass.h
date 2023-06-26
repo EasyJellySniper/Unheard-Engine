@@ -3,7 +3,6 @@
 #include "../DescriptorHelper.h"
 #include <typeindex>
 
-const int32_t GMaterialSlotInRT = 16;
 extern std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
 extern std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> GMaterialStateTable;
 
@@ -96,7 +95,7 @@ public:
 	UHShader* GetPixelShader() const;
 	UHShader* GetRayGenShader() const;
 	UHShader* GetClosestShader() const;
-	UHShader* GetAnyHitShader() const;
+	std::vector<UHShader*> GetAnyHitShaders() const;
 	UHShader* GetMissShader() const;
 	UHGraphicState* GetState() const;
 	UHGraphicState* GetRTState() const;
@@ -117,7 +116,7 @@ protected:
 	void CreateDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts = std::vector<VkDescriptorSetLayout>());
 
 	// create descriptor but for material
-	void CreateMaterialDescriptor();
+	void CreateMaterialDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts = std::vector<VkDescriptorSetLayout>());
 
 	// create graphic state functions
 	void CreateGraphicState(UHRenderPassInfo InInfo);
@@ -126,7 +125,7 @@ protected:
 	// ray tracing functions
 	void InitRayGenTable();
 	void InitMissTable();
-	void InitHitGroupTable();
+	void InitHitGroupTable(size_t NumMaterials);
 
 	UHGraphic* Gfx;
 	std::string Name;
@@ -142,7 +141,7 @@ protected:
 	UHShader* ShaderPS;
 	UHShader* RayGenShader;
 	UHShader* ClosestHitShader;
-	UHShader* AnyHitShader;
+	std::vector<UHShader*> AnyHitShaders;
 	UHShader* MissShader;
 	UHGraphicState* RTState;
 

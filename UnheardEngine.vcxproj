@@ -293,7 +293,8 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTTextureTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMaterialDataTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\ShaderClass.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SkyPassShader.h" />
     <ClInclude Include="targetver.h" />
@@ -378,6 +379,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SkyPassShader.cpp" />
@@ -449,7 +451,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\MotionVectorShader.hlsl">
+    <None Include="Shaders\MotionCameraShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -469,7 +471,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\DepthPassShader.hlsl">
+    <None Include="Shaders\DepthPixelShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -480,6 +482,19 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\FallbackPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\DepthVertexShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\MotionPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Shaders\MotionVertexShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

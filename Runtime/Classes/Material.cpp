@@ -3,7 +3,7 @@
 #include <filesystem>
 #include "Utility.h"
 #include "AssetPath.h"
-
+#include "../Engine/Graphic.h"
 #include "GraphNode/ParameterNode.h"
 #include "GraphNode/TextureNode.h"
 #include "GraphNode/MathNode.h"
@@ -20,12 +20,12 @@ UHMaterial::UHMaterial()
 	, CompileFlag(UpToDate)
 	, bIsSkybox(false)
 	, bIsTangentSpace(false)
+	, MaterialBufferSize(0)
 {
-	for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
+	for (int32_t Idx = 0; Idx < UHSystemTextureType::TextureTypeMax; Idx++)
 	{
-		Textures[Idx] = nullptr;
-		Samplers[Idx] = nullptr;
-		TextureIndex[Idx] = -1;
+		SystemTextures[Idx] = nullptr;
+		SystemSamplers[Idx] = nullptr;
 	}
 
 	for (int32_t Idx = 0; Idx < UHMaterialShaderType::MaterialShaderTypeMax; Idx++)
@@ -33,11 +33,21 @@ UHMaterial::UHMaterial()
 		Shaders[Idx] = nullptr;
 	}
 
-	TexDefines = { "WITH_DIFFUSE", "WITH_OCCLUSION","WITH_SPECULAR","WITH_NORMAL","WITH_OPACITY", "WITH_ENVCUBE", "WITH_METALLIC", "WITH_ROUGHNESS" };
-
 	MaterialNode = std::make_unique<UHMaterialNode>(this);
 	DefaultMaterialNodePos.x = 544;
 	DefaultMaterialNodePos.y = 208;
+}
+
+UHMaterial::~UHMaterial()
+{
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(MaterialConstantsGPU[Idx]);
+		MaterialConstantsGPU[Idx].reset();
+	}
+
+	UH_SAFE_RELEASE(MaterialRTDataGPU);
+	MaterialRTDataGPU.reset();
 }
 
 bool UHMaterial::Import(std::filesystem::path InMatPath)
@@ -55,7 +65,7 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	UHUtilities::ReadStringData(FileIn, Name);
 
 	// load referenced texture file name, doesn't read file name for sky cube at the moment
-	for (int32_t Idx = 0; Idx <= UHMaterialTextureType::Opacity; Idx++)
+	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Opacity; Idx++)
 	{
 		UHUtilities::ReadStringData(FileIn, TexFileNames[Idx]);
 	}
@@ -68,6 +78,12 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	FileIn.read(reinterpret_cast<char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
 	UHUtilities::ReadStringVectorData(FileIn, RegisteredTextureNames);
 	ImportGraphData(FileIn);
+
+	// material constant data
+	if (Version >= UHMaterialVersion::GoingBindless)
+	{
+		FileIn.read(reinterpret_cast<char*>(&MaterialBufferSize), sizeof(MaterialBufferSize));
+	}
 
 	FileIn.close();
 
@@ -148,12 +164,35 @@ void UHMaterial::PostImport()
 	EditNodes.clear();
 	MaterialNode.reset();
 #endif
+
+#if WITH_DEBUG
+	// evaluate material constant buffer size for the old assets
+	if (Version < UHMaterialVersion::GoingBindless)
+	{
+		GetCBufferDefineCode(MaterialBufferSize);
+	}
+#endif
+
+	AllocateMaterialBuffer();
 }
 
 #if WITH_DEBUG
-void UHMaterial::SetTexFileName(UHMaterialTextureType TexType, std::string InName)
+void UHMaterial::SetTexFileName(UHMaterialInputs TexType, std::string InName)
 {
 	TexFileNames[TexType] = InName;
+}
+
+std::string UHMaterial::GetTexFileName(UHMaterialInputs InType) const
+{
+	return TexFileNames[InType];
+}
+
+void UHMaterial::SetMaterialBufferSize(size_t InSize)
+{
+	if (MaterialBufferSize != InSize)
+	{
+		MaterialBufferSize = InSize;
+	}
 }
 
 void UHMaterial::Export()
@@ -176,7 +215,7 @@ void UHMaterial::Export()
 	UHUtilities::WriteStringData(FileOut, Name);
 
 	// write texture filename used, doesn't write file name for sky cube/metallic at the moment
-	for (int32_t Idx = 0; Idx <= UHMaterialTextureType::Opacity; Idx++)
+	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Opacity; Idx++)
 	{
 		UHUtilities::WriteStringData(FileOut, TexFileNames[Idx]);
 	}
@@ -192,6 +231,12 @@ void UHMaterial::Export()
 	FileOut.write(reinterpret_cast<const char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
 	UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
 	ExportGraphData(FileOut);
+
+	// new version, going bindless
+	if (Version >= UHMaterialVersion::GoingBindless)
+	{
+		FileOut.write(reinterpret_cast<const char*>(&MaterialBufferSize), sizeof(MaterialBufferSize));
+	}
 
 	FileOut.close();
 }
@@ -268,7 +313,7 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	FileOut.write(reinterpret_cast<const char*>(&DefaultMaterialNodePos), sizeof(DefaultMaterialNodePos));
 }
 
-void CollectTexDefinitions(const UHGraphPin* Pin, int32_t& RegisterStart, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable)
+void CollectTextureIndex(const UHGraphPin* Pin, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable, size_t& OutSize)
 {
 	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
 	{
@@ -280,41 +325,39 @@ void CollectTexDefinitions(const UHGraphPin* Pin, int32_t& RegisterStart, std::s
 	// prevent redefinition with table
 	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
 	{
-		Code += "Texture2D Node_" + std::to_string(InputNode->GetId()) + " : register(t" + std::to_string(RegisterStart++) + ");\n";
-
+		Code += "\tint Node_" + std::to_string(InputNode->GetId()) + "_Index;\n";
+		OutSize += sizeof(float);
 		OutDefTable[InputNode->GetId()] = true;
 	}
 
 	// trace all input pins
 	for (const std::unique_ptr<UHGraphPin>& InputPins : InputNode->GetInputs())
 	{
-		CollectTexDefinitions(InputPins.get(), RegisterStart, Code, OutDefTable);
+		CollectTextureIndex(InputPins.get(), Code, OutDefTable, OutSize);
 	}
 }
 
-std::string UHMaterial::GetTextureDefineCode(bool bIsDepthOrMotionPass)
+std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 {
+	OutSize = 0;
+
 	// get texture define code
-	int32_t RegisterStart = GMaterialTextureRegisterStart;
 	std::string Code;
 	std::unordered_map<uint32_t, bool> TexTable;
 
-	// only opacity is needed in depth or motion pass
-	if (bIsDepthOrMotionPass)
+	// simply collect the texture index used in bindless rendering
+	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
 	{
-		const std::unique_ptr<UHGraphPin>& Input = MaterialNode->GetInputs()[Experimental::Opacity];
-		CollectTexDefinitions(Input.get(), RegisterStart, Code, TexTable);
-	}
-	else
-	{
-		for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
-		{
-			CollectTexDefinitions(Input.get(), RegisterStart, Code, TexTable);
-		}
+		CollectTextureIndex(Input.get(), Code, TexTable, OutSize);
 	}
 
 	// @TODO: Differentiate sampler state in the future
-	Code += "SamplerState " + GDefaultSamplerName + " : register(s" + std::to_string(RegisterStart++) + ");\n";
+	Code += "\tint " + GDefaultSamplerName + "_Index;\n";
+
+	// constant from system
+	Code += "\tfloat GCutoff;\n";
+	Code += "\tfloat GEnvCubeMipMapCount;\n";
+	OutSize += sizeof(float) * 3;
 	
 	return Code;
 }
@@ -352,24 +395,19 @@ void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
 	SetRenderDirties(true);
 }
 
-void UHMaterial::SetTex(UHMaterialTextureType InType, UHTexture* InTex)
-{
-	Textures[InType] = InTex;
-}
-
-void UHMaterial::SetSampler(UHMaterialTextureType InType, UHSampler* InSampler)
-{
-	Samplers[InType] = InSampler;
-}
-
 void UHMaterial::SetShader(UHMaterialShaderType InType, UHShader* InShader)
 {
 	Shaders[InType] = InShader;
 }
 
-void UHMaterial::SetTextureIndex(UHMaterialTextureType InType, int32_t InIndex)
+void UHMaterial::SetSystemTex(UHSystemTextureType InType, UHTexture* InTex)
 {
-	TextureIndex[InType] = InIndex;
+	SystemTextures[InType] = InTex;
+}
+
+void UHMaterial::SetSystemSampler(UHSystemTextureType InType, UHSampler* InSampler)
+{
+	SystemSamplers[InType] = InSampler;
 }
 
 void UHMaterial::SetIsSkybox(bool InFlag)
@@ -380,6 +418,100 @@ void UHMaterial::SetIsSkybox(bool InFlag)
 void UHMaterial::SetCompileFlag(UHMaterialCompileFlag InFlag)
 {
 	CompileFlag = InFlag;
+}
+
+void UHMaterial::SetRegisteredTextureIndexes(std::vector<int32_t> InData)
+{
+	// skybox isn't in bindless system, doesn't need this index lookup
+	if (bIsSkybox)
+	{
+		return;
+	}
+
+	if (RegisteredTextureIndexes.size() != InData.size())
+	{
+		RegisteredTextureIndexes = InData;
+
+		// reallocate texture index gpu if size changed
+		GfxCache->WaitGPU();
+
+		UH_SAFE_RELEASE(MaterialRTDataGPU);
+		MaterialRTDataGPU.reset();
+
+		MaterialRTDataGPU = GfxCache->RequestRenderBuffer<UHMaterialData>();
+		MaterialRTDataGPU->CreateBuffer(RegisteredTextureIndexes.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	}
+	else if (MaterialRTDataGPU != nullptr)
+	{
+		// update
+		RegisteredTextureIndexes = InData;
+	}
+}
+
+void UHMaterial::AllocateMaterialBuffer()
+{
+	size_t AlignedSize = (MaterialBufferSize + 255) & ~255;
+	MaterialConstantsCPU.resize(MaterialBufferSize);
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		MaterialConstantsGPU[Idx] = GfxCache->RequestRenderBuffer<uint8_t>();
+
+		// the buffer size will be aligned to 256, check how many byte it actually needs
+		size_t ElementCount = (MaterialBufferSize + 256) / 256;
+		MaterialConstantsGPU[Idx]->CreateBuffer(ElementCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	}
+}
+
+void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex)
+{
+	if (MaterialBufferSize == 0)
+	{
+		return;
+	}
+
+	// upload data one by one, this must be following the definitions in GetCBufferDefineCode()
+	size_t BufferAddress = 0;
+	size_t Stride = sizeof(float);
+
+	// fill the index of textures
+	std::vector<UHMaterialData> TextureIndexData(RegisteredTextureIndexes.size());
+	for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
+	{
+		// feed the index to UHTextureIndexData
+		TextureIndexData[Idx].TextureIndex = RegisteredTextureIndexes[Idx];
+		TextureIndexData[Idx].SamplerIndex = DefaultSamplerIndex;
+		TextureIndexData[Idx].Cutoff = MaterialProps.Cutoff;
+
+		memcpy(MaterialConstantsCPU.data() + BufferAddress, &RegisteredTextureIndexes[Idx], Stride);
+		BufferAddress += Stride;
+	}
+
+	// fill the index of sampler
+	// @TODO: Differentiate samplers
+	memcpy(MaterialConstantsCPU.data() + BufferAddress, &DefaultSamplerIndex, Stride);
+	BufferAddress += Stride;
+
+	// fill cutoff
+	memcpy(MaterialConstantsCPU.data() + BufferAddress, &MaterialProps.Cutoff, Stride);
+	BufferAddress += Stride;
+
+	// fill env cube mip map count
+	if (SystemTextures[UHSystemTextureType::SkyCube] != nullptr)
+	{
+		float EnvCubeMipMapCount = static_cast<float>(SystemTextures[UHSystemTextureType::SkyCube]->GetMipMapCount());
+		memcpy(MaterialConstantsCPU.data() + BufferAddress, &EnvCubeMipMapCount, Stride);
+		BufferAddress += Stride;
+	}
+
+	// upload material data
+	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data());
+	if (RegisteredTextureIndexes.size() > 0)
+	{
+		// @TODO: Somehow the index feeds to storage buffer needs a reverse, investigate this in the future
+		std::reverse(TextureIndexData.begin(), TextureIndexData.end());
+		MaterialRTDataGPU->UploadAllData(TextureIndexData.data());
+	}
 }
 
 std::string UHMaterial::GetName() const
@@ -422,19 +554,14 @@ std::filesystem::path UHMaterial::GetPath() const
 	return MaterialPath;
 }
 
-std::string UHMaterial::GetTexFileName(UHMaterialTextureType InType) const
+UHTexture* UHMaterial::GetSystemTex(UHSystemTextureType InType) const
 {
-	return TexFileNames[InType];
+	return SystemTextures[InType];
 }
 
-UHTexture* UHMaterial::GetTex(UHMaterialTextureType InType) const
+UHSampler* UHMaterial::GetSystemSampler(UHSystemTextureType InType) const
 {
-	return Textures[InType];
-}
-
-UHSampler* UHMaterial::GetSampler(UHMaterialTextureType InType) const
-{
-	return Samplers[InType];
+	return SystemSamplers[InType];
 }
 
 UHShader* UHMaterial::GetShader(UHMaterialShaderType InType) const
@@ -442,44 +569,12 @@ UHShader* UHMaterial::GetShader(UHMaterialShaderType InType) const
 	return Shaders[InType];
 }
 
-int32_t UHMaterial::GetTextureIndex(UHMaterialTextureType InType) const
-{
-	// the texture index is set via asset manager
-	// but it could have no texture without setting properly
-	// in this case, return -1
-	if (Textures[InType] == nullptr)
-	{
-		return -1;
-	}
-
-	return TextureIndex[InType];
-}
-
-std::string UHMaterial::GetTexDefineName(UHMaterialTextureType InType) const
-{
-	return TexDefines[InType];
-}
-
 std::vector<std::string> UHMaterial::GetMaterialDefines(UHMaterialShaderType InType) const
 {
 	std::vector<std::string> Defines;
-	for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
+	if (SystemTextures[UHSystemTextureType::SkyCube] != nullptr)
 	{
-		if (Textures[Idx])
-		{
-			switch (InType)
-			{
-			case UHMaterialShaderType::VS:
-				if (Idx == UHMaterialTextureType::Normal || Idx == UHMaterialTextureType::SkyCube)
-				{
-					Defines.push_back(TexDefines[Idx]);
-				}
-				break;
-			case UHMaterialShaderType::PS:
-				Defines.push_back(TexDefines[Idx]);
-				break;
-			}
-		}
+		Defines.push_back("WITH_ENVCUBE");
 	}
 
 	if (BlendMode == UHBlendMode::Masked && InType == PS)
@@ -524,27 +619,29 @@ void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std
 	}
 }
 
-std::vector<std::string> UHMaterial::GetRegisteredTextureNames(bool bIsDepthOrMotionPass)
+std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
 {
 #if WITH_DEBUG
 	RegisteredTextureNames.clear();
 	std::unordered_map<uint32_t, bool> TexTable;
 
-	if (bIsDepthOrMotionPass)
+	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
 	{
-		const std::unique_ptr<UHGraphPin>& Input = MaterialNode->GetInputs()[Experimental::Opacity];
 		CollectTexNames(Input.get(), RegisteredTextureNames, TexTable);
-	}
-	else
-	{
-		for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
-		{
-			CollectTexNames(Input.get(), RegisteredTextureNames, TexTable);
-		}
 	}
 #endif
 
 	return RegisteredTextureNames;
+}
+
+const std::array<std::unique_ptr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& UHMaterial::GetMaterialConst()
+{
+	return MaterialConstantsGPU;
+}
+
+UHRenderBuffer<UHMaterialData>* UHMaterial::GetRTMaterialDataGPU() const
+{
+	return MaterialRTDataGPU.get();
 }
 
 bool UHMaterial::operator==(const UHMaterial& InMat)
@@ -623,7 +720,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloat3Node>(MaterialProps.Diffuse), Pos);
 		UHGraphPin* DiffusePin = NewParameterNode->GetOutputs()[0].get();
-		MaterialPins[Experimental::UHMaterialInputs::Diffuse]->ConnectFrom(DiffusePin);
+		MaterialPins[UHMaterialInputs::Diffuse]->ConnectFrom(DiffusePin);
 	}
 	else
 	{
@@ -645,7 +742,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Diffuse], Pos);
 		UHGraphPin* DiffuseTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[Experimental::UHMaterialInputs::Diffuse]->ConnectFrom(MathPin);
+		MaterialPins[UHMaterialInputs::Diffuse]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(DiffusePin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(DiffuseTexPin);
 	}
@@ -659,7 +756,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloatNode>(MaterialProps.Occlusion), Pos);
 		UHGraphPin* OcclusionPin = NewParameterNode->GetOutputs()[0].get();
-		MaterialPins[Experimental::UHMaterialInputs::Occlusion]->ConnectFrom(OcclusionPin);
+		MaterialPins[UHMaterialInputs::Occlusion]->ConnectFrom(OcclusionPin);
 	}
 	else
 	{
@@ -682,7 +779,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Occlusion], Pos);
 		UHGraphPin* OcclusionTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[Experimental::UHMaterialInputs::Occlusion]->ConnectFrom(MathPin);
+		MaterialPins[UHMaterialInputs::Occlusion]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(OcclusionPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(OcclusionTexPin);
 	}
@@ -696,7 +793,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloat3Node>(MaterialProps.Specular), Pos);
 		UHGraphPin* SpecularPin = NewParameterNode->GetOutputs()[0].get();
-		MaterialPins[Experimental::UHMaterialInputs::Specular]->ConnectFrom(SpecularPin);
+		MaterialPins[UHMaterialInputs::Specular]->ConnectFrom(SpecularPin);
 	}
 	else
 	{
@@ -718,7 +815,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Specular], Pos);
 		UHGraphPin* SpecularTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[Experimental::UHMaterialInputs::Specular]->ConnectFrom(MathPin);
+		MaterialPins[UHMaterialInputs::Specular]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(SpecularPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(SpecularTexPin);
 	}
@@ -743,7 +840,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Normal], Pos);
 		UHGraphPin* NormalTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[Experimental::UHMaterialInputs::Normal]->ConnectFrom(MathPin);
+		MaterialPins[UHMaterialInputs::Normal]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(NormalPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(NormalTexPin);
 	}
@@ -769,7 +866,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Opacity], Pos);
 		UHGraphPin* OpacityTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[Experimental::UHMaterialInputs::Opacity]->ConnectFrom(MathPin);
+		MaterialPins[UHMaterialInputs::Opacity]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(OpacityPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(OpacityTexPin);
 	}
@@ -779,12 +876,12 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHE_LOG("Material: Mismatched EditNodes and EditGUIRelativePos size.\n");
 	}
 
-	if (MaterialNode->GetInputs()[Experimental::Normal]->GetSrcPin())
+	if (MaterialNode->GetInputs()[Normal]->GetSrcPin())
 	{
 		bIsTangentSpace = true;
 	}
 
-	GetRegisteredTextureNames(false);
+	GetRegisteredTextureNames();
 }
 
 std::unique_ptr<UHMaterialNode>& UHMaterial::GetMaterialNode()

@@ -2,11 +2,13 @@
 
 #if WITH_DEBUG
 #include "../../Runtime/Engine/Asset.h"
+#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "EditorUtils.h"
 
-UHTexture2DNodeGUI::UHTexture2DNodeGUI(UHAssetManager* InAssetManager, UHMaterial* InMat)
+UHTexture2DNodeGUI::UHTexture2DNodeGUI(UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)
 	, AssetManager(InAssetManager)
+	, Renderer(InRenderer)
 	, MaterialCache(InMat)
 {
 
@@ -25,6 +27,8 @@ void UHTexture2DNodeGUI::OnSelectCombobox()
 	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
 	{
 		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetRenderDirties(true);
+		Renderer->RefreshMaterialShaders(MaterialCache);
 	}
 }
 

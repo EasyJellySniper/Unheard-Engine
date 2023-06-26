@@ -9,6 +9,7 @@ UHTexture2DNode::UHTexture2DNode(std::string TexName)
 {
 	Name = "Texture2D";
 	NodeType = Texture2DNode;
+	TextureIndexInMaterial = -1;
 
 	Inputs.resize(1);
 	Inputs[0] = std::make_unique<UHGraphPin>("UV", this, Float2Node);
@@ -48,8 +49,9 @@ bool UHTexture2DNode::CanEvalHLSL()
 std::string UHTexture2DNode::EvalDefinition()
 {
 	// Eval local definition for texture sample, so it will only be sampled once only
-	// float4 Result_1234 = Node_1234.Sample(Sampler, UV);
-	// don't worry about texture definition, that's handled by material class
+	// this also considers the bindless rendering
+	// float4 Result_1234 = UHTextureTable[Node_1234_Index].Sample(Sampler_Index, UV);
+	// don't worry about texture index definition, that's handled by material class
 	if (CanEvalHLSL())
 	{
 		const std::string IDString = std::to_string(GetId());
@@ -64,7 +66,19 @@ std::string UHTexture2DNode::EvalDefinition()
 		const bool bIsBumpTexture = UHUtilities::FindByElement(BumpTextures, SelectedTextureName);
 		const std::string BumpDecode = bIsBumpTexture ? " * 2.0f - 1.0f" : "";
 
-		return "float4 Result_" + IDString + " = Node_" + IDString + ".Sample(" + GDefaultSamplerName + ", " + UVString + ")" + BumpDecode + ";\n";
+		// if it's compiling for ray tracing, I need to use the SampleLevel instead of Sample
+		if (bIsCompilingRayTracing)
+		{
+			std::string TextureIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].TextureIndex";
+			std::string SamplerIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].SamplerIndex";
+
+			// the mip level will be calculated in the shader
+			return "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].SampleLevel(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ", MipLevel)"
+				+ BumpDecode + ";\n";
+		}
+
+		return "float4 Result_" + IDString + " = UHTextureTable[Node_" + IDString + "_Index].Sample(UHSamplerTable[" 
+			+ GDefaultSamplerName + "_Index], " + UVString + ")" + BumpDecode + ";\n";
 	}
 
 	return "[ERROR] Texture not set.";
@@ -100,4 +114,9 @@ void UHTexture2DNode::SetSelectedTextureName(std::string InSelectedTextureName)
 std::string UHTexture2DNode::GetSelectedTextureName() const
 {
 	return SelectedTextureName;
+}
+
+void UHTexture2DNode::SetTextureIndexInMaterial(int32_t InIndex)
+{
+	TextureIndexInMaterial = InIndex;
 }

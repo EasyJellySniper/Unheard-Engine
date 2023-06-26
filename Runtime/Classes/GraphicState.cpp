@@ -1,6 +1,7 @@
 #include "GraphicState.h"
 #include <vector>
 #include "../../UnheardEngine.h"
+#include "../Classes/Utility.h"
 
 UHGraphicState::UHGraphicState()
 	: UHGraphicState(UHRenderPassInfo())
@@ -219,6 +220,8 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 
 bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 {
+	RayTracingInfo = InInfo;
+
 	VkRayTracingPipelineCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
 	CreateInfo.maxPipelineRayRecursionDepth = InInfo.MaxRecursionDepth;
@@ -248,24 +251,28 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	CHGStageInfo.module = InInfo.ClosestHitShader->GetShader();
 	CHGStageInfo.pName = CHGEntryName.c_str();
 
-	// set any hit shader (if there is)
-	std::string AHGEntryName = InInfo.AnyHitShader->GetEntryName();
-	VkPipelineShaderStageCreateInfo AHGStageInfo{};
-	if (InInfo.AnyHitShader != nullptr)
+	// set any hit shader
+	std::vector<VkPipelineShaderStageCreateInfo> AHGStageInfos(InInfo.AnyHitShaders.size());
+	std::vector<std::string> AHGEntryNames(InInfo.AnyHitShaders.size());
+
+	for (size_t Idx = 0; Idx < InInfo.AnyHitShaders.size(); Idx++)
 	{
-		AHGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		AHGStageInfo.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-		AHGStageInfo.module = InInfo.AnyHitShader->GetShader();
-		AHGStageInfo.pName = AHGEntryName.c_str();
+		AHGEntryNames[Idx] = InInfo.AnyHitShaders[Idx]->GetEntryName();
+		VkPipelineShaderStageCreateInfo AHGStageInfo{};
+		if (InInfo.AnyHitShaders[Idx] != nullptr)
+		{
+			AHGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			AHGStageInfo.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+			AHGStageInfo.module = InInfo.AnyHitShaders[Idx]->GetShader();
+			AHGStageInfo.pName = AHGEntryNames[Idx].c_str();
+			AHGStageInfos[Idx] = AHGStageInfo;
+		}
 	}
 
-	VkPipelineShaderStageCreateInfo ShaderStages[] = { RGStageInfo, MissStageInfo, CHGStageInfo, AHGStageInfo };
-	CreateInfo.stageCount = 3;
-	if (InInfo.AnyHitShader != nullptr)
-	{
-		CreateInfo.stageCount = 4;
-	}
-	CreateInfo.pStages = ShaderStages;
+	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages = { RGStageInfo, MissStageInfo, CHGStageInfo };
+	ShaderStages.insert(ShaderStages.end(), AHGStageInfos.begin(), AHGStageInfos.end());
+	CreateInfo.stageCount = static_cast<uint32_t>(ShaderStages.size());
+	CreateInfo.pStages = ShaderStages.data();
 
 	// setup group info for RG, MissG and HG
 	VkRayTracingShaderGroupCreateInfoKHR RGGroupInfo{};
@@ -284,17 +291,24 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	MissGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
 	MissGroupInfo.generalShader = 1;
 
-	VkRayTracingShaderGroupCreateInfoKHR HGGroupInfo{};
-	HGGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	HGGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-	HGGroupInfo.closestHitShader = 2;
-	HGGroupInfo.anyHitShader = 3;
-	HGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
-	HGGroupInfo.generalShader = VK_SHADER_UNUSED_KHR;
+	// setup all hit groups
+	std::vector<VkRayTracingShaderGroupCreateInfoKHR> HGGroupInfos(InInfo.AnyHitShaders.size());
+	for (size_t Idx = 0; Idx < InInfo.AnyHitShaders.size(); Idx++)
+	{
+		VkRayTracingShaderGroupCreateInfoKHR HGGroupInfo{};
+		HGGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		HGGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+		HGGroupInfo.closestHitShader = 2;
+		HGGroupInfo.anyHitShader = static_cast<uint32_t>(3 + Idx);
+		HGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
+		HGGroupInfo.generalShader = VK_SHADER_UNUSED_KHR;
+		HGGroupInfos[Idx] = HGGroupInfo;
+	}
 
-	VkRayTracingShaderGroupCreateInfoKHR GroupInfos[] = { RGGroupInfo, MissGroupInfo, HGGroupInfo };
-	CreateInfo.groupCount = 3;
-	CreateInfo.pGroups = GroupInfos;
+	std::vector<VkRayTracingShaderGroupCreateInfoKHR> GroupInfos = { RGGroupInfo, MissGroupInfo };
+	GroupInfos.insert(GroupInfos.end(), HGGroupInfos.begin(), HGGroupInfos.end());
+	CreateInfo.groupCount = static_cast<uint32_t>(HGGroupInfos.size());
+	CreateInfo.pGroups = GroupInfos.data();
 
 	// set payload size
 	VkRayTracingPipelineInterfaceCreateInfoKHR PipelineInterfaceInfo{};
@@ -330,6 +344,8 @@ VkPipeline UHGraphicState::GetRTPipeline() const
 bool UHGraphicState::operator==(const UHGraphicState& InState)
 {
 	// check if render pass info or ray tracing info is the same
-	return RenderPassInfo == InState.RenderPassInfo
-		&& RayTracingInfo == InState.RayTracingInfo;
+	bool bRenderPassEqual = RenderPassInfo == InState.RenderPassInfo;
+	bool bRayTracingEqual = RayTracingInfo == InState.RayTracingInfo;
+
+	return bRenderPassEqual && bRayTracingEqual;
 }

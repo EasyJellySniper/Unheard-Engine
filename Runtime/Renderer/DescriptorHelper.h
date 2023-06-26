@@ -63,8 +63,18 @@ public:
 		for (size_t Idx = 0; Idx < NewInfos.size(); Idx++)
 		{
 			VkDescriptorBufferInfo NewInfo{};
-			NewInfo.buffer = InBuffers[Idx]->GetBuffer();
-			NewInfo.range = InBuffers[Idx]->GetBufferSize();
+
+			// allow null buffer
+			if (InBuffers[Idx] != nullptr)
+			{
+				NewInfo.buffer = InBuffers[Idx]->GetBuffer();
+				NewInfo.range = InBuffers[Idx]->GetBufferSize();
+			}
+			else
+			{
+				NewInfo.range = VK_WHOLE_SIZE;
+			}
+
 			NewInfo.offset = 0;
 			NewInfos[Idx] = NewInfo;
 		}

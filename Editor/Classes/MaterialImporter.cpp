@@ -62,7 +62,7 @@ void UHMaterialImporter::WriteMaterialCache(UHMaterial* InMat, std::string InSha
 
 	// get last modified time and spv generated shader time
 	std::string OutputShaderPath = GShaderAssetFolder + OutName + GShaderAssetExtension;
-	int64_t SpvGeneratedTime = std::filesystem::last_write_time(OutputShaderPath).time_since_epoch().count();
+	int64_t SpvGeneratedTime = std::filesystem::exists(OutputShaderPath) ? std::filesystem::last_write_time(OutputShaderPath).time_since_epoch().count() : 0;
 	int64_t SourceModifiedTime = std::filesystem::last_write_time(InMat->GetPath()).time_since_epoch().count();
 
 	UHUtilities::WriteStringData(FileOut, InMat->GetPath().string());

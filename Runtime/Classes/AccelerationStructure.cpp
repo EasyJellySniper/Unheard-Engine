@@ -93,7 +93,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 
 	// build bottom-level AS after getting proper sizes
 	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	AccelerationStructureBuffer->CreaetBuffer(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+	AccelerationStructureBuffer->CreateBuffer(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
 
 	VkAccelerationStructureCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -109,7 +109,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 
 	// allocate scratch buffer as well, this buffer is for initialization
 	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	ScratchBuffer->CreaetBuffer(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	ScratchBuffer->CreateBuffer(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	GeometryInfo.scratchData.deviceAddress = GetDeviceAddress(ScratchBuffer->GetBuffer());
 
 	// actually build AS, this needs to push command
@@ -168,7 +168,8 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 			InstanceKHR.flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
 		}
 
-		// set material buffer data index as instance id, so I can fetch material data from StructuredBuffer in hit group shader
+		// set material buffer data index as SBT index, each material has an unique hitgroup shader
+		InstanceKHR.instanceShaderBindingTableRecordOffset = Mat->GetBufferDataIndex();
 		InstanceKHR.instanceCustomIndex = Mat->GetBufferDataIndex();
 
 		InstanceKHRs.push_back(InstanceKHR);
@@ -184,7 +185,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	
 	// create instance KHR buffer for later use
 	ASInstanceBuffer = GfxCache->RequestRenderBuffer<VkAccelerationStructureInstanceKHR>();
-	ASInstanceBuffer->CreaetBuffer(InstanceCount, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	ASInstanceBuffer->CreateBuffer(InstanceCount, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	ASInstanceBuffer->UploadAllData(InstanceKHRs.data());
 
 	// setup instance type
@@ -212,7 +213,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 
 	// build bottom-level AS after getting proper sizes
 	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	AccelerationStructureBuffer->CreaetBuffer(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+	AccelerationStructureBuffer->CreateBuffer(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
 
 	VkAccelerationStructureCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -228,7 +229,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 
 	// allocate scratch buffer as well, this buffer is for initialization
 	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	ScratchBuffer->CreaetBuffer(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	ScratchBuffer->CreateBuffer(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	GeometryInfo.scratchData.deviceAddress = GetDeviceAddress(ScratchBuffer->GetBuffer());
 
 	// actually build AS, this needs to push command, primitive count is used as instance count in Vulkan spec if it's VK_GEOMETRY_TYPE_INSTANCES_KHR

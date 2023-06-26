@@ -76,18 +76,18 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 	UHGPUMemory* SharedMemory = InGfx->GetMeshSharedMemory();
 
 	bool bValid = true;
-	bValid &= PositionBuffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
-	bValid &= UV0Buffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
-	bValid &= NormalBuffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
-	bValid &= TangentBuffer->CreaetBuffer(VertexCount, VBFlags, SharedMemory);
+	bValid &= PositionBuffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
+	bValid &= UV0Buffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
+	bValid &= NormalBuffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
+	bValid &= TangentBuffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
 
 	if (bIndexBuffer32Bit)
 	{
-		bValid &= IndexBuffer->CreaetBuffer(GetIndicesCount(), IBFlags, SharedMemory);
+		bValid &= IndexBuffer->CreateBuffer(GetIndicesCount(), IBFlags, SharedMemory);
 	}
 	else
 	{
-		bValid &= IndexBuffer16->CreaetBuffer(GetIndicesCount(), IBFlags, SharedMemory);
+		bValid &= IndexBuffer16->CreateBuffer(GetIndicesCount(), IBFlags, SharedMemory);
 	}
 
 	// don't upload to GPU if buffer is failed during initialization

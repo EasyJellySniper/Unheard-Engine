@@ -25,6 +25,7 @@ public:
 		, std::vector<std::string> Defines);
 	void ImportTextures(UHGraphic* InGfx);
 	void ImportMaterials(UHGraphic* InGfx);
+	void MapTextureIndex(UHMaterial* InMat);
 
 	std::vector<UHMesh*> GetUHMeshes() const;
 	std::vector<UHMaterial*> GetMaterials() const;

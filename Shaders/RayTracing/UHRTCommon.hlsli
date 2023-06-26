@@ -13,6 +13,7 @@ struct UHDefaultPayload
 
 	float HitT;
 	uint HitInstance;
+	float MipLevel;
 };
 
 RayDesc GenerateCameraRay(uint2 ScreenPos)

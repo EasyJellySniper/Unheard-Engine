@@ -12,20 +12,21 @@ UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 	Name = "Material Inputs";
 
 	// declare the input pins for material node
-	Inputs.resize(Experimental::UHMaterialInputs::MaterialMax);
-	Inputs[Experimental::UHMaterialInputs::Diffuse] = std::make_unique<UHGraphPin>("Diffuse (RGB)", this, Float3Node);
-	Inputs[Experimental::UHMaterialInputs::Occlusion] = std::make_unique<UHGraphPin>("Occlusion (R)", this, FloatNode);
-	Inputs[Experimental::UHMaterialInputs::Specular] = std::make_unique<UHGraphPin>("Specular (RGB)", this, Float3Node);
-	Inputs[Experimental::UHMaterialInputs::Normal] = std::make_unique<UHGraphPin>("Normal (RGB)", this, Float3Node);
-	Inputs[Experimental::UHMaterialInputs::Opacity] = std::make_unique<UHGraphPin>("Opacity (R)", this, FloatNode);
-	Inputs[Experimental::UHMaterialInputs::Metallic] = std::make_unique<UHGraphPin>("Metallic (R)", this, FloatNode);
-	Inputs[Experimental::UHMaterialInputs::Roughness] = std::make_unique<UHGraphPin>("Roughness (R)", this, FloatNode);
-	Inputs[Experimental::UHMaterialInputs::FresnelFactor] = std::make_unique<UHGraphPin>("Fresnel Factor (R)", this, FloatNode);
-	Inputs[Experimental::UHMaterialInputs::ReflectionFactor] = std::make_unique<UHGraphPin>("Reflection Factor (R)", this, FloatNode);
-	Inputs[Experimental::UHMaterialInputs::Emissive] = std::make_unique<UHGraphPin>("Emissive (RGB)", this, Float3Node);
+	Inputs.resize(UHMaterialInputs::MaterialMax);
+	Inputs[UHMaterialInputs::Diffuse] = std::make_unique<UHGraphPin>("Diffuse (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Occlusion] = std::make_unique<UHGraphPin>("Occlusion (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Specular] = std::make_unique<UHGraphPin>("Specular (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Normal] = std::make_unique<UHGraphPin>("Normal (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Opacity] = std::make_unique<UHGraphPin>("Opacity (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Metallic] = std::make_unique<UHGraphPin>("Metallic (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Roughness] = std::make_unique<UHGraphPin>("Roughness (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::FresnelFactor] = std::make_unique<UHGraphPin>("Fresnel Factor (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::ReflectionFactor] = std::make_unique<UHGraphPin>("Reflection Factor (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Emissive] = std::make_unique<UHGraphPin>("Emissive (RGB)", this, Float3Node);
 }
 
-void CollectDefinitions(const UHGraphPin* Pin, std::vector<std::string>& OutDefinitions, std::unordered_map<uint32_t, bool>& OutDefTable)
+void CollectDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing, int32_t& TextureIndexInMaterial
+	, std::vector<std::string>& OutDefinitions, std::unordered_map<uint32_t, bool>& OutDefTable)
 {
 	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
 	{
@@ -33,14 +34,23 @@ void CollectDefinitions(const UHGraphPin* Pin, std::vector<std::string>& OutDefi
 	}
 
 	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+	InputNode->SetIsCompilingRayTracing(bIsCompilingRayTracing);
 
 	// prevent redefinition with table
 	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end())
 	{
+		// set texture index in material so I can index in ray tracing shader properly
+		if (InputNode->GetType() == Texture2DNode)
+		{
+			UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
+			TexNode->SetTextureIndexInMaterial(TextureIndexInMaterial);
+			TextureIndexInMaterial++;
+		}
+
 		std::string Def = InputNode->EvalDefinition();
 		if (!Def.empty())
 		{
-			OutDefinitions.push_back(InputNode->EvalDefinition());
+			OutDefinitions.push_back(Def);
 		}
 
 		OutDefTable[InputNode->GetId()] = true;
@@ -49,7 +59,7 @@ void CollectDefinitions(const UHGraphPin* Pin, std::vector<std::string>& OutDefi
 	// trace all input pins
 	for (const std::unique_ptr<UHGraphPin>& InputPins : InputNode->GetInputs())
 	{
-		CollectDefinitions(InputPins.get(), OutDefinitions, OutDefTable);
+		CollectDefinitions(InputPins.get(), bIsCompilingRayTracing, TextureIndexInMaterial, OutDefinitions, OutDefTable);
 	}
 }
 
@@ -64,17 +74,12 @@ std::string UHMaterialNode::EvalHLSL()
 	std::vector<std::string> Definitions;
 	std::unordered_map<uint32_t, bool> DefinitionTable;
 
-	if (CompileData.bIsDepthOrMotionPass)
+	// set texture index in material
+	int32_t TextureIndexInMaterial = 0;
+
+	for (int32_t Idx = 0; Idx < UHMaterialInputs::MaterialMax; Idx++)
 	{
-		// collect opacity definition only.
-		CollectDefinitions(Inputs[Experimental::UHMaterialInputs::Opacity].get(), Definitions, DefinitionTable);
-	}
-	else
-	{
-		for (int32_t Idx = 0; Idx < Experimental::UHMaterialInputs::MaterialMax; Idx++)
-		{
-			CollectDefinitions(Inputs[Idx].get(), Definitions, DefinitionTable);
-		}
+		CollectDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, TextureIndexInMaterial, Definitions, DefinitionTable);
 	}
 
 	// Calculate property based on graph nodes
@@ -98,7 +103,7 @@ std::string UHMaterialNode::EvalHLSL()
 	Code += "\n\tUHMaterialInputs Input = (UHMaterialInputs)0;\n";
 
 	// Opacity
-	if (UHGraphPin* Opacity = Inputs[Experimental::UHMaterialInputs::Opacity]->GetSrcPin())
+	if (UHGraphPin* Opacity = Inputs[UHMaterialInputs::Opacity]->GetSrcPin())
 	{
 		Code += "\tInput.Opacity = " + Opacity->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
 	}
@@ -115,7 +120,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// Diffuse
-	if (UHGraphPin* DiffuseSrc = Inputs[Experimental::UHMaterialInputs::Diffuse]->GetSrcPin())
+	if (UHGraphPin* DiffuseSrc = Inputs[UHMaterialInputs::Diffuse]->GetSrcPin())
 	{
 		Code += "\tInput.Diffuse = " + DiffuseSrc->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
 	}
@@ -125,7 +130,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// Occlusion
-	if (UHGraphPin* Occlusion = Inputs[Experimental::UHMaterialInputs::Occlusion]->GetSrcPin())
+	if (UHGraphPin* Occlusion = Inputs[UHMaterialInputs::Occlusion]->GetSrcPin())
 	{
 		Code += "\tInput.Occlusion = " + Occlusion->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
 	}
@@ -135,7 +140,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// Specular
-	if (UHGraphPin* Specular = Inputs[Experimental::UHMaterialInputs::Specular]->GetSrcPin())
+	if (UHGraphPin* Specular = Inputs[UHMaterialInputs::Specular]->GetSrcPin())
 	{
 		Code += "\tInput.Specular = " + Specular->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
 	}
@@ -145,7 +150,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// Normal
-	if (UHGraphPin* Normal = Inputs[Experimental::UHMaterialInputs::Normal]->GetSrcPin())
+	if (UHGraphPin* Normal = Inputs[UHMaterialInputs::Normal]->GetSrcPin())
 	{
 		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
 	}
@@ -155,7 +160,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// Metallic
-	if (UHGraphPin* Metallic = Inputs[Experimental::UHMaterialInputs::Metallic]->GetSrcPin())
+	if (UHGraphPin* Metallic = Inputs[UHMaterialInputs::Metallic]->GetSrcPin())
 	{
 		Code += "\tInput.Metallic = " + Metallic->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
 	}
@@ -165,7 +170,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// Roughness
-	if (UHGraphPin* Roughness = Inputs[Experimental::UHMaterialInputs::Roughness]->GetSrcPin())
+	if (UHGraphPin* Roughness = Inputs[UHMaterialInputs::Roughness]->GetSrcPin())
 	{
 		Code += "\tInput.Roughness = " + Roughness->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
 	}
@@ -175,7 +180,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// FresnelFactor
-	if (UHGraphPin* FresnelFactor = Inputs[Experimental::UHMaterialInputs::FresnelFactor]->GetSrcPin())
+	if (UHGraphPin* FresnelFactor = Inputs[UHMaterialInputs::FresnelFactor]->GetSrcPin())
 	{
 		Code += "\tInput.FresnelFactor = " + FresnelFactor->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
 	}
@@ -185,7 +190,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// ReflectionFactor
-	if (UHGraphPin* ReflectionFactor = Inputs[Experimental::UHMaterialInputs::ReflectionFactor]->GetSrcPin())
+	if (UHGraphPin* ReflectionFactor = Inputs[UHMaterialInputs::ReflectionFactor]->GetSrcPin())
 	{
 		Code += "\tInput.ReflectionFactor = " + ReflectionFactor->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
 	}
@@ -195,7 +200,7 @@ std::string UHMaterialNode::EvalHLSL()
 	}
 
 	// Emissive
-	if (UHGraphPin* Emissive = Inputs[Experimental::UHMaterialInputs::Emissive]->GetSrcPin())
+	if (UHGraphPin* Emissive = Inputs[UHMaterialInputs::Emissive]->GetSrcPin())
 	{
 		Code += "\tInput.Emissive = " + Emissive->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
 	}

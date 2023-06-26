@@ -10,11 +10,13 @@ public:
 	UHMaterialCompileData()
 		: MaterialCache(nullptr)
 		, bIsDepthOrMotionPass(false)
+		, bIsHitGroup(false)
 	{
 	}
 
 	UHMaterial* MaterialCache;
 	bool bIsDepthOrMotionPass;
+	bool bIsHitGroup;
 };
 
 // material nodes class

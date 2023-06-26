@@ -32,7 +32,9 @@ void RTShadowRayGen()
 	float3 WorldNormal = NormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz;
 	WorldNormal = WorldNormal * 2.0f - 1.0f;
 
+	// calculate mip level before ray tracing kicks off
 	float MipRate = MipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
+	float MipLevel = max(0.5f * log2(MipRate * MipRate), 0);
 
 	float MaxDist = 0;
 	float Atten = 1;
@@ -54,6 +56,7 @@ void RTShadowRayGen()
 		ShadowRay.TMax = float(1 << 20);
 
 		UHDefaultPayload Payload = (UHDefaultPayload)0;
+		Payload.MipLevel = MipLevel;
 		TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
 
 		// store the max hit T to the result, system will perform PCSS later

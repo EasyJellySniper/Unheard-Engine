@@ -13,7 +13,7 @@
 #endif
 
 #ifndef UHMAT_BIND
-#define UHMAT_BIND t2
+#define UHMAT_BIND b2
 #endif
 
 #ifndef UHDIRLIGHT_BIND
@@ -42,6 +42,22 @@ struct VertexOutput
 #if WITH_ENVCUBE
 	float3 WorldPos : TEXCOORD5;
 #endif
+};
+
+struct DepthVertexOutput
+{
+	float4 Position : SV_POSITION;
+#if WITH_ALPHATEST
+	float2 UV0 : TEXCOORD0;
+#endif
+};
+
+struct MotionVertexOutput
+{
+	float4 Position : SV_POSITION;
+	float2 UV0 : TEXCOORD0;
+	float3 WorldPos : TEXCOORD1;
+	float3 PrevWorldPos : TEXCOORD2;
 };
 
 struct PostProcessVertexOutput
@@ -94,24 +110,6 @@ struct UHMaterialInputs
 	float ReflectionFactor;
 	float3 Emissive;
 };
-
-struct UHMaterialConstants
-{
-	float4 DiffuseColor;
-	float3 EmissiveColor;
-	float AmbientOcclusion;
-	float3 SpecularColor;
-	float Metallic;
-	float Roughness;
-	float BumpScale;
-	float Cutoff;
-	float EnvCubeMipMapCount;
-	float FresnelFactor;
-	int OpacityTexIndex;
-	int OpacitySamplerIndex;
-	float ReflectionFactor;
-};
-StructuredBuffer<UHMaterialConstants> UHMaterials : register(UHMAT_BIND);
 
 struct UHDirectionalLight
 {

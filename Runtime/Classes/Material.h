@@ -11,6 +11,7 @@
 enum UHMaterialVersion
 {
 	Initial,
+	GoingBindless,
 	MaterialVersionMax
 };
 
@@ -64,21 +65,32 @@ struct UHMaterialProperty
 	float ReflectionFactor;
 };
 
+struct UHMaterialData
+{
+	int32_t TextureIndex;
+	int32_t SamplerIndex;
+	float Cutoff;
+	float Padding;
+};
+
 // UH Engine's material class, each instance is unique
-class UHMaterial : public UHObject, public UHRenderState
+class UHMaterial : public UHRenderResource, public UHRenderState
 {
 public:
 	UHMaterial();
+	~UHMaterial();
 
 	bool Import(std::filesystem::path InMatPath);
 	void ImportGraphData(std::ifstream& FileIn);
 	void PostImport();
 
 #if WITH_DEBUG
-	void SetTexFileName(UHMaterialTextureType TexType, std::string InName);
+	void SetTexFileName(UHMaterialInputs TexType, std::string InName);
+	std::string GetTexFileName(UHMaterialInputs InType) const;
+	void SetMaterialBufferSize(size_t InSize);
 	void Export();
 	void ExportGraphData(std::ofstream& FileOut);
-	std::string GetTextureDefineCode(bool bIsDepthOrMotionPass);
+	std::string GetCBufferDefineCode(size_t& OutSize);
 	std::string GetMaterialInputCode(UHMaterialCompileData InData);
 #endif
 
@@ -86,12 +98,14 @@ public:
 	void SetCullMode(VkCullModeFlagBits InCullMode);
 	void SetBlendMode(UHBlendMode InBlendMode);
 	void SetMaterialProps(UHMaterialProperty InProp);
-	void SetTex(UHMaterialTextureType InType, UHTexture* InTex);
-	void SetSampler(UHMaterialTextureType InType, UHSampler* InSampler);
+	void SetSystemTex(UHSystemTextureType InType, UHTexture* InTex);
+	void SetSystemSampler(UHSystemTextureType InType, UHSampler* InSampler);
 	void SetShader(UHMaterialShaderType InType, UHShader* InShader);
-	void SetTextureIndex(UHMaterialTextureType InType, int32_t InIndex);
 	void SetIsSkybox(bool InFlag);
 	void SetCompileFlag(UHMaterialCompileFlag InFlag);
+	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
+	void AllocateMaterialBuffer();
+	void UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex);
 
 	std::string GetName() const;
 	VkCullModeFlagBits GetCullMode() const;
@@ -102,14 +116,13 @@ public:
 	std::filesystem::path GetPath() const;
 	bool IsSkybox() const;
 
-	std::string GetTexFileName(UHMaterialTextureType InType) const;
-	UHTexture* GetTex(UHMaterialTextureType InType) const;
-	UHSampler* GetSampler(UHMaterialTextureType InType) const;
+	UHTexture* GetSystemTex(UHSystemTextureType InType) const;
+	UHSampler* GetSystemSampler(UHSystemTextureType InType) const;
 	UHShader* GetShader(UHMaterialShaderType InType) const;
-	int32_t GetTextureIndex(UHMaterialTextureType InType) const;
-	std::string GetTexDefineName(UHMaterialTextureType InType) const;
 	std::vector<std::string> GetMaterialDefines(UHMaterialShaderType InType) const;
-	std::vector<std::string> GetRegisteredTextureNames(bool bIsDepthOrMotionPass);
+	std::vector<std::string> GetRegisteredTextureNames();
+	const std::array<std::unique_ptr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
+	UHRenderBuffer<UHMaterialData>* GetRTMaterialDataGPU() const;
 
 	bool operator==(const UHMaterial& InMat);
 
@@ -127,8 +140,8 @@ public:
 private:
 	UHMaterialVersion Version;
 	std::string Name;
-	std::array<std::string, UHMaterialTextureType::TextureTypeMax> TexFileNames;
 	std::vector<std::string> RegisteredTextureNames;
+	std::vector<int32_t> RegisteredTextureIndexes;
 
 	// material state variables
 	VkCullModeFlagBits CullMode;
@@ -140,11 +153,10 @@ private:
 	bool bIsTangentSpace;
 
 	UHMaterialProperty MaterialProps;
-	std::array<UHTexture*, UHMaterialTextureType::TextureTypeMax> Textures;
-	std::array<UHSampler*, UHMaterialTextureType::TextureTypeMax> Samplers;
-	std::array<int32_t, UHMaterialTextureType::TextureTypeMax> TextureIndex;
+	std::array<UHTexture*, UHSystemTextureType::TextureTypeMax> SystemTextures;
+	std::array<UHSampler*, UHSystemTextureType::TextureTypeMax> SystemSamplers;
 	std::array<UHShader*, UHMaterialShaderType::MaterialShaderTypeMax> Shaders;
-	std::array<std::string, UHMaterialTextureType::TextureTypeMax> TexDefines;
+	std::array<std::string, UHMaterialInputs::MaterialMax> TexFileNames;
 
 	std::unique_ptr<UHMaterialNode> MaterialNode;
 	std::vector<std::unique_ptr<UHGraphNode>> EditNodes;
@@ -152,6 +164,11 @@ private:
 
 	// GUI positions relative to material node
 	POINT DefaultMaterialNodePos;
-
 	std::filesystem::path MaterialPath;
+
+	// material constant buffer, the size will be following the result of graph
+	size_t MaterialBufferSize;
+	std::vector<uint8_t> MaterialConstantsCPU;
+	std::array<std::unique_ptr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight> MaterialConstantsGPU;
+	std::unique_ptr<UHRenderBuffer<UHMaterialData>> MaterialRTDataGPU;
 };

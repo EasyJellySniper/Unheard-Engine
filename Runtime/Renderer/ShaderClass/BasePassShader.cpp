@@ -1,17 +1,18 @@
 #include "BasePassShader.h"
 #include "../../Components/MeshRenderer.h"
 
-UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass)
+UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
+	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat)
 {
 	// DeferredPass: Bind all constants, visiable in VS/PS only
-	// use storage buffer on materials
-	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	for (int32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
+	{
+		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	}
 
 	// bind occlusion visible buffer
-	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	// bind UV0/Normal/Tangent buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -22,15 +23,8 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
-	// bind textures from material
-	int32_t TexSlot = GMaterialTextureRegisterStart;
-	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames(false))
-	{
-		AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, TexSlot++);
-	}
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER, TexSlot);
-
-	CreateMaterialDescriptor();
+	// textures and samplers will be bound on fly instead, since I go with bindless rendering
+	CreateMaterialDescriptor(ExtraLayouts);
 
 	// also check occlusion define for VS
 	std::vector<std::string> VSDefines = InMat->GetMaterialDefines(VS);
@@ -48,7 +42,7 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = InMat;
-	ShaderPS = InGfx->RequestMaterialPixelShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, PSDefines);
+	ShaderPS = InGfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, PSDefines);
 
 	// states
 	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass
@@ -66,15 +60,12 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHMaterialConstants>>, GMaxFrameInFlight>& MatConst
 	, const std::unique_ptr<UHRenderBuffer<uint32_t>>& OcclusionConst
-	, const UHMeshRendererComponent* InRenderer
-	, const UHAssetManager* InAssetMgr
-	, const UHSampler* InDefaultSampler)
+	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
-	BindStorage(MatConst, 2, InRenderer->GetMaterial()->GetBufferDataIndex());
+	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	if (Gfx->IsRayTracingOcclusionTestEnabled())
 	{
@@ -87,25 +78,15 @@ void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	BindStorage(Mesh->GetTangentBuffer(), 6, 0, true);
 
 	// write textures/samplers when they are available
-	UHTexture* Tex = InRenderer->GetMaterial()->GetTex(UHMaterialTextureType::SkyCube);
+	UHTexture* Tex = InRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube);
 	if (Tex)
 	{
 		BindImage(Tex, 7);
 	}
 
-	UHSampler* Sampler = InRenderer->GetMaterial()->GetSampler(UHMaterialTextureType::SkyCube);
+	UHSampler* Sampler = InRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube);
 	if (Sampler)
 	{
 		BindSampler(Sampler, 8);
 	}
-
-	// bind textures from material
-	int32_t TexSlot = GMaterialTextureRegisterStart;
-	for (const std::string RegisteredTexture : InRenderer->GetMaterial()->GetRegisteredTextureNames(false))
-	{
-		BindImage(InAssetMgr->GetTexture2D(RegisteredTexture), TexSlot);
-		TexSlot++;
-	}
-
-	BindSampler(InDefaultSampler, TexSlot);
 }

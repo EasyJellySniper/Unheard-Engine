@@ -6,6 +6,7 @@ struct UHDefaultPayload
 {
 	float HitT;
 	uint32_t HitInstance;
+	float MipLevel;
 };
 
 struct UHDefaultAttribute

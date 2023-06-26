@@ -546,26 +546,26 @@ std::unique_ptr<UHMaterial> ImportMaterial(FbxNode* InNode)
 						
 						if (TexType == "DiffuseColor")
 						{
-							UHMat->SetTexFileName(UHMaterialTextureType::Diffuse, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Diffuse, TexFileName.stem().string());
 						}
 						else if (TexType == "DiffuseFactor")
 						{
 							// treat diffuse factor map as AO map
-							UHMat->SetTexFileName(UHMaterialTextureType::Occlusion, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Occlusion, TexFileName.stem().string());
 						}
 						else if (TexType == "SpecularColor")
 						{
-							UHMat->SetTexFileName(UHMaterialTextureType::Specular, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Specular, TexFileName.stem().string());
 						}
 						else if (TexType == "NormalMap" || TexType == "Bump")
 						{
 							// old Bump map (gray) will be used as normal in UH
 							// always ask artists use Normal map
-							UHMat->SetTexFileName(UHMaterialTextureType::Normal, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Normal, TexFileName.stem().string());
 						}
 						else if (TexType == "TransparentColor")
 						{
-							UHMat->SetTexFileName(UHMaterialTextureType::Opacity, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Opacity, TexFileName.stem().string());
 
 							// default to masked object if it contains opacity texture
 							UHMat->SetBlendMode(UHBlendMode::Masked);

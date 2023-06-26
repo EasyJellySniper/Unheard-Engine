@@ -36,9 +36,10 @@ void UHDescriptorHelper::WriteImage(const std::vector<UHTexture*>& InTextures, u
 	std::vector<VkDescriptorImageInfo> NewInfos(InTextures.size());
 	for (size_t Idx = 0; Idx < InTextures.size(); Idx++)
 	{
+		// allow null image view
 		VkDescriptorImageInfo NewInfo{};
 		NewInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		NewInfo.imageView = InTextures[Idx]->GetImageView();
+		NewInfo.imageView = (InTextures[Idx] != nullptr) ? InTextures[Idx]->GetImageView() : VK_NULL_HANDLE;
 		NewInfos[Idx] = NewInfo;
 	}
 

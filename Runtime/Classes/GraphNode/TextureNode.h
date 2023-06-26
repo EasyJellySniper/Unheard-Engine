@@ -14,8 +14,10 @@ public:
 
 	void SetSelectedTextureName(std::string InSelectedTextureName);
 	std::string GetSelectedTextureName() const;
+	void SetTextureIndexInMaterial(int32_t InIndex);
 
 private:
+	int32_t TextureIndexInMaterial;
 	std::string SelectedTextureName;
 	bool bIsBumpTexture;
 };

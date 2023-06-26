@@ -397,7 +397,7 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
         GUIName = "Math";
         break;
     case UHGraphNodeType::Texture2DNode:
-        NewGUI = std::make_unique<UHTexture2DNodeGUI>(AssetManager, CurrentMaterial);
+        NewGUI = std::make_unique<UHTexture2DNodeGUI>(AssetManager, Renderer, CurrentMaterial);
         GUIName = "Texture2D";
         break;
     }

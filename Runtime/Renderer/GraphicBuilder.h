@@ -71,6 +71,7 @@ public:
 
 	// bind descriptors
 	void BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet);
+	void BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets);
 	void BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets);
 
 	// transition image

@@ -1085,6 +1085,7 @@ UHMaterial* UHGraphic::RequestMaterial(std::filesystem::path InPath)
 	std::unique_ptr<UHMaterial> NewMat = std::make_unique<UHMaterial>();
 	if (NewMat->Import(InPath))
 	{
+		NewMat->SetGfxCache(this);
 		NewMat->PostImport();
 		MaterialPools.push_back(std::move(NewMat));
 		return MaterialPools.back().get();
@@ -1176,7 +1177,7 @@ UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pa
 }
 
 // request shader for material
-UHShader* UHGraphic::RequestMaterialPixelShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+UHShader* UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 	, UHMaterialCompileData InData, std::vector<std::string> InMacro)
 {
 	// macro hash

@@ -212,3 +212,11 @@ Added the macro hash to material shader as well. Enhanced the shader/materisl ca
 01-06-2023: Fixed a RT bug caused by NVIDIA driver. The miss shader is a must-have now in binding. Let Release_Editor build asserts too.
 
 08-06-2023: Set affinity for threads. Enhance delta time calculation and prevent a huge DT spike. Fixed an edge case for shader compilation, now compiling caused by include changes should be fine.
+
+23-06-2023: Massively change the material pipeline. Now the rendering is bindless. Revert TAA motion diff to cutoff and always find the max motion length in 3x3 mask. The next is to apply material to ray tracing
+And remove the old material data.
+
+25-06-2023: Refactored material inputs, removed old data. Added SBT implementation for hit groups, now each material can have its own HG shader. Translated HG shaders successfully, but the indexing is a pain.
+Finally I figured out a way to index. Almost ready for a new post. Need to refactor the RTOT and consider mip level calculation in hit group shader.
+
+26-06-2023: Added material change to RTOT as well. Added mip level calculation for sampling in RT hit group.

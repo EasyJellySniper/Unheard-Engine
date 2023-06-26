@@ -101,10 +101,14 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 				std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 			// bind pipelines
+			std::vector<VkDescriptorSet> DescriptorSets = { BaseShader.GetDescriptorSet(CurrentFrame)
+				, TextureTable.GetDescriptorSet(CurrentFrame)
+				, SamplerTable.GetDescriptorSet(CurrentFrame)};
+
 			GraphBuilder.BindGraphicState(BaseShader.GetState());
 			GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 			GraphBuilder.BindIndexBuffer(Mesh);
-			GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
+			GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), DescriptorSets);
 
 			// draw call
 			GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
@@ -163,10 +167,14 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 		// bind pipelines
+		std::vector<VkDescriptorSet> DescriptorSets = { BaseShader.GetDescriptorSet(CurrentFrame)
+			, TextureTable.GetDescriptorSet(CurrentFrame)
+			, SamplerTable.GetDescriptorSet(CurrentFrame) };
+
 		GraphBuilder.BindGraphicState(BaseShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), DescriptorSets);
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());

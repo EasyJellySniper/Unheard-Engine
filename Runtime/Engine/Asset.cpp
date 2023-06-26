@@ -221,36 +221,45 @@ void UHAssetManager::ImportMaterials(UHGraphic* InGfx)
 		UHMaterial* Mat = InGfx->RequestMaterial(Idx->path());
 		if (Mat)
 		{
-			// set texture reference after material creation
-			for (int32_t Idx = 0; Idx < UHMaterialTextureType::TextureTypeMax; Idx++)
-			{
-				UHMaterialTextureType TexType = static_cast<UHMaterialTextureType>(Idx);
-				std::string TexName = Mat->GetTexFileName(TexType);
-
-				for (int32_t Jdx = 0; Jdx < UHTexture2Ds.size(); Jdx++)
-				{
-					if (UHTexture2Ds[Jdx]->GetName() == TexName)
-					{
-						// find referenced texture and set index
-						// add to referenced texture list if doesn't exist
-						int32_t TextureIdx = UHUtilities::FindIndex(ReferencedTexture2Ds, UHTexture2Ds[Jdx]);
-
-						if (TextureIdx == -1)
-						{
-							TextureIdx = static_cast<int32_t>(ReferencedTexture2Ds.size());
-							ReferencedTexture2Ds.push_back(UHTexture2Ds[Jdx]);
-						}
-
-						Mat->SetTextureIndex(TexType, TextureIdx);
-
-						break;
-					}
-				}
-			}
-
+			// map texture index after creation
+			MapTextureIndex(Mat);
 			UHMaterialsCache.push_back(Mat);
 		}
 	}
+}
+
+void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
+{
+	if (InMat == nullptr)
+	{
+		return;
+	}
+
+	// set texture reference after material creation
+	std::vector<int32_t> RegisteredIndexes;
+	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames())
+	{
+		for (int32_t Jdx = 0; Jdx < UHTexture2Ds.size(); Jdx++)
+		{
+			if (UHTexture2Ds[Jdx]->GetName() == RegisteredTexture)
+			{
+				// find referenced texture and set index
+				// add to referenced texture list if doesn't exist
+				int32_t TextureIdx = UHUtilities::FindIndex(ReferencedTexture2Ds, UHTexture2Ds[Jdx]);
+
+				if (TextureIdx == -1)
+				{
+					TextureIdx = static_cast<int32_t>(ReferencedTexture2Ds.size());
+					ReferencedTexture2Ds.push_back(UHTexture2Ds[Jdx]);
+				}
+
+				RegisteredIndexes.push_back(TextureIdx);
+				break;
+			}
+		}
+	}
+
+	InMat->SetRegisteredTextureIndexes(RegisteredIndexes);
 }
 
 std::vector<UHMesh*> UHAssetManager::GetUHMeshes() const

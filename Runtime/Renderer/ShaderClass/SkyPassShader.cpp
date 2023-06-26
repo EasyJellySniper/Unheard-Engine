@@ -32,6 +32,6 @@ void UHSkyPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBu
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, SkyRenderer->GetBufferDataIndex());
-	BindImage(SkyRenderer->GetMaterial()->GetTex(UHMaterialTextureType::SkyCube), 2);
-	BindSampler(SkyRenderer->GetMaterial()->GetSampler(UHMaterialTextureType::SkyCube), 3);
+	BindImage(SkyRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube), 2);
+	BindSampler(SkyRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube), 3);
 }

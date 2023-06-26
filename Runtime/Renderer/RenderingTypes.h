@@ -138,9 +138,10 @@ struct UHRenderPassInfo
 
 	bool operator==(const UHRenderPassInfo& InInfo)
 	{
-		if (!InInfo.VS || !VS)
+		bool bVSEqual = true;
+		if (InInfo.VS && VS)
 		{
-			return false;
+			bVSEqual = (*InInfo.VS == *VS);
 		}
 
 		bool bPSEqual = true;
@@ -158,7 +159,7 @@ struct UHRenderPassInfo
 		return InInfo.CullMode == CullMode
 			&& InInfo.BlendMode == BlendMode
 			&& InInfo.RenderPass == RenderPass
-			&& *InInfo.VS == *VS
+			&& bVSEqual
 			&& bPSEqual
 			&& bGSEqual
 			&& InInfo.RTCount == RTCount
@@ -184,7 +185,6 @@ struct UHRayTracingInfo
 		, MaxRecursionDepth(1)
 		, RayGenShader(nullptr)
 		, ClosestHitShader(nullptr)
-		, AnyHitShader(nullptr)
 		, MissShader(nullptr)
 		, PayloadSize(4)
 		, AttributeSize(8)
@@ -204,9 +204,19 @@ struct UHRayTracingInfo
 			return false;
 		}
 
-		if (InInfo.AnyHitShader != AnyHitShader)
+		if (InInfo.AnyHitShaders.size() != AnyHitShaders.size())
 		{
 			return false;
+		}
+		else
+		{
+			for (size_t Idx = 0; Idx < AnyHitShaders.size(); Idx++)
+			{
+				if (AnyHitShaders[Idx] != InInfo.AnyHitShaders[Idx])
+				{
+					return false;
+				}
+			}
 		}
 
 		if (InInfo.MissShader != MissShader)
@@ -224,7 +234,7 @@ struct UHRayTracingInfo
 	uint32_t MaxRecursionDepth;
 	UHShader* RayGenShader;
 	UHShader* ClosestHitShader;
-	UHShader* AnyHitShader;
+	std::vector<UHShader*> AnyHitShaders;
 	UHShader* MissShader;
 	uint32_t PayloadSize;
 	uint32_t AttributeSize;

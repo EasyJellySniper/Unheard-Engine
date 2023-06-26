@@ -41,6 +41,7 @@ public:
     void SetGUI(UHGraphNodeGUI* InGUI);
     UHGraphNodeGUI* GetGUI() const;
 #endif
+    void SetIsCompilingRayTracing(bool bInFlag);
 
     std::string GetName() const;
     UHGraphNodeType GetType() const;
@@ -54,6 +55,7 @@ protected:
     std::vector<std::unique_ptr<UHGraphPin>> Inputs;
     std::vector<std::unique_ptr<UHGraphPin>> Outputs;
     bool bCanBeDeleted;
+    bool bIsCompilingRayTracing;
 
 #if WITH_DEBUG
     UHGraphNodeGUI* GUICache;

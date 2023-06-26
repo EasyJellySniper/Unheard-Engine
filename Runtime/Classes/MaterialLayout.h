@@ -4,7 +4,6 @@
 #include <string>
 
 // hard code variables in shader
-const int32_t GMaterialTextureRegisterStart = 9;
 const std::string GDefaultSamplerName = "DefaultAniso16";
 const std::string GDefaultTextureChannel0Name = "UV0";
 
@@ -26,17 +25,10 @@ enum UHConstantTypes
 	ConstantTypeMax
 };
 
-// texture type used for material
-enum UHMaterialTextureType
+// system texture type used for material
+enum UHSystemTextureType
 {
-	Diffuse = 0,
-	Occlusion,
-	Specular,
-	Normal,
-	Opacity,
 	SkyCube,
-	Metallic,
-	Roughness,
 	TextureTypeMax
 };
 
@@ -49,23 +41,20 @@ enum UHMaterialShaderType
 };
 
 // UH material inputs used for both runtime and editor
-namespace Experimental
+enum UHMaterialInputs
 {
-	enum UHMaterialInputs
-	{
-		Diffuse = 0,
-		Occlusion,
-		Specular,
-		Normal,
-		Opacity,
-		Metallic,
-		Roughness,
-		FresnelFactor,
-		ReflectionFactor,
-		Emissive,
-		MaterialMax
-	};
-}
+	Diffuse = 0,
+	Occlusion,
+	Specular,
+	Normal,
+	Opacity,
+	Metallic,
+	Roughness,
+	FresnelFactor,
+	ReflectionFactor,
+	Emissive,
+	MaterialMax
+};
 
 enum UHMaterialCompileFlag
 {

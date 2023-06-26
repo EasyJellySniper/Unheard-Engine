@@ -24,7 +24,7 @@ public:
 
     }
 
-	void CreaetBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage)
+	void CreateBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage)
 	{
         // skip creaetion if it's empty
         if (InElementCount == 0)
@@ -112,7 +112,7 @@ public:
         }
 	}
 
-    bool CreaetBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage, UHGPUMemory* SharedMemory)
+    bool CreateBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage, UHGPUMemory* SharedMemory)
     {
         // skip creaetion if it's empty
         if (InElementCount == 0 || SharedMemory == nullptr)

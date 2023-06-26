@@ -47,11 +47,12 @@ void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& G
 
 	// bind descriptors and RT states
 	std::vector<VkDescriptorSet> DescriptorSets = { RTOcclusionTestShader.GetDescriptorSet(CurrentFrame)
-		, RTTextureTable.GetDescriptorSet(CurrentFrame)
-		, RTSamplerTable.GetDescriptorSet(CurrentFrame)
+		, TextureTable.GetDescriptorSet(CurrentFrame)
+		, SamplerTable.GetDescriptorSet(CurrentFrame)
 		, RTVertexTable.GetDescriptorSet(CurrentFrame)
 		, RTIndicesTable.GetDescriptorSet(CurrentFrame)
-		, RTIndicesTypeTable.GetDescriptorSet(CurrentFrame) };
+		, RTIndicesTypeTable.GetDescriptorSet(CurrentFrame)
+		, RTMaterialDataTable.GetDescriptorSet(CurrentFrame) };
 
 	GraphBuilder.BindRTDescriptorSet(RTOcclusionTestShader.GetPipelineLayout(), DescriptorSets);
 	GraphBuilder.BindRTState(RTOcclusionTestShader.GetRTState());
@@ -83,11 +84,12 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 
 	// bind descriptors and RT states
 	std::vector<VkDescriptorSet> DescriptorSets = { RTShadowShader.GetDescriptorSet(CurrentFrame)
-		, RTTextureTable.GetDescriptorSet(CurrentFrame)
-		, RTSamplerTable.GetDescriptorSet(CurrentFrame)
+		, TextureTable.GetDescriptorSet(CurrentFrame)
+		, SamplerTable.GetDescriptorSet(CurrentFrame)
 		, RTVertexTable.GetDescriptorSet(CurrentFrame)
 		, RTIndicesTable.GetDescriptorSet(CurrentFrame)
-		, RTIndicesTypeTable.GetDescriptorSet(CurrentFrame) };
+		, RTIndicesTypeTable.GetDescriptorSet(CurrentFrame)
+		, RTMaterialDataTable.GetDescriptorSet(CurrentFrame) };
 
 	GraphBuilder.BindRTDescriptorSet(RTShadowShader.GetPipelineLayout(), DescriptorSets);
 	GraphBuilder.BindRTState(RTShadowShader.GetRTState());

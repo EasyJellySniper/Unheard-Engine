@@ -99,7 +99,7 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphic
 
 	// copy data to staging buffer first
 	StageBuffer.SetDeviceInfo(InGfx->GetLogicalDevice(), InGfx->GetDeviceMemProps());
-	StageBuffer.CreaetBuffer(static_cast<uint64_t>(TextureData.size()), VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+	StageBuffer.CreateBuffer(static_cast<uint64_t>(TextureData.size()), VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 	StageBuffer.UploadAllData(TextureData.data());
 
 	// copy buffer to image

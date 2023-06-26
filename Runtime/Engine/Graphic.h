@@ -165,7 +165,7 @@ public:
 	bool CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::filesystem::path OutputShaderPath);
 	UHShader* RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> InMacro = std::vector<std::string>());
-	UHShader* RequestMaterialPixelShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+	UHShader* RequestMaterialShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, UHMaterialCompileData InData, std::vector<std::string> InMacro = std::vector<std::string>());
 	void RequestReleaseShader(UHShader* InShader);
 

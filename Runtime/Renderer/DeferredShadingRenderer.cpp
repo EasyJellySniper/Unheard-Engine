@@ -160,6 +160,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	// upload object constants, only upload if transform is changed
 	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
 	const std::vector<UHSampler*>& Samplers = GraphicInterface->GetSamplers();
+	const int32_t DefaultSamplerIndex = UHUtilities::FindIndex(Samplers, AnisoClampedSampler);
 
 	for (UHMeshRendererComponent* Renderer : Renderers)
 	{
@@ -179,38 +180,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		UHMaterial* Mat = Renderer->GetMaterial();
 		if (Mat->IsRenderDirty(CurrentFrame))
 		{
-			// transfer material CB
-			UHMaterialConstants MatCB{};
-			UHMaterialProperty MatProps = Mat->GetMaterialProps();
-
-			MatCB.DiffuseColor = XMFLOAT4(MatProps.Diffuse.x, MatProps.Diffuse.y, MatProps.Diffuse.z, MatProps.Opacity);
-			MatCB.EmissiveColor = XMFLOAT3(MatProps.Emissive.x, MatProps.Emissive.y, MatProps.Emissive.z) * MatProps.EmissiveIntensity;
-			MatCB.AmbientOcclusion = MatProps.Occlusion;
-			MatCB.Metallic = MatProps.Metallic;
-			MatCB.Roughness = MatProps.Roughness;
-			MatCB.SpecularColor = MatProps.Specular;
-			MatCB.BumpScale = MatProps.BumpScale;
-			MatCB.Cutoff = MatProps.Cutoff;
-			MatCB.FresnelFactor = MatProps.FresnelFactor;
-			MatCB.ReflectionFactor = MatProps.ReflectionFactor;
-
-			if (UHTexture* EnvCube = Mat->GetTex(UHMaterialTextureType::SkyCube))
-			{
-				MatCB.EnvCubeMipMapCount = static_cast<float>(EnvCube->GetMipMapCount());
-			}
-
-			// set texture index
-			MatCB.OpacityTexIndex = Mat->GetTextureIndex(UHMaterialTextureType::Opacity);
-
-			// find sampler index in sampler pool
-			if (UHSampler* Sampler = Mat->GetSampler(UHMaterialTextureType::Opacity))
-			{
-				MatCB.OpacitySamplerIndex = UHUtilities::FindIndex(Samplers, Sampler);
-			}
-
-			// must copy to proper offset
-			MaterialConstantsGPU[CurrentFrame]->UploadData(&MatCB, Mat->GetBufferDataIndex());
-
+			Mat->UploadMaterialData(CurrentFrame, DefaultSamplerIndex);
 			Mat->SetRenderDirty(false, CurrentFrame);
 		}
 	}

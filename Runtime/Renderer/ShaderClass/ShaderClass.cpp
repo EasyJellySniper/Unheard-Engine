@@ -24,7 +24,6 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, ShaderPS(nullptr)
 	, RayGenShader(nullptr)
 	, ClosestHitShader(nullptr)
-	, AnyHitShader(nullptr)
 	, MissShader(nullptr)
 	, RTState(nullptr)
 	, RayGenTable(nullptr)
@@ -86,6 +85,11 @@ void UHShaderClass::Release()
 			vkDestroyPipelineLayout(LogicalDevice, GPipelineLayoutTable[TypeIndexCache], nullptr);
 			GPipelineLayoutTable.erase(TypeIndexCache);
 		}
+	}
+
+	if (RTState != nullptr)
+	{
+		Gfx->RequestReleaseGraphicState(RTState);
 	}
 
 	UH_SAFE_RELEASE(RayGenTable);
@@ -193,9 +197,9 @@ UHShader* UHShaderClass::GetClosestShader() const
 	return ClosestHitShader;
 }
 
-UHShader* UHShaderClass::GetAnyHitShader() const
+std::vector<UHShader*> UHShaderClass::GetAnyHitShaders() const
 {
-	return AnyHitShader;
+	return AnyHitShaders;
 }
 
 UHShader* UHShaderClass::GetMissShader() const
@@ -339,7 +343,7 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 	}
 }
 
-void UHShaderClass::CreateMaterialDescriptor()
+void UHShaderClass::CreateMaterialDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts)
 {
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 	uint32_t MaterialID = MaterialCache->GetId();
@@ -366,9 +370,13 @@ void UHShaderClass::CreateMaterialDescriptor()
 		// one layout per set
 		VkPipelineLayoutCreateInfo PipelineLayoutInfo{};
 		PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		PipelineLayoutInfo.setLayoutCount = 1;
+		PipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(1 + AdditionalLayouts.size());
 
 		std::vector<VkDescriptorSetLayout> Layouts = { GMaterialSetLayoutTable[MaterialID][TypeIndexCache] };
+		if (AdditionalLayouts.size() > 0)
+		{
+			Layouts.insert(Layouts.end(), AdditionalLayouts.begin(), AdditionalLayouts.end());
+		}
 		PipelineLayoutInfo.pSetLayouts = Layouts.data();
 
 		if (vkCreatePipelineLayout(LogicalDevice, &PipelineLayoutInfo, nullptr, &GMaterialPipelineLayoutTable[MaterialID][TypeIndexCache]) != VK_SUCCESS)
@@ -448,7 +456,7 @@ void UHShaderClass::InitRayGenTable()
 	}
 
 	RayGenTable = Gfx->RequestRenderBuffer<UHShaderRecord>();
-	RayGenTable->CreaetBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	RayGenTable->CreateBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	RayGenTable->UploadAllData(TempData.data());
 }
 
@@ -466,24 +474,30 @@ void UHShaderClass::InitMissTable()
 
 	// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group
 	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>();
-	MissTable->CreaetBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	MissTable->CreateBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	MissTable->UploadAllData(TempData.data());
 }
 
-void UHShaderClass::InitHitGroupTable()
+void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 {
 	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
 
 	// get data for HG as well
 	PFN_vkGetRayTracingShaderGroupHandlesKHR GetRTShaderGroupHandle = (PFN_vkGetRayTracingShaderGroupHandlesKHR)
 		vkGetInstanceProcAddr(Gfx->GetInstance(), "vkGetRayTracingShaderGroupHandlesKHR");
-	if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), 2, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to get hit group handle!\n");
-	}
 
-	// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group
+	// create HG buffer
 	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>();
-	HitGroupTable->CreaetBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-	HitGroupTable->UploadAllData(TempData.data());
+	HitGroupTable->CreateBuffer(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
+	for (size_t Idx = 0; Idx < NumMaterials; Idx++)
+	{
+		if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), 2, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+		{
+			UHE_LOG(L"Failed to get hit group handle!\n");
+		}
+
+		// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group
+		HitGroupTable->UploadData(TempData.data(), Idx);
+	}
 }

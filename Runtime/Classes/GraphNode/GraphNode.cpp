@@ -7,6 +7,7 @@ UHGraphNode::UHGraphNode(bool bInCanBeDeleted)
 	: Name("")
 #if WITH_DEBUG
 	, GUICache(nullptr)
+	, bIsCompilingRayTracing(false)
 #endif
 	, bCanBeDeleted(bInCanBeDeleted)
 	, NodeType(UHGraphNodeType::UnknownNode)
@@ -38,6 +39,11 @@ UHGraphNodeGUI* UHGraphNode::GetGUI() const
 	return GUICache;
 }
 #endif
+
+void UHGraphNode::SetIsCompilingRayTracing(bool bInFlag)
+{
+	bIsCompilingRayTracing = bInFlag;
+}
 
 std::string UHGraphNode::GetName() const
 {

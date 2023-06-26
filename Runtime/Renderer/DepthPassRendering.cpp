@@ -86,10 +86,14 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 				std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 			// bind pipelines
+			std::vector<VkDescriptorSet> DescriptorSets = { DepthShader.GetDescriptorSet(CurrentFrame)
+				, TextureTable.GetDescriptorSet(CurrentFrame)
+				, SamplerTable.GetDescriptorSet(CurrentFrame) };
+
 			GraphBuilder.BindGraphicState(DepthShader.GetState());
 			GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 			GraphBuilder.BindIndexBuffer(Mesh);
-			GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrame));
+			GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DescriptorSets);
 
 			// draw call
 			GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
@@ -143,10 +147,14 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 		// bind pipelines
+		std::vector<VkDescriptorSet> DescriptorSets = { DepthShader.GetDescriptorSet(CurrentFrame)
+			, TextureTable.GetDescriptorSet(CurrentFrame)
+			, SamplerTable.GetDescriptorSet(CurrentFrame) };
+
 		GraphBuilder.BindGraphicState(DepthShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DescriptorSets);
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
