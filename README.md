@@ -5,6 +5,13 @@
  If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
  Recommended to use the full project link, as there are a few test assets. <br>
 
+# 2023-06-26: Refactoring material data and passing data to hit group shader
+I figure out a way to pass material data to the hit group shader. <br>
+Now the ray tracing shadow reacts to my material graph system too. <br>
+<br><br> Implementation Details: <br>
+https://www.gamedev.net/blogs/entry/2276272-vulkan-bringing-material-data-to-ray-tracing-shader-and-differentiate-them/
+<br><br>
+
 # 2023-04-22: Adding material graph system. <br>
 Added simple graph system for materials. Feature preview: <br>
 https://www.youtube.com/watch?v=0Qi0WXeB2yw
