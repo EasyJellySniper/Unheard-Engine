@@ -137,7 +137,8 @@ private:
 	void RenderLightPass(UHGraphicBuilder& GraphBuilder);
 	void RenderSkyPass(UHGraphicBuilder& GraphBuilder);
 	void RenderMotionPass(UHGraphicBuilder& GraphBuilder);
-	void RenderEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName, int32_t ImgBinding);
+	void RenderEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName);
+	void DispatchEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHGraphicBuilder& GraphBuilder);
 	uint32_t RenderSceneToSwapChain(UHGraphicBuilder& GraphBuilder);
 
@@ -237,7 +238,6 @@ private:
 
 	// -------------------------------------------- Light Pass -------------------------------------------- //
 	UHLightPassShader LightPassShader;
-	UHRenderPassObject LightPassObj;
 
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
 	UHSkyPassShader SkyPassShader;

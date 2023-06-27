@@ -1299,6 +1299,30 @@ UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 	return StatePools.back().get();
 }
 
+UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
+{
+	UHComputeState Temp(InInfo);
+
+	// check cached state first
+	int32_t Idx = UHUtilities::FindIndex(StatePools, Temp);
+	if (Idx != -1)
+	{
+		return StatePools[Idx].get();
+	}
+
+	std::unique_ptr<UHComputeState> NewState = std::make_unique<UHComputeState>();
+	NewState->SetVulkanInstance(VulkanInstance);
+	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+
+	if (!NewState->CreateState(InInfo))
+	{
+		return nullptr;
+	}
+
+	StatePools.push_back(std::move(NewState));
+	return StatePools.back().get();
+}
+
 UHSampler* UHGraphic::RequestTextureSampler(UHSamplerInfo InInfo)
 {
 	UHSampler Temp(InInfo);

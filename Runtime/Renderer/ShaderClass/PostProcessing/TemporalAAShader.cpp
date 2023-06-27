@@ -1,31 +1,26 @@
 #include "TemporalAAShader.h"
 
-UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
+UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name)
 	: UHShaderClass(InGfx, Name, typeid(UHTemporalAAShader), nullptr)
 {
 	// a system buffer + one texture and one sampler for TAA
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
-
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+	
 	CreateDescriptor();
-	ShaderVS = InGfx->RequestShader("PostProcessVS", "Shaders/PostProcessing/PostProcessVS.hlsl", "PostProcessVS", "vs_6_0");
-	ShaderPS = InGfx->RequestShader("TemporalAAShader", "Shaders/PostProcessing/TemporalAAPixelShader.hlsl", "TemporalAAPS", "ps_6_0");
+	ShaderCS = InGfx->RequestShader("TemporalAACSShader", "Shaders/PostProcessing/TemporalAAComputeShader.hlsl", "TemporalAACS", "cs_6_0");
 
-	// states
-	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(false, false, VK_COMPARE_OP_ALWAYS)
-		, VK_CULL_MODE_NONE
-		, UHBlendMode::Opaque
-		, ShaderVS
-		, ShaderPS
-		, 1
-		, PipelineLayout);
+	// state
+	UHComputePassInfo CInfo = UHComputePassInfo(PipelineLayout);
+	CInfo.CS = ShaderCS;
 
-	CreateGraphicState(Info);
+	CreateComputeState(CInfo);
 }
 
 void UHTemporalAAShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
@@ -36,9 +31,15 @@ void UHTemporalAAShader::BindParameters(const std::array<std::unique_ptr<UHRende
 	, const UHSampler* LinearClampedSampler)
 {
 	BindConstant(SysConst, 0);
-	BindImage(PreviousSceneResult, 2);
-	BindImage(MotionVectorRT, 3);
-	BindImage(PrevMotionVectorRT, 4);
-	BindImage(SceneDepth, 5);
-	BindSampler(LinearClampedSampler, 6);
+
+	// Due to the post processing alternatively reuses temporary RT
+	// the scene result is bound in PostProcessing Rendering instead
+	// BindImage(OutputRT, 1);
+	// BindImage(SceneResult, 2);
+
+	BindImage(PreviousSceneResult, 3);
+	BindImage(MotionVectorRT, 4);
+	BindImage(PrevMotionVectorRT, 5);
+	BindImage(SceneDepth, 6);
+	BindSampler(LinearClampedSampler, 7);
 }

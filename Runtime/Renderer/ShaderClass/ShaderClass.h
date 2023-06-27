@@ -85,7 +85,7 @@ public:
 		}
 	}
 
-	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame = -1);
+	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame = -1, bool bIsReadWrite = false);
 	void BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding);
 	void BindRWImage(const UHTexture* InImage, int32_t DstBinding);
 	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
@@ -99,6 +99,7 @@ public:
 	UHShader* GetMissShader() const;
 	UHGraphicState* GetState() const;
 	UHGraphicState* GetRTState() const;
+	UHComputeState* GetComputeState() const;
 	UHRenderBuffer<UHShaderRecord>* GetRayGenTable() const;
 	UHRenderBuffer<UHShaderRecord>* GetHitGroupTable() const;
 	UHRenderBuffer<UHShaderRecord>* GetMissTable() const;
@@ -118,9 +119,10 @@ protected:
 	// create descriptor but for material
 	void CreateMaterialDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts = std::vector<VkDescriptorSetLayout>());
 
-	// create graphic state functions
+	// create state functions
 	void CreateGraphicState(UHRenderPassInfo InInfo);
 	void CreateMaterialState(UHRenderPassInfo InInfo);
+	void CreateComputeState(UHComputePassInfo InInfo);
 
 	// ray tracing functions
 	void InitRayGenTable();
@@ -139,6 +141,7 @@ protected:
 
 	UHShader* ShaderVS;
 	UHShader* ShaderPS;
+	UHShader* ShaderCS;
 	UHShader* RayGenShader;
 	UHShader* ClosestHitShader;
 	std::vector<UHShader*> AnyHitShaders;

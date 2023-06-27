@@ -13,23 +13,19 @@ void UHDeferredShadingRenderer::RenderLightPass(UHGraphicBuilder& GraphBuilder)
 	GPUTimeQueries[UHRenderPassTypes::LightPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
 #endif
 
-	GraphBuilder.BeginRenderPass(LightPassObj.RenderPass, LightPassObj.FrameBuffer, RenderResolution);
-
-	GraphBuilder.SetViewport(RenderResolution);
-	GraphBuilder.SetScissor(RenderResolution);
+	GraphBuilder.ResourceBarrier(SceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 	// bind state
-	UHGraphicState* State = LightPassShader.GetState();
-	GraphBuilder.BindGraphicState(State);
+	UHComputeState* State = LightPassShader.GetComputeState();
+	GraphBuilder.BindComputeState(State);
 
 	// bind sets
-	GraphBuilder.BindDescriptorSet(LightPassShader.GetPipelineLayout(), LightPassShader.GetDescriptorSet(CurrentFrame));
+	GraphBuilder.BindDescriptorSetCompute(LightPassShader.GetPipelineLayout(), LightPassShader.GetDescriptorSet(CurrentFrame));
 
-	// doesn't need IB for full screen quad
-	GraphBuilder.BindVertexBuffer(VK_NULL_HANDLE);
-	GraphBuilder.DrawFullScreenQuad();
+	// dispatch
+	GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
 
-	GraphBuilder.EndRenderPass();
+	GraphBuilder.ResourceBarrier(SceneResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 #if WITH_DEBUG
 	GPUTimeQueries[UHRenderPassTypes::LightPass]->EndTimeStamp(GraphBuilder.GetCmdList());

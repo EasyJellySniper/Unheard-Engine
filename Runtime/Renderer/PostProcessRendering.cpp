@@ -1,6 +1,6 @@
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName, int32_t ImgBinding)
+void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName)
 {
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Render " + InName);
 
@@ -14,12 +14,6 @@ void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHGraphicB
 	UHGraphicState* State = InShader->GetState();
 	GraphBuilder.BindGraphicState(State);
 
-	// update input image binding
-	if (ImgBinding >= 0)
-	{
-		InShader->BindImage(PostProcessResults[1 - PostProcessIdx], ImgBinding, CurrentFrame);
-	}
-
 	// bind sets
 	GraphBuilder.BindDescriptorSet(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrame));
 
@@ -28,6 +22,30 @@ void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHGraphicB
 
 	GraphBuilder.EndRenderPass();
 	GraphBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	PostProcessIdx = 1 - PostProcessIdx;
+}
+
+void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName)
+{
+	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Dispatch " + InName);
+
+	GraphBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+	// bind compute state
+	UHGraphicState* State = InShader->GetComputeState();
+	GraphBuilder.BindComputeState(State);
+
+	// bind sets
+	GraphBuilder.BindDescriptorSetCompute(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrame));
+
+	// dispatch compute
+	GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
+
+	GraphBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	GraphBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 	PostProcessIdx = 1 - PostProcessIdx;
@@ -48,7 +66,8 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 #if WITH_DEBUG
 	GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
 #endif
-	RenderEffect(&ToneMapShader, GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping", 0);
+	ToneMapShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrame);
+	RenderEffect(&ToneMapShader, GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 #if WITH_DEBUG
 	GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]->EndTimeStamp(GraphBuilder.GetCmdList());
 #endif
@@ -63,7 +82,9 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 		if (!bIsTemporalReset)
 		{
 			// only render it when it's not resetting
-			RenderEffect(&TemporalAAShader, GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA", 1);
+			TemporalAAShader.BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrame, true);
+			TemporalAAShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrame);
+			DispatchEffect(&TemporalAAShader, GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA");
 		}
 
 		// copy to TAA history
@@ -81,7 +102,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 #if WITH_DEBUG
 	if (DebugViewIndex > 0)
 	{
-		RenderEffect(&DebugViewShader, GraphBuilder, CurrentPostProcessRTIndex, "Debug View", -1);
+		RenderEffect(&DebugViewShader, GraphBuilder, CurrentPostProcessRTIndex, "Debug View");
 	}
 #endif
 

@@ -11,7 +11,7 @@ UHGraphicState::UHGraphicState()
 
 UHGraphicState::UHGraphicState(UHRenderPassInfo InInfo)
 	: RenderPassInfo(InInfo)
-	, GraphicsPipeline(VK_NULL_HANDLE)
+	, PassPipeline(VK_NULL_HANDLE)
 	, RTPipeline(VK_NULL_HANDLE)
 {
 
@@ -19,7 +19,15 @@ UHGraphicState::UHGraphicState(UHRenderPassInfo InInfo)
 
 UHGraphicState::UHGraphicState(UHRayTracingInfo InInfo)
 	: RayTracingInfo(InInfo)
-	, GraphicsPipeline(VK_NULL_HANDLE)
+	, PassPipeline(VK_NULL_HANDLE)
+	, RTPipeline(VK_NULL_HANDLE)
+{
+
+}
+
+UHGraphicState::UHGraphicState(UHComputePassInfo InInfo)
+	: ComputePassInfo(InInfo)
+	, PassPipeline(VK_NULL_HANDLE)
 	, RTPipeline(VK_NULL_HANDLE)
 {
 
@@ -27,7 +35,7 @@ UHGraphicState::UHGraphicState(UHRayTracingInfo InInfo)
 
 void UHGraphicState::Release()
 {
-	vkDestroyPipeline(LogicalDevice, GraphicsPipeline, nullptr);
+	vkDestroyPipeline(LogicalDevice, PassPipeline, nullptr);
 	vkDestroyPipeline(LogicalDevice, RTPipeline, nullptr);
 }
 
@@ -208,7 +216,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 	PipelineInfo.basePipelineIndex = -1; // Optional
 
-	VkResult Result = vkCreateGraphicsPipelines(LogicalDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &GraphicsPipeline);
+	VkResult Result = vkCreateGraphicsPipelines(LogicalDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &PassPipeline);
 	if (Result != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create graphics pipeline!\n");
@@ -224,46 +232,46 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 
 	VkRayTracingPipelineCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-	CreateInfo.maxPipelineRayRecursionDepth = InInfo.MaxRecursionDepth;
-	CreateInfo.layout = InInfo.PipelineLayout;
+	CreateInfo.maxPipelineRayRecursionDepth = RayTracingInfo.MaxRecursionDepth;
+	CreateInfo.layout = RayTracingInfo.PipelineLayout;
 
 	// set RG shader
-	std::string RGEntryName = InInfo.RayGenShader->GetEntryName();
+	std::string RGEntryName = RayTracingInfo.RayGenShader->GetEntryName();
 	VkPipelineShaderStageCreateInfo RGStageInfo{};
 	RGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	RGStageInfo.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-	RGStageInfo.module = InInfo.RayGenShader->GetShader();
+	RGStageInfo.module = RayTracingInfo.RayGenShader->GetShader();
 	RGStageInfo.pName = RGEntryName.c_str();
 
 	// set miss shader
-	std::string MissEntryName = InInfo.MissShader->GetEntryName();
+	std::string MissEntryName = RayTracingInfo.MissShader->GetEntryName();
 	VkPipelineShaderStageCreateInfo MissStageInfo{};
 	MissStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	MissStageInfo.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
-	MissStageInfo.module = InInfo.MissShader->GetShader();
+	MissStageInfo.module = RayTracingInfo.MissShader->GetShader();
 	MissStageInfo.pName = MissEntryName.c_str();
 
 	// set closest hit shader
-	std::string CHGEntryName = InInfo.ClosestHitShader->GetEntryName();
+	std::string CHGEntryName = RayTracingInfo.ClosestHitShader->GetEntryName();
 	VkPipelineShaderStageCreateInfo CHGStageInfo{};
 	CHGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	CHGStageInfo.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-	CHGStageInfo.module = InInfo.ClosestHitShader->GetShader();
+	CHGStageInfo.module = RayTracingInfo.ClosestHitShader->GetShader();
 	CHGStageInfo.pName = CHGEntryName.c_str();
 
 	// set any hit shader
-	std::vector<VkPipelineShaderStageCreateInfo> AHGStageInfos(InInfo.AnyHitShaders.size());
-	std::vector<std::string> AHGEntryNames(InInfo.AnyHitShaders.size());
+	std::vector<VkPipelineShaderStageCreateInfo> AHGStageInfos(RayTracingInfo.AnyHitShaders.size());
+	std::vector<std::string> AHGEntryNames(RayTracingInfo.AnyHitShaders.size());
 
-	for (size_t Idx = 0; Idx < InInfo.AnyHitShaders.size(); Idx++)
+	for (size_t Idx = 0; Idx < RayTracingInfo.AnyHitShaders.size(); Idx++)
 	{
-		AHGEntryNames[Idx] = InInfo.AnyHitShaders[Idx]->GetEntryName();
+		AHGEntryNames[Idx] = RayTracingInfo.AnyHitShaders[Idx]->GetEntryName();
 		VkPipelineShaderStageCreateInfo AHGStageInfo{};
-		if (InInfo.AnyHitShaders[Idx] != nullptr)
+		if (RayTracingInfo.AnyHitShaders[Idx] != nullptr)
 		{
 			AHGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			AHGStageInfo.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-			AHGStageInfo.module = InInfo.AnyHitShaders[Idx]->GetShader();
+			AHGStageInfo.module = RayTracingInfo.AnyHitShaders[Idx]->GetShader();
 			AHGStageInfo.pName = AHGEntryNames[Idx].c_str();
 			AHGStageInfos[Idx] = AHGStageInfo;
 		}
@@ -292,8 +300,8 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	MissGroupInfo.generalShader = 1;
 
 	// setup all hit groups
-	std::vector<VkRayTracingShaderGroupCreateInfoKHR> HGGroupInfos(InInfo.AnyHitShaders.size());
-	for (size_t Idx = 0; Idx < InInfo.AnyHitShaders.size(); Idx++)
+	std::vector<VkRayTracingShaderGroupCreateInfoKHR> HGGroupInfos(RayTracingInfo.AnyHitShaders.size());
+	for (size_t Idx = 0; Idx < RayTracingInfo.AnyHitShaders.size(); Idx++)
 	{
 		VkRayTracingShaderGroupCreateInfoKHR HGGroupInfo{};
 		HGGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
@@ -313,8 +321,8 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	// set payload size
 	VkRayTracingPipelineInterfaceCreateInfoKHR PipelineInterfaceInfo{};
 	PipelineInterfaceInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_INTERFACE_CREATE_INFO_KHR;
-	PipelineInterfaceInfo.maxPipelineRayPayloadSize = InInfo.PayloadSize;
-	PipelineInterfaceInfo.maxPipelineRayHitAttributeSize = InInfo.AttributeSize;
+	PipelineInterfaceInfo.maxPipelineRayPayloadSize = RayTracingInfo.PayloadSize;
+	PipelineInterfaceInfo.maxPipelineRayHitAttributeSize = RayTracingInfo.AttributeSize;
 	CreateInfo.pLibraryInterface = &PipelineInterfaceInfo;
 
 	// create state for ray tracing pipeline
@@ -331,9 +339,41 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	return true;
 }
 
-VkPipeline UHGraphicState::GetGraphicPipeline() const
+bool UHGraphicState::CreateState(UHComputePassInfo InInfo)
 {
-	return GraphicsPipeline;
+	ComputePassInfo = InInfo;
+
+	VkPipelineShaderStageCreateInfo CSStageInfo{};
+	std::string CSEntryName = ComputePassInfo.CS->GetEntryName();
+	CSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	CSStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	CSStageInfo.module = ComputePassInfo.CS->GetShader();
+	CSStageInfo.pName = CSEntryName.c_str();
+
+	// similar to graphic pipeline creation but this is for compute pipeline
+	VkComputePipelineCreateInfo PipelineInfo{};
+	PipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	PipelineInfo.layout = ComputePassInfo.PipelineLayout;
+	PipelineInfo.stage = CSStageInfo;
+
+	// optional
+	PipelineInfo.flags = 0;
+	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	PipelineInfo.basePipelineIndex = -1;
+
+	VkResult Result = vkCreateComputePipelines(LogicalDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &PassPipeline);
+	if (Result != VK_SUCCESS)
+	{
+		UHE_LOG(L"Failed to create graphics pipeline!\n");
+		return false;
+	}
+
+	return true;
+}
+
+VkPipeline UHGraphicState::GetPassPipeline() const
+{
+	return PassPipeline;
 }
 
 VkPipeline UHGraphicState::GetRTPipeline() const
@@ -346,6 +386,7 @@ bool UHGraphicState::operator==(const UHGraphicState& InState)
 	// check if render pass info or ray tracing info is the same
 	bool bRenderPassEqual = RenderPassInfo == InState.RenderPassInfo;
 	bool bRayTracingEqual = RayTracingInfo == InState.RayTracingInfo;
+	bool bComputePassEqual = ComputePassInfo == InState.ComputePassInfo;
 
-	return bRenderPassEqual && bRayTracingEqual;
+	return bRenderPassEqual && bRayTracingEqual && bComputePassEqual;
 }

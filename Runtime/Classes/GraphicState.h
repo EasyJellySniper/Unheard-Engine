@@ -13,10 +13,11 @@ public:
 	UHGraphicState();
 	UHGraphicState(UHRenderPassInfo InInfo);
 	UHGraphicState(UHRayTracingInfo InInfo);
+	UHGraphicState(UHComputePassInfo InInfo);
 
 	void Release();
 
-	VkPipeline GetGraphicPipeline() const;
+	VkPipeline GetPassPipeline() const;
 	VkPipeline GetRTPipeline() const;
 
 	bool operator==(const UHGraphicState& InState);
@@ -24,13 +25,17 @@ public:
 private:
 	bool CreateState(UHRenderPassInfo InInfo);
 	bool CreateState(UHRayTracingInfo InInfo);
+	bool CreateState(UHComputePassInfo InInfo);
 
-	VkPipeline GraphicsPipeline;
+	VkPipeline PassPipeline;
 	VkPipeline RTPipeline;
 
 	// variable caches
 	UHRenderPassInfo RenderPassInfo;
 	UHRayTracingInfo RayTracingInfo;
+	UHComputePassInfo ComputePassInfo;
 
 	friend UHGraphic;
 };
+
+using UHComputeState = UHGraphicState;

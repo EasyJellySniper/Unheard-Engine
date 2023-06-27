@@ -372,6 +372,7 @@
     <ClCompile Include="Runtime\Classes\Texture2D.cpp" />
     <ClCompile Include="Runtime\Classes\Texture.cpp" />
     <ClCompile Include="Editor\Classes\ShaderImporter.cpp" />
+    <ClCompile Include="Runtime\Renderer\RenderingTypes.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\BasePassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\DepthPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightPassShader.cpp" />
@@ -428,11 +429,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\LightPixelShader.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Shaders\SkyboxPixelShader.hlsl">
       <FileType>Document</FileType>
     </None>
@@ -442,11 +438,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\PostProcessing\ToneMapPixelShader.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\PostProcessing\TemporalAAPixelShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -495,6 +486,16 @@
       <FileType>Document</FileType>
     </None>
     <None Include="Shaders\MotionVertexShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\TemporalAAComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\LightComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

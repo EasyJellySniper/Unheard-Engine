@@ -173,6 +173,7 @@ public:
 	UHGraphicState* RequestGraphicState(UHRenderPassInfo InInfo);
 	void RequestReleaseGraphicState(UHGraphicState* InState);
 	UHGraphicState* RequestRTState(UHRayTracingInfo InInfo);
+	UHComputeState* RequestComputeState(UHComputePassInfo InInfo);
 
 	// request a texture sampler
 	UHSampler* RequestTextureSampler(UHSamplerInfo InInfo);

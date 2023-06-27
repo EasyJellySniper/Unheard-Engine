@@ -13,6 +13,10 @@ const uint32_t GMaxFrameInFlight = 2;
 // gbuffer counts, not including scene result
 const uint32_t GNumOfGBuffers = 5;
 
+// thread group number
+const uint32_t GThreadGroup2D_X = 8;
+const uint32_t GThreadGroup2D_Y = 8;
+
 struct UHSystemConstants
 {
 	XMFLOAT4X4 UHViewProj;
@@ -89,19 +93,8 @@ struct UHDepthInfo
 	bool bEnableDepthWrite;
 	VkCompareOp DepthFunc;
 
-	UHDepthInfo()
-		: UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)
-	{
-
-	}
-
-	UHDepthInfo(bool bInEnableDepthTest, bool bInEnableDepthWrite, VkCompareOp InDepthFunc)
-		: bEnableDepthTest(bInEnableDepthTest)
-		, bEnableDepthWrite(bInEnableDepthWrite)
-		, DepthFunc(InDepthFunc)
-	{
-
-	}
+	UHDepthInfo();
+	UHDepthInfo(bool bInEnableDepthTest, bool bInEnableDepthWrite, VkCompareOp InDepthFunc);
 
 	friend bool operator==(const UHDepthInfo& InInfo, const UHDepthInfo& Info)
 	{
@@ -114,57 +107,13 @@ struct UHDepthInfo
 // render pass info for setup graphic states
 struct UHRenderPassInfo
 {
-	UHRenderPassInfo()
-		: UHRenderPassInfo(VK_NULL_HANDLE, UHDepthInfo(), VK_CULL_MODE_NONE, UHBlendMode::Opaque, nullptr, nullptr, 1, VK_NULL_HANDLE)
-	{
-
-	}
+	UHRenderPassInfo();
 
 	// value for cullmode and blend mode is from different objects, don't set them in constructor for flexible usage
 	UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDepthInfo, VkCullModeFlagBits InCullInfo, UHBlendMode InBlendMode
-		, UHShader* InVS, UHShader* InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout)
-		: CullMode(InCullInfo)
-		, BlendMode(InBlendMode)
-		, RenderPass(InRenderPass)
-		, DepthInfo(InDepthInfo)
-		, VS(InVS)
-		, PS(InPS)
-		, GS(nullptr)
-		, RTCount(InRTCount)
-		, PipelineLayout(InPipelineLayout)
-	{
+		, UHShader* InVS, UHShader* InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout);
 
-	}
-
-	bool operator==(const UHRenderPassInfo& InInfo)
-	{
-		bool bVSEqual = true;
-		if (InInfo.VS && VS)
-		{
-			bVSEqual = (*InInfo.VS == *VS);
-		}
-
-		bool bPSEqual = true;
-		if (InInfo.PS && PS)
-		{
-			bPSEqual = (*InInfo.PS == *PS);
-		}
-
-		bool bGSEqual = true;
-		if (InInfo.GS && GS)
-		{
-			bGSEqual = (*InInfo.GS == *GS);
-		}
-
-		return InInfo.CullMode == CullMode
-			&& InInfo.BlendMode == BlendMode
-			&& InInfo.RenderPass == RenderPass
-			&& bVSEqual
-			&& bPSEqual
-			&& bGSEqual
-			&& InInfo.RTCount == RTCount
-			&& InInfo.PipelineLayout == PipelineLayout;
-	}
+	bool operator==(const UHRenderPassInfo& InInfo);
 
 	VkCullModeFlagBits CullMode;
 	UHBlendMode BlendMode;
@@ -177,58 +126,24 @@ struct UHRenderPassInfo
 	VkPipelineLayout PipelineLayout;
 };
 
+// compute pass info for setup compute states
+struct UHComputePassInfo
+{
+	UHComputePassInfo();
+	UHComputePassInfo(VkPipelineLayout InPipelineLayout);
+
+	bool operator==(const UHComputePassInfo& InInfo);
+
+	UHShader* CS;
+	VkPipelineLayout PipelineLayout;
+};
+
 // ray tracing info class
 struct UHRayTracingInfo
 {
-	UHRayTracingInfo()
-		: PipelineLayout(VK_NULL_HANDLE)
-		, MaxRecursionDepth(1)
-		, RayGenShader(nullptr)
-		, ClosestHitShader(nullptr)
-		, MissShader(nullptr)
-		, PayloadSize(4)
-		, AttributeSize(8)
-	{
+	UHRayTracingInfo();
 
-	}
-
-	bool operator==(const UHRayTracingInfo& InInfo)
-	{
-		if (InInfo.RayGenShader != RayGenShader)
-		{
-			return false;
-		}
-
-		if (InInfo.ClosestHitShader != ClosestHitShader)
-		{
-			return false;
-		}
-
-		if (InInfo.AnyHitShaders.size() != AnyHitShaders.size())
-		{
-			return false;
-		}
-		else
-		{
-			for (size_t Idx = 0; Idx < AnyHitShaders.size(); Idx++)
-			{
-				if (AnyHitShaders[Idx] != InInfo.AnyHitShaders[Idx])
-				{
-					return false;
-				}
-			}
-		}
-
-		if (InInfo.MissShader != MissShader)
-		{
-			return false;
-		}
-
-		return InInfo.PipelineLayout == PipelineLayout
-			&& InInfo.MaxRecursionDepth == MaxRecursionDepth
-			&& InInfo.PayloadSize == PayloadSize
-			&& InInfo.AttributeSize == AttributeSize;
-	}
+	bool operator==(const UHRayTracingInfo& InInfo);
 
 	VkPipelineLayout PipelineLayout;
 	uint32_t MaxRecursionDepth;
@@ -243,24 +158,10 @@ struct UHRayTracingInfo
 // structure for managing render pass
 struct UHRenderPassObject
 {
-	UHRenderPassObject()
-		: FrameBuffer(VK_NULL_HANDLE)
-		, RenderPass(VK_NULL_HANDLE)
-	{
-
-	}
-
-	void Release(VkDevice LogicalDevice)
-	{
-		vkDestroyFramebuffer(LogicalDevice, FrameBuffer, nullptr);
-		vkDestroyRenderPass(LogicalDevice, RenderPass, nullptr);
-	}
-
-	void ReleaseFrameBuffer(VkDevice LogicalDevice)
-	{
-		// release frame buffer only, used for resizing
-		vkDestroyFramebuffer(LogicalDevice, FrameBuffer, nullptr);
-	}
+	UHRenderPassObject();
+	void Release(VkDevice LogicalDevice);
+	void ReleaseRenderPass(VkDevice LogicalDevice);
+	void ReleaseFrameBuffer(VkDevice LogicalDevice);
 
 	VkFramebuffer FrameBuffer;
 	VkRenderPass RenderPass;
@@ -271,81 +172,23 @@ struct UHRenderPassObject
 class UHRenderState
 {
 public:
-	UHRenderState()
-		: BufferDataIndex(0)
-	{
-		// always dirty at the beginning
-		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-		{
-			bIsRenderDirties[Idx] = true;
-			bIsRayTracingDirties[Idx] = false;
-			bIsMotionDirties[Idx] = false;
-		}
-	}
+	UHRenderState();
 
-	void SetRenderDirties(bool bIsDirty)
-	{
-		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-		{
-			bIsRenderDirties[Idx] = bIsDirty;
-		}
-	}
+	void SetRenderDirties(bool bIsDirty);
+	void SetRenderDirty(bool bIsDirty, int32_t FrameIdx);
 
-	void SetRenderDirty(bool bIsDirty, int32_t FrameIdx)
-	{
-		bIsRenderDirties[FrameIdx] = bIsDirty;
-	}
+	void SetRayTracingDirties(bool bIsDirty);
+	void SetRayTracingDirty(bool bIsDirty, int32_t FrameIdx);
 
-	void SetRayTracingDirties(bool bIsDirty)
-	{
-		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-		{
-			bIsRayTracingDirties[Idx] = bIsDirty;
-		}
-	}
+	void SetMotionDirties(bool bIsDirty);
+	void SetMotionDirty(bool bIsDirty, int32_t FrameIdx);
 
-	void SetRayTracingDirty(bool bIsDirty, int32_t FrameIdx)
-	{
-		bIsRayTracingDirties[FrameIdx] = bIsDirty;
-	}
+	bool IsRenderDirty(int32_t FrameIdx);
+	bool IsRayTracingDirty(int32_t FrameIdx);
+	bool IsMotionDirty(int32_t FrameIdx);
 
-	void SetMotionDirties(bool bIsDirty)
-	{
-		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-		{
-			bIsMotionDirties[Idx] = bIsDirty;
-		}
-	}
-
-	void SetMotionDirty(bool bIsDirty, int32_t FrameIdx)
-	{
-		bIsMotionDirties[FrameIdx] = bIsDirty;
-	}
-
-	bool IsRenderDirty(int32_t FrameIdx)
-	{
-		return bIsRenderDirties[FrameIdx];
-	}
-
-	bool IsRayTracingDirty(int32_t FrameIdx)
-	{
-		return bIsRayTracingDirties[FrameIdx];
-	}
-
-	bool IsMotionDirty(int32_t FrameIdx)
-	{
-		return bIsMotionDirties[FrameIdx];
-	}
-
-	void SetBufferDataIndex(int32_t InIndex)
-	{
-		BufferDataIndex = InIndex;
-	}
-
-	int32_t GetBufferDataIndex() const
-	{
-		return BufferDataIndex;
-	}
+	void SetBufferDataIndex(int32_t InIndex);
+	int32_t GetBufferDataIndex() const;
 
 private:
 	std::array<bool, GMaxFrameInFlight> bIsRenderDirties;

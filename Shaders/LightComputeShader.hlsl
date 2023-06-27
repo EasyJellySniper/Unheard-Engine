@@ -4,8 +4,9 @@
 #include "UHCommon.hlsli"
 #include "RayTracing/UHRTCommon.hlsli"
 
-SamplerState LinearClampped : register(s3);
-Texture2D RTShadow : register(t4);
+RWTexture2D<float4> SceneResult : register(u3);
+SamplerState LinearClampped : register(s4);
+Texture2D RTShadow : register(t5);
 
 // hard code to 5x5 for now, for different preset, set different define from C++ side
 #define PCSS_INNERLOOP 2
@@ -15,9 +16,16 @@ Texture2D RTShadow : register(t4);
 #define PCSS_BLOCKERSCALE 0.01f
 #define PCSS_DISTANCESCALE 0.01f
 
+// group optimization
+groupshared float GDepthCache[UHTHREAD_GROUP2D_X][UHTHREAD_GROUP2D_Y];
+
 // simple PCSS sampling
-float ShadowPCSS(Texture2D ShadowMap, Texture2D MipRateTex, float2 UV, float BaseDepth)
+float ShadowPCSS(Texture2D ShadowMap, Texture2D MipRateTex, float2 UV, uint2 GTid, float BaseDepth)
 {
+	// pre-sample the texture and cache it
+	GDepthCache[GTid.x][GTid.y] = BaseDepth;
+	GroupMemoryBarrierWithGroupSync();
+
 	float DepthDiff = 0;
 
 	// find max depth difference, fixed to 3x3
@@ -27,13 +35,12 @@ float ShadowPCSS(Texture2D ShadowMap, Texture2D MipRateTex, float2 UV, float Bas
 		UHUNROLL
 		for (int J = -1; J <= 1; J++)
 		{
-			float2 DepthPos = UV * UHResolution.xy + float2(I, J);
-			DepthPos = min(DepthPos, UHResolution.xy - 1);
-			float Depth = SceneBuffers[3][DepthPos].r;
+			float2 DepthPos = min(GTid.xy + float2(I, J), float2(UHTHREAD_GROUP2D_X - 1, UHTHREAD_GROUP2D_Y - 1));
+			float Depth = GDepthCache[DepthPos.x][DepthPos.y];
 			DepthDiff = max(abs(Depth - BaseDepth), DepthDiff);
 		}
 	}
-	
+
 	// after getting distance to blocker, scale it down (or not) as penumbra number
 	float DistToBlocker = RTShadow[UV * UHShadowResolution.xy].r;
 	float Penumbra = lerp(PCSS_MINPENUMBRA, PCSS_MAXPENUMBRA, saturate(DistToBlocker * PCSS_BLOCKERSCALE));
@@ -66,36 +73,39 @@ float ShadowPCSS(Texture2D ShadowMap, Texture2D MipRateTex, float2 UV, float Bas
 	return Atten;
 }
 
-float4 LightPS(PostProcessVertexOutput Vin) : SV_Target
+[numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
+void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
-	float Depth = SceneBuffers[3][Vin.Position.xy].r;
+	float Depth = SceneBuffers[3][DTid.xy].r;
 
 	// don't apply lighting to empty pixels or there is no light
 	UHBRANCH
 	if (Depth == 0.0f || UHNumDirLights == 0)
 	{
-		return 0;
+		return;
 	}
 
+	float2 UV = float2(DTid.xy + 0.5f) * UHResolution.zw;
+
 	// reconstruct world position
-	float3 WorldPos = ComputeWorldPositionFromDeviceZ(Vin.Position.xy, Depth);
+	float3 WorldPos = ComputeWorldPositionFromDeviceZ(DTid.xy, Depth);
 
 	// get diffuse color, a is occlusion
-	float4 Diffuse = SceneBuffers[0][Vin.Position.xy];
+	float4 Diffuse = SceneBuffers[0][DTid.xy];
 
 	// unpack normal from [0,1] to [-1,1]
-	float3 Normal = SceneBuffers[1][Vin.Position.xy].xyz;
+	float3 Normal = SceneBuffers[1][DTid.xy].xyz;
 	Normal = Normal * 2.0f - 1.0f;
 
 	// get specular color, a is roughness
-	float4 Specular = SceneBuffers[2][Vin.Position.xy];
+	float4 Specular = SceneBuffers[2][DTid.xy];
 
 	float3 Result = 0;
 
 	// sample shadows
 	float ShadowMask = 1.0f;
 #if WITH_RTSHADOWS
-	ShadowMask = ShadowPCSS(RTShadow, SceneBuffers[4], Vin.UV, Depth);
+	ShadowMask = ShadowPCSS(RTShadow, SceneBuffers[4], UV, GTid.xy, Depth);
 #endif
 
 	// dir lights accumulation
@@ -107,5 +117,5 @@ float4 LightPS(PostProcessVertexOutput Vin) : SV_Target
 	// indirect light accumulation
 	Result += LightIndirect(Diffuse.rgb, Normal, Diffuse.a);
 
-	return float4(Result, 0);
+	SceneResult[DTid.xy] = float4(Result, 0);
 }

@@ -226,8 +226,8 @@ void UHEngine::ResizeEngine()
 {
 	UHEGraphic->ResizeSwapChain();
 
-	// doesn't need to recreate rendering buffers if resolution is not changed
-	if (EngineResizeReason != UHEngineResizeReason::NewResolution)
+	// resize GBuffer if it touches resolution
+	if (EngineResizeReason == UHEngineResizeReason::NewResolution)
 	{
 		UHERenderer->Resize();
 	}

@@ -349,7 +349,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	}
 
 	// light pass shader
-	LightPassShader = UHLightPassShader(GraphicInterface, "LightPassShader", LightPassObj.RenderPass, RTInstanceCount);
+	LightPassShader = UHLightPassShader(GraphicInterface, "LightPassShader", RTInstanceCount);
 
 	// sky pass shader
 	SkyPassShader = UHSkyPassShader(GraphicInterface, "SkyPassShader", SkyboxPassObj.RenderPass);
@@ -372,7 +372,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	}
 
 	// post processing shaders
-	TemporalAAShader = UHTemporalAAShader(GraphicInterface, "TemporalAAShader", PostProcessPassObj[0].RenderPass);
+	TemporalAAShader = UHTemporalAAShader(GraphicInterface, "TemporalAAShader");
 	ToneMapShader = UHToneMappingShader(GraphicInterface, "ToneMapShader", PostProcessPassObj[0].RenderPass);
 
 	// RT shaders
@@ -522,7 +522,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	// ------------------------------------------------ Lighting pass descriptor update
 	const std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip };
-	LightPassShader.BindParameters(SystemConstantsGPU, DirectionalLightBuffer, GBuffers, LinearClampedSampler
+	LightPassShader.BindParameters(SystemConstantsGPU, DirectionalLightBuffer, GBuffers, SceneResult, LinearClampedSampler
 		, RTInstanceCount, RTShadowResult);
 
 	// ------------------------------------------------ sky pass descriptor update
@@ -732,7 +732,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	SceneMaterial = GraphicInterface->RequestRenderTexture("GBufferC", RenderResolution, SpecularFormat, true);
 
 	// scene result in HDR
-	SceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, true);
+	SceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, true, true);
 
 	// uv grad buffer
 	SceneMip = GraphicInterface->RequestRenderTexture("SceneMip", RenderResolution, SceneMipFormat, true);
@@ -741,7 +741,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	SceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat, true);
 
 	// post process buffer, use the same format as scene result
-	PostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
+	PostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true, true);
 	PreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, SceneResultFormat, true);
 
 	// motion vector buffer
@@ -774,7 +774,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// create frame buffer, some of them can be shared, especially when the output target is the same
 	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
-	LightPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(SceneResult->GetImageView(), LightPassObj.RenderPass, RenderResolution);
 
 	// sky pass need depth
 	Views = { SceneResult->GetImageView() , SceneDepth->GetImageView() };
@@ -828,17 +827,15 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 	BasePassObj.RenderPass = GraphicInterface->CreateRenderPass(Formats, UHTransitionInfo(bEnableDepthPrePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
 		, DepthFormat);
 
-	LightPassObj.RenderPass = GraphicInterface->CreateRenderPass(SceneResultFormat
-		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-
 	// sky need depth
 	SkyboxPassObj.RenderPass = GraphicInterface->CreateRenderPass(SceneResultFormat
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, DepthFormat);
 
 	// post processing render pass
-	PostProcessPassObj[0].RenderPass = LightPassObj.RenderPass;
-	PostProcessPassObj[1].RenderPass = LightPassObj.RenderPass;
+	PostProcessPassObj[0].RenderPass = GraphicInterface->CreateRenderPass(SceneResultFormat
+		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+	PostProcessPassObj[1].RenderPass = PostProcessPassObj[0].RenderPass;
 
 	// motion pass
 	MotionCameraPassObj.RenderPass = GraphicInterface->CreateRenderPass(MotionFormat, UHTransitionInfo());
@@ -859,10 +856,10 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
 		}
 
 		BasePassObj.Release(LogicalDevice);
-		LightPassObj.Release(LogicalDevice);
 		SkyboxPassObj.Release(LogicalDevice);
 		MotionCameraPassObj.Release(LogicalDevice);
 		MotionObjectPassObj.Release(LogicalDevice);
+		PostProcessPassObj[0].ReleaseRenderPass(LogicalDevice);
 
 		for (UHRenderPassObject& P : PostProcessPassObj)
 		{
@@ -877,7 +874,6 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
 		}
 
 		BasePassObj.ReleaseFrameBuffer(LogicalDevice);
-		LightPassObj.ReleaseFrameBuffer(LogicalDevice);
 		SkyboxPassObj.ReleaseFrameBuffer(LogicalDevice);
 		MotionCameraPassObj.ReleaseFrameBuffer(LogicalDevice);
 		MotionObjectPassObj.ReleaseFrameBuffer(LogicalDevice);

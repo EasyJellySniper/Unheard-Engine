@@ -512,6 +512,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\RenderingTypes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -529,7 +532,6 @@
   <ItemGroup>
     <None Include="Shaders\BasePixelShader.hlsl" />
     <None Include="Shaders\BaseVertexShader.hlsl" />
-    <None Include="Shaders\LightPixelShader.hlsl" />
     <None Include="Shaders\PostProcessing\PostProcessVS.hlsl" />
     <None Include="Shaders\UHInputs.hlsli" />
     <None Include="Shaders\UHCommon.hlsli" />
@@ -537,7 +539,6 @@
     <None Include="Shaders\SkyboxPixelShader.hlsl" />
     <None Include="Shaders\PostProcessing\ToneMapPixelShader.hlsl" />
     <None Include="packages.config" />
-    <None Include="Shaders\PostProcessing\TemporalAAPixelShader.hlsl" />
     <None Include="Shaders\MotionCameraShader.hlsl" />
     <None Include="Shaders\RayTracing\RayTracingShadow.hlsl" />
     <None Include="Shaders\RayTracing\UHRTCommon.hlsli" />
@@ -549,5 +550,7 @@
     <None Include="Shaders\DepthVertexShader.hlsl" />
     <None Include="Shaders\MotionPixelShader.hlsl" />
     <None Include="Shaders\MotionVertexShader.hlsl" />
+    <None Include="Shaders\PostProcessing\TemporalAAComputeShader.hlsl" />
+    <None Include="Shaders\LightComputeShader.hlsl" />
   </ItemGroup>
 </Project>

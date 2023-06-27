@@ -7,6 +7,7 @@ UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InComma
 	, PrevViewport(VkExtent2D())
 	, PrevScissor(VkExtent2D())
 	, PrevGraphicState(nullptr)
+	, PrevComputeState(nullptr)
 	, PrevVertexBuffer(VK_NULL_HANDLE)
 	, PrevIndexBufferSource(nullptr)
 #if WITH_DEBUG
@@ -208,13 +209,26 @@ void UHGraphicBuilder::BindGraphicState(UHGraphicState* InState)
 		return;
 	}
 
-	vkCmdBindPipeline(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InState->GetGraphicPipeline());
+	vkCmdBindPipeline(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InState->GetPassPipeline());
 	PrevGraphicState = InState;
 }
 
 void UHGraphicBuilder::BindRTState(const UHGraphicState* InState)
 {
 	vkCmdBindPipeline(CmdList, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, InState->GetRTPipeline());
+}
+
+void UHGraphicBuilder::BindComputeState(UHComputeState* InState)
+{
+	// prevent duplicate bind, should be okay with checking pointer only
+	// since each state is guaranteed to be unique during initialization
+	if (InState == PrevComputeState)
+	{
+		return;
+	}
+
+	vkCmdBindPipeline(CmdList, VK_PIPELINE_BIND_POINT_COMPUTE, InState->GetPassPipeline());
+	PrevComputeState = InState;
 }
 
 // set viewport
@@ -308,6 +322,11 @@ void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptor
 void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets)
 {
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InLayout, 0, static_cast<uint32_t>(InSets.size()), InSets.data(), 0, nullptr);
+}
+
+void UHGraphicBuilder::BindDescriptorSetCompute(VkPipelineLayout InLayout, VkDescriptorSet InSet)
+{
+	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_COMPUTE, InLayout, 0, 1, &InSet, 0, nullptr);
 }
 
 void UHGraphicBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets)
@@ -533,4 +552,9 @@ void UHGraphicBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToE
 void UHGraphicBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)
 {
 	vkCmdFillBuffer(CmdList, InBuffer, 0, VK_WHOLE_SIZE, InValue);
+}
+
+void UHGraphicBuilder::Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz)
+{
+	vkCmdDispatch(CmdList, Gx, Gy, Gz);
 }

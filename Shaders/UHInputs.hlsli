@@ -28,6 +28,9 @@
 #define UHFLATTEN [flatten]
 #define UHUNROLL [unroll]
 
+#define UHTHREAD_GROUP2D_X 8
+#define UHTHREAD_GROUP2D_Y 8
+
 struct VertexOutput
 {
 	float4 Position : SV_POSITION;

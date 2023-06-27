@@ -220,3 +220,15 @@ And remove the old material data.
 Finally I figured out a way to index. Almost ready for a new post. Need to refactor the RTOT and consider mip level calculation in hit group shader.
 
 26-06-2023: Added material change to RTOT as well. Added mip level calculation for sampling in RT hit group.
+
+27-06-2023: Fixed a minor bug about resizing, it should recreate GBuffers after resolution changed. Improved TAA by combining color clamping and motion rejection, I can also remove the depth texture sample in TAA.
+Started to add compute shader support, another meaningful change!
+
+TAA PS: 0.06ms @1080p
+TAA CS: 0.06ms @1080p
+TAA CS+Shared memory: 0.04ms @1080p (Improved!!)
+ToneMapping PS: 0.014ms @1080p
+ToneMapping CS: 0.020ms @1080p (Caused by constant buffer access)
+Light PS: 0.06ms @1440p
+Light CS: 0.056ms @1440p (slightly improved)
+Light CS+Shared memory: 0.049ms @1440p (Improved!!)

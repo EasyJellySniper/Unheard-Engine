@@ -6,6 +6,7 @@ static std::unordered_map<uint32_t, std::unordered_map<std::type_index, VkDescri
 static std::unordered_map<uint32_t, std::unordered_map<std::type_index, VkPipelineLayout>> GMaterialPipelineLayoutTable;
 std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
 std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> GMaterialStateTable;
+std::unordered_map<uint32_t, UHComputeState*> GComputeStateTable;
 
 UHShaderClass::UHShaderClass()
 	: UHShaderClass(nullptr, "", typeid(UHShaderClass), nullptr)
@@ -22,6 +23,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, DescriptorPool(VK_NULL_HANDLE)
 	, ShaderVS(nullptr)
 	, ShaderPS(nullptr)
+	, ShaderCS(nullptr)
 	, RayGenShader(nullptr)
 	, ClosestHitShader(nullptr)
 	, MissShader(nullptr)
@@ -102,7 +104,7 @@ void UHShaderClass::Release()
 	HitGroupTable.reset();
 }
 
-void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame)
+void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame, bool bIsReadWrite)
 {
 	if (CurrentFrame < 0)
 	{
@@ -111,7 +113,7 @@ void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int3
 			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
 			if (InImage)
 			{
-				Helper.WriteImage(InImage, DstBinding);
+				Helper.WriteImage(InImage, DstBinding, bIsReadWrite);
 			}
 		}
 	}
@@ -120,7 +122,7 @@ void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int3
 		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrame]);
 		if (InImage)
 		{
-			Helper.WriteImage(InImage, DstBinding);
+			Helper.WriteImage(InImage, DstBinding, bIsReadWrite);
 		}
 	}
 }
@@ -215,6 +217,11 @@ UHGraphicState* UHShaderClass::GetState() const
 UHGraphicState* UHShaderClass::GetRTState() const
 {
 	return RTState;
+}
+
+UHComputeState* UHShaderClass::GetComputeState() const
+{
+	return GComputeStateTable[GetId()];
 }
 
 UHRenderBuffer<UHShaderRecord>* UHShaderClass::GetRayGenTable() const
@@ -441,6 +448,15 @@ void UHShaderClass::CreateMaterialState(UHRenderPassInfo InInfo)
 		|| GMaterialStateTable[MaterialID].find(TypeIndexCache) == GMaterialStateTable[MaterialID].end())
 	{
 		GMaterialStateTable[MaterialID][TypeIndexCache] = Gfx->RequestGraphicState(InInfo);
+	}
+}
+
+void UHShaderClass::CreateComputeState(UHComputePassInfo InInfo)
+{
+	// prevent duplicate creating
+	if (GComputeStateTable.find(GetId()) == GComputeStateTable.end())
+	{
+		GComputeStateTable[GetId()] = Gfx->RequestComputeState(InInfo);
 	}
 }
 

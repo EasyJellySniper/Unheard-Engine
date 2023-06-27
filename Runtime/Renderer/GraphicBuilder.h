@@ -53,6 +53,7 @@ public:
 	// bind states
 	void BindGraphicState(UHGraphicState* InState);
 	void BindRTState(const UHGraphicState* InState);
+	void BindComputeState(UHComputeState* InState);
 
 	// set viewport
 	void SetViewport(VkExtent2D InExtent);
@@ -72,6 +73,7 @@ public:
 	// bind descriptors
 	void BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet);
 	void BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets);
+	void BindDescriptorSetCompute(VkPipelineLayout InLayout, VkDescriptorSet InSet);
 	void BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets);
 
 	// transition image
@@ -100,6 +102,9 @@ public:
 	// clear storage buffer (must be uint32_t)
 	void ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue);
 
+	// dispatch call
+	void Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz);
+
 #if WITH_DEBUG
 	int32_t DrawCalls;
 #endif
@@ -116,6 +121,7 @@ private:
 	VkExtent2D PrevViewport;
 	VkExtent2D PrevScissor;
 	UHGraphicState* PrevGraphicState;
+	UHComputeState* PrevComputeState;
 	VkBuffer PrevVertexBuffer;
 	UHMesh* PrevIndexBufferSource;
 };
