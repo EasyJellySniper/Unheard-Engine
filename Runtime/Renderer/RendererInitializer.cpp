@@ -559,7 +559,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	ToneMapShader.BindSampler(LinearClampedSampler, 1);
 
 	TemporalAAShader.BindParameters(SystemConstantsGPU, PreviousSceneResult, MotionVectorRT, PrevMotionVectorRT
-		, SceneDepth, LinearClampedSampler);
+		, LinearClampedSampler);
 
 	// ------------------------------------------------ ray tracing pass descriptor update
 	if (GraphicInterface->IsRayTracingEnabled() && TopLevelAS[0] && RTInstanceCount > 0)

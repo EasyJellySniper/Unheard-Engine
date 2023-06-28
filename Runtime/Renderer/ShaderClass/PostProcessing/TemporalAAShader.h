@@ -10,6 +10,5 @@ public:
 		, const UHRenderTexture* PreviousSceneResult
 		, const UHRenderTexture* MotionVectorRT
 		, const UHRenderTexture* PrevMotionVectorRT
-		, const UHRenderTexture* SceneDepth
 		, const UHSampler* LinearClampedSampler);
 };
