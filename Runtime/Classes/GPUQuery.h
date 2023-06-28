@@ -27,3 +27,16 @@ private:
 	VkQueryPool QueryPool;
 	float PreviousValidTimeStamp;
 };
+
+// timestamp query scope version, this simply kicks off timer in ctor and finishs in dtor
+// can be used with macro to maintain a clean code
+class UHGPUTimeQueryScope
+{
+public:
+	UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery);
+	~UHGPUTimeQueryScope();
+
+private:
+	UHGPUQuery* GPUTimeQuery;
+	VkCommandBuffer Cmd;
+};

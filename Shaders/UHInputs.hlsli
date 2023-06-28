@@ -88,6 +88,9 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
 
 	float3 UHCameraDir;
 	uint UHNumRTInstances;
+
+	float JitterScaleMin;	// minimum jitter scale
+	float JitterScaleFactor;	// jitter scale factorto multiply with
 }
 
 // IT means inverse-transposed

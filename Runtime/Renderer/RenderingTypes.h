@@ -36,6 +36,9 @@ struct UHSystemConstants
 
 	XMFLOAT3 UHCameraDir;
 	uint32_t UHNumRTInstances;
+
+	float JitterScaleMin;
+	float JitterScaleFactor;
 };
 
 struct UHObjectConstants

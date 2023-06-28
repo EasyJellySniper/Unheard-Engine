@@ -27,11 +27,6 @@ void BasePS(VertexOutput Vin
 	, out float4 OutEmissive : SV_Target3
 	, out float OutMipRate : SV_Target4)
 {
-	// unjitter the UV for improving blurry texture
-	float2 Dx = ddx_fine(Vin.UV0);
-	float2 Dy = ddy_fine(Vin.UV0);
-	Vin.UV0 = Vin.UV0 - (Dx * JitterOffsetX + Dy * JitterOffsetY);
-
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 
@@ -92,6 +87,8 @@ void BasePS(VertexOutput Vin
 	OutEmissive = float4(MaterialInput.Emissive.rgb + IndirectSpecular, 0);
 
 	// store the max change rate of UV for mip outside pixel shader
+	float2 Dx = ddx_fine(Vin.UV0);
+	float2 Dy = ddy_fine(Vin.UV0);
 	float DeltaMax = max(length(Dx), length(Dy));
 	OutMipRate = DeltaMax;
 }

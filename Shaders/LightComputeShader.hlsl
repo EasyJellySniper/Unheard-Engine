@@ -16,14 +16,14 @@ Texture2D RTShadow : register(t5);
 #define PCSS_BLOCKERSCALE 0.01f
 #define PCSS_DISTANCESCALE 0.01f
 
-// group optimization
-groupshared float GDepthCache[UHTHREAD_GROUP2D_X][UHTHREAD_GROUP2D_Y];
+// group optimization, use 1D array for the best perf
+groupshared float GDepthCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];
 
 // simple PCSS sampling
 float ShadowPCSS(Texture2D ShadowMap, Texture2D MipRateTex, float2 UV, uint2 GTid, float BaseDepth)
 {
 	// pre-sample the texture and cache it
-	GDepthCache[GTid.x][GTid.y] = BaseDepth;
+	GDepthCache[GTid.x + GTid.y * UHTHREAD_GROUP2D_X] = BaseDepth;
 	GroupMemoryBarrierWithGroupSync();
 
 	float DepthDiff = 0;
@@ -35,8 +35,10 @@ float ShadowPCSS(Texture2D ShadowMap, Texture2D MipRateTex, float2 UV, uint2 GTi
 		UHUNROLL
 		for (int J = -1; J <= 1; J++)
 		{
-			float2 DepthPos = min(GTid.xy + float2(I, J), float2(UHTHREAD_GROUP2D_X - 1, UHTHREAD_GROUP2D_Y - 1));
-			float Depth = GDepthCache[DepthPos.x][DepthPos.y];
+			int2 DepthPos = min(int2(GTid.xy) + int2(I, J), int2(UHTHREAD_GROUP2D_X - 1, UHTHREAD_GROUP2D_Y - 1));
+			DepthPos = max(DepthPos, 0);
+
+			float Depth = GDepthCache[DepthPos.x + DepthPos.y * UHTHREAD_GROUP2D_X];
 			DepthDiff = max(abs(Depth - BaseDepth), DepthDiff);
 		}
 	}

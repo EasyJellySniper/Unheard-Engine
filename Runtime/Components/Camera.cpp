@@ -19,6 +19,8 @@ UHCameraComponent::UHCameraComponent()
 	, Height(1)
 	, CameraFrustum(BoundingFrustum())
 	, CullingDistance(1000.0f)
+	, JitterScaleMin(0.01f)
+	, JitterEndDistance(50.0f)
 {
 
 }
@@ -136,9 +138,15 @@ XMFLOAT4X4 UHCameraComponent::GetInvViewProjMatrixNonJittered() const
 	return InvViewProjMatrix_NonJittered;
 }
 
-XMFLOAT2 UHCameraComponent::GetJitterOffset() const
+XMFLOAT4 UHCameraComponent::GetJitterOffset() const
 {
-	return JitterOffset;
+	XMFLOAT4 Offset;
+	Offset.x = JitterOffset.x;
+	Offset.y = JitterOffset.y;
+	Offset.z = JitterScaleMin;
+	Offset.w = 1.0f / JitterEndDistance;
+
+	return Offset;
 }
 
 BoundingFrustum UHCameraComponent::GetBoundingFrustum() const

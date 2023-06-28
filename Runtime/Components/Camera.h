@@ -24,7 +24,7 @@ public:
 	XMFLOAT4X4 GetPrevViewProjMatrixNonJittered() const;
 	XMFLOAT4X4 GetInvViewProjMatrix() const;
 	XMFLOAT4X4 GetInvViewProjMatrixNonJittered() const;
-	XMFLOAT2 GetJitterOffset() const;
+	XMFLOAT4 GetJitterOffset() const;
 	BoundingFrustum GetBoundingFrustum() const;
 	XMFLOAT3 GetScreenPos(XMFLOAT3 InWorld) const;
 	BoundingBox GetScreenBound(BoundingBox InWorldBound) const;
@@ -51,6 +51,8 @@ private:
 	int32_t Width;
 	int32_t Height;
 	XMFLOAT2 JitterOffset;
+	float JitterScaleMin;
+	float JitterEndDistance;
 
 	BoundingFrustum CameraFrustum;
 	float CullingDistance;

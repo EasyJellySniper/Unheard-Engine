@@ -232,3 +232,6 @@ ToneMapping CS: 0.020ms @1080p (Caused by constant buffer access)
 Light PS: 0.06ms @1440p
 Light CS: 0.056ms @1440p (slightly improved)
 Light CS+Shared memory: 0.049ms @1440p (Improved!!)
+
+28-06-2023: Did the experiments for per-vertex jitter offset. This improves distant object flickering, but can't completely erase them.
+Current version TAA uses motion rejection + color clamping + per-vertex jitter scaling. This change also refactored the gpu timestamp query, more clean code.

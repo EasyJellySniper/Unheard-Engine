@@ -56,6 +56,27 @@ float3x3 CreateTBN(float3 InWorldNormal, float4 InTangent)
 	return TBN;
 }
 
+float4x4 GetDistanceScaledJitterMatrix(float Dist)
+{
+	// calculate jitter offset based on the distance
+	// so the distant objects have lower jitter, use a square curve
+	float DistFactor = saturate(Dist * JitterScaleFactor);
+	DistFactor *= DistFactor;
+
+	float OffsetX = lerp(JitterOffsetX, JitterOffsetX * JitterScaleMin, DistFactor);
+	float OffsetY = lerp(JitterOffsetY, JitterOffsetY * JitterScaleMin, DistFactor);
+
+	float4x4 JitterMatrix = 
+	{
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		OffsetX,OffsetY,0,1
+	};
+
+	return JitterMatrix;
+}
+
 float3 SchlickFresnel(float3 SpecColor, float LdotH)
 {
 	float CosIncidentAngle = LdotH;

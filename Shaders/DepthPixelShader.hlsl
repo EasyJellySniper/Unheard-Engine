@@ -25,11 +25,6 @@ void DepthPS(DepthVertexOutput Vin)
 	// opaque object doesn't need a pixel shader
 
 #if WITH_ALPHATEST
-	// unjitter the UV for improving blurry texture
-	float2 Dx = ddx_fine(Vin.UV0);
-	float2 Dy = ddy_fine(Vin.UV0);
-	Vin.UV0 = Vin.UV0 - (Dx * JitterOffsetX + Dy * JitterOffsetY);
-
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 
 	clip(MaterialInput.Opacity - GCutoff);

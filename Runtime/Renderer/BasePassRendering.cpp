@@ -27,107 +27,101 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 	}
 
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Base Pass");
-
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::BasePass]->BeginTimeStamp(GraphBuilder.GetCmdList());
-#endif
-
-	// setup viewport and scissor
-	GraphBuilder.SetViewport(RenderResolution);
-	GraphBuilder.SetScissor(RenderResolution);
-
-	// begin render pass based on flag
-	if (bParallelSubmissionRT)
 	{
-		GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-	}
-	else
-	{
-		GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
-	}
+		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
 
-	if (bParallelSubmissionRT)
-	{
-#if WITH_DEBUG
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		// setup viewport and scissor
+		GraphBuilder.SetViewport(RenderResolution);
+		GraphBuilder.SetScissor(RenderResolution);
+
+		// begin render pass based on flag
+		if (bParallelSubmissionRT)
 		{
-			ThreadDrawCalls[I] = 0;
+			GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 		}
-#endif
-
-		// wake all worker threads
-		RenderTask = UHRenderTask::BasePassTask;
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		else
 		{
-			WorkerThreads[I]->WakeThread();
+			GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
 		}
 
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		if (bParallelSubmissionRT)
 		{
-			WorkerThreads[I]->WaitTask();
-		}
-
 #if WITH_DEBUG
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			GraphBuilder.DrawCalls += ThreadDrawCalls[I];
-		}
-#endif
-
-		// execute all recorded batches
-		GraphBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
-	}
-	else
-	{
-		// render all opaque renderers from scene
-		for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
-		{
-			const UHMaterial* Mat = Renderer->GetMaterial();
-			UHMesh* Mesh = Renderer->GetMesh();
-			int32_t RendererIdx = Renderer->GetBufferDataIndex();
-
-#if WITH_DEBUG
-			if (BasePassShaders.find(RendererIdx) == BasePassShaders.end())
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
-				// unlikely to happen, but printing a message for debug
-				UHE_LOG(L"[RenderBasePass] Can't find base pass shader for material: \n");
-				continue;
+				ThreadDrawCalls[I] = 0;
 			}
 #endif
 
-			const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
+			// wake all worker threads
+			RenderTask = UHRenderTask::BasePassTask;
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WakeThread();
+			}
 
-			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-				std::to_string(Mesh->GetIndicesCount() / 3) + ")");
-
-			// bind pipelines
-			std::vector<VkDescriptorSet> DescriptorSets = { BaseShader.GetDescriptorSet(CurrentFrame)
-				, TextureTable.GetDescriptorSet(CurrentFrame)
-				, SamplerTable.GetDescriptorSet(CurrentFrame)};
-
-			GraphBuilder.BindGraphicState(BaseShader.GetState());
-			GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-			GraphBuilder.BindIndexBuffer(Mesh);
-			GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), DescriptorSets);
-
-			// draw call
-			GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
-
-			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-		}
-	}
-
-	GraphBuilder.EndRenderPass();
-
-	// transition states of Gbuffer after base pass, they will be used in the shader
-	std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneMip };
-	GraphBuilder.ResourceBarrier(GBuffers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WaitTask();
+			}
 
 #if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::BasePass]->EndTimeStamp(GraphBuilder.GetCmdList());
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				GraphBuilder.DrawCalls += ThreadDrawCalls[I];
+			}
 #endif
 
+			// execute all recorded batches
+			GraphBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
+		}
+		else
+		{
+			// render all opaque renderers from scene
+			for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
+			{
+				const UHMaterial* Mat = Renderer->GetMaterial();
+				UHMesh* Mesh = Renderer->GetMesh();
+				int32_t RendererIdx = Renderer->GetBufferDataIndex();
+
+#if WITH_DEBUG
+				if (BasePassShaders.find(RendererIdx) == BasePassShaders.end())
+				{
+					// unlikely to happen, but printing a message for debug
+					UHE_LOG(L"[RenderBasePass] Can't find base pass shader for material: \n");
+					continue;
+				}
+#endif
+
+				const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
+
+				GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+
+				// bind pipelines
+				std::vector<VkDescriptorSet> DescriptorSets = { BaseShader.GetDescriptorSet(CurrentFrame)
+					, TextureTable.GetDescriptorSet(CurrentFrame)
+					, SamplerTable.GetDescriptorSet(CurrentFrame) };
+
+				GraphBuilder.BindGraphicState(BaseShader.GetState());
+				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+				GraphBuilder.BindIndexBuffer(Mesh);
+				GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), DescriptorSets);
+
+				// draw call
+				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+
+				GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+			}
+		}
+
+		GraphBuilder.EndRenderPass();
+
+		// transition states of Gbuffer after base pass, they will be used in the shader
+		std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneMip };
+		GraphBuilder.ResourceBarrier(GBuffers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 }
 

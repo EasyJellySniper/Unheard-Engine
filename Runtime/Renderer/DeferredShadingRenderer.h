@@ -276,9 +276,9 @@ private:
 	float RenderThreadTime;
 	int32_t DrawCalls;
 	std::vector<int32_t> ThreadDrawCalls;
-	std::array<UHGPUQuery*, UHRenderPassTypes::UHRenderPassMax> GPUTimeQueries;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GPUTimes;
 #endif
+	std::array<UHGPUQuery*, UHRenderPassTypes::UHRenderPassMax> GPUTimeQueries;
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
 	VkFormat RTShadowFormat;

@@ -12,9 +12,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 	// From Microsoft tips: Rebuild top-level acceleration structure every frame
 	// but I still choose to update AS instead of rebuilding, FPS is higher with updating
 
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::UpdateTopLevelAS]->BeginTimeStamp(GraphBuilder.GetCmdList());
-#endif
+	UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::UpdateTopLevelAS]);
 
 	TopLevelAS[CurrentFrame]->UpdateTopAS(GraphBuilder.GetCmdList(), CurrentFrame);
 
@@ -25,10 +23,6 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 	}
 
 	RTShadowShader.BindTLAS(TopLevelAS[CurrentFrame].get(), 1, CurrentFrame);
-
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::UpdateTopLevelAS]->EndTimeStamp(GraphBuilder.GetCmdList());
-#endif
 }
 
 void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& GraphBuilder)
@@ -38,9 +32,7 @@ void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& G
 		return;
 	}
 
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]->BeginTimeStamp(GraphBuilder.GetCmdList());
-#endif
+	UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]);
 
 	// reset occlusion buffer
 	GraphBuilder.ClearUAVBuffer(OcclusionVisibleBuffer->GetBuffer(), 0);
@@ -62,10 +54,6 @@ void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& G
 	RTOTExtent.width = RenderResolution.width / 2;
 	RTOTExtent.height = RenderResolution.height / 2;
 	GraphBuilder.TraceRay(RTOTExtent, RTOcclusionTestShader.GetRayGenTable(), RTOcclusionTestShader.GetMissTable(), RTOcclusionTestShader.GetHitGroupTable());
-
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]->EndTimeStamp(GraphBuilder.GetCmdList());
-#endif
 }
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder)
@@ -75,9 +63,7 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 		return;
 	}
 
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::RayTracingShadow]->BeginTimeStamp(GraphBuilder.GetCmdList());
-#endif
+	UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingShadow]);
 
 	// transition RW buffer to VK_IMAGE_LAYOUT_GENERAL
 	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
@@ -99,8 +85,4 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 
 	// transition to shader read after tracing
 	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::RayTracingShadow]->EndTimeStamp(GraphBuilder.GetCmdList());
-#endif
 }

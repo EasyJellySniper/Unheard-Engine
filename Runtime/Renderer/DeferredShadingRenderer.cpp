@@ -138,9 +138,11 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	if (ConfigInterface->RenderingSetting().bTemporalAA)
 	{
-		XMFLOAT2 Offset = CurrentCamera->GetJitterOffset();
+		XMFLOAT4 Offset = CurrentCamera->GetJitterOffset();
 		SystemConstantsCPU.JitterOffsetX = Offset.x;
 		SystemConstantsCPU.JitterOffsetY = Offset.y;
+		SystemConstantsCPU.JitterScaleMin = Offset.z;
+		SystemConstantsCPU.JitterScaleFactor = Offset.w;
 	}
 
 	// set sky light data

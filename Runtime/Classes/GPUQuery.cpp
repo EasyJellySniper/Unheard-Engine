@@ -99,3 +99,24 @@ float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 	return 0.0f;
 #endif
 }
+
+UHGPUTimeQueryScope::UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery)
+	: Cmd(InCmd), GPUTimeQuery(InQuery)
+{
+#if WITH_DEBUG
+	if (GPUTimeQuery)
+	{
+		GPUTimeQuery->BeginTimeStamp(Cmd);
+	}
+#endif
+}
+
+UHGPUTimeQueryScope::~UHGPUTimeQueryScope()
+{
+#if WITH_DEBUG
+	if (GPUTimeQuery)
+	{
+		GPUTimeQuery->EndTimeStamp(Cmd);
+	}
+#endif
+}

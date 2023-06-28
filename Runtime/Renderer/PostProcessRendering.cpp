@@ -63,41 +63,35 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 	int32_t CurrentPostProcessRTIndex = 0;
 
 	// -------------------------- Tone Mapping --------------------------//
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
-#endif
-	ToneMapShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrame);
-	RenderEffect(&ToneMapShader, GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]->EndTimeStamp(GraphBuilder.GetCmdList());
-#endif
+	{
+		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]);
+		ToneMapShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrame);
+		RenderEffect(&ToneMapShader, GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
+	}
 
 	// -------------------------- Temporal AA --------------------------//
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->BeginTimeStamp(GraphBuilder.GetCmdList());
-#endif
-	if (ConfigInterface->RenderingSetting().bTemporalAA)
 	{
-		GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		if (!bIsTemporalReset)
+		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]);
+		if (ConfigInterface->RenderingSetting().bTemporalAA)
 		{
-			// only render it when it's not resetting
-			TemporalAAShader.BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrame, true);
-			TemporalAAShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrame);
-			DispatchEffect(&TemporalAAShader, GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA");
+			GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			if (!bIsTemporalReset)
+			{
+				// only render it when it's not resetting
+				TemporalAAShader.BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrame, true);
+				TemporalAAShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrame);
+				DispatchEffect(&TemporalAAShader, GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA");
+			}
+
+			// copy to TAA history
+			GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			GraphBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], PreviousSceneResult);
+			GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+			bIsTemporalReset = false;
 		}
-
-		// copy to TAA history
-		GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		GraphBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], PreviousSceneResult);
-		GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-		bIsTemporalReset = false;
 	}
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]->EndTimeStamp(GraphBuilder.GetCmdList());
-#endif
 
 #if WITH_DEBUG
 	if (DebugViewIndex > 0)
@@ -116,30 +110,26 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 {
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Scene to SwapChain Pass");
 
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]->BeginTimeStamp(GraphBuilder.GetCmdList());
-#endif
-
 	uint32_t ImageIndex;
-	VkRenderPass SwapChainRenderPass = GraphicInterface->GetSwapChainRenderPass();
-	VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(SwapChainAvailableSemaphores[CurrentFrame], ImageIndex);
-	UHRenderTexture* SwapChainRT = GraphicInterface->GetSwapChainRT(ImageIndex);
-	VkExtent2D SwapChainExtent = GraphicInterface->GetSwapChainExtent();
+	{
+		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
 
-	// this will transition to TRANSDER_DST
-	GraphBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent);
-	GraphBuilder.EndRenderPass();
+		VkRenderPass SwapChainRenderPass = GraphicInterface->GetSwapChainRenderPass();
+		VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(SwapChainAvailableSemaphores[CurrentFrame], ImageIndex);
+		UHRenderTexture* SwapChainRT = GraphicInterface->GetSwapChainRT(ImageIndex);
+		VkExtent2D SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 
-	// transfer scene result and blit it, the scene result comes after post processing, it will be SceneResult or PostProcessRT
-	GraphBuilder.ResourceBarrier(PostProcessResults[PostProcessResultIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	GraphBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT);
+		// this will transition to TRANSDER_DST
+		GraphBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent);
+		GraphBuilder.EndRenderPass();
 
-	// end blit and transition swapchain to PRESENT_SRC_KHR
-	GraphBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		// transfer scene result and blit it, the scene result comes after post processing, it will be SceneResult or PostProcessRT
+		GraphBuilder.ResourceBarrier(PostProcessResults[PostProcessResultIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		GraphBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT);
 
-#if WITH_DEBUG
-	GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]->EndTimeStamp(GraphBuilder.GetCmdList());
-#endif
+		// end blit and transition swapchain to PRESENT_SRC_KHR
+		GraphBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	}
 
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 
