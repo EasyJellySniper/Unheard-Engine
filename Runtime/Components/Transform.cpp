@@ -179,6 +179,11 @@ XMFLOAT3 UHTransformComponent::GetPosition() const
 	return Position;
 }
 
+bool UHTransformComponent::IsWorldDirty() const
+{
+	return bIsWorldDirty;
+}
+
 bool UHTransformComponent::IsTransformChanged() const
 {
 	return bTransformChanged;

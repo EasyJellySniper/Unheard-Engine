@@ -56,14 +56,21 @@ void UHScene::Update()
 		SkyboxRenderer->Update();
 	}
 
+	// for objects won't update per-frame, conditionally call update, save ~0.2ms time for me
 	for (auto& Renderer : MeshRenderers)
 	{
-		Renderer->Update();
+		if (Renderer->IsWorldDirty())
+		{
+			Renderer->Update();
+		}
 	}
 
 	for (UHDirectionalLightComponent* Light : DirectionalLights)
 	{
-		Light->Update();
+		if (Light->IsWorldDirty())
+		{
+			Light->Update();
+		}
 	}
 }
 

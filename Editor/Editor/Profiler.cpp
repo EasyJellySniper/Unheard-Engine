@@ -1,8 +1,5 @@
 #include "Profiler.h"
 
-// debug only class
-#if WITH_DEBUG
-
 UHProfiler::UHProfiler()
 	: UHProfiler(nullptr)
 {
@@ -62,4 +59,17 @@ float UHProfiler::GetDiff()
 	return static_cast<float>((EndTime - BeginTime) * Timer->GetSecondsPerCount());
 }
 
+UHProfilerScope::UHProfilerScope(UHProfiler* InProfiler)
+	: Profiler(InProfiler)
+{
+#if WITH_DEBUG
+	Profiler->Begin();
 #endif
+}
+
+UHProfilerScope::~UHProfilerScope()
+{
+#if WITH_DEBUG
+	Profiler->End();
+#endif
+}

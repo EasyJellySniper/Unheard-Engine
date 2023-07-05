@@ -33,12 +33,14 @@
 
 #if WITH_DEBUG
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
-#include "../../Editor/Editor/Profiler.h"
 #endif
+#include "../../Editor/Editor/Profiler.h"
 
-enum UHRenderTask
+enum UHParallelTask
 {
 	None = -1,
+	FrustumCullingTask,
+	SortingOpaqueTask,
 	DepthPassTask,
 	BasePassTask
 };
@@ -143,7 +145,10 @@ private:
 	uint32_t RenderSceneToSwapChain(UHGraphicBuilder& GraphBuilder);
 
 
-	/************************************************ rendering task functions ************************************************/
+	/************************************************ parallel task functions ************************************************/
+	// based on the scatter and gather method
+	void FrustumCullingTask(int32_t ThreadIdx);
+	void SortingOpaqueTask(int32_t ThreadIdx);
 	void DepthPassTask(int32_t ThreadIdx);
 	void BasePassTask(int32_t ThreadIdx);
 
@@ -181,7 +186,7 @@ private:
 	int32_t NumWorkerThreads;
 	std::vector<std::unique_ptr<UHThread>> WorkerThreads;
 	bool bIsResetNeededShared;
-	UHRenderTask RenderTask;
+	UHParallelTask ParallelTask;
 	bool bParallelSubmissionGT;
 	bool bParallelSubmissionRT;
 
@@ -193,15 +198,18 @@ private:
 	std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight> SystemConstantsGPU;
 
 	// object & material constants, I'll create constant buffer which are big enough for all renderers
+	std::vector<UHObjectConstants> ObjectConstantsCPU;
 	std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight> ObjectConstantsGPU;
 
 	// light buffers, this will be used as structure buffer instead of constant
+	std::vector<UHDirectionalLightConstants> DirLightConstantsCPU;
 	std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight> DirectionalLightBuffer;
 
 	// shared samplers
 	UHSampler* PointClampedSampler;
 	UHSampler* LinearClampedSampler;
 	UHSampler* AnisoClampedSampler;
+	int32_t DefaultSamplerIndex;
 
 	// bindless table
 	UHTextureTable TextureTable;

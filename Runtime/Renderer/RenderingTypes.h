@@ -47,6 +47,7 @@ struct UHObjectConstants
 	XMFLOAT4X4 UHWorldIT;
 	XMFLOAT4X4 UHPrevWorld;
 	uint32_t InstanceIndex;
+	float Padding[15];
 };
 
 struct UHMaterialConstants

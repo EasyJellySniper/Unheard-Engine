@@ -41,6 +41,7 @@ public:
 	XMFLOAT3 GetPosition() const;
 
 	// is transform changed
+	bool IsWorldDirty() const;
 	bool IsTransformChanged() const;
 
 protected:

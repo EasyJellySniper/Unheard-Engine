@@ -235,3 +235,9 @@ Light CS+Shared memory: 0.049ms @1440p (Improved!!)
 
 28-06-2023: Did the experiments for per-vertex jitter offset. This improves distant object flickering, but can't completely erase them.
 Current version TAA uses motion rejection + color clamping + per-vertex jitter scaling. This change also refactored the gpu timestamp query, more clean code.
+
+02-07-2023: Minor changes, added a scoped version of UHProfiler.
+
+04-07-2023: Kicked off a few CPU optimization. Modified the way to upload GPU buffer, now it uploads the whole buffer once instead individually.
+
+05-07-2023: Making culling/sorting parallel as well. Fixed a stupid bug about thread affinity...now the performance is back to 900 FPS.

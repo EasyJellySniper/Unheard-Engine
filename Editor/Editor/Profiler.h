@@ -1,8 +1,6 @@
 #pragma once
 #include "../UnheardEngine.h"
 #include "../Runtime/Engine/GameTimer.h"
-
-#if WITH_DEBUG
 #include <unordered_map>
 #include "../Runtime/Renderer/RenderingTypes.h"
 
@@ -45,7 +43,7 @@ public:
 	int32_t MateralCount;
 };
 
-// Debug only Profiler class
+// Profiler class
 class UHProfiler
 {
 public:
@@ -70,5 +68,14 @@ private:
 	int64_t EndTime;
 };
 
-#endif
+// profiler scope, kick off a profiler in ctor and finish in dtor
+class UHProfilerScope
+{
+public:
+	UHProfilerScope(UHProfiler* InProfiler);
+	~UHProfilerScope();
+
+private:
+	UHProfiler* Profiler;
+};
 

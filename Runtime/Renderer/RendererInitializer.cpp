@@ -24,6 +24,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, PointClampedSampler(nullptr)
 	, LinearClampedSampler(nullptr)
 	, AnisoClampedSampler(nullptr)
+	, DefaultSamplerIndex(-1)
 	, bEnableDepthPrePass(false)
 	, PostProcessRT(nullptr)
 	, PreviousSceneResult(nullptr)
@@ -38,7 +39,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, RenderThread(nullptr)
 	, bParallelSubmissionGT(false)
 	, bParallelSubmissionRT(false)
-	, RenderTask(UHRenderTask::None)
+	, ParallelTask(UHParallelTask::None)
 #if WITH_DEBUG
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
@@ -107,6 +108,7 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 
 	LinearClampedInfo.MaxAnisotropy = 16;
 	AnisoClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
+	DefaultSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), AnisoClampedSampler);
 
 	bool bIsRendererSuccess = CreateMainCommandPoolAndBuffer() && CreateFences();
 	if (bIsRendererSuccess)
@@ -141,7 +143,7 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		for (int32_t Idx = 0; Idx < NumWorkerThreads; Idx++)
 		{
 			WorkerThreads[Idx] = std::make_unique<UHThread>();
-			WorkerThreads[Idx]->BeginThread(std::thread(&UHDeferredShadingRenderer::WorkerThreadLoop, this, Idx), GWorkerThreadAffinity + 1);
+			WorkerThreads[Idx]->BeginThread(std::thread(&UHDeferredShadingRenderer::WorkerThreadLoop, this, Idx), GWorkerThreadAffinity + Idx);
 		}
 	}
 
@@ -901,9 +903,11 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 
 		ObjectConstantsGPU[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>();
 		ObjectConstantsGPU[Idx]->CreateBuffer(CurrentScene->GetAllRendererCount(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		ObjectConstantsCPU.resize(CurrentScene->GetAllRendererCount());
 
 		DirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>();
 		DirectionalLightBuffer[Idx]->CreateBuffer(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		DirLightConstantsCPU.resize(CurrentScene->GetDirLightCount());
 	}
 }
 

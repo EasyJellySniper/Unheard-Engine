@@ -54,7 +54,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 #endif
 
 			// wake all worker threads
-			RenderTask = UHRenderTask::BasePassTask;
+			ParallelTask = UHParallelTask::BasePassTask;
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				WorkerThreads[I]->WakeThread();

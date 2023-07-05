@@ -159,26 +159,20 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	SystemConstantsGPU[CurrentFrame]->UploadAllData(&SystemConstantsCPU);
 
-	// upload object constants, only upload if transform is changed
+	// update object constants, only update if transform is changed
 	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-	const std::vector<UHSampler*>& Samplers = GraphicInterface->GetSamplers();
-	const int32_t DefaultSamplerIndex = UHUtilities::FindIndex(Samplers, AnisoClampedSampler);
-
-	for (UHMeshRendererComponent* Renderer : Renderers)
+	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
 	{
-		// only copy when frame is dirty, clear dirty after copying
+		// update CPU constants when the frame is dirty
 		// the dirty flag is marked in UHMeshRendererComponent::Update()
+		UHMeshRendererComponent* Renderer = Renderers[Idx];
 		if (Renderer->IsRenderDirty(CurrentFrame))
 		{
-			UHObjectConstants ObjCB = Renderer->GetConstants();
-
-			// must copy to proper offset
-			ObjectConstantsGPU[CurrentFrame]->UploadData(&ObjCB, Renderer->GetBufferDataIndex());
-
+			ObjectConstantsCPU[Idx] = Renderer->GetConstants();
 			Renderer->SetRenderDirty(false, CurrentFrame);
 		}
 
-		// copy material data
+		// copy material data only when it's dirty
 		UHMaterial* Mat = Renderer->GetMaterial();
 		if (Mat->IsRenderDirty(CurrentFrame))
 		{
@@ -186,18 +180,20 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			Mat->SetRenderDirty(false, CurrentFrame);
 		}
 	}
+	ObjectConstantsGPU[CurrentFrame]->UploadAllData(ObjectConstantsCPU.data());
 
-	// upload light data
+	// update light data
 	const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirLights();
-	for (UHDirectionalLightComponent* Light : DirLights)
+	for (size_t Idx = 0; Idx < DirLights.size(); Idx++)
 	{
+		UHDirectionalLightComponent* Light = DirLights[Idx];
 		if (Light->IsRenderDirty(CurrentFrame))
 		{
-			UHDirectionalLightConstants DirLightC = Light->GetConstants();
-			DirectionalLightBuffer[CurrentFrame]->UploadData(&DirLightC, Light->GetBufferDataIndex());
+			DirLightConstantsCPU[Idx] = Light->GetConstants();
 			Light->SetRenderDirty(false, CurrentFrame);
 		}
 	}
+	DirectionalLightBuffer[CurrentFrame]->UploadAllData(DirLightConstantsCPU.data());
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
@@ -210,12 +206,33 @@ void UHDeferredShadingRenderer::FrustumCulling()
 		return;
 	}
 
+	// wake frustum culling task
+	ParallelTask = UHParallelTask::FrustumCullingTask;
+	for (int32_t I = 0; I < NumWorkerThreads; I++)
+	{
+		WorkerThreads[I]->WakeThread();
+	}
+
+	for (int32_t I = 0; I < NumWorkerThreads; I++)
+	{
+		WorkerThreads[I]->WaitTask();
+	}
+}
+
+void UHDeferredShadingRenderer::FrustumCullingTask(int32_t ThreadIdx)
+{
+	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	const BoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
 	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
 
-	for (UHMeshRendererComponent* Renderer : Renderers)
+	int32_t RendererCount = static_cast<int32_t>(Renderers.size()) / NumWorkerThreads;
+	int32_t StartIdx = RendererCount * ThreadIdx;
+	int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? static_cast<int32_t>(Renderers.size()) : StartIdx + RendererCount;
+
+	for (int32_t Idx = StartIdx; Idx < EndIdx; Idx++)
 	{
 		// skip skybox renderer
+		UHMeshRendererComponent* Renderer = Renderers[Idx];
 		if (Renderer->GetMaterial()->IsSkybox())
 		{
 			continue;
@@ -252,17 +269,20 @@ void UHDeferredShadingRenderer::SortRenderer()
 		return;
 	}
 
+	// wake sorting opaque task
+	ParallelTask = UHParallelTask::SortingOpaqueTask;
+	for (int32_t I = 0; I < NumWorkerThreads; I++)
+	{
+		WorkerThreads[I]->WakeThread();
+	}
+
+	for (int32_t I = 0; I < NumWorkerThreads; I++)
+	{
+		WorkerThreads[I]->WaitTask();
+	}
+
+	// sort back-to-front for translucents, this can't be parallel
 	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
-
-	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
-		{
-			// sort front-to-back for opaque, rough z sort
-			XMFLOAT3 ZA = A->GetRendererBound().Center;
-			XMFLOAT3 ZB = B->GetRendererBound().Center;
-
-			return MathHelpers::VectorDistanceSqr(ZA , CameraPos) < MathHelpers::VectorDistanceSqr(ZB, CameraPos);
-		});
-
 	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
 			XMFLOAT3 ZA = A->GetRendererBound().Center;
@@ -270,6 +290,29 @@ void UHDeferredShadingRenderer::SortRenderer()
 
 			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) > MathHelpers::VectorDistanceSqr(ZB, CameraPos);
 		});
+}
+
+void UHDeferredShadingRenderer::SortingOpaqueTask(int32_t ThreadIdx)
+{
+	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
+	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
+
+	// sort opaques first
+	int32_t RendererCount = static_cast<int32_t>(OpaquesToRender.size()) / NumWorkerThreads;
+	int32_t StartIdx = RendererCount * ThreadIdx;
+	int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? static_cast<int32_t>(OpaquesToRender.size()) : StartIdx + RendererCount;
+
+	std::sort(OpaquesToRender.begin() + StartIdx, OpaquesToRender.begin() + EndIdx, [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+		{
+			// sort front-to-back for opaque, rough z sort
+			XMFLOAT3 ZA = A->GetRendererBound().Center;
+			XMFLOAT3 ZB = B->GetRendererBound().Center;
+
+			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) < MathHelpers::VectorDistanceSqr(ZB, CameraPos);
+		});
+
+	// so this task simply divides opaque list to a few group and sort them
+	// this is a tradeoff, I lose the perfect sorting but gaining perf
 }
 
 void UHDeferredShadingRenderer::RenderThreadLoop()
@@ -282,11 +325,9 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	// Present the swap chain image
 	UHE_LOG(L"Render thread created.\n");
 
-#if WITH_DEBUG
 	// hold a timer
 	UHGameTimer RTTimer;
 	UHProfiler RenderThreadProfile(&RTTimer);
-#endif
 
 	while (true)
 	{
@@ -298,58 +339,57 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			break;
 		}
 
-	#if WITH_DEBUG
-		RenderThreadProfile.Begin();
-	#endif
-
-		// collect worker bundle for this frame
-		if (bParallelSubmissionRT)
-		{
-			DepthParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
-			BaseParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
-		}
-
-		// prepare necessary variable
+		// prepare graphic builder
 		UHGraphicBuilder GraphBuilder(GraphicInterface, MainCommandBuffers[CurrentFrame]);
-
-		// similar to D3D12 fence wait/reset
-		GraphBuilder.WaitFence(MainFences[CurrentFrame]);
-		GraphBuilder.ResetFence(MainFences[CurrentFrame]);
-
-		// begin command buffer, it will reset command buffer inline
-		GraphBuilder.BeginCommandBuffer();
-		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
-
-		// ****************************** start scene rendering
-		BuildTopLevelAS(GraphBuilder);
-		DispatchRayOcclusionTestPass(GraphBuilder);
-		RenderDepthPrePass(GraphBuilder);
-		RenderBasePass(GraphBuilder);
-		DispatchRayShadowPass(GraphBuilder);
-		RenderLightPass(GraphBuilder);
-		RenderSkyPass(GraphBuilder);
-		RenderMotionPass(GraphBuilder);
-		RenderPostProcessing(GraphBuilder);
-
-		// blit scene to swap chain
-		uint32_t PresentIndex = RenderSceneToSwapChain(GraphBuilder);
-
-	#if WITH_DEBUG
-		// get GPU times
-		for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+		uint32_t PresentIndex;
 		{
-			GPUTimes[Idx] = GPUTimeQueries[Idx]->GetTimeStamp(GraphBuilder.GetCmdList());
-		}
-	#endif
+			UHProfilerScope Profiler(&RenderThreadProfile);
 
-		// ****************************** end scene rendering
-		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-		GraphBuilder.EndCommandBuffer();
-		GraphBuilder.ExecuteCmd(MainFences[CurrentFrame], SwapChainAvailableSemaphores[CurrentFrame], RenderFinishedSemaphores[CurrentFrame]);
+			// collect worker bundle for this frame
+			if (bParallelSubmissionRT)
+			{
+				DepthParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+				BaseParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+			}
+
+			// similar to D3D12 fence wait/reset
+			GraphBuilder.WaitFence(MainFences[CurrentFrame]);
+			GraphBuilder.ResetFence(MainFences[CurrentFrame]);
+
+			// begin command buffer, it will reset command buffer inline
+			GraphBuilder.BeginCommandBuffer();
+			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
+
+			// ****************************** start scene rendering
+			BuildTopLevelAS(GraphBuilder);
+			DispatchRayOcclusionTestPass(GraphBuilder);
+			RenderDepthPrePass(GraphBuilder);
+			RenderBasePass(GraphBuilder);
+			DispatchRayShadowPass(GraphBuilder);
+			RenderLightPass(GraphBuilder);
+			RenderSkyPass(GraphBuilder);
+			RenderMotionPass(GraphBuilder);
+			RenderPostProcessing(GraphBuilder);
+
+			// blit scene to swap chain
+			PresentIndex = RenderSceneToSwapChain(GraphBuilder);
+
+		#if WITH_DEBUG
+			// get GPU times
+			for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+			{
+				GPUTimes[Idx] = GPUTimeQueries[Idx]->GetTimeStamp(GraphBuilder.GetCmdList());
+			}
+		#endif
+
+			// ****************************** end scene rendering
+			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+			GraphBuilder.EndCommandBuffer();
+			GraphBuilder.ExecuteCmd(MainFences[CurrentFrame], SwapChainAvailableSemaphores[CurrentFrame], RenderFinishedSemaphores[CurrentFrame]);
+		}
 
 	#if WITH_DEBUG
 		// profile ends before Present() call, since it contains vsync time
-		RenderThreadProfile.End();
 		RenderThreadTime = RenderThreadProfile.GetDiff() * 1000.0f;
 		DrawCalls = GraphBuilder.DrawCalls;
 	#endif
@@ -382,14 +422,27 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 			break;
 		}
 
-		if (RenderTask == UHRenderTask::DepthPassTask)
+		switch (ParallelTask)
 		{
+		case UHParallelTask::FrustumCullingTask:
+			FrustumCullingTask(ThreadIdx);
+			break;
+
+		case UHParallelTask::SortingOpaqueTask:
+			SortingOpaqueTask(ThreadIdx);
+			break;
+
+		case UHParallelTask::DepthPassTask:
 			DepthPassTask(ThreadIdx);
-		}
-		else if (RenderTask == UHRenderTask::BasePassTask)
-		{
+			break;
+
+		case UHParallelTask::BasePassTask:
 			BasePassTask(ThreadIdx);
-		}
+			break;
+
+		default:
+			break;
+		};
 
 		WorkerThreads[ThreadIdx]->NotifyTaskDone();
 	}

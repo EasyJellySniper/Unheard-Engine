@@ -74,11 +74,9 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	UHEGameTimer = std::make_unique<UHGameTimer>();
 	UHEGameTimer->Reset();
 
-#if WITH_DEBUG
 	// init profiler
 	UHEProfiler = UHProfiler(UHEGameTimer.get());
 	MainThreadProfile = UHProfiler(UHEGameTimer.get());
-#endif
 
 	// init default scene after all assets are loaded
 	DefaultScene.Initialize(UHEAsset.get(), UHEGraphic.get(), UHEConfig.get(), UHERawInput.get(), UHEGameTimer.get());
@@ -153,9 +151,7 @@ bool UHEngine::IsEngineInitialized()
 // engine updates
 void UHEngine::Update()
 {
-#if WITH_DEBUG
-	MainThreadProfile.Begin();
-#endif
+	UHProfilerScope Profiler(&MainThreadProfile);
 
 	// timer tick
 	UHEGameTimer->Tick();
@@ -203,6 +199,7 @@ void UHEngine::Update()
 		UHEGraphic->InitGraphics(UHEngineWindow);
 		UHERenderer->Reset();
 	}
+
 	UHERenderer->Update();
 
 	// cache input state of this frame
@@ -210,10 +207,6 @@ void UHEngine::Update()
 	UHERawInput->CacheKeyStates();
 
 	GFrameNumber = (GFrameNumber + 1) & UINT32_MAX;
-
-#if WITH_DEBUG
-	MainThreadProfile.End();
-#endif
 }
 
 // engine render loop

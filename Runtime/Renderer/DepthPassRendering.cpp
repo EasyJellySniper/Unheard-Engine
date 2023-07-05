@@ -38,7 +38,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 #endif
 
 			// wake all worker threads
-			RenderTask = UHRenderTask::DepthPassTask;
+			ParallelTask = UHParallelTask::DepthPassTask;
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				WorkerThreads[I]->WakeThread();

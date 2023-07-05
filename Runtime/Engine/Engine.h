@@ -12,9 +12,9 @@
 #include <string>
 
 #if WITH_DEBUG
-#include "../../Editor/Editor/Profiler.h"
 #include "../../Editor/Editor/Editor.h"
 #endif
+#include "../../Editor/Editor/Profiler.h"
 
 enum UHEngineResizeReason
 {
@@ -102,12 +102,12 @@ private:
 #if WITH_DEBUG
 	// editor class
 	std::unique_ptr<UHEditor> UHEEditor;
+	std::wstring WindowCaption;
+#endif
 
 	// profiler class
 	UHProfiler UHEProfiler;
 	UHProfiler MainThreadProfile;
-	std::wstring WindowCaption;
-#endif
 
 	// scene define
 	// @TODO: better scene management
