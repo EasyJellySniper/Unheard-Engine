@@ -13,7 +13,7 @@ UHToneMappingShader::UHToneMappingShader(UHGraphic* InGfx, std::string Name, VkR
 
 	// states
 	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(false, false, VK_COMPARE_OP_ALWAYS)
-		, VK_CULL_MODE_NONE
+		, UHCullMode::CullNone
 		, UHBlendMode::Opaque
 		, ShaderVS
 		, ShaderPS

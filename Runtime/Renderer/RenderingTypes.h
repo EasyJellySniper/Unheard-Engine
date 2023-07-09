@@ -114,12 +114,12 @@ struct UHRenderPassInfo
 	UHRenderPassInfo();
 
 	// value for cullmode and blend mode is from different objects, don't set them in constructor for flexible usage
-	UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDepthInfo, VkCullModeFlagBits InCullInfo, UHBlendMode InBlendMode
+	UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDepthInfo, UHCullMode InCullInfo, UHBlendMode InBlendMode
 		, UHShader* InVS, UHShader* InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout);
 
 	bool operator==(const UHRenderPassInfo& InInfo);
 
-	VkCullModeFlagBits CullMode;
+	UHCullMode CullMode;
 	UHBlendMode BlendMode;
 	VkRenderPass RenderPass;
 	UHDepthInfo DepthInfo;

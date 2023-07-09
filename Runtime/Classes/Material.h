@@ -85,6 +85,10 @@ public:
 	void PostImport();
 
 #if WITH_DEBUG
+	// setting cull mode & blend mode is only available in editor
+	void SetCullMode(UHCullMode InCullMode);
+	void SetBlendMode(UHBlendMode InBlendMode);
+
 	void SetTexFileName(UHMaterialInputs TexType, std::string InName);
 	std::string GetTexFileName(UHMaterialInputs InType) const;
 	void SetMaterialBufferSize(size_t InSize);
@@ -95,8 +99,6 @@ public:
 #endif
 
 	void SetName(std::string InName);
-	void SetCullMode(VkCullModeFlagBits InCullMode);
-	void SetBlendMode(UHBlendMode InBlendMode);
 	void SetMaterialProps(UHMaterialProperty InProp);
 	void SetSystemTex(UHSystemTextureType InType, UHTexture* InTex);
 	void SetSystemSampler(UHSystemTextureType InType, UHSampler* InSampler);
@@ -108,7 +110,7 @@ public:
 	void UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex);
 
 	std::string GetName() const;
-	VkCullModeFlagBits GetCullMode() const;
+	UHCullMode GetCullMode() const;
 	UHBlendMode GetBlendMode() const;
 	UHMaterialProperty GetMaterialProps() const;
 	UHMaterialCompileFlag GetCompileFlag() const;
@@ -144,7 +146,7 @@ private:
 	std::vector<int32_t> RegisteredTextureIndexes;
 
 	// material state variables
-	VkCullModeFlagBits CullMode;
+	UHCullMode CullMode;
 	UHBlendMode BlendMode;
 
 	// material flags

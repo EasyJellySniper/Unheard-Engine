@@ -15,7 +15,7 @@ UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string
 
 	// states
 	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(false, false, VK_COMPARE_OP_ALWAYS)
-		, VK_CULL_MODE_NONE
+		, UHCullMode::CullNone
 		, UHBlendMode::Opaque
 		, ShaderVS
 		, ShaderPS
@@ -75,7 +75,7 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 	ShaderPS = InGfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, ActualDefines);
 
 	// states, enable depth test but don't write it
-	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, 
+	MaterialPassInfo = UHRenderPassInfo(InRenderPass, 
 		UHDepthInfo(true, false, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL)
 		, InMat->GetCullMode()
 		, InMat->GetBlendMode()
@@ -84,7 +84,7 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 		, 1
 		, PipelineLayout);
 
-	CreateMaterialState(Info);
+	CreateMaterialState(MaterialPassInfo);
 }
 
 void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

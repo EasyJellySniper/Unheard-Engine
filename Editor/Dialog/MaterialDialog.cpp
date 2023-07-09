@@ -33,11 +33,11 @@ struct UHMaterialDialogData
         , InitWorkAreaRect(RECT{})
         , NodeMenuAction(UHNodeMenuAction::NoAction)
         , bNeedRepaint(false)
-        , CompileFlag(UpToDate)
-        , bNeedResave(false)
+        , LatestControl(0)
     {
     }
 
+    UHMaterialDialog* MaterialDialog;
     HWND Window;
     HWND WorkArea;
     HDC WorkAreaMemDC;
@@ -48,10 +48,13 @@ struct UHMaterialDialogData
     UHRawInput Input;
     int32_t NodeMenuAction;
     bool bNeedRepaint;
-    UHMaterialCompileFlag CompileFlag;
-    bool bNeedResave;
+    WPARAM LatestControl;
 };
 std::unique_ptr<UHMaterialDialogData> GMaterialDialogData;
+
+// the number of the names must follow the enum number (or smaller)
+std::vector<std::wstring> GCullModeNames = { L"None", L"Front", L"Back" };
+std::vector<std::wstring> GBlendModeNames = { L"Opaque", L"Masked", L"AlphaBlend", L"Addition" };
 
 UHMaterialDialog::UHMaterialDialog()
 	: UHMaterialDialog(nullptr, nullptr, nullptr, nullptr)
@@ -89,6 +92,13 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     NodePinMenu.InsertOption("Disconnect", UHNodeMenuAction::Disconnect);
 
     GdiplusStartup(&GdiplusToken, &GdiplusStartupInput, NULL);
+
+    // callbacks
+    ControlCallbacks[IDC_MATERIALCOMPILE] = { &UHMaterialDialog::ControlRecompileMaterial };
+    ControlCallbacks[IDC_MATERIALSAVE] = { &UHMaterialDialog::ControlResaveMaterial };
+    ControlCallbacks[IDC_MATERIALSAVEALL] = { &UHMaterialDialog::ControlResaveAllMaterials };
+    ControlCallbacks[IDC_MATERIAL_CULLMODE] = { &UHMaterialDialog::ControlCullMode };
+    ControlCallbacks[IDC_MATERIAL_BLENDMODE] = { &UHMaterialDialog::ControlBlendMode };
 }
 
 UHMaterialDialog::~UHMaterialDialog()
@@ -128,6 +138,7 @@ INT_PTR CALLBACK MaterialProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
         return (INT_PTR)TRUE;
 
     case WM_COMMAND:
+        GMaterialDialogData->LatestControl = wParam;
         if (LOWORD(wParam) == IDCANCEL)
         {
             EndDialog(hDlg, LOWORD(wParam));
@@ -139,19 +150,6 @@ INT_PTR CALLBACK MaterialProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
         }
         else if (HIWORD(wParam) == BN_CLICKED)
         {
-            int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
-
-            if (LOWORD(wParam) == IDC_MATERIALCOMPILE && MatIndex != -1)
-            {
-                GMaterialDialogData->CompileFlag = FullCompileTemporary;
-                return (INT_PTR)TRUE;
-            }
-            else if (LOWORD(wParam) == IDC_MATERIALSAVE && MatIndex != -1)
-            {
-                GMaterialDialogData->bNeedResave = true;
-                return (INT_PTR)TRUE;
-            }
-
             // choose the add node menu action
             GMaterialDialogData->NodeMenuAction = static_cast<int32_t>(LOWORD(wParam));
             return (INT_PTR)TRUE;
@@ -232,6 +230,22 @@ void UHMaterialDialog::Update()
         return;
     }
 
+    // process control callbacks
+    WPARAM& LatestControl = GMaterialDialogData->LatestControl;
+    if (LatestControl != 0)
+    {
+        if (ControlCallbacks.find(LOWORD(LatestControl)) != ControlCallbacks.end())
+        {
+            if (HIWORD(LatestControl) == EN_CHANGE || HIWORD(LatestControl) == BN_CLICKED
+                || HIWORD(LatestControl) == CBN_SELCHANGE)
+            {
+                (this->*ControlCallbacks[LOWORD(LatestControl)])();
+            }
+        }
+
+        LatestControl = 0;
+    }
+
     // store mouse states
     GetCursorPos(&MousePos);
     if (GMaterialDialogData->Input.IsRightMouseDown())
@@ -250,7 +264,7 @@ void UHMaterialDialog::Update()
         GMaterialDialogData->bNeedRepaint = true;
     }
 
-    // force a invalidate after resizing
+    // force a invalidate if it needs repainting
     if (GMaterialDialogData->bNeedRepaint)
     {
         InvalidateRect(GMaterialDialogData->Window, &GMaterialDialogData->CurrentWorkAreaRect, false);
@@ -267,19 +281,6 @@ void UHMaterialDialog::Update()
         TryConnectNodes();
         DrawPinConnectionLine();
         ProcessPopMenu();
-
-        if (GMaterialDialogData->CompileFlag != UpToDate)
-        {
-            RecompileMaterial();
-            GMaterialDialogData->CompileFlag = UpToDate;
-        }
-
-        // for now it will resave all materials
-        if (GMaterialDialogData->bNeedResave)
-        {
-            ResaveMaterial();
-            GMaterialDialogData->bNeedResave = false;
-        }
     }
 
     GMaterialDialogData->Input.CacheKeyStates();
@@ -288,6 +289,7 @@ void UHMaterialDialog::Update()
 void UHMaterialDialog::Init()
 {
     GMaterialDialogData = std::make_unique<UHMaterialDialogData>();
+    GMaterialDialogData->MaterialDialog = this;
     GMaterialDialogData->Window = CreateDialog(Instance, MAKEINTRESOURCE(IDD_MATERIAL), Window, (DLGPROC)MaterialProc);
     GMaterialDialogData->WorkArea = GetDlgItem(GMaterialDialogData->Window, IDC_MATERIAL_GRAPHAREA);
     GMaterialDialogData->Input.ResetMouseState();
@@ -297,7 +299,7 @@ void UHMaterialDialog::Init()
     const std::vector<UHMaterial*>& Materials = AssetManager->GetMaterials();
     for (const UHMaterial* Mat : Materials)
     {
-        UHEditorUtil::AddListBoxString(GMaterialDialogData->Window, IDC_MATERIAL_LIST, UHUtilities::ToStringW(Mat->GetName()));
+        UHEditorUtil::AddListBoxString(GMaterialDialogData->Window, IDC_MATERIAL_LIST, Mat->GetName());
     }
 
     // cache init window size for resizing purpose
@@ -311,6 +313,10 @@ void UHMaterialDialog::Init()
     // reset material selection
     CurrentMaterialIndex = -1;
     CurrentMaterial = nullptr;
+
+    // init drop list for cull mode and blend mode
+    UHEditorUtil::InitComboBox(GMaterialDialogData->Window, IDC_MATERIAL_CULLMODE, L"None", GCullModeNames);
+    UHEditorUtil::InitComboBox(GMaterialDialogData->Window, IDC_MATERIAL_BLENDMODE, L"Opaque", GBlendModeNames);
 }
 
 void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
@@ -359,6 +365,13 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
             }
         }
     }
+
+    // select cull mode and blend mode
+    HWND Combobox = GetDlgItem(GMaterialDialogData->Window, IDC_MATERIAL_CULLMODE);
+    UHEditorUtil::SelectComboBox(Combobox, GCullModeNames[CurrentMaterial->GetCullMode()]);
+
+    Combobox = GetDlgItem(GMaterialDialogData->Window, IDC_MATERIAL_BLENDMODE);
+    UHEditorUtil::SelectComboBox(Combobox, GBlendModeNames[CurrentMaterial->GetBlendMode()]);
 }
 
 void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
@@ -695,49 +708,142 @@ void UHMaterialDialog::DrawPinConnectionLine()
     }
 }
 
-void UHMaterialDialog::RecompileMaterial()
+void UHMaterialDialog::ControlRecompileMaterial()
 {
-    if (CurrentMaterial)
+    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    if (MatIndex == -1)
     {
-        for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
-        {
-            GUI->SetDefaultValueFromGUI();
-        }
-        CurrentMaterial->SetCompileFlag(GMaterialDialogData->CompileFlag);
-        Renderer->RefreshMaterialShaders(CurrentMaterial);
+        return;
     }
+
+    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+    Mat->SetCompileFlag(FullCompileTemporary);
+    RecompileMaterial(MatIndex);
 }
 
-void UHMaterialDialog::ResaveMaterial()
+void UHMaterialDialog::ControlResaveMaterial()
 {
-    // request a compile-resave
-    GMaterialDialogData->CompileFlag = FullCompileResave;
-    RecompileMaterial();
-
-    // save current selected material
-    // also sync the GUI position
-    RECT Rect;
-    UHEditorUtil::GetWindowSize(EditNodeGUIs[0]->GetHWND(), Rect, GMaterialDialogData->WorkArea);
-    POINT Pos{};
-    Pos.x = Rect.left;
-    Pos.y = Rect.top;
-    CurrentMaterial->SetDefaultMaterialNodePos(Pos);
-
-    std::vector<POINT> EditGUIPos;
-    for (size_t Idx = 1; Idx < EditNodeGUIs.size(); Idx++)
+    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    if (MatIndex == -1)
     {
-        UHEditorUtil::GetWindowSize(EditNodeGUIs[Idx]->GetHWND(), Rect, EditNodeGUIs[0]->GetHWND());
+        return;
+    }
+
+    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+    Mat->SetCompileFlag(FullCompileResave);
+    ResaveMaterial(MatIndex);
+    MessageBoxA(GMaterialDialogData->Window, "Current editing material is saved.", "Material Editor", MB_OK);
+}
+
+void UHMaterialDialog::ControlResaveAllMaterials()
+{
+    ResaveAllMaterials();
+}
+
+void UHMaterialDialog::ControlCullMode()
+{
+    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    if (MatIndex == -1)
+    {
+        return;
+    }
+
+    const int32_t SelectedCullMode = UHEditorUtil::GetComboBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_CULLMODE);
+    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+    Mat->SetCullMode(static_cast<UHCullMode>(SelectedCullMode));
+
+    // changing cull mode doesn't need a recompiling, just refresh the material shader so they will recreate graphic state
+    Mat->SetCompileFlag(StateChangedOnly);
+    Renderer->RefreshMaterialShaders(Mat);
+}
+
+void UHMaterialDialog::ControlBlendMode()
+{
+    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    if (MatIndex == -1)
+    {
+        return;
+    }
+
+    // toggling blend mode does a little more than cull mode. it not only needs re-compiling, but also the renderer list refactoring
+    // for example: when an object goes alpha blend from masked object, it needs to be in TranslucentRenderer list instead of OpaqueRenderer list
+    const int32_t SelectedBlendMode = UHEditorUtil::GetComboBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_BLENDMODE);
+    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+
+    const UHBlendMode OldMode = Mat->GetBlendMode();
+    const UHBlendMode NewMode = static_cast<UHBlendMode>(SelectedBlendMode);
+
+    Mat->SetBlendMode(NewMode);
+    bool bRenderGroupChanged = false;
+    if ((OldMode / UHBlendMode::TranditionalAlpha) != (NewMode / UHBlendMode::TranditionalAlpha))
+    {
+        bRenderGroupChanged = true;
+    }
+
+    Mat->SetCompileFlag(FullCompileTemporary);
+    Renderer->RefreshMaterialShaders(Mat, bRenderGroupChanged);
+}
+
+void UHMaterialDialog::RecompileMaterial(int32_t MatIndex)
+{
+    if (MatIndex == -1)
+    {
+        return;
+    }
+
+    for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+    {
+        GUI->SetDefaultValueFromGUI();
+    }
+
+    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+    Renderer->RefreshMaterialShaders(Mat);
+}
+
+void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
+{
+    if (MatIndex == -1)
+    {
+        return;
+    }
+
+    if (CurrentMaterialIndex == MatIndex)
+    {
+        // GUI sync if it's the current material
+        RECT Rect;
+        UHEditorUtil::GetWindowSize(EditNodeGUIs[0]->GetHWND(), Rect, GMaterialDialogData->WorkArea);
+        POINT Pos{};
         Pos.x = Rect.left;
         Pos.y = Rect.top;
-        EditGUIPos.push_back(Pos);
+        CurrentMaterial->SetDefaultMaterialNodePos(Pos);
+
+        std::vector<POINT> EditGUIPos;
+        for (size_t Idx = 1; Idx < EditNodeGUIs.size(); Idx++)
+        {
+            UHEditorUtil::GetWindowSize(EditNodeGUIs[Idx]->GetHWND(), Rect, EditNodeGUIs[0]->GetHWND());
+            Pos.x = Rect.left;
+            Pos.y = Rect.top;
+            EditGUIPos.push_back(Pos);
+        }
+        CurrentMaterial->SetGUIRelativePos(EditGUIPos);
+
     }
-    CurrentMaterial->SetGUIRelativePos(EditGUIPos);
 
     CurrentMaterial->Export();
 
-    std::string Msg = CurrentMaterial->GetName();
-    Msg += " is saved.";
-    MessageBoxA(GMaterialDialogData->Window, Msg.c_str(), "Material Editor", MB_OK);
+    // request a compile after exporting, so the shader cache will get proper material file mod time
+    RecompileMaterial(MatIndex);
+}
+
+void UHMaterialDialog::ResaveAllMaterials()
+{
+    for (size_t Idx = 0; Idx < AssetManager->GetMaterials().size(); Idx++)
+    {
+        AssetManager->GetMaterials()[Idx]->SetCompileFlag(FullCompileResave);
+        ResaveMaterial(static_cast<int32_t>(Idx));
+    }
+
+    MessageBoxA(GMaterialDialogData->Window, "All materials are saved.", "Material Editor", MB_OK);
 }
 
 #endif

@@ -16,7 +16,7 @@ UHSkyPassShader::UHSkyPassShader(UHGraphic* InGfx, std::string Name, VkRenderPas
 
 	// states
 	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(true, false, VK_COMPARE_OP_GREATER_OR_EQUAL)
-		, VK_CULL_MODE_FRONT_BIT
+		, UHCullMode::CullFront
 		, UHBlendMode::Opaque
 		, ShaderVS
 		, ShaderPS

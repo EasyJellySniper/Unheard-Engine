@@ -93,7 +93,6 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	// add skybox renderer
 	UHMesh* SkyCube = InAsset->GetMesh("UHMesh_Cube");
 	UHMaterial* SkyMat = InGfx->RequestMaterial();
-	SkyMat->SetCullMode(VK_CULL_MODE_FRONT_BIT);
 	SkyMat->SetIsSkybox(true);
 	SkyMat->SetName("UHDefaultSky");
 	SkyMat->SetSystemTex(UHSystemTextureType::SkyCube, SkyCubeTex);

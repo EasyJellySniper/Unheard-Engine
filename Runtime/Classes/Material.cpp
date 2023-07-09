@@ -14,7 +14,7 @@
 
 // default as opaque material and set cull off for now
 UHMaterial::UHMaterial()
-	: CullMode(VK_CULL_MODE_NONE)
+	: CullMode(UHCullMode::CullNone)
 	, BlendMode(UHBlendMode::Opaque)
 	, MaterialProps(UHMaterialProperty())
 	, CompileFlag(UpToDate)
@@ -177,6 +177,21 @@ void UHMaterial::PostImport()
 }
 
 #if WITH_DEBUG
+
+void UHMaterial::SetCullMode(UHCullMode InCullMode)
+{
+	// use for initialization at the moment
+	// need to support runtime change in the future
+	CullMode = InCullMode;
+}
+
+void UHMaterial::SetBlendMode(UHBlendMode InBlendMode)
+{
+	// use for initialization at the moment
+	// need to support runtime change in the future
+	BlendMode = InBlendMode;
+}
+
 void UHMaterial::SetTexFileName(UHMaterialInputs TexType, std::string InName)
 {
 	TexFileNames[TexType] = InName;
@@ -375,20 +390,6 @@ void UHMaterial::SetName(std::string InName)
 	Name = InName;
 }
 
-void UHMaterial::SetCullMode(VkCullModeFlagBits InCullMode)
-{
-	// use for initialization at the moment
-	// need to support runtime change in the future
-	CullMode = InCullMode;
-}
-
-void UHMaterial::SetBlendMode(UHBlendMode InBlendMode)
-{
-	// use for initialization at the moment
-	// need to support runtime change in the future
-	BlendMode = InBlendMode;
-}
-
 void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
 {
 	MaterialProps = InProp;
@@ -413,6 +414,10 @@ void UHMaterial::SetSystemSampler(UHSystemTextureType InType, UHSampler* InSampl
 void UHMaterial::SetIsSkybox(bool InFlag)
 {
 	bIsSkybox = InFlag;
+	if (bIsSkybox)
+	{
+		CullMode = UHCullMode::CullFront;
+	}
 }
 
 void UHMaterial::SetCompileFlag(UHMaterialCompileFlag InFlag)
@@ -517,7 +522,7 @@ std::string UHMaterial::GetName() const
 	return Name;
 }
 
-VkCullModeFlagBits UHMaterial::GetCullMode() const
+UHCullMode UHMaterial::GetCullMode() const
 {
 	return CullMode;
 }

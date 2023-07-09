@@ -41,7 +41,7 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 	ShaderVS = InGfx->RequestShader("DepthPassVS", "Shaders/DepthVertexShader.hlsl", "DepthVS", "vs_6_0", OpacityDefine);
 
 	// states
-	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)
+	MaterialPassInfo = UHRenderPassInfo(InRenderPass, UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)
 		, InMat->GetCullMode()
 		, InMat->GetBlendMode()
 		, ShaderVS
@@ -49,7 +49,7 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 		, 1
 		, PipelineLayout);
 
-	CreateMaterialState(Info);
+	CreateMaterialState(MaterialPassInfo);
 }
 
 void UHDepthPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

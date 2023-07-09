@@ -46,8 +46,11 @@
 #define IDC_ENABLEPARALLELSUBMISSION    1026
 #define IDC_MATERIAL_GRAPHAREA          1027
 #define IDC_MATERIALCOMPILE             1034
-#define IDC_SAVE                        1035
 #define IDC_MATERIALSAVE                1035
+#define IDC_MATERIALSAVEALL             1036
+#define IDC_MATERIAL_CULLMODE           1037
+#define IDC_COMBO2                      1038
+#define IDC_MATERIAL_BLENDMODE          1038
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773
@@ -69,7 +72,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        129
 #define _APS_NEXT_COMMAND_VALUE         32783
-#define _APS_NEXT_CONTROL_VALUE         1035
+#define _APS_NEXT_CONTROL_VALUE         1039
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

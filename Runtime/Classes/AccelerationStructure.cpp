@@ -156,10 +156,14 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(InRenderers[Idx]->GetWorldMatrix());
 		std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHR.transform.matrix[0][0]);
 
-		// two-sided flag
-		if (Mat->GetCullMode() == VK_CULL_MODE_NONE)
+		// cull mode flag, in DXR system, it's default cull back, here just to check the other two modes
+		if (Mat->GetCullMode() == UHCullMode::CullNone)
 		{
 			InstanceKHR.flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+		}
+		else if (Mat->GetCullMode() == UHCullMode::CullFront)
+		{
+			InstanceKHR.flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR;
 		}
 
 		// non-opaque flag, cutoff is treated as translucent as well so I can ignore the hit on culled pixel
@@ -172,6 +176,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		InstanceKHR.instanceShaderBindingTableRecordOffset = Mat->GetBufferDataIndex();
 		InstanceKHR.instanceCustomIndex = Mat->GetBufferDataIndex();
 
+		// cache the instance KHRs and renderers for later use
 		InstanceKHRs.push_back(InstanceKHR);
 		RendererCache.push_back(InRenderers[Idx]);
 		InstanceCount++;
@@ -259,6 +264,26 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t Curr
 			// copy transform3x4
 			XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(RendererCache[Idx]->GetWorldMatrix());
 			std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
+
+			// check material state
+			UHMaterial* Mat = RendererCache[Idx]->GetMaterial();
+			InstanceKHRs[Idx].flags = 0;
+
+			// cull mode flag, in DXR system, it's default cull back, here just to check the other two modes
+			if (Mat->GetCullMode() == UHCullMode::CullNone)
+			{
+				InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+			}
+			else if (Mat->GetCullMode() == UHCullMode::CullFront)
+			{
+				InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR;
+			}
+
+			// non-opaque flag, cutoff is treated as translucent as well so I can ignore the hit on culled pixel
+			if (Mat->GetBlendMode() > UHBlendMode::Opaque)
+			{
+				InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
+			}
 
 			ASInstanceBuffer->UploadData(&InstanceKHRs[Idx], Idx);
 			RendererCache[Idx]->SetRayTracingDirty(false, CurrentFrame);

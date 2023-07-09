@@ -18,13 +18,13 @@ UHDepthInfo::UHDepthInfo(bool bInEnableDepthTest, bool bInEnableDepthWrite, VkCo
 
 // ---------------------------------------------------- UHRenderPassInfo
 UHRenderPassInfo::UHRenderPassInfo()
-	: UHRenderPassInfo(VK_NULL_HANDLE, UHDepthInfo(), VK_CULL_MODE_NONE, UHBlendMode::Opaque, nullptr, nullptr, 1, VK_NULL_HANDLE)
+	: UHRenderPassInfo(VK_NULL_HANDLE, UHDepthInfo(), UHCullMode::CullNone, UHBlendMode::Opaque, nullptr, nullptr, 1, VK_NULL_HANDLE)
 {
 
 }
 
 // value for cullmode and blend mode is from different objects, don't set them in constructor for flexible usage
-UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDepthInfo, VkCullModeFlagBits InCullInfo, UHBlendMode InBlendMode
+UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDepthInfo, UHCullMode InCullInfo, UHBlendMode InBlendMode
 	, UHShader* InVS, UHShader* InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout)
 	: CullMode(InCullInfo)
 	, BlendMode(InBlendMode)

@@ -34,6 +34,9 @@ public:
 	virtual void Update() override;
 
 	void Init();
+	void RecompileMaterial(int32_t MatIndex);
+	void ResaveMaterial(int32_t MatIndex);
+	void ResaveAllMaterials();
 
 private:
 	void SelectMaterial(int32_t MatIndex);
@@ -44,8 +47,13 @@ private:
 	void TryConnectNodes();
 	void ProcessPopMenu();
 	void DrawPinConnectionLine();
-	void RecompileMaterial();
-	void ResaveMaterial();
+
+	// control functions
+	void ControlRecompileMaterial();
+	void ControlResaveMaterial();
+	void ControlResaveAllMaterials();
+	void ControlCullMode();
+	void ControlBlendMode();
 
 	// all node GUI, the first element is material GUI
 	std::vector<std::unique_ptr<UHGraphNodeGUI>> EditNodeGUIs;
@@ -71,6 +79,9 @@ private:
 	// GDI stuff
 	GdiplusStartupInput GdiplusStartupInput;
 	ULONG_PTR GdiplusToken;
+
+	// declare function pointer type for editor control
+	std::unordered_map<int32_t, void(UHMaterialDialog::*)()> ControlCallbacks;
 };
 
 #endif

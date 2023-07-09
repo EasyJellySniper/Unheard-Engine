@@ -45,7 +45,7 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	ShaderPS = InGfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, PSDefines);
 
 	// states
-	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass
+	MaterialPassInfo = UHRenderPassInfo(InRenderPass
 		// adjust depth info based on depth pre pass setting
 		, UHDepthInfo(true, !bEnableDepthPrePass, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
 		, InMat->GetCullMode()
@@ -55,7 +55,7 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 		, GNumOfGBuffers
 		, PipelineLayout);
 
-	CreateMaterialState(Info);
+	CreateMaterialState(MaterialPassInfo);
 }
 
 void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

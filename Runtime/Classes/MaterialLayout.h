@@ -7,13 +7,26 @@
 const std::string GDefaultSamplerName = "DefaultAniso16";
 const std::string GDefaultTextureChannel0Name = "UV0";
 
-// header for material layout defines
+// ------------------------------ header for material layout defines
+
+// cull mode, can be used as graphic api value
+// the order here is following VkCullModeFlags
+enum UHCullMode
+{
+	CullNone,
+	CullFront,
+	CullBack,
+	CullModeMax
+};
+
+// blend mode
 enum UHBlendMode
 {
 	Opaque = 0,
 	Masked,
 	TranditionalAlpha,
-	Addition
+	Addition,
+	BlendModeMax
 };
 
 // constant types
@@ -62,7 +75,8 @@ enum UHMaterialCompileFlag
 	FullCompileTemporary,
 	BindOnly,
 	FullCompileResave,
-	IncludeChanged
+	IncludeChanged,
+	StateChangedOnly
 };
 
 // get blend state info based on input blend mode

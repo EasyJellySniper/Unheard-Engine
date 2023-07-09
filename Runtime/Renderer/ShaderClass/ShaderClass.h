@@ -91,6 +91,7 @@ public:
 	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame);
+	void RecreateMaterialState();
 
 	UHShader* GetPixelShader() const;
 	UHShader* GetRayGenShader() const;
@@ -133,6 +134,7 @@ protected:
 	std::string Name;
 	std::type_index TypeIndexCache;
 	UHMaterial* MaterialCache;
+	UHRenderPassInfo MaterialPassInfo;
 
 	std::vector<VkDescriptorSetLayoutBinding> LayoutBindings;
 	VkPipelineLayout PipelineLayout;

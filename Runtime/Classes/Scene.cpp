@@ -74,6 +74,39 @@ void UHScene::Update()
 	}
 }
 
+#if WITH_DEBUG
+void UHScene::ReassignRenderer(UHMeshRendererComponent* InRenderer)
+{
+	// this won't change total number of renderers, but just re-assign between OpaqueRenderers and TranslucentRenderers list
+	int32_t DeleteIdx = UHUtilities::FindIndex(OpaqueRenderers, InRenderer);
+	if (DeleteIdx != -1)
+	{
+		UHUtilities::RemoveByIndex(OpaqueRenderers, DeleteIdx);
+	}
+
+	DeleteIdx = UHUtilities::FindIndex(TranslucentRenderers, InRenderer);
+	if (DeleteIdx != -1)
+	{
+		UHUtilities::RemoveByIndex(TranslucentRenderers, DeleteIdx);
+	}
+
+	const UHMaterial* Mat = InRenderer->GetMaterial();
+	if (Mat == nullptr)
+	{
+		return;
+	}
+
+	if (Mat->GetBlendMode() < UHBlendMode::TranditionalAlpha)
+	{
+		OpaqueRenderers.push_back(InRenderer);
+	}
+	else
+	{
+		TranslucentRenderers.push_back(InRenderer);
+	}
+}
+#endif
+
 UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial)
 {
 	if (InMesh == nullptr || InMaterial == nullptr)

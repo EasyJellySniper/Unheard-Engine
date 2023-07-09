@@ -15,6 +15,8 @@ public:
 
 	uint32_t GetId() const;
 
+	bool operator==(const UHObject& InMat);
+
 private:
 	uint32_t Uid;
 };

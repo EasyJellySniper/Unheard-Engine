@@ -547,7 +547,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		if (MotionObjectShaders.find(Renderer->GetBufferDataIndex()) == MotionObjectShaders.end())
 		{
 			// unlikely to happen, but printing a message for debug
-			UHE_LOG(L"[UpdateDescriptors] Can't find motion object pass shader for renderer\n");
+			UHE_LOG(L"[UpdateDescriptors] Can't find motion object pass shader for renderer, implementing translucent pass should fix this\n");
 			continue;
 		}
 
@@ -941,9 +941,18 @@ void UHDeferredShadingRenderer::ResizeRTBuffers()
 }
 
 #if WITH_DEBUG
-void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
+template <typename T>
+void SafeReleaseShader(std::unordered_map<int32_t, T>& InMap, const int32_t InIndex)
 {
-	// recompile material shader if necessary
+	if (InMap.find(InIndex) != InMap.end())
+	{
+		InMap[InIndex].Release();
+	}
+}
+
+void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNeedReassignRendererGroup)
+{
+	// refresh material shader if necessary
 	UHMaterialCompileFlag CompileFlag = Mat->GetCompileFlag();
 	if (CompileFlag == UpToDate)
 	{
@@ -953,11 +962,12 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
 	GraphicInterface->WaitGPU();
 	CheckTextureReference(Mat);
 
+	bool bIsOpaque = Mat->GetBlendMode() < UHBlendMode::TranditionalAlpha;
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable.GetDescriptorSetLayout(), SamplerTable.GetDescriptorSetLayout() };
-	int32_t Idx = -1;
+
 	for (UHObject* RendererObj : Mat->GetReferenceObjects())
 	{
-		if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
+		if (UHMeshRendererComponent* Renderer = static_cast<UHMeshRendererComponent*>(RendererObj))
 		{
 			int32_t RendererBufferIndex = Renderer->GetBufferDataIndex();
 
@@ -965,12 +975,11 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
 			{
 				if (bEnableDepthPrePass)
 				{
-					DepthPassShaders[RendererBufferIndex].Release();
+					SafeReleaseShader(DepthPassShaders, RendererBufferIndex);
 				}
 
-				BasePassShaders[RendererBufferIndex].Release();
-				MotionObjectShaders[RendererBufferIndex].Release();
-				Idx = RendererBufferIndex;
+				SafeReleaseShader(BasePassShaders, RendererBufferIndex);
+				SafeReleaseShader(MotionObjectShaders, RendererBufferIndex);
 			}
 			else if (CompileFlag == BindOnly)
 			{
@@ -984,23 +993,39 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
 
 				MotionObjectShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, OcclusionVisibleBuffer, Renderer);
 			}
+			else if (CompileFlag == StateChangedOnly)
+			{
+				if (bEnableDepthPrePass)
+				{
+					DepthPassShaders[RendererBufferIndex].RecreateMaterialState();
+				}
+				BasePassShaders[RendererBufferIndex].RecreateMaterialState();
+				MotionObjectShaders[RendererBufferIndex].RecreateMaterialState();
+			}
+
+			// re-assign renderer and erase old shader instances
+			if (bNeedReassignRendererGroup)
+			{
+				CurrentScene->ReassignRenderer(Renderer);
+				DepthPassShaders.erase(RendererBufferIndex);
+				BasePassShaders.erase(RendererBufferIndex);
+				MotionObjectShaders.erase(RendererBufferIndex);
+			}
 		}
 	}
 
 	if (CompileFlag == FullCompileTemporary || CompileFlag == FullCompileResave)
 	{
-		if (bEnableDepthPrePass)
-		{
-			GraphicInterface->RequestReleaseShader(DepthPassShaders[Idx].GetPixelShader());
-		}
-		GraphicInterface->RequestReleaseShader(BasePassShaders[Idx].GetPixelShader());
-		GraphicInterface->RequestReleaseShader(MotionObjectShaders[Idx].GetPixelShader());
-
 		for (const UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
 			if (const UHMeshRendererComponent* Renderer = static_cast<const UHMeshRendererComponent*>(RendererObj))
 			{
 				int32_t RendererBufferIndex = Renderer->GetBufferDataIndex();
+				if (!bIsOpaque)
+				{
+					// early out if it's not a opaque material
+					break;
+				}
 
 				if (bEnableDepthPrePass)
 				{
@@ -1019,7 +1044,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
 	}
 
 	// update hit group shader as well
-	if (GraphicInterface->IsRayTracingEnabled() && CompileFlag != BindOnly)
+	if (GraphicInterface->IsRayTracingEnabled() && CompileFlag != BindOnly && CompileFlag != StateChangedOnly)
 	{
 		RTShadowShader.Release();
 		if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
@@ -1048,8 +1073,9 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat)
 
 	Mat->SetCompileFlag(UpToDate);
 
-	// mark render dirties for reuploading constant
+	// mark render dirties for re-uploading constant and updating TLAS
 	Mat->SetRenderDirties(true);
+	Mat->SetRayTracingDirties(true);
 
 	UpdateDescriptors();
 }

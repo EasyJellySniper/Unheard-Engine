@@ -69,7 +69,7 @@ public:
 	float GetRenderThreadTime() const;
 	int32_t GetDrawCallCount() const;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
-	void RefreshMaterialShaders(UHMaterial* InMat);
+	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup = false);
 #endif
 
 private:

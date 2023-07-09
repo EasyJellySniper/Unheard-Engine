@@ -241,3 +241,6 @@ Current version TAA uses motion rejection + color clamping + per-vertex jitter s
 04-07-2023: Kicked off a few CPU optimization. Modified the way to upload GPU buffer, now it uploads the whole buffer once instead individually.
 
 05-07-2023: Making culling/sorting parallel as well. Fixed a stupid bug about thread affinity...now the performance is back to 900 FPS.
+
+08-07-2023: Added save all materials button for convenience. Added cull mode toggling feature in material editor, it's another important change I can say.
+Added blend mode toggling as well, this is more complicated than cull mode toggling.

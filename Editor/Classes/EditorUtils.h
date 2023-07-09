@@ -17,6 +17,7 @@ namespace UHEditorUtil
 	void InitComboBox(HWND Hwnd, int32_t BoxID, std::wstring DefaultValue, std::vector<std::wstring> Options, int32_t MinVisible = 0);
 	void InitComboBox(HWND Hwnd, std::string DefaultValue, std::vector<std::string> Options, int32_t MinVisible = 0);
 	void SelectComboBox(HWND Hwnd, std::string Value);
+	void SelectComboBox(HWND Hwnd, std::wstring Value);
 
 	bool GetCheckedBox(HWND Hwnd, int32_t BoxID);
 
@@ -45,6 +46,7 @@ namespace UHEditorUtil
 	std::string GetComboBoxSelectedText(HWND Hwnd);
 
 	// Add list box string
+	void AddListBoxString(HWND HWnd, int32_t BoxID, std::string InValue);
 	void AddListBoxString(HWND HWnd, int32_t BoxID, std::wstring InValue);
 	int32_t GetListBoxSelectedIndex(HWND HWnd, int32_t BoxID);
 

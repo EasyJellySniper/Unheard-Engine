@@ -39,6 +39,22 @@ namespace UHEditorUtil
         SetDlgItemTextA(Hwnd, ControlID, Value.c_str());
     }
 
+    void InitComboBox(HWND Hwnd, int32_t BoxID, std::string DefaultValue, std::vector<std::string> Options, int32_t MinVisible)
+    {
+        HWND ComboBox = GetDlgItem(Hwnd, BoxID);
+
+        for (const std::string& Option : Options)
+        {
+            ComboBox_AddString(ComboBox, Option.c_str());
+        }
+        ComboBox_SelectString(ComboBox, 0, DefaultValue.c_str());
+
+        if (MinVisible > 0)
+        {
+            ComboBox_SetMinVisible(ComboBox, MinVisible);
+        }
+    }
+
     void InitComboBox(HWND Hwnd, int32_t BoxID, std::wstring DefaultValue, std::vector<std::wstring> Options, int32_t MinVisible)
     {
         HWND ComboBox = GetDlgItem(Hwnd, BoxID);
@@ -74,6 +90,11 @@ namespace UHEditorUtil
     void SelectComboBox(HWND Hwnd, std::string Value)
     {
         ComboBox_SelectString(Hwnd, 0, UHUtilities::ToStringW(Value).c_str());
+    }
+
+    void SelectComboBox(HWND Hwnd, std::wstring Value)
+    {
+        ComboBox_SelectString(Hwnd, 0, Value.c_str());
     }
 
     bool GetCheckedBox(HWND Hwnd, int32_t BoxID)
@@ -117,6 +138,13 @@ namespace UHEditorUtil
         ComboBox_GetText(Hwnd, Buff, 1024);
 
         return UHUtilities::ToStringA(Buff);
+    }
+
+    void AddListBoxString(HWND HWnd, int32_t BoxID, std::string InValue)
+    {
+        // get list box and add the string
+        HWND ListBox = GetDlgItem(HWnd, BoxID);
+        SendMessageA(ListBox, LB_ADDSTRING, 0, (LPARAM)InValue.c_str());
     }
 
     void AddListBoxString(HWND HWnd, int32_t BoxID, std::wstring InValue)

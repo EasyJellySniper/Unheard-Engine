@@ -13,7 +13,7 @@ UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRende
 
 	// states
 	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(false, false, VK_COMPARE_OP_ALWAYS)
-		, VK_CULL_MODE_NONE
+		, UHCullMode::CullNone
 		, UHBlendMode::Opaque
 		, ShaderVS
 		, ShaderPS

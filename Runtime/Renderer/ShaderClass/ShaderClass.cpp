@@ -19,6 +19,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, Name(InName)
 	, TypeIndexCache(InType)
 	, MaterialCache(InMat)
+	, MaterialPassInfo(UHRenderPassInfo())
 	, PipelineLayout(VK_NULL_HANDLE)
 	, DescriptorPool(VK_NULL_HANDLE)
 	, ShaderVS(nullptr)
@@ -73,6 +74,9 @@ void UHShaderClass::Release()
 				GMaterialStateTable[MaterialID].erase(TypeIndexCache);
 			}
 		}
+
+		// release pixel shader
+		Gfx->RequestReleaseShader(ShaderPS);
 	}
 	else
 	{
@@ -182,6 +186,32 @@ void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t Dst
 	{
 		Helper.WriteTLAS(InTopAS, DstBinding);
 	}
+}
+
+void UHShaderClass::RecreateMaterialState()
+{
+	// remove old state from lookup table
+	const uint32_t MaterialID = MaterialCache->GetId();
+	if (GMaterialStateTable.find(MaterialID) != GMaterialStateTable.end())
+	{
+		if (GMaterialStateTable[MaterialID].find(TypeIndexCache) != GMaterialStateTable[MaterialID].end())
+		{
+			Gfx->RequestReleaseGraphicState(GMaterialStateTable[MaterialID][TypeIndexCache]);
+			GMaterialStateTable[MaterialID].erase(TypeIndexCache);
+		}
+	}
+
+	UHRenderPassInfo PrevPassInfo = MaterialPassInfo;
+	MaterialPassInfo = UHRenderPassInfo(PrevPassInfo.RenderPass
+		, PrevPassInfo.DepthInfo
+		, MaterialCache->GetCullMode()
+		, MaterialCache->GetBlendMode()
+		, ShaderVS
+		, ShaderPS
+		, PrevPassInfo.RTCount
+		, PipelineLayout);
+
+	CreateMaterialState(MaterialPassInfo);
 }
 
 UHShader* UHShaderClass::GetPixelShader() const

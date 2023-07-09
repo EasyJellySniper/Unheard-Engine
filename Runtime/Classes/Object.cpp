@@ -55,3 +55,8 @@ uint32_t UHObject::GetId() const
 {
 	return Uid;
 }
+
+bool UHObject::operator==(const UHObject& InObj)
+{
+	return Uid == InObj.Uid;
+}

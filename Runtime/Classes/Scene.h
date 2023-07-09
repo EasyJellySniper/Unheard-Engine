@@ -26,6 +26,10 @@ public:
 	void Release();
 	void Update();
 
+#if WITH_DEBUG
+	void ReassignRenderer(UHMeshRendererComponent* InRenderer);
+#endif
+
 	size_t GetAllRendererCount() const;
 	size_t GetMaterialCount() const;
 	size_t GetDirLightCount() const;

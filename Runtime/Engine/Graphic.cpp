@@ -1225,6 +1225,11 @@ UHShader* UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesy
 
 void UHGraphic::RequestReleaseShader(UHShader* InShader)
 {
+	if (GObjectTable.find(InShader->GetId()) == GObjectTable.end())
+	{
+		return;
+	}
+
 	if (InShader)
 	{
 		int32_t Idx = UHUtilities::FindIndex(ShaderPools, *InShader);

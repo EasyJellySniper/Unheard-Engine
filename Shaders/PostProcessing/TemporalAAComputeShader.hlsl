@@ -41,7 +41,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	// motion rejection
 	float MotionDiff = length(Motion - HistoryMotion);
 	MotionDiff = saturate(MotionDiff * GMotionDiffScale);
-	Weight = lerp(Weight, 0, MotionDiff > 0.1f);
+	Weight = lerp(Weight, 0, saturate(MotionDiff / 0.1f));
 
 	// if history UV is outside of the screen use the sample from current frame
 	Weight = lerp(Weight, 0, HistoryUV.x != saturate(HistoryUV.x) || HistoryUV.y != saturate(HistoryUV.y));
