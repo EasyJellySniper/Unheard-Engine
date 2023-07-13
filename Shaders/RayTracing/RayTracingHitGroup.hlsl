@@ -1,12 +1,5 @@
-#if WITH_CLOSEST
-#include "../UHInputs.hlsli"
-#include "UHRTCommon.hlsli"
-#endif
-
-#if WITH_ANYHIT
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/RayTracing/UHRTCommon.hlsli"
-#endif
 
 // texture/sampler tables, access this with the index from material struct
 // access via the code calculated by system
@@ -102,21 +95,33 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
 	Payload.HitT = RayTCurrent();
 	Payload.HitInstance = InstanceIndex();
+#if !WITH_TRANSLUCENT
+	// set alpha to 1 if it's opaque
+	Payload.HitAlpha = 1.0f;
+#endif
 }
 
 [shader("anyhit")]
 void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
-#if WITH_ALPHATEST
 	// fetch material data and cutoff if it's alpha test
 	float2 UV0 = GetHitUV0(InstanceIndex(), PrimitiveIndex(), Attr);
 	float Cutoff;
 	UHMaterialInputs MaterialInput = GetMaterialInputSimple(UV0, Payload.MipLevel, Cutoff);
 
+#if WITH_ALPHATEST
 	if (MaterialInput.Opacity < Cutoff)
 	{
-		// discard this hit if it's cut
+		// discard this hit if it's alpha testing
 		IgnoreHit();
+		return;
 	}
 #endif
+
+	// at this point, it can only be translucent object, evaludate the max hit alpha
+	// also carry the HitT and HitInstance data as the order of hit objects won't gurantee, I have to ignore the hit
+	Payload.HitT = RayTCurrent();
+	Payload.HitInstance = InstanceIndex();
+	Payload.HitAlpha = max(MaterialInput.Opacity, Payload.HitAlpha);
+	IgnoreHit();
 }

@@ -8,15 +8,19 @@ public:
 	UHRTShadowShader() {}
 
 	// this shader needs hit group
-	UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, const std::vector<UHShader*>& InAnyHits
+	UHRTShadowShader(UHGraphic* InGfx, std::string Name
+		, const std::vector<uint32_t>& InClosestHits
+		, const std::vector<uint32_t>& InAnyHits
 		, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 
 	void BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const UHRenderTexture* RTShadowResult
+		, const UHRenderTexture* RTTranslucentShadow
 		, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
 		, const UHRenderTexture* SceneMip
 		, const UHRenderTexture* SceneNormal
 		, const UHRenderTexture* SceneDepth
+		, const UHRenderTexture* TranslucentDepth
 		, const UHSampler* PointClampedSampler
 		, const UHSampler* LinearClampedSampler);
 };

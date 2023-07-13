@@ -1,8 +1,11 @@
+#define UHDIRLIGHT_BIND t6
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
 
-TextureCube EnvCube : register(t6);
-SamplerState EnvSampler : register(s7);
+Texture2D RTShadow : register(t7);
+SamplerState LinearClamppedSampler : register(s8);
+TextureCube EnvCube : register(t9);
+SamplerState EnvSampler : register(s10);
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -19,32 +22,20 @@ UHMaterialInputs GetMaterialInput(float2 UV0)
 	//%UHS_INPUT
 }
 
-void BasePS(VertexOutput Vin
-	, bool bIsFrontFace : SV_IsFrontFace
-	, out float4 OutColor : SV_Target0
-	, out float4 OutNormal : SV_Target1
-	, out float4 OutMaterial : SV_Target2
-	, out float4 OutEmissive : SV_Target3
-	, out float OutMipRate : SV_Target4)
+float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_Target
 {
+	// similar to BasePixelShader but it's forward rendering
+	// so I have to calculate light here
+
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
-
-	// only clip objects without prepass
-	// otherwise, the equal test will suffice
-#if WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS)
-	clip(MaterialInput.Opacity - GCutoff);
-#endif
 
 	float3 BaseColor = MaterialInput.Diffuse;
 	float Occlusion = MaterialInput.Occlusion;
 	float Metallic = MaterialInput.Metallic;
 	float Roughness = MaterialInput.Roughness;
+	BaseColor = saturate(BaseColor - BaseColor * Metallic);
 
-	BaseColor = BaseColor - BaseColor * Metallic;
-	OutColor = float4(saturate(BaseColor), Occlusion);
-
-	// output normal in [0,1], a is unused at the moment, also be sure to flip normal based on face
 #if WITH_TANGENT_SPACE
 	float3 BumpNormal = MaterialInput.Normal;
 
@@ -56,25 +47,19 @@ void BasePS(VertexOutput Vin
 	BumpNormal *= (bIsFrontFace) ? 1 : -1;
 #endif
 
-	OutNormal = float4(BumpNormal * 0.5f + 0.5f, 0);
-
-	// output specular color and roughness
+	// specular color and roughness
 	float3 Specular = MaterialInput.Specular;
 	Specular = ComputeSpecularColor(Specular, MaterialInput.Diffuse, Metallic);
-	OutMaterial = float4(Specular * MaterialInput.ReflectionFactor, Roughness);
 
 	float3 IndirectSpecular = 0;
 #if WITH_ENVCUBE
-	// if per-object env cube is used, calculate it here, and adds the result to emissive buffer
+	// if per-object env cube is used, calculate it here, and adds the result to emissive
 	float3 EyeVector = normalize(Vin.WorldPos - UHCameraPos);
 	float3 R = reflect(EyeVector, BumpNormal);
 	float NdotV = abs(dot(BumpNormal, -EyeVector));
 
 	float Smoothness = 1.0f - Roughness;
 	float SpecFade = Smoothness * Smoothness;
-
-	// use 1.0f - smooth * smooth as mip bias, so it will blurry with low smoothness
-	// just don't want to declare another variable so simply use SpecFade
 	float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
 
 	IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
@@ -83,12 +68,24 @@ void BasePS(VertexOutput Vin
 	IndirectSpecular *= MaterialInput.ReflectionFactor;
 #endif
 
-	// output emissive color, a is not used at the moment
-	OutEmissive = float4(MaterialInput.Emissive.rgb + IndirectSpecular, 0);
+	// sample shadows
+	float ShadowMask = 1.0f;
+#if WITH_RTSHADOWS
+	float2 UV = Vin.Position.xy * UHResolution.zw;
+	ShadowMask = RTShadow.Sample(LinearClamppedSampler, UV).g;
+#endif
 
-	// store the max change rate of UV for mip outside pixel shader
-	float2 Dx = ddx_fine(Vin.UV0);
-	float2 Dy = ddy_fine(Vin.UV0);
-	float DeltaMax = max(length(Dx), length(Dy));
-	OutMipRate = DeltaMax;
+	// light calculation
+	float3 Result = 0;
+	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
+	{
+		Result += LightBRDF(UHDirLights[Ldx], BaseColor, float4(Specular * MaterialInput.ReflectionFactor, Roughness), BumpNormal, Vin.WorldPos, ShadowMask);
+	}
+
+	// indirect light accumulation
+	Result += LightIndirect(BaseColor, BumpNormal, Occlusion);
+	Result += MaterialInput.Emissive.rgb + IndirectSpecular;
+
+	// output result with opacity
+	return float4(Result, MaterialInput.Opacity);
 }

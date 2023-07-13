@@ -1,47 +1,28 @@
 #include "DeferredShadingRenderer.h"
 
-// implementation of RenderBasePass(), this pass is a deferred rendering with GBuffers and depth buffer
-void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
+void UHDeferredShadingRenderer::RenderTranslucentPass(UHGraphicBuilder& GraphBuilder)
 {
 	if (CurrentScene == nullptr)
 	{
 		return;
 	}
 
-	// setup clear value
-	std::vector<VkClearValue> ClearValues;
-	ClearValues.resize(GNumOfGBuffers);
-
-	// clear GBuffer with pure black
-	for (size_t Idx = 0; Idx < GNumOfGBuffers; Idx++)
+	// this pass doesn't need a RT clear, will draw on scene result directly
+	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Translucent Pass");
 	{
-		ClearValues[Idx].color = { {0.0f, 0.0f, 0.0f, 0.0f} };
-	}
-
-	// clear depth with 0 since reversed-z is used
-	if (!bEnableDepthPrePass)
-	{
-		VkClearValue DepthClear;
-		DepthClear.depthStencil = { 0.0f,0 };
-		ClearValues.push_back(DepthClear);
-	}
-
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Base Pass");
-	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
+		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TranslucentPass]);
 
 		// setup viewport and scissor
 		GraphBuilder.SetViewport(RenderResolution);
 		GraphBuilder.SetScissor(RenderResolution);
 
-		// begin render pass based on flag
 		if (bParallelSubmissionRT)
 		{
-			GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+			GraphBuilder.BeginRenderPass(TranslucentPassObj.RenderPass, TranslucentPassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 		}
 		else
 		{
-			GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
+			GraphBuilder.BeginRenderPass(TranslucentPassObj.RenderPass, TranslucentPassObj.FrameBuffer, RenderResolution);
 		}
 
 		if (bParallelSubmissionRT)
@@ -53,8 +34,8 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 			}
 #endif
 
-			// wake all worker threads
-			ParallelTask = UHParallelTask::BasePassTask;
+			// parallel pass
+			ParallelTask = UHParallelTask::TranslucentPassTask;
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				WorkerThreads[I]->WakeThread();
@@ -73,44 +54,44 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 #endif
 
 			// execute all recorded batches
-			GraphBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
+			GraphBuilder.ExecuteBundles(TranslucentParallelSubmitter.WorkerBundles);
 		}
 		else
 		{
 			// bind texture table, they should only be bound once
-			if (BasePassShaders.size() > 0)
+			if (TranslucentPassShaders.size() > 0)
 			{
 				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
 					, SamplerTable.GetDescriptorSet(CurrentFrame) };
-				GraphBuilder.BindDescriptorSet(BasePassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+				GraphBuilder.BindDescriptorSet(TranslucentPassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 			}
 
-			// render all opaque renderers from scene
-			for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
+			// render all translucent renderers from scene
+			for (const UHMeshRendererComponent* Renderer : TranslucentsToRender)
 			{
 				const UHMaterial* Mat = Renderer->GetMaterial();
 				UHMesh* Mesh = Renderer->GetMesh();
 				int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
 #if WITH_DEBUG
-				if (BasePassShaders.find(RendererIdx) == BasePassShaders.end())
+				if (TranslucentPassShaders.find(RendererIdx) == TranslucentPassShaders.end())
 				{
 					// unlikely to happen, but printing a message for debug
-					UHE_LOG(L"[RenderBasePass] Can't find base pass shader for material: \n");
+					UHE_LOG(L"[RenderTranslucentPass] Can't find translucent pass shader for material: \n");
 					continue;
 				}
 #endif
 
-				const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
+				const UHTranslucentPassShader& TranslucentShader = TranslucentPassShaders[RendererIdx];
 
 				GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 				// bind pipelines
-				GraphBuilder.BindGraphicState(BaseShader.GetState());
+				GraphBuilder.BindGraphicState(TranslucentShader.GetState());
 				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
+				GraphBuilder.BindDescriptorSet(TranslucentShader.GetPipelineLayout(), TranslucentShader.GetDescriptorSet(CurrentFrame));
 
 				// draw call
 				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
@@ -120,31 +101,25 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 		}
 
 		GraphBuilder.EndRenderPass();
-
-		// transition states of Gbuffer after base pass, they will be used in the shader
-		std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneMip };
-		GraphBuilder.ResourceBarrier(GBuffers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		
-		// doesn't need to transition depth as the following motion pass will do it
+		GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 }
 
-// base pass task, called by worker thread
-void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
+void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 {
 	// simply separate buffer recording into N threads
-	const int32_t MaxCount = static_cast<int32_t>(OpaquesToRender.size());
+	const int32_t MaxCount = static_cast<int32_t>(TranslucentsToRender.size());
 	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
 	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
 	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	VkCommandBufferInheritanceInfo InheritanceInfo{};
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-	InheritanceInfo.renderPass = BasePassObj.RenderPass;
-	InheritanceInfo.framebuffer = BasePassObj.FrameBuffer;
+	InheritanceInfo.renderPass = TranslucentPassObj.RenderPass;
+	InheritanceInfo.framebuffer = TranslucentPassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, BaseParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrame]);
+	UHGraphicBuilder GraphBuilder(GraphicInterface, TranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrame]);
 	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
@@ -155,29 +130,30 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 	}
 
 	// bind texture table, they should only be bound once
-	if (BasePassShaders.size() > 0)
+	if (TranslucentPassShaders.size() > 0)
 	{
 		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
 			, SamplerTable.GetDescriptorSet(CurrentFrame) };
-		GraphBuilder.BindDescriptorSet(BasePassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+		GraphBuilder.BindDescriptorSet(TranslucentPassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
 	for (int32_t I = StartIdx; I < EndIdx; I++)
 	{
-		const UHMeshRendererComponent* Renderer = OpaquesToRender[I];
+		const UHMeshRendererComponent* Renderer = TranslucentsToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
 		UHMesh* Mesh = Renderer->GetMesh();
 		int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
-		const UHBasePassShader& BaseShader = BasePassShaders[RendererIdx];
+		const UHTranslucentPassShader& TranslucentShader = TranslucentPassShaders[RendererIdx];
 
 		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
-		GraphBuilder.BindGraphicState(BaseShader.GetState());
+		// bind pipelines
+		GraphBuilder.BindGraphicState(TranslucentShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(BaseShader.GetPipelineLayout(), BaseShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(TranslucentShader.GetPipelineLayout(), TranslucentShader.GetDescriptorSet(CurrentFrame));
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());

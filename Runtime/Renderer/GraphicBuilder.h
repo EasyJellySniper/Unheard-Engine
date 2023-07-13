@@ -72,7 +72,7 @@ public:
 
 	// bind descriptors
 	void BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet);
-	void BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets);
+	void BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets, uint32_t FirstSet = 0);
 	void BindDescriptorSetCompute(VkPipelineLayout InLayout, VkDescriptorSet InSet);
 	void BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets);
 

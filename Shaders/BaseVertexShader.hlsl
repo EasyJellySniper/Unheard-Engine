@@ -1,24 +1,13 @@
 #include "UHInputs.hlsli"
 #include "UHCommon.hlsli"
 
-ByteAddressBuffer OcclusionVisible : register(t3);
-StructuredBuffer<float2> UV0Buffer : register(t4);
-StructuredBuffer<float3> NormalBuffer : register(t5);
-StructuredBuffer<float4> TangentBuffer : register(t6);
+StructuredBuffer<float2> UV0Buffer : register(t3);
+StructuredBuffer<float3> NormalBuffer : register(t4);
+StructuredBuffer<float4> TangentBuffer : register(t5);
 
 VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 {
 	VertexOutput Vout = (VertexOutput)0;
-
-#if WITH_OCCLUSION_TEST
-	uint IsVisible = OcclusionVisible.Load(UHInstanceIndex * 4);
-	UHBRANCH
-	if (IsVisible == 0)
-	{
-		Vout.Position = -10;
-		return Vout;
-	}
-#endif
 
 	float3 WorldPos = mul(float4(Position, 1.0f), UHWorld).xyz;
 
@@ -38,7 +27,7 @@ VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
 #endif
 
-#if WITH_ENVCUBE
+#if defined(WITH_ENVCUBE) || defined(WITH_TRANSLUCENT)
 	Vout.WorldPos = WorldPos;
 #endif
 

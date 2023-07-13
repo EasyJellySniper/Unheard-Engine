@@ -44,39 +44,29 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	}
 
-	// occlusion buffer
-	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-
 	// UV0 Buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	CreateMaterialDescriptor(ExtraLayouts);
 
-	// check occlusion test define
-	std::vector<std::string> OcclusionTestDefine;
-	if (InGfx->IsRayTracingOcclusionTestEnabled())
-	{
-		OcclusionTestDefine.push_back("WITH_OCCLUSION_TEST");
-	}
-	ShaderVS = InGfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", OcclusionTestDefine);
-
-	// find opacity define
-	std::vector<std::string> Defines = InMat->GetMaterialDefines(PS);
-	std::vector<std::string> ActualDefines;
+	std::vector<std::string> MatDefines = InMat->GetMaterialDefines();
+	ShaderVS = InGfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", MatDefines);
 
 	if (bEnableDepthPrePass)
 	{
-		ActualDefines.push_back("WITH_DEPTHPREPASS");
+		MatDefines.push_back("WITH_DEPTHPREPASS");
 	}
 
 	UHMaterialCompileData Data;
 	Data.MaterialCache = InMat;
 	Data.bIsDepthOrMotionPass = true;
-	ShaderPS = InGfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, ActualDefines);
+	ShaderPS = InGfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, MatDefines);
 
-	// states, enable depth test but don't write it
+	// states, enable depth test, and write depth for translucent object only
+	const bool bIsTranslucent = InMat->GetBlendMode() > UHBlendMode::Masked;
 	MaterialPassInfo = UHRenderPassInfo(InRenderPass, 
-		UHDepthInfo(true, false, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL)
+		UHDepthInfo(true, bIsTranslucent
+		, (bEnableDepthPrePass && !bIsTranslucent) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL)
 		, InMat->GetCullMode()
 		, InMat->GetBlendMode()
 		, ShaderVS
@@ -89,17 +79,11 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 
 void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const std::unique_ptr<UHRenderBuffer<uint32_t>>& OcclusionConst
 	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
-	if (Gfx->IsRayTracingOcclusionTestEnabled())
-	{
-		BindStorage(OcclusionConst.get(), 3, 0, true);
-	}
-
-	BindStorage(InRenderer->GetMesh()->GetUV0Buffer(), 4, 0, true);
+	BindStorage(InRenderer->GetMesh()->GetUV0Buffer(), 3, 0, true);
 }

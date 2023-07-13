@@ -22,12 +22,11 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, MaterialPassInfo(UHRenderPassInfo())
 	, PipelineLayout(VK_NULL_HANDLE)
 	, DescriptorPool(VK_NULL_HANDLE)
-	, ShaderVS(nullptr)
-	, ShaderPS(nullptr)
-	, ShaderCS(nullptr)
-	, RayGenShader(nullptr)
-	, ClosestHitShader(nullptr)
-	, MissShader(nullptr)
+	, ShaderVS(-1)
+	, ShaderPS(-1)
+	, ShaderCS(-1)
+	, RayGenShader(-1)
+	, MissShader(-1)
 	, RTState(nullptr)
 	, RayGenTable(nullptr)
 	, HitGroupTable(nullptr)
@@ -214,27 +213,22 @@ void UHShaderClass::RecreateMaterialState()
 	CreateMaterialState(MaterialPassInfo);
 }
 
-UHShader* UHShaderClass::GetPixelShader() const
-{
-	return ShaderPS;
-}
-
-UHShader* UHShaderClass::GetRayGenShader() const
+uint32_t UHShaderClass::GetRayGenShader() const
 {
 	return RayGenShader;
 }
 
-UHShader* UHShaderClass::GetClosestShader() const
+std::vector<uint32_t> UHShaderClass::GetClosestShaders() const
 {
-	return ClosestHitShader;
+	return ClosestHitShaders;
 }
 
-std::vector<UHShader*> UHShaderClass::GetAnyHitShaders() const
+std::vector<uint32_t> UHShaderClass::GetAnyHitShaders() const
 {
 	return AnyHitShaders;
 }
 
-UHShader* UHShaderClass::GetMissShader() const
+uint32_t UHShaderClass::GetMissShader() const
 {
 	return MissShader;
 }
@@ -496,7 +490,7 @@ void UHShaderClass::InitRayGenTable()
 
 	PFN_vkGetRayTracingShaderGroupHandlesKHR GetRTShaderGroupHandle = (PFN_vkGetRayTracingShaderGroupHandlesKHR)
 		vkGetInstanceProcAddr(Gfx->GetInstance(), "vkGetRayTracingShaderGroupHandlesKHR");
-	if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), 0, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+	if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GRayGenTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to get ray gen group handle!\n");
 	}
@@ -513,7 +507,7 @@ void UHShaderClass::InitMissTable()
 	// get data for HG as well
 	PFN_vkGetRayTracingShaderGroupHandlesKHR GetRTShaderGroupHandle = (PFN_vkGetRayTracingShaderGroupHandlesKHR)
 		vkGetInstanceProcAddr(Gfx->GetInstance(), "vkGetRayTracingShaderGroupHandlesKHR");
-	if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), 1, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+	if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GMissTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to get hit group handle!\n");
 	}
@@ -538,7 +532,8 @@ void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 
 	for (size_t Idx = 0; Idx < NumMaterials; Idx++)
 	{
-		if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), 2 + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+		// copy hit group
+		if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GHitGroupTableSlot + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 		{
 			UHE_LOG(L"Failed to get hit group handle!\n");
 			continue;

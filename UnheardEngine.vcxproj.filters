@@ -219,9 +219,6 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Runtime\Classes\Thread.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -271,6 +268,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMaterialDataTable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -449,9 +452,6 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\BasePassShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -515,6 +515,15 @@
     <ClCompile Include="Runtime\Renderer\RenderingTypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\TranslucentRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -545,12 +554,13 @@
     <None Include="Shaders\RayTracing\RayTracingHitGroup.hlsl" />
     <None Include="Shaders\PostProcessing\DebugViewPixelShader.hlsl" />
     <None Include="Shaders\DepthPixelShader.hlsl" />
-    <None Include="Shaders\RayTracing\RayTracingOcclusionTest.hlsl" />
     <None Include="Shaders\FallbackPixelShader.hlsl" />
     <None Include="Shaders\DepthVertexShader.hlsl" />
     <None Include="Shaders\MotionPixelShader.hlsl" />
     <None Include="Shaders\MotionVertexShader.hlsl" />
     <None Include="Shaders\PostProcessing\TemporalAAComputeShader.hlsl" />
     <None Include="Shaders\LightComputeShader.hlsl" />
+    <None Include="Shaders\TranslucentPixelShader.hlsl" />
+    <None Include="Shaders\RayTracing\SoftRTShadowComputeShader.hlsl" />
   </ItemGroup>
 </Project>

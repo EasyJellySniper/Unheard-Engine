@@ -38,6 +38,12 @@ void UHTransformComponent::Update()
 
 		bIsWorldDirty = false;
 	}
+	else
+	{
+		// if it's not moving, sync the prev world matrix at least
+		// otherwise the objects that only get updated at the first frame will not have previous world info
+		PrevWorldMatrix = WorldMatrix;
+	}
 }
 
 void UHTransformComponent::Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace)

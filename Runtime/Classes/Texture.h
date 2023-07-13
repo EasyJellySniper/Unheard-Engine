@@ -81,6 +81,8 @@ public:
 	bool HasUploadedToGPU() const;
 
 	bool IsLinear() const;
+	// is depth format?
+	bool IsDepthFormat() const;
 
 	bool operator==(const UHTexture& InTexture);
 
@@ -98,8 +100,6 @@ protected:
 	bool bIsLinear;
 
 private:
-	// is depth format?
-	bool IsDepthFormat() const;
 
 	// create image view based on stored format and image
 	bool CreateImageView(VkImageViewType InViewType);

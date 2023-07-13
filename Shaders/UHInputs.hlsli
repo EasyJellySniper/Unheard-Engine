@@ -42,7 +42,7 @@ struct VertexOutput
 	float3 Normal : NORMAL;
 #endif
 
-#if WITH_ENVCUBE
+#if defined(WITH_ENVCUBE) || defined(WITH_TRANSLUCENT)
 	float3 WorldPos : TEXCOORD5;
 #endif
 };

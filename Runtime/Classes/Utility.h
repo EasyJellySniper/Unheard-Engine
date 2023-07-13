@@ -14,7 +14,7 @@ namespace UHUtilities
 {
 	// find an element in a vector
 	template<class T>
-	inline bool FindByElement(std::vector<T>& InVector, T InElement)
+	inline bool FindByElement(std::vector<T>& InVector, const T& InElement)
 	{
 		for (auto& Element : InVector)
 		{
@@ -44,7 +44,7 @@ namespace UHUtilities
 
 	// find element in a vector, unique pointer version
 	template<class T>
-	inline bool FindByElement(const std::vector<std::unique_ptr<T>>& InVector, T InElement)
+	inline bool FindByElement(const std::vector<std::unique_ptr<T>>& InVector, const T& InElement)
 	{
 		for (auto& Element : InVector)
 		{
@@ -60,7 +60,7 @@ namespace UHUtilities
 
 	// find index by element in a vector
 	template<class T>
-	inline int32_t FindIndex(const std::vector<T>& InVector, T InElement)
+	inline int32_t FindIndex(const std::vector<T>& InVector, const T& InElement)
 	{
 		for (size_t Idx = 0; Idx < InVector.size(); Idx++)
 		{
@@ -92,7 +92,7 @@ namespace UHUtilities
 
 	// find index by element in a vector, unique pointer version
 	template<class T>
-	inline int32_t FindIndex(const std::vector<std::unique_ptr<T>>& InVector, T InElement)
+	inline int32_t FindIndex(const std::vector<std::unique_ptr<T>>& InVector, const T& InElement)
 	{
 		for (size_t Idx = 0; Idx < InVector.size(); Idx++)
 		{

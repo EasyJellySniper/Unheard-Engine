@@ -93,11 +93,10 @@ public:
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame);
 	void RecreateMaterialState();
 
-	UHShader* GetPixelShader() const;
-	UHShader* GetRayGenShader() const;
-	UHShader* GetClosestShader() const;
-	std::vector<UHShader*> GetAnyHitShaders() const;
-	UHShader* GetMissShader() const;
+	uint32_t GetRayGenShader() const;
+	std::vector<uint32_t> GetClosestShaders() const;
+	std::vector<uint32_t> GetAnyHitShaders() const;
+	uint32_t GetMissShader() const;
 	UHGraphicState* GetState() const;
 	UHGraphicState* GetRTState() const;
 	UHComputeState* GetComputeState() const;
@@ -141,13 +140,14 @@ protected:
 	VkDescriptorPool DescriptorPool;
 	std::array<VkDescriptorSet, GMaxFrameInFlight> DescriptorSets;
 
-	UHShader* ShaderVS;
-	UHShader* ShaderPS;
-	UHShader* ShaderCS;
-	UHShader* RayGenShader;
-	UHShader* ClosestHitShader;
-	std::vector<UHShader*> AnyHitShaders;
-	UHShader* MissShader;
+	// store shader's id instead of UHShader*, prevent dangling pointer issue
+	uint32_t ShaderVS;
+	uint32_t ShaderPS;
+	uint32_t ShaderCS;
+	uint32_t RayGenShader;
+	std::vector<uint32_t> ClosestHitShaders;
+	std::vector<uint32_t> AnyHitShaders;
+	uint32_t MissShader;
 	UHGraphicState* RTState;
 
 	// shader table

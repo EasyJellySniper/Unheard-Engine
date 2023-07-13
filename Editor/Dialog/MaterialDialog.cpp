@@ -791,9 +791,12 @@ void UHMaterialDialog::RecompileMaterial(int32_t MatIndex)
         return;
     }
 
-    for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+    if (CurrentMaterialIndex == MatIndex)
     {
-        GUI->SetDefaultValueFromGUI();
+        for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+        {
+            GUI->SetDefaultValueFromGUI();
+        }
     }
 
     UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
@@ -827,9 +830,14 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
         }
         CurrentMaterial->SetGUIRelativePos(EditGUIPos);
 
+        // sync value from GUI
+        for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+        {
+            GUI->SetDefaultValueFromGUI();
+        }
     }
 
-    CurrentMaterial->Export();
+    AssetManager->GetMaterials()[MatIndex]->Export();
 
     // request a compile after exporting, so the shader cache will get proper material file mod time
     RecompileMaterial(MatIndex);
@@ -837,10 +845,10 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
 
 void UHMaterialDialog::ResaveAllMaterials()
 {
-    for (size_t Idx = 0; Idx < AssetManager->GetMaterials().size(); Idx++)
+    for (int32_t Idx = 0; Idx < static_cast<int32_t>(AssetManager->GetMaterials().size()); Idx++)
     {
         AssetManager->GetMaterials()[Idx]->SetCompileFlag(FullCompileResave);
-        ResaveMaterial(static_cast<int32_t>(Idx));
+        ResaveMaterial(Idx);
     }
 
     MessageBoxA(GMaterialDialogData->Window, "All materials are saved.", "Material Editor", MB_OK);

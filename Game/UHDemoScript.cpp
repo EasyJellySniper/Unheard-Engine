@@ -102,8 +102,8 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	// setup default light
 	DefaultDirectionalLight.SetLightColor(XMFLOAT4(0.95f, 0.91f, 0.6f, 0.4f));
-	DefaultDirectionalLight.SetIntensity(2.5f);
-	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, 150, 0));
+	DefaultDirectionalLight.SetIntensity(4.5f);
+	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, 180, 0));
 	InScene->AddDirectionalLight(&DefaultDirectionalLight);
 
 	// setup default sky light
@@ -114,7 +114,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	InScene->SetSkyLight(&DefaultSkyLight);
 
 	// setup default camera
-	//InScene->GetMainCamera()->SetPosition(XMFLOAT3(0, 2, -15));
+	InScene->GetMainCamera()->SetPosition(XMFLOAT3(0, 2, -15));
 	InScene->GetMainCamera()->SetPosition(XMFLOAT3(138, 9, -25));
 	InScene->GetMainCamera()->SetRotation(XMFLOAT3(0, -70, 0));
 	InScene->GetMainCamera()->SetCullingDistance(1000.0f);

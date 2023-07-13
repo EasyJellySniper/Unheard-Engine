@@ -1,8 +1,5 @@
 #include "../Shaders/UHInputs.hlsli"
 
-ByteAddressBuffer OcclusionVisible : register(t3);
-StructuredBuffer<float2> UV0Buffer : register(t4);
-
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
 SamplerState UHSamplerTable[] : register(t0, space2);

@@ -31,7 +31,6 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, ConfigInterface(InConfig)
 	, bEnableDepthPrePass(InConfig->RenderingSetting().bEnableDepthPrePass)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
-	, bEnableRayTracingOcclusionTest(InConfig->RenderingSetting().bEnableRayTracingOcclusionTest)
 {
 	// extension defines, hard code for now
 	InstanceExtensions = { "VK_KHR_surface"
@@ -1140,7 +1139,7 @@ bool UHGraphic::CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::fi
 	return true;
 }
 
-UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+uint32_t UHGraphic::RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 	, std::vector<std::string> InMacro)
 {
 	std::unique_ptr<UHShader> NewShader = std::make_unique<UHShader>(InShaderName, InSource, EntryName, ProfileName, InMacro);
@@ -1150,7 +1149,7 @@ UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pa
 	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
 	if (PoolIdx != -1)
 	{
-		return ShaderPools[PoolIdx].get();
+		return ShaderPools[PoolIdx]->GetId();
 	}
 
 	// ensure the shader is compiled (debug only)
@@ -1169,15 +1168,15 @@ UHShader* UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pa
 	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OriginSubpath + InShaderName + MacroHashName + GShaderAssetExtension;
 	if (!CreateShaderModule(NewShader, OutputShaderPath))
 	{
-		return nullptr;
+		return -1;
 	}
 
 	ShaderPools.push_back(std::move(NewShader));
-	return ShaderPools.back().get();
+	return ShaderPools.back()->GetId();
 }
 
 // request shader for material
-UHShader* UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 	, UHMaterialCompileData InData, std::vector<std::string> InMacro)
 {
 	// macro hash
@@ -1205,7 +1204,7 @@ UHShader* UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesy
 	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
 	if (PoolIdx != -1)
 	{
-		return ShaderPools[PoolIdx].get();
+		return ShaderPools[PoolIdx]->GetId();
 	}
 
 	// almost the same as common shader flow, but this will go through HLSL translator instead
@@ -1216,21 +1215,17 @@ UHShader* UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesy
 
 	if (!CreateShaderModule(NewShader, OutputShaderPath))
 	{
-		return nullptr;
+		return -1;
 	}
 
 	ShaderPools.push_back(std::move(NewShader));
-	return ShaderPools.back().get();
+	return ShaderPools.back()->GetId();
 }
 
-void UHGraphic::RequestReleaseShader(UHShader* InShader)
+void UHGraphic::RequestReleaseShader(uint32_t InShaderID)
 {
-	if (GObjectTable.find(InShader->GetId()) == GObjectTable.end())
-	{
-		return;
-	}
-
-	if (InShader)
+	// check if the object still exists before release
+	if (const UHShader* InShader = SafeGetObjectFromTable<const UHShader>(InShaderID))
 	{
 		int32_t Idx = UHUtilities::FindIndex(ShaderPools, *InShader);
 		if (Idx != -1)
@@ -1429,11 +1424,6 @@ bool UHGraphic::IsDepthPrePassEnabled() const
 bool UHGraphic::IsRayTracingEnabled() const
 {
 	return bEnableRayTracing;
-}
-
-bool UHGraphic::IsRayTracingOcclusionTestEnabled() const
-{
-	return bEnableRayTracingOcclusionTest && bEnableRayTracing;
 }
 
 bool UHGraphic::IsDebugLayerEnabled() const

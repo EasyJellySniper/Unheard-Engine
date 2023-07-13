@@ -290,13 +290,14 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshTable.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMaterialDataTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\ShaderClass.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SkyPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="Runtime\Engine\Input.h" />
     <ClInclude Include="Editor\Classes\FbxImporter.h" />
@@ -381,9 +382,11 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp" />
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTOcclusionTestShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SkyPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\TranslucentRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\SkyPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ShaderClass.cpp" />
     <ClCompile Include="UnheardEngine.cpp" />
@@ -467,11 +470,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\RayTracing\RayTracingOcclusionTest.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Shaders\FallbackPixelShader.hlsl">
       <FileType>Document</FileType>
     </None>
@@ -496,6 +494,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\LightComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\TranslucentPixelShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\SoftRTShadowComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -163,11 +163,11 @@ public:
 
 	// request a shader reference based on input
 	bool CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::filesystem::path OutputShaderPath);
-	UHShader* RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+	uint32_t RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> InMacro = std::vector<std::string>());
-	UHShader* RequestMaterialShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
+	uint32_t RequestMaterialShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, UHMaterialCompileData InData, std::vector<std::string> InMacro = std::vector<std::string>());
-	void RequestReleaseShader(UHShader* InShader);
+	void RequestReleaseShader(uint32_t InShaderID);
 
 	// request graphic/RT state
 	UHGraphicState* RequestGraphicState(UHRenderPassInfo InInfo);
@@ -225,7 +225,6 @@ public:
 
 	// is ray tracing enabled
 	bool IsRayTracingEnabled() const;
-	bool IsRayTracingOcclusionTestEnabled() const;
 
 	// is debug layer enabled
 	bool IsDebugLayerEnabled() const;
@@ -361,7 +360,6 @@ private:
 	float GPUTimeStampPeriod;
 	bool bEnableDepthPrePass;
 	bool bEnableRayTracing;
-	bool bEnableRayTracingOcclusionTest;
 
 protected:
 	// system managed pools

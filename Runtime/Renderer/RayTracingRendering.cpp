@@ -17,43 +17,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 	TopLevelAS[CurrentFrame]->UpdateTopAS(GraphBuilder.GetCmdList(), CurrentFrame);
 
 	// after update, shader descriptor for TLAS needs to be bound again
-	if (GraphicInterface->IsRayTracingOcclusionTestEnabled())
-	{
-		RTOcclusionTestShader.BindTLAS(TopLevelAS[CurrentFrame].get(), 1, CurrentFrame);
-	}
-
 	RTShadowShader.BindTLAS(TopLevelAS[CurrentFrame].get(), 1, CurrentFrame);
-}
-
-void UHDeferredShadingRenderer::DispatchRayOcclusionTestPass(UHGraphicBuilder& GraphBuilder)
-{
-	if (!GraphicInterface->IsRayTracingOcclusionTestEnabled() || !TopLevelAS[CurrentFrame] || RTInstanceCount == 0)
-	{
-		return;
-	}
-
-	UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingOcclusionTest]);
-
-	// reset occlusion buffer
-	GraphBuilder.ClearUAVBuffer(OcclusionVisibleBuffer->GetBuffer(), 0);
-
-	// bind descriptors and RT states
-	std::vector<VkDescriptorSet> DescriptorSets = { RTOcclusionTestShader.GetDescriptorSet(CurrentFrame)
-		, TextureTable.GetDescriptorSet(CurrentFrame)
-		, SamplerTable.GetDescriptorSet(CurrentFrame)
-		, RTVertexTable.GetDescriptorSet(CurrentFrame)
-		, RTIndicesTable.GetDescriptorSet(CurrentFrame)
-		, RTIndicesTypeTable.GetDescriptorSet(CurrentFrame)
-		, RTMaterialDataTable.GetDescriptorSet(CurrentFrame) };
-
-	GraphBuilder.BindRTDescriptorSet(RTOcclusionTestShader.GetPipelineLayout(), DescriptorSets);
-	GraphBuilder.BindRTState(RTOcclusionTestShader.GetRTState());
-
-	// trace!
-	VkExtent2D RTOTExtent;
-	RTOTExtent.width = RenderResolution.width / 2;
-	RTOTExtent.height = RenderResolution.height / 2;
-	GraphBuilder.TraceRay(RTOTExtent, RTOcclusionTestShader.GetRayGenTable(), RTOcclusionTestShader.GetMissTable(), RTOcclusionTestShader.GetHitGroupTable());
 }
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder)
@@ -67,6 +31,7 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 
 	// transition RW buffer to VK_IMAGE_LAYOUT_GENERAL
 	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	// bind descriptors and RT states
 	std::vector<VkDescriptorSet> DescriptorSets = { RTShadowShader.GetDescriptorSet(CurrentFrame)
@@ -85,4 +50,20 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 
 	// transition to shader read after tracing
 	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	// soften shadow after trace is done, redundant transition is needed to sync the result in GPU
+	// otherwise the writing from compute shader won't work
+	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+	// note that this is dispatched with render resolution
+	UHComputeState* State = SoftRTShadowShader.GetComputeState();
+	GraphBuilder.BindComputeState(State);
+	GraphBuilder.BindDescriptorSetCompute(SoftRTShadowShader.GetPipelineLayout(), SoftRTShadowShader.GetDescriptorSet(CurrentFrame));
+	GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
+
+	// finally, transition to shader read only
+	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

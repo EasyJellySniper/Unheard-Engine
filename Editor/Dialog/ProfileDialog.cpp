@@ -86,13 +86,13 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
 
         // GPU stat section
         std::wstring GPUStatStrings[UHRenderPassMax] = { L"Update Top Level AS"
-            , L"Ray Tracing Occlusion Test"
             , L"Depth Pre Pass"
             , L"Base Pass"
             , L"Ray Tracing Shadow"
             , L"Light Pass"
             , L"Skybox Pass"
             , L"Motion Pass"
+            , L"Translucent Pass"
             , L"Tone Mapping"
             , L"Temporal AA"
             , L"Present SwapChain"};

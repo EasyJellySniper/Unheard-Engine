@@ -102,7 +102,6 @@ public:
 	void SetMaterialProps(UHMaterialProperty InProp);
 	void SetSystemTex(UHSystemTextureType InType, UHTexture* InTex);
 	void SetSystemSampler(UHSystemTextureType InType, UHSampler* InSampler);
-	void SetShader(UHMaterialShaderType InType, UHShader* InShader);
 	void SetIsSkybox(bool InFlag);
 	void SetCompileFlag(UHMaterialCompileFlag InFlag);
 	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
@@ -120,8 +119,7 @@ public:
 
 	UHTexture* GetSystemTex(UHSystemTextureType InType) const;
 	UHSampler* GetSystemSampler(UHSystemTextureType InType) const;
-	UHShader* GetShader(UHMaterialShaderType InType) const;
-	std::vector<std::string> GetMaterialDefines(UHMaterialShaderType InType) const;
+	std::vector<std::string> GetMaterialDefines() const;
 	std::vector<std::string> GetRegisteredTextureNames();
 	const std::array<std::unique_ptr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
 	UHRenderBuffer<UHMaterialData>* GetRTMaterialDataGPU() const;
@@ -157,7 +155,6 @@ private:
 	UHMaterialProperty MaterialProps;
 	std::array<UHTexture*, UHSystemTextureType::TextureTypeMax> SystemTextures;
 	std::array<UHSampler*, UHSystemTextureType::TextureTypeMax> SystemSamplers;
-	std::array<UHShader*, UHMaterialShaderType::MaterialShaderTypeMax> Shaders;
 	std::array<std::string, UHMaterialInputs::MaterialMax> TexFileNames;
 
 	std::unique_ptr<UHMaterialNode> MaterialNode;

@@ -10,9 +10,6 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	}
 
-	// bind occlusion visible buffer
-	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-
 	// bind UV0 Buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -20,25 +17,17 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 	CreateMaterialDescriptor(ExtraLayouts);
 
 	// check opacity texture
-	std::vector<std::string> OpacityDefine = {};
-
-	// check occlusion test define
-	if (InGfx->IsRayTracingOcclusionTestEnabled())
-	{
-		OpacityDefine.push_back("WITH_OCCLUSION_TEST");
-	}
+	std::vector<std::string> MatDefines = InMat->GetMaterialDefines();
 
 	if (InMat->GetBlendMode() == UHBlendMode::Masked)
 	{
-		OpacityDefine.push_back("WITH_ALPHATEST");
-
 		UHMaterialCompileData Data;
 		Data.MaterialCache = InMat;
 		Data.bIsDepthOrMotionPass = true;
-		ShaderPS = InGfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data, OpacityDefine);
+		ShaderPS = InGfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data, MatDefines);
 	}
 
-	ShaderVS = InGfx->RequestShader("DepthPassVS", "Shaders/DepthVertexShader.hlsl", "DepthVS", "vs_6_0", OpacityDefine);
+	ShaderVS = InGfx->RequestShader("DepthPassVS", "Shaders/DepthVertexShader.hlsl", "DepthVS", "vs_6_0", MatDefines);
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(InRenderPass, UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)
@@ -54,18 +43,12 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 
 void UHDepthPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const std::unique_ptr<UHRenderBuffer<uint32_t>>& OcclusionConst
 	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
-	if (Gfx->IsRayTracingOcclusionTestEnabled())
-	{
-		BindStorage(OcclusionConst.get(), 3, 0, true);
-	}
-
 	UHMesh* Mesh = InRenderer->GetMesh();
-	BindStorage(Mesh->GetUV0Buffer(), 4, 0, true);
+	BindStorage(Mesh->GetUV0Buffer(), 3, 0, true);
 }

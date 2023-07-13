@@ -24,3 +24,15 @@ private:
 // global table for managing object references
 inline std::unordered_map<uint32_t, UHObject*> GObjectTable;
 inline std::unordered_map<uint32_t, std::vector<uint32_t>> GObjectReferences;
+
+// safe get object from the table
+template <typename T>
+inline T* SafeGetObjectFromTable(uint32_t Id)
+{
+	if (GObjectTable.find(Id) == GObjectTable.end())
+	{
+		return nullptr;
+	}
+
+	return static_cast<T*>(GObjectTable[Id]);
+}

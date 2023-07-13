@@ -66,32 +66,81 @@ VkPipelineVertexInputStateCreateInfo GetVertexInputInfo(VkVertexInputBindingDesc
 	return VertexInputInfo;
 }
 
+// get blend state info based on input blend mode
+VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, int32_t RTCount, std::vector<VkPipelineColorBlendAttachmentState>& OutColorBlendAttachments)
+{
+	for (int32_t Idx = 0; Idx < RTCount; Idx++)
+	{
+		VkPipelineColorBlendAttachmentState ColorBlendAttachment{};
+		ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		ColorBlendAttachment.blendEnable = (InBlendMode > UHBlendMode::Masked) ? VK_TRUE : VK_FALSE;
+		ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+		ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+		ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
+		ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+		ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+		ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
+
+		// TranditionalAlpha blend mode: Color = SrcAlpha * SrcColor + (1.0f - SrcAlpha) * DestColor
+		if (InBlendMode == UHBlendMode::TranditionalAlpha)
+		{
+			ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		}
+
+		// addition mode: Color = SrcColor + DstColor
+		if (InBlendMode == UHBlendMode::Addition)
+		{
+			ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+		}
+
+		OutColorBlendAttachments.push_back(ColorBlendAttachment);
+	}
+
+	VkPipelineColorBlendStateCreateInfo ColorBlending{};
+	ColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	ColorBlending.logicOpEnable = VK_FALSE;
+	ColorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+	ColorBlending.attachmentCount = RTCount;
+	ColorBlending.pAttachments = OutColorBlendAttachments.data();
+	ColorBlending.blendConstants[0] = 0.0f; // Optional
+	ColorBlending.blendConstants[1] = 0.0f; // Optional
+	ColorBlending.blendConstants[2] = 0.0f; // Optional
+	ColorBlending.blendConstants[3] = 0.0f; // Optional
+
+	return ColorBlending;
+}
+
 bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 {
 	/*** function for create graphic states, currently doesn't have any dynamic usages ***/
 
 	/*** cache variables for compare ***/
 	RenderPassInfo = InInfo;
-	bool bHasPixelShader = (RenderPassInfo.PS != nullptr);
-	bool bHasGeometryShader = (RenderPassInfo.GS != nullptr);
+	bool bHasPixelShader = (RenderPassInfo.PS != -1);
+	bool bHasGeometryShader = (RenderPassInfo.GS != -1);
 
+	// lookup shader in object table
+	const UHShader* VS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.VS);
+	const UHShader* PS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.PS);
+	const UHShader* GS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.GS);
 
 	/*** Shader Stage setup, in UHEngine, all states must have at least one VS and PS (or CS) ***/
-	std::string VSEntryName = RenderPassInfo.VS->GetEntryName();
+	std::string VSEntryName = VS->GetEntryName();
 	VkPipelineShaderStageCreateInfo VSStageInfo{};
 	VSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	VSStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	VSStageInfo.module = RenderPassInfo.VS->GetShader();
+	VSStageInfo.module = VS->GetShader();
 	VSStageInfo.pName = VSEntryName.c_str();
 
 	VkPipelineShaderStageCreateInfo PSStageInfo{};
 	std::string PSEntryName;
 	if (bHasPixelShader)
 	{
-		PSEntryName = RenderPassInfo.PS->GetEntryName();
+		PSEntryName = PS->GetEntryName();
 		PSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		PSStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		PSStageInfo.module = RenderPassInfo.PS->GetShader();
+		PSStageInfo.module = PS->GetShader();
 		PSStageInfo.pName = PSEntryName.c_str();
 	}
 
@@ -99,10 +148,10 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	std::string GSEntryName;
 	if (bHasGeometryShader)
 	{
-		GSEntryName = RenderPassInfo.GS->GetEntryName();
+		GSEntryName = GS->GetEntryName();
 		GSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		GSStageInfo.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-		GSStageInfo.module = RenderPassInfo.GS->GetShader();
+		GSStageInfo.module = GS->GetShader();
 		GSStageInfo.pName = GSEntryName.c_str();
 	}
 
@@ -229,6 +278,8 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 {
 	RayTracingInfo = InInfo;
+	const UHShader* RG = SafeGetObjectFromTable<const UHShader>(RayTracingInfo.RayGenShader);
+	const UHShader* Miss = SafeGetObjectFromTable<const UHShader>(RayTracingInfo.MissShader);
 
 	VkRayTracingPipelineCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
@@ -236,49 +287,72 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	CreateInfo.layout = RayTracingInfo.PipelineLayout;
 
 	// set RG shader
-	std::string RGEntryName = RayTracingInfo.RayGenShader->GetEntryName();
+	std::string RGEntryName = RG->GetEntryName();
 	VkPipelineShaderStageCreateInfo RGStageInfo{};
 	RGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	RGStageInfo.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-	RGStageInfo.module = RayTracingInfo.RayGenShader->GetShader();
+	RGStageInfo.module = RG->GetShader();
 	RGStageInfo.pName = RGEntryName.c_str();
 
 	// set miss shader
-	std::string MissEntryName = RayTracingInfo.MissShader->GetEntryName();
+	std::string MissEntryName = Miss->GetEntryName();
 	VkPipelineShaderStageCreateInfo MissStageInfo{};
 	MissStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	MissStageInfo.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
-	MissStageInfo.module = RayTracingInfo.MissShader->GetShader();
+	MissStageInfo.module = Miss->GetShader();
 	MissStageInfo.pName = MissEntryName.c_str();
 
+	// closest hit and any hit should have the same size
+	assert(RayTracingInfo.ClosestHitShaders.size() == RayTracingInfo.AnyHitShaders.size());
+
 	// set closest hit shader
-	std::string CHGEntryName = RayTracingInfo.ClosestHitShader->GetEntryName();
-	VkPipelineShaderStageCreateInfo CHGStageInfo{};
-	CHGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	CHGStageInfo.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-	CHGStageInfo.module = RayTracingInfo.ClosestHitShader->GetShader();
-	CHGStageInfo.pName = CHGEntryName.c_str();
+	std::vector<VkPipelineShaderStageCreateInfo> CHGStageInfos(RayTracingInfo.ClosestHitShaders.size());
+	std::vector<std::string> CHGEntryNames(RayTracingInfo.ClosestHitShaders.size());
+
+	std::vector<UHShader*> ClosestHits(RayTracingInfo.ClosestHitShaders.size());
+	for (size_t Idx = 0; Idx < RayTracingInfo.ClosestHitShaders.size(); Idx++)
+	{
+		ClosestHits[Idx] = SafeGetObjectFromTable<UHShader>(RayTracingInfo.ClosestHitShaders[Idx]);
+		VkPipelineShaderStageCreateInfo CHGStageInfo{};
+		if (ClosestHits[Idx] != nullptr)
+		{
+			CHGEntryNames[Idx] = ClosestHits[Idx]->GetEntryName();
+			CHGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			CHGStageInfo.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+			CHGStageInfo.module = ClosestHits[Idx]->GetShader();
+			CHGStageInfo.pName = CHGEntryNames[Idx].c_str();
+			CHGStageInfos[Idx] = CHGStageInfo;
+		}
+	}
 
 	// set any hit shader
 	std::vector<VkPipelineShaderStageCreateInfo> AHGStageInfos(RayTracingInfo.AnyHitShaders.size());
 	std::vector<std::string> AHGEntryNames(RayTracingInfo.AnyHitShaders.size());
 
+	std::vector<UHShader*> AnyHits(RayTracingInfo.AnyHitShaders.size());
 	for (size_t Idx = 0; Idx < RayTracingInfo.AnyHitShaders.size(); Idx++)
 	{
-		AHGEntryNames[Idx] = RayTracingInfo.AnyHitShaders[Idx]->GetEntryName();
+		AnyHits[Idx] = SafeGetObjectFromTable<UHShader>(RayTracingInfo.AnyHitShaders[Idx]);
 		VkPipelineShaderStageCreateInfo AHGStageInfo{};
-		if (RayTracingInfo.AnyHitShaders[Idx] != nullptr)
+		if (AnyHits[Idx] != nullptr)
 		{
+			AHGEntryNames[Idx] = AnyHits[Idx]->GetEntryName();
 			AHGStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			AHGStageInfo.stage = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-			AHGStageInfo.module = RayTracingInfo.AnyHitShaders[Idx]->GetShader();
+			AHGStageInfo.module = AnyHits[Idx]->GetShader();
 			AHGStageInfo.pName = AHGEntryNames[Idx].c_str();
 			AHGStageInfos[Idx] = AHGStageInfo;
 		}
 	}
 
-	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages = { RGStageInfo, MissStageInfo, CHGStageInfo };
-	ShaderStages.insert(ShaderStages.end(), AHGStageInfos.begin(), AHGStageInfos.end());
+	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages = { RGStageInfo, MissStageInfo };
+	// insert hit groups
+	for (size_t Idx = 0; Idx < CHGStageInfos.size(); Idx++)
+	{
+		ShaderStages.push_back(CHGStageInfos[Idx]);
+		ShaderStages.push_back(AHGStageInfos[Idx]);
+	}
+
 	CreateInfo.stageCount = static_cast<uint32_t>(ShaderStages.size());
 	CreateInfo.pStages = ShaderStages.data();
 
@@ -289,7 +363,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	RGGroupInfo.closestHitShader = VK_SHADER_UNUSED_KHR;
 	RGGroupInfo.anyHitShader = VK_SHADER_UNUSED_KHR;
 	RGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
-	RGGroupInfo.generalShader = 0;
+	RGGroupInfo.generalShader = GRayGenTableSlot;
 
 	VkRayTracingShaderGroupCreateInfoKHR MissGroupInfo{};
 	MissGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
@@ -297,17 +371,17 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	MissGroupInfo.closestHitShader = VK_SHADER_UNUSED_KHR;
 	MissGroupInfo.anyHitShader = VK_SHADER_UNUSED_KHR;
 	MissGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
-	MissGroupInfo.generalShader = 1;
+	MissGroupInfo.generalShader = GMissTableSlot;
 
-	// setup all hit groups
+	// setup all hit groups, for each record has one closest and one anyhit
 	std::vector<VkRayTracingShaderGroupCreateInfoKHR> HGGroupInfos(RayTracingInfo.AnyHitShaders.size());
 	for (size_t Idx = 0; Idx < RayTracingInfo.AnyHitShaders.size(); Idx++)
 	{
 		VkRayTracingShaderGroupCreateInfoKHR HGGroupInfo{};
 		HGGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 		HGGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-		HGGroupInfo.closestHitShader = 2;
-		HGGroupInfo.anyHitShader = static_cast<uint32_t>(3 + Idx);
+		HGGroupInfo.closestHitShader = static_cast<uint32_t>(GHitGroupTableSlot + Idx * GHitGroupShaderPerSlot);
+		HGGroupInfo.anyHitShader = static_cast<uint32_t>(GHitGroupTableSlot + 1 + Idx * GHitGroupShaderPerSlot);
 		HGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
 		HGGroupInfo.generalShader = VK_SHADER_UNUSED_KHR;
 		HGGroupInfos[Idx] = HGGroupInfo;
@@ -342,12 +416,13 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 bool UHGraphicState::CreateState(UHComputePassInfo InInfo)
 {
 	ComputePassInfo = InInfo;
+	const UHShader* CS = SafeGetObjectFromTable<const UHShader>(ComputePassInfo.CS);
 
 	VkPipelineShaderStageCreateInfo CSStageInfo{};
-	std::string CSEntryName = ComputePassInfo.CS->GetEntryName();
+	std::string CSEntryName = CS->GetEntryName();
 	CSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	CSStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-	CSStageInfo.module = ComputePassInfo.CS->GetShader();
+	CSStageInfo.module = CS->GetShader();
 	CSStageInfo.pName = CSEntryName.c_str();
 
 	// similar to graphic pipeline creation but this is for compute pipeline

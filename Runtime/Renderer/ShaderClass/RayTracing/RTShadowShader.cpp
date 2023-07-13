@@ -1,13 +1,17 @@
 #include "RTShadowShader.h"
 
-UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader* InClosestHit, const std::vector<UHShader*>& InAnyHits
+UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
+	, const std::vector<uint32_t>& InClosestHits
+	, const std::vector<uint32_t>& InAnyHits
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader), nullptr)
 {
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
@@ -21,7 +25,7 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader*
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
 	RTInfo.RayGenShader = RayGenShader;
-	RTInfo.ClosestHitShader = InClosestHit;
+	RTInfo.ClosestHitShaders = InClosestHits;
 	RTInfo.AnyHitShaders = InAnyHits;
 	RTInfo.MissShader = MissShader;
 	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
@@ -35,19 +39,23 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name, UHShader*
 
 void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const UHRenderTexture* RTShadowResult
+	, const UHRenderTexture* RTTranslucentShadow
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
 	, const UHRenderTexture* SceneMip
 	, const UHRenderTexture* SceneNormal
 	, const UHRenderTexture* SceneDepth
+	, const UHRenderTexture* TranslucentDepth
 	, const UHSampler* PointClampedSampler
 	, const UHSampler* LinearClampedSampler)
 {
 	BindConstant(SysConst, 0);
 	BindRWImage(RTShadowResult, 2);
-	BindStorage(DirLights, 3, 0, true);
-	BindImage(SceneMip, 4);
-	BindImage(SceneNormal, 5);
-	BindImage(SceneDepth, 6);
-	BindSampler(PointClampedSampler, 7);
-	BindSampler(LinearClampedSampler, 8);
+	BindRWImage(RTTranslucentShadow, 3);
+	BindStorage(DirLights, 4, 0, true);
+	BindImage(SceneMip, 5);
+	BindImage(SceneNormal, 6);
+	BindImage(SceneDepth, 7);
+	BindImage(TranslucentDepth, 8);
+	BindSampler(PointClampedSampler, 9);
+	BindSampler(LinearClampedSampler, 10);
 }

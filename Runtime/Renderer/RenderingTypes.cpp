@@ -18,21 +18,21 @@ UHDepthInfo::UHDepthInfo(bool bInEnableDepthTest, bool bInEnableDepthWrite, VkCo
 
 // ---------------------------------------------------- UHRenderPassInfo
 UHRenderPassInfo::UHRenderPassInfo()
-	: UHRenderPassInfo(VK_NULL_HANDLE, UHDepthInfo(), UHCullMode::CullNone, UHBlendMode::Opaque, nullptr, nullptr, 1, VK_NULL_HANDLE)
+	: UHRenderPassInfo(VK_NULL_HANDLE, UHDepthInfo(), UHCullMode::CullNone, UHBlendMode::Opaque, -1, -1, 1, VK_NULL_HANDLE)
 {
 
 }
 
 // value for cullmode and blend mode is from different objects, don't set them in constructor for flexible usage
 UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDepthInfo, UHCullMode InCullInfo, UHBlendMode InBlendMode
-	, UHShader* InVS, UHShader* InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout)
+	, uint32_t InVS, uint32_t InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout)
 	: CullMode(InCullInfo)
 	, BlendMode(InBlendMode)
 	, RenderPass(InRenderPass)
 	, DepthInfo(InDepthInfo)
 	, VS(InVS)
 	, PS(InPS)
-	, GS(nullptr)
+	, GS(-1)
 	, RTCount(InRTCount)
 	, PipelineLayout(InPipelineLayout)
 {
@@ -42,22 +42,13 @@ UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDept
 bool UHRenderPassInfo::operator==(const UHRenderPassInfo& InInfo)
 {
 	bool bVSEqual = true;
-	if (InInfo.VS && VS)
-	{
-		bVSEqual = (*InInfo.VS == *VS);
-	}
+	bVSEqual = (InInfo.VS == VS);
 
 	bool bPSEqual = true;
-	if (InInfo.PS && PS)
-	{
-		bPSEqual = (*InInfo.PS == *PS);
-	}
+	bPSEqual = (InInfo.PS == PS);
 
 	bool bGSEqual = true;
-	if (InInfo.GS && GS)
-	{
-		bGSEqual = (*InInfo.GS == *GS);
-	}
+	bGSEqual = (InInfo.GS == GS);
 
 	return InInfo.CullMode == CullMode
 		&& InInfo.BlendMode == BlendMode
@@ -72,14 +63,14 @@ bool UHRenderPassInfo::operator==(const UHRenderPassInfo& InInfo)
 
 // ---------------------------------------------------- UHComputePassInfo
 UHComputePassInfo::UHComputePassInfo()
-	: CS(nullptr)
+	: CS(-1)
 	, PipelineLayout(VK_NULL_HANDLE)
 {
 
 }
 
 UHComputePassInfo::UHComputePassInfo(VkPipelineLayout InPipelineLayout)
-	: CS(nullptr)
+	: CS(-1)
 	, PipelineLayout(InPipelineLayout)
 {
 
@@ -88,10 +79,7 @@ UHComputePassInfo::UHComputePassInfo(VkPipelineLayout InPipelineLayout)
 bool UHComputePassInfo::operator==(const UHComputePassInfo& InInfo)
 {
 	bool bCSEqual = true;
-	if (InInfo.CS && CS)
-	{
-		bCSEqual = (*InInfo.CS == *CS);
-	}
+	bCSEqual = (InInfo.CS == CS);
 
 	return bCSEqual && InInfo.PipelineLayout == PipelineLayout;
 }
@@ -101,9 +89,8 @@ bool UHComputePassInfo::operator==(const UHComputePassInfo& InInfo)
 UHRayTracingInfo::UHRayTracingInfo()
 	: PipelineLayout(VK_NULL_HANDLE)
 	, MaxRecursionDepth(1)
-	, RayGenShader(nullptr)
-	, ClosestHitShader(nullptr)
-	, MissShader(nullptr)
+	, RayGenShader(-1)
+	, MissShader(-1)
 	, PayloadSize(4)
 	, AttributeSize(8)
 {
@@ -117,9 +104,19 @@ bool UHRayTracingInfo::operator==(const UHRayTracingInfo& InInfo)
 		return false;
 	}
 
-	if (InInfo.ClosestHitShader != ClosestHitShader)
+	if (InInfo.ClosestHitShaders.size() != ClosestHitShaders.size())
 	{
 		return false;
+	}
+	else
+	{
+		for (size_t Idx = 0; Idx < ClosestHitShaders.size(); Idx++)
+		{
+			if (ClosestHitShaders[Idx] != InInfo.ClosestHitShaders[Idx])
+			{
+				return false;
+			}
+		}
 	}
 
 	if (InInfo.AnyHitShaders.size() != AnyHitShaders.size())
@@ -227,17 +224,17 @@ void UHRenderState::SetMotionDirty(bool bIsDirty, int32_t FrameIdx)
 	bIsMotionDirties[FrameIdx] = bIsDirty;
 }
 
-bool UHRenderState::IsRenderDirty(int32_t FrameIdx)
+bool UHRenderState::IsRenderDirty(int32_t FrameIdx) const
 {
 	return bIsRenderDirties[FrameIdx];
 }
 
-bool UHRenderState::IsRayTracingDirty(int32_t FrameIdx)
+bool UHRenderState::IsRayTracingDirty(int32_t FrameIdx) const
 {
 	return bIsRayTracingDirties[FrameIdx];
 }
 
-bool UHRenderState::IsMotionDirty(int32_t FrameIdx)
+bool UHRenderState::IsMotionDirty(int32_t FrameIdx) const
 {
 	return bIsMotionDirties[FrameIdx];
 }

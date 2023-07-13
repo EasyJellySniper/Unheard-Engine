@@ -244,3 +244,16 @@ Current version TAA uses motion rejection + color clamping + per-vertex jitter s
 
 08-07-2023: Added save all materials button for convenience. Added cull mode toggling feature in material editor, it's another important change I can say.
 Added blend mode toggling as well, this is more complicated than cull mode toggling.
+
+10-07-2023: Started to add translucent pass stuff. This should be quicker as I've already got a stable workflow.
+Also fixed another stupid bug when doing vector value lookup, the function parameter makes a copy and affects the UObject table, fixed it by using const& and prevented the copy.
+Massively refactored the RequestReleaseShader() to deal with dangling pointer issue. Expose a inline T* SafeGetObjectFromTable(uint32_t Id) function.
+
+11-07-2023: Make motion object pass in parallel as well for the worst case. Separated opaque/translucent motion pass, they need to be treated carefully.
+Added translucent motion pass as well. Minor fix to transform component so that static objects still get their previous world info.
+
+12-07-2023: Added the ability to receive ray tracing shadows for translucent objects, but they're hard shadows. I'll try separating a standalone "Soft shadow" pass.
+Added soften pass right after RT shadows, now translucent can receive the shadow. But the penumbra needs to be improved.
+
+13-07-2023: Added proper shadow casting for translucent objects! Also fixed a macro define bug in the motion object shader. Also removed the RTOT stuff and old material shader defines.
+Almost ready for the post.

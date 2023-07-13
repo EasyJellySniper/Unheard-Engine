@@ -22,14 +22,15 @@
 #include "ShaderClass/LightPassShader.h"
 #include "ShaderClass/SkyPassShader.h"
 #include "ShaderClass/MotionPassShader.h"
+#include "ShaderClass/TranslucentPassShader.h"
 #include "ShaderClass/PostProcessing/ToneMappingShader.h"
 #include "ShaderClass/PostProcessing/TemporalAAShader.h"
 #include "ShaderClass/RayTracing/RTDefaultHitGroupShader.h"
-#include "ShaderClass/RayTracing/RTOcclusionTestShader.h"
 #include "ShaderClass/RayTracing/RTShadowShader.h"
 #include "ShaderClass/TextureSamplerTable.h"
 #include "ShaderClass/RayTracing/RTMeshTable.h"
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
+#include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 
 #if WITH_DEBUG
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -42,7 +43,10 @@ enum UHParallelTask
 	FrustumCullingTask,
 	SortingOpaqueTask,
 	DepthPassTask,
-	BasePassTask
+	BasePassTask,
+	MotionOpaqueTask,
+	MotionTranslucentTask,
+	TranslucentPassTask
 };
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
@@ -114,6 +118,9 @@ private:
 	// create constant buffers
 	void CreateDataBuffers();
 
+	// create thread objects
+	void CreateThreadObjects();
+
 	// release constant buffers
 	void ReleaseDataBuffers();
 
@@ -132,13 +139,13 @@ private:
 
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHGraphicBuilder& GraphBuilder);
-	void DispatchRayOcclusionTestPass(UHGraphicBuilder& GraphBuilder);
 	void RenderDepthPrePass(UHGraphicBuilder& GraphBuilder);
 	void RenderBasePass(UHGraphicBuilder& GraphBuilder);
 	void DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder);
 	void RenderLightPass(UHGraphicBuilder& GraphBuilder);
 	void RenderSkyPass(UHGraphicBuilder& GraphBuilder);
 	void RenderMotionPass(UHGraphicBuilder& GraphBuilder);
+	void RenderTranslucentPass(UHGraphicBuilder& GraphBuilder);
 	void RenderEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName);
 	void DispatchEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHGraphicBuilder& GraphBuilder);
@@ -151,6 +158,9 @@ private:
 	void SortingOpaqueTask(int32_t ThreadIdx);
 	void DepthPassTask(int32_t ThreadIdx);
 	void BasePassTask(int32_t ThreadIdx);
+	void MotionOpaqueTask(int32_t ThreadIdx);
+	void MotionTranslucentTask(int32_t ThreadIdx);
+	void TranslucentPassTask(int32_t ThreadIdx);
 
 
 	/************************************************ variables ************************************************/
@@ -170,6 +180,9 @@ private:
 
 	UHParallelSubmitter DepthParallelSubmitter;
 	UHParallelSubmitter BaseParallelSubmitter;
+	UHParallelSubmitter MotionOpaqueParallelSubmitter;
+	UHParallelSubmitter MotionTranslucentParallelSubmitter;
+	UHParallelSubmitter TranslucentParallelSubmitter;
 
 	// similar to D3D12 Fence (GPU Fence)
 	std::array<VkSemaphore, GMaxFrameInFlight> SwapChainAvailableSemaphores;
@@ -239,6 +252,7 @@ private:
 	UHRenderTexture* SceneResult;
 	UHRenderTexture* SceneMip;
 	UHRenderTexture* SceneDepth;
+	UHRenderTexture* SceneTranslucentDepth;
 
 	// store different base pass object, the id is renderer data index
 	std::unordered_map<int32_t, UHBasePassShader> BasePassShaders;
@@ -259,8 +273,15 @@ private:
 	UHMotionCameraPassShader MotionCameraShader;
 
 	// store different motion pass object, thd id is buffer data index(per renderer)
-	UHRenderPassObject MotionObjectPassObj;
-	std::unordered_map<int32_t, UHMotionObjectPassShader> MotionObjectShaders;
+	// the motion shader is separate into opaque and translucent
+	UHRenderPassObject MotionOpaquePassObj;
+	std::unordered_map<int32_t, UHMotionObjectPassShader> MotionOpaqueShaders;
+	UHRenderPassObject MotionTranslucentPassObj;
+	std::unordered_map<int32_t, UHMotionObjectPassShader> MotionTranslucentShaders;
+
+	// -------------------------------------------- Translucent Pass -------------------------------------------- //
+	std::unordered_map<int32_t, UHTranslucentPassShader> TranslucentPassShaders;
+	UHRenderPassObject TranslucentPassObj;
 
 	// -------------------------------------------- Post processing Pass -------------------------------------------- //
 	// post process needs to use two textures and keep blit to each other, so the effects can be accumulated
@@ -291,13 +312,13 @@ private:
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
 	VkFormat RTShadowFormat;
 	std::array<std::unique_ptr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
+
 	UHRTDefaultHitGroupShader RTDefaultHitGroupShader;
-
-	UHRTOcclusionTestShader RTOcclusionTestShader;
-	std::unique_ptr<UHRenderBuffer<uint32_t>> OcclusionVisibleBuffer;
-
+	UHSoftRTShadowShader SoftRTShadowShader;
 	UHRTShadowShader RTShadowShader;
+
 	UHRenderTexture* RTShadowResult;
+	UHRenderTexture* RTTranslucentShadow;
 
 	UHRTVertexTable RTVertexTable;
 	UHRTIndicesTable RTIndicesTable;

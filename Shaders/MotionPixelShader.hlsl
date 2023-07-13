@@ -17,7 +17,7 @@ UHMaterialInputs GetMaterialInput(float2 UV0)
 
 float4 MotionObjectPS(MotionVertexOutput Vin) : SV_Target
 {
-#if WITH_OPACITY && !defined(WITH_DEPTHPREPASS)
+#if (WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS)) || WITH_TRANSLUCENT
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 	clip(MaterialInput.Opacity - GCutoff);

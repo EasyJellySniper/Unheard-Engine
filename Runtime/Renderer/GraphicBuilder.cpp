@@ -319,9 +319,9 @@ void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptor
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InLayout, 0, 1, &InSet, 0, nullptr);
 }
 
-void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets)
+void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets, uint32_t FirstSet)
 {
-	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InLayout, 0, static_cast<uint32_t>(InSets.size()), InSets.data(), 0, nullptr);
+	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InLayout, FirstSet, static_cast<uint32_t>(InSets.size()), InSets.data(), 0, nullptr);
 }
 
 void UHGraphicBuilder::BindDescriptorSetCompute(VkPipelineLayout InLayout, VkDescriptorSet InSet)

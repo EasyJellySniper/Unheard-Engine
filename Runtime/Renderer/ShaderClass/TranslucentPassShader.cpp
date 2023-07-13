@@ -1,11 +1,10 @@
-#include "BasePassShader.h"
+#include "TranslucentPassShader.h"
 #include "../../Components/MeshRenderer.h"
 
-UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
-	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat)
+UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
+	: UHShaderClass(InGfx, Name, typeid(UHTranslucentPassShader), InMat)
 {
-	// DeferredPass: Bind all constants, visiable in VS/PS only
+	// sys, obj, mat consts
 	for (int32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
 	{
 		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -16,6 +15,13 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
+	// light consts
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+	// shadow result
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+
 	// Bind envcube and sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
@@ -23,34 +29,39 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	CreateMaterialDescriptor(ExtraLayouts);
 
-	// also check prepass define
-	std::vector<std::string> MatDefines = InMat->GetMaterialDefines();
-	if (bEnableDepthPrePass)
+	// define macros
+	std::vector<std::string> VSDefines = InMat->GetMaterialDefines();
+	std::vector<std::string> PSDefines = InMat->GetMaterialDefines();
+
+	if (InGfx->IsRayTracingEnabled())
 	{
-		MatDefines.push_back("WITH_DEPTHPREPASS");
+		PSDefines.push_back("WITH_RTSHADOWS");
 	}
 
-	ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", MatDefines);
+	ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", VSDefines);
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = InMat;
-	ShaderPS = InGfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, MatDefines);
+	ShaderPS = InGfx->RequestMaterialShader("TranslucentPixelShader", "Shaders/TranslucentPixelShader.hlsl", "TranslucentPS", "ps_6_0", Data, PSDefines);
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(InRenderPass
-		// adjust depth info based on depth pre pass setting
-		, UHDepthInfo(true, !bEnableDepthPrePass, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
+		// translucent doesn't output depth
+		, UHDepthInfo(true, false, VK_COMPARE_OP_GREATER_OR_EQUAL)
 		, InMat->GetCullMode()
 		, InMat->GetBlendMode()
 		, ShaderVS
 		, ShaderPS
-		, GNumOfGBuffers
+		, 1
 		, PipelineLayout);
 
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+void UHTranslucentPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
+	, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& LightConst
+	, const UHRenderTexture* RTShadowResult
+	, const UHSampler* LinearClamppedSampler
 	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);
@@ -62,16 +73,22 @@ void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	BindStorage(Mesh->GetNormalBuffer(), 4, 0, true);
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
 
+	// bind light const
+	BindStorage(LightConst, 6, 0, true);
+
+	BindImage(RTShadowResult, 7);
+	BindSampler(LinearClamppedSampler, 8);
+
 	// write textures/samplers when they are available
 	UHTexture* Tex = InRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube);
 	if (Tex)
 	{
-		BindImage(Tex, 6);
+		BindImage(Tex, 9);
 	}
 
 	UHSampler* Sampler = InRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube);
 	if (Sampler)
 	{
-		BindSampler(Sampler, 7);
+		BindSampler(Sampler, 10);
 	}
 }

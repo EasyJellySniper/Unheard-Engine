@@ -88,7 +88,7 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 	{
 		// wait before new binding
 		GraphicInterface->WaitGPU();
-		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse,SceneNormal,SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
+		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
 		DebugViewShader.BindImage(Buffers[DebugViewIndex], 0);
 	}
 }
@@ -225,9 +225,10 @@ void UHDeferredShadingRenderer::FrustumCullingTask(int32_t ThreadIdx)
 	const BoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
 	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
 
-	int32_t RendererCount = static_cast<int32_t>(Renderers.size()) / NumWorkerThreads;
-	int32_t StartIdx = RendererCount * ThreadIdx;
-	int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? static_cast<int32_t>(Renderers.size()) : StartIdx + RendererCount;
+	const int32_t MaxCount = static_cast<int32_t>(Renderers.size());
+	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
+	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
+	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	for (int32_t Idx = StartIdx; Idx < EndIdx; Idx++)
 	{
@@ -249,12 +250,21 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 	// recommend to reserve capacity during initialization
 	OpaquesToRender.clear();
 	const std::vector<UHMeshRendererComponent*>& OpaqueRenderers = CurrentScene->GetOpaqueRenderers();
-
 	for (UHMeshRendererComponent* Renderer : OpaqueRenderers)
 	{
 		if (Renderer->IsVisible())
 		{
 			OpaquesToRender.push_back(Renderer);
+		}
+	}
+
+	TranslucentsToRender.clear();
+	const std::vector<UHMeshRendererComponent*>& TranslucentRenderers = CurrentScene->GetTranslucentRenderers();
+	for (UHMeshRendererComponent* Renderer : TranslucentRenderers)
+	{
+		if (Renderer->IsVisible())
+		{
+			TranslucentsToRender.push_back(Renderer);
 		}
 	}
 }
@@ -281,7 +291,7 @@ void UHDeferredShadingRenderer::SortRenderer()
 		WorkerThreads[I]->WaitTask();
 	}
 
-	// sort back-to-front for translucents, this can't be parallel
+	// sort back-to-front for translucents, this unfortunately can't be parallel unless going OIT
 	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
 	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
@@ -298,9 +308,10 @@ void UHDeferredShadingRenderer::SortingOpaqueTask(int32_t ThreadIdx)
 	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
 
 	// sort opaques first
-	int32_t RendererCount = static_cast<int32_t>(OpaquesToRender.size()) / NumWorkerThreads;
-	int32_t StartIdx = RendererCount * ThreadIdx;
-	int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? static_cast<int32_t>(OpaquesToRender.size()) : StartIdx + RendererCount;
+	const int32_t MaxCount = static_cast<int32_t>(OpaquesToRender.size());
+	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
+	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
+	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	std::sort(OpaquesToRender.begin() + StartIdx, OpaquesToRender.begin() + EndIdx, [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
@@ -350,6 +361,9 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			{
 				DepthParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
 				BaseParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+				MotionOpaqueParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+				MotionTranslucentParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+				TranslucentParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
 			}
 
 			// similar to D3D12 fence wait/reset
@@ -362,13 +376,13 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 			// ****************************** start scene rendering
 			BuildTopLevelAS(GraphBuilder);
-			DispatchRayOcclusionTestPass(GraphBuilder);
 			RenderDepthPrePass(GraphBuilder);
 			RenderBasePass(GraphBuilder);
+			RenderMotionPass(GraphBuilder);
 			DispatchRayShadowPass(GraphBuilder);
 			RenderLightPass(GraphBuilder);
 			RenderSkyPass(GraphBuilder);
-			RenderMotionPass(GraphBuilder);
+			RenderTranslucentPass(GraphBuilder);
 			RenderPostProcessing(GraphBuilder);
 
 			// blit scene to swap chain
@@ -438,6 +452,18 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 
 		case UHParallelTask::BasePassTask:
 			BasePassTask(ThreadIdx);
+			break;
+
+		case UHParallelTask::MotionOpaqueTask:
+			MotionOpaqueTask(ThreadIdx);
+			break;
+
+		case UHParallelTask::MotionTranslucentTask:
+			MotionTranslucentTask(ThreadIdx);
+			break;
+
+		case UHParallelTask::TranslucentPassTask:
+			TranslucentPassTask(ThreadIdx);
 			break;
 
 		default:

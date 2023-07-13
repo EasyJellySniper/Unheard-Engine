@@ -17,6 +17,16 @@ const uint32_t GNumOfGBuffers = 5;
 const uint32_t GThreadGroup2D_X = 8;
 const uint32_t GThreadGroup2D_Y = 8;
 
+// descriptor set space number
+const uint32_t GTextureTableSpace = 1;
+const uint32_t GSamplerTableSpace = 2;
+
+// hit group number
+const uint32_t GRayGenTableSlot = 0;
+const uint32_t GMissTableSlot = 1;
+const uint32_t GHitGroupTableSlot = 2;
+const uint32_t GHitGroupShaderPerSlot = 2;
+
 struct UHSystemConstants
 {
 	XMFLOAT4X4 UHViewProj;
@@ -78,13 +88,13 @@ struct UHDirectionalLightConstants
 enum UHRenderPassTypes
 {
 	UpdateTopLevelAS = 0,
-	RayTracingOcclusionTest,
 	DepthPrePass,
 	BasePass,
 	RayTracingShadow,
 	LightPass,
 	SkyPass,
 	MotionPass,
+	TranslucentPass,
 	ToneMappingPass,
 	TemporalAAPass,
 	PresentToSwapChain,
@@ -115,7 +125,7 @@ struct UHRenderPassInfo
 
 	// value for cullmode and blend mode is from different objects, don't set them in constructor for flexible usage
 	UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDepthInfo, UHCullMode InCullInfo, UHBlendMode InBlendMode
-		, UHShader* InVS, UHShader* InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout);
+		, uint32_t InVS, uint32_t InPS, int32_t InRTCount, VkPipelineLayout InPipelineLayout);
 
 	bool operator==(const UHRenderPassInfo& InInfo);
 
@@ -123,9 +133,9 @@ struct UHRenderPassInfo
 	UHBlendMode BlendMode;
 	VkRenderPass RenderPass;
 	UHDepthInfo DepthInfo;
-	UHShader* VS;
-	UHShader* PS;
-	UHShader* GS;
+	uint32_t VS;
+	uint32_t PS;
+	uint32_t GS;
 	int32_t RTCount;
 	VkPipelineLayout PipelineLayout;
 };
@@ -138,7 +148,7 @@ struct UHComputePassInfo
 
 	bool operator==(const UHComputePassInfo& InInfo);
 
-	UHShader* CS;
+	uint32_t CS;
 	VkPipelineLayout PipelineLayout;
 };
 
@@ -151,10 +161,10 @@ struct UHRayTracingInfo
 
 	VkPipelineLayout PipelineLayout;
 	uint32_t MaxRecursionDepth;
-	UHShader* RayGenShader;
-	UHShader* ClosestHitShader;
-	std::vector<UHShader*> AnyHitShaders;
-	UHShader* MissShader;
+	uint32_t RayGenShader;
+	std::vector<uint32_t> ClosestHitShaders;
+	std::vector<uint32_t> AnyHitShaders;
+	uint32_t MissShader;
 	uint32_t PayloadSize;
 	uint32_t AttributeSize;
 };
@@ -187,9 +197,9 @@ public:
 	void SetMotionDirties(bool bIsDirty);
 	void SetMotionDirty(bool bIsDirty, int32_t FrameIdx);
 
-	bool IsRenderDirty(int32_t FrameIdx);
-	bool IsRayTracingDirty(int32_t FrameIdx);
-	bool IsMotionDirty(int32_t FrameIdx);
+	bool IsRenderDirty(int32_t FrameIdx) const;
+	bool IsRayTracingDirty(int32_t FrameIdx) const;
+	bool IsMotionDirty(int32_t FrameIdx) const;
 
 	void SetBufferDataIndex(int32_t InIndex);
 	int32_t GetBufferDataIndex() const;

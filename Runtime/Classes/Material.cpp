@@ -28,11 +28,6 @@ UHMaterial::UHMaterial()
 		SystemSamplers[Idx] = nullptr;
 	}
 
-	for (int32_t Idx = 0; Idx < UHMaterialShaderType::MaterialShaderTypeMax; Idx++)
-	{
-		Shaders[Idx] = nullptr;
-	}
-
 	MaterialNode = std::make_unique<UHMaterialNode>(this);
 	DefaultMaterialNodePos.x = 544;
 	DefaultMaterialNodePos.y = 208;
@@ -396,11 +391,6 @@ void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
 	SetRenderDirties(true);
 }
 
-void UHMaterial::SetShader(UHMaterialShaderType InType, UHShader* InShader)
-{
-	Shaders[InType] = InShader;
-}
-
 void UHMaterial::SetSystemTex(UHSystemTextureType InType, UHTexture* InTex)
 {
 	SystemTextures[InType] = InTex;
@@ -567,12 +557,7 @@ UHSampler* UHMaterial::GetSystemSampler(UHSystemTextureType InType) const
 	return SystemSamplers[InType];
 }
 
-UHShader* UHMaterial::GetShader(UHMaterialShaderType InType) const
-{
-	return Shaders[InType];
-}
-
-std::vector<std::string> UHMaterial::GetMaterialDefines(UHMaterialShaderType InType) const
+std::vector<std::string> UHMaterial::GetMaterialDefines() const
 {
 	std::vector<std::string> Defines;
 	if (SystemTextures[UHSystemTextureType::SkyCube] != nullptr)
@@ -580,9 +565,14 @@ std::vector<std::string> UHMaterial::GetMaterialDefines(UHMaterialShaderType InT
 		Defines.push_back("WITH_ENVCUBE");
 	}
 
-	if (BlendMode == UHBlendMode::Masked && InType == PS)
+	if (BlendMode == UHBlendMode::Masked)
 	{
 		Defines.push_back("WITH_ALPHATEST");
+	}
+
+	if (BlendMode > UHBlendMode::Masked)
+	{
+		Defines.push_back("WITH_TRANSLUCENT");
 	}
 
 	if (bIsTangentSpace)
