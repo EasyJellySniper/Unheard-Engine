@@ -12,7 +12,6 @@ struct UHDefaultPayload
 	}
 
 	float HitT;
-	uint HitInstance;
 	float MipLevel;
 	float HitAlpha;
 };

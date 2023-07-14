@@ -94,7 +94,6 @@ float2 GetHitUV0(uint InstanceIndex, uint PrimIndex, Attribute Attr)
 void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
 	Payload.HitT = RayTCurrent();
-	Payload.HitInstance = InstanceIndex();
 #if !WITH_TRANSLUCENT
 	// set alpha to 1 if it's opaque
 	Payload.HitAlpha = 1.0f;
@@ -118,10 +117,10 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 	}
 #endif
 
-	// at this point, it can only be translucent object, evaludate the max hit alpha
-	// also carry the HitT and HitInstance data as the order of hit objects won't gurantee, I have to ignore the hit
-	Payload.HitT = RayTCurrent();
-	Payload.HitInstance = InstanceIndex();
+#if WITH_TRANSLUCENT
+	// for translucent object, evaludate the hit alpha and store the HitT data
+	Payload.HitT = max(Payload.HitT, RayTCurrent());
 	Payload.HitAlpha = max(MaterialInput.Opacity, Payload.HitAlpha);
 	IgnoreHit();
+#endif
 }
