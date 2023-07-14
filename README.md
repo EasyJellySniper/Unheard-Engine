@@ -5,11 +5,11 @@
  If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
  Recommended to use the full project link, as there are a few test assets. <br>
 
-# 2023-06-26: Refactoring material data.
-Besides refactoring, I also figure out a way to pass material data to the hit group shader. <br>
-Now the ray tracing shadow reacts to my material graph system too. <br>
-<br> Implementation Details: <br>
-https://www.gamedev.net/blogs/entry/2276272-vulkan-bringing-material-data-to-ray-tracing-shader-and-differentiate-them/
+# 2023-07-13: Adding translucent pass, misc optimizations, code refactorings.
+Added translucent pass and dealt with the issue for TAA/raytracing shadow! Preview link: <br>
+https://www.youtube.com/watch?v=repk5GkRDck
+<br><br> Implementation Details: <br>
+https://www.gamedev.net/blogs/entry/2276363-unheard-engine-adding-translucent-pass-misc-optimizations-and-refactoring/
 <br><br>
 
 # 2023-04-22: Adding material graph system. <br>
