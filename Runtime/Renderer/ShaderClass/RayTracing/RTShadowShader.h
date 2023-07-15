@@ -18,7 +18,6 @@ public:
 		, const UHRenderTexture* RTTranslucentShadow
 		, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
 		, const UHRenderTexture* SceneMip
-		, const UHRenderTexture* SceneNormal
 		, const UHRenderTexture* SceneDepth
 		, const UHRenderTexture* TranslucentDepth
 		, const UHSampler* PointClampedSampler

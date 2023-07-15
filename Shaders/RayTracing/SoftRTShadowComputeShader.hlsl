@@ -13,7 +13,7 @@ SamplerState LinearClampped : register(s6);
 // hard code to 5x5 for now, for different preset, set different define from C++ side in the future
 #define PCSS_INNERLOOP 2
 #define PCSS_WEIGHT 0.04f
-#define PCSS_MINPENUMBRA 1.0f
+#define PCSS_MINPENUMBRA 1.5f
 #define PCSS_MAXPENUMBRA 20.0f
 #define PCSS_BLOCKERSCALE 0.01f
 #define PCSS_DISTANCESCALE 0.01f
@@ -57,11 +57,11 @@ void SoftOpaqueShadow(uint2 PixelCoord, uint2 GTid, float2 UV, float MipRate)
 
 	// lower the penumbra based on mip level, don't apply high penumbra at distant pixels
 	float MipWeight = saturate(MipRate * RT_MIPRATESCALE);
-	Penumbra = lerp(Penumbra, 0, MipWeight);
+	Penumbra = lerp(Penumbra, PCSS_MINPENUMBRA, MipWeight);
 
 	// since this is screen space sampling, there is a chance to sample a lit pixel with a shadowed pixel
 	// depth scaling reduces white artifacts when it's sampling neightbor pixels
-	Penumbra = lerp(Penumbra, 0, saturate(DepthDiff / 0.001f));
+	Penumbra = lerp(Penumbra, PCSS_MINPENUMBRA, saturate(DepthDiff / 0.001f));
 
 	// actually sampling
 	float Atten = 0.0f;

@@ -646,7 +646,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		// bind RT shadow parameters
 		RTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, RTTranslucentShadow, DirectionalLightBuffer
-			, SceneMip, SceneNormal, SceneDepth, SceneTranslucentDepth, PointClampedSampler, LinearClampedSampler);
+			, SceneMip, SceneDepth, SceneTranslucentDepth, PointClampedSampler, LinearClampedSampler);
 
 		// bind soft shadow parameters
 		SoftRTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, RTTranslucentShadow, SceneDepth

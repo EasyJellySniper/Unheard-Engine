@@ -6,11 +6,10 @@ RaytracingAccelerationStructure TLAS : register(t1);
 RWTexture2D<float2> Result : register(u2);
 RWTexture2D<float2> TranslucentResult : register(u3);
 Texture2D MipTexture : register(t5);
-Texture2D NormalTexture : register(t6);
-Texture2D DepthTexture : register(t7);
-Texture2D TranslucentDepthTexture : register(t8);
-SamplerState PointSampler : register(s9);
-SamplerState LinearSampler : register(s10);
+Texture2D DepthTexture : register(t6);
+Texture2D TranslucentDepthTexture : register(t7);
+SamplerState PointSampler : register(s8);
+SamplerState LinearSampler : register(s9);
 
 void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float MipRate, float MipLevel)
 {
@@ -24,8 +23,15 @@ void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float Mip
 	// reconstruct world position and get world normal
 	float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
 
-	float3 WorldNormal = NormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz;
-	WorldNormal = WorldNormal * 2.0f - 1.0f;
+	// reconstruct normal, this needs to be done by a neighborhood pixel cross
+	// to get more precise normal, either to shoot a "search" ray first or store vertex normal in another buffer
+	// using bump normal for shadow is weird
+	Depth = DepthTexture.SampleLevel(PointSampler, ScreenUV + float2(1, 0) * UHShadowResolution.zw, 0).r;
+	float3 WorldPosRight = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
+
+	Depth = DepthTexture.SampleLevel(PointSampler, ScreenUV + float2(0, 1) * UHShadowResolution.zw, 0).r;
+	float3 WorldPosDown = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
+	float3 WorldNormal = cross(WorldPosRight - WorldPos, WorldPosDown - WorldPos);
 
 	float MaxDist = 0;
 	float Atten = 1;
@@ -84,7 +90,7 @@ void TraceTranslucentShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth
 	// reconstruct world position
 	float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, TranslucentDepth);
 
-	// reconstruct normal, unfortunately this needs to be done by a neighborhood pixel cross
+	// reconstruct normal, this needs to be done by a neighborhood pixel cross
 	// to get more precise normal, either to shoot a "search" ray first or store translucent's normal in another buffer
 	TranslucentDepth = TranslucentDepthTexture.SampleLevel(PointSampler, ScreenUV + float2(1, 0) * UHShadowResolution.zw, 0).r;
 	float3 WorldPosRight = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, TranslucentDepth);

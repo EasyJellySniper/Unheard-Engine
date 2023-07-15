@@ -14,7 +14,6 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -42,7 +41,6 @@ void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	, const UHRenderTexture* RTTranslucentShadow
 	, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
 	, const UHRenderTexture* SceneMip
-	, const UHRenderTexture* SceneNormal
 	, const UHRenderTexture* SceneDepth
 	, const UHRenderTexture* TranslucentDepth
 	, const UHSampler* PointClampedSampler
@@ -53,9 +51,8 @@ void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	BindRWImage(RTTranslucentShadow, 3);
 	BindStorage(DirLights, 4, 0, true);
 	BindImage(SceneMip, 5);
-	BindImage(SceneNormal, 6);
-	BindImage(SceneDepth, 7);
-	BindImage(TranslucentDepth, 8);
-	BindSampler(PointClampedSampler, 9);
-	BindSampler(LinearClampedSampler, 10);
+	BindImage(SceneDepth, 6);
+	BindImage(TranslucentDepth, 7);
+	BindSampler(PointClampedSampler, 8);
+	BindSampler(LinearClampedSampler, 9);
 }

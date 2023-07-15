@@ -257,3 +257,5 @@ Added soften pass right after RT shadows, now translucent can receive the shadow
 
 13-07-2023: Added proper shadow casting for translucent objects! Also fixed a macro define bug in the motion object shader. Also removed the RTOT stuff and old material shader defines.
 Almost ready for the post.
+
+15-07-2023: Minor change to RT shadow. Applied vertex normal for opaque shadow receiving as well. Removed the normal texture sampling in RT shadow, it's weird to sample bump normal here.
