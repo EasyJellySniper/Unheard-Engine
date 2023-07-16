@@ -315,11 +315,17 @@ void UHDeferredShadingRenderer::SortingOpaqueTask(int32_t ThreadIdx)
 
 	std::sort(OpaquesToRender.begin() + StartIdx, OpaquesToRender.begin() + EndIdx, [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
-			// sort front-to-back for opaque, rough z sort
+			// sort front-to-back for opaque, rough z sort first
 			XMFLOAT3 ZA = A->GetRendererBound().Center;
 			XMFLOAT3 ZB = B->GetRendererBound().Center;
 
 			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) < MathHelpers::VectorDistanceSqr(ZB, CameraPos);
+		});
+
+	std::sort(OpaquesToRender.begin() + StartIdx, OpaquesToRender.begin() + EndIdx, [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+		{
+			// then sort by material id to reduce state change
+			return A->GetMaterial()->GetId() < B->GetMaterial()->GetId();
 		});
 
 	// so this task simply divides opaque list to a few group and sort them
