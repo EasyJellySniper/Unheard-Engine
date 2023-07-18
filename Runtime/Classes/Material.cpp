@@ -445,14 +445,13 @@ void UHMaterial::SetRegisteredTextureIndexes(std::vector<int32_t> InData)
 
 void UHMaterial::AllocateMaterialBuffer()
 {
-	size_t AlignedSize = (MaterialBufferSize + 255) & ~255;
 	MaterialConstantsCPU.resize(MaterialBufferSize);
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		MaterialConstantsGPU[Idx] = GfxCache->RequestRenderBuffer<uint8_t>();
 
-		// the buffer size will be aligned to 256, check how many byte it actually needs
+		// the buffer size will be aligned to 256, check how many element it actually needs
 		size_t ElementCount = (MaterialBufferSize + 256) / 256;
 		MaterialConstantsGPU[Idx]->CreateBuffer(ElementCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 	}

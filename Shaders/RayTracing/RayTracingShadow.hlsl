@@ -8,8 +8,9 @@ RWTexture2D<float2> TranslucentResult : register(u3);
 Texture2D MipTexture : register(t5);
 Texture2D DepthTexture : register(t6);
 Texture2D TranslucentDepthTexture : register(t7);
-SamplerState PointSampler : register(s8);
-SamplerState LinearSampler : register(s9);
+Texture2D VertexNormalTexture : register(t8);
+Texture2D TranslucentVertexNormalTexture : register(t9);
+SamplerState LinearSampler : register(s10);
 
 void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float MipRate, float MipLevel)
 {
@@ -23,15 +24,8 @@ void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float Mip
 	// reconstruct world position and get world normal
 	float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
 
-	// reconstruct normal, this needs to be done by a neighborhood pixel cross
-	// to get more precise normal, either to shoot a "search" ray first or store vertex normal in another buffer
-	// using bump normal for shadow is weird
-	Depth = DepthTexture.SampleLevel(PointSampler, ScreenUV + float2(1, 0) * UHShadowResolution.zw, 0).r;
-	float3 WorldPosRight = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
-
-	Depth = DepthTexture.SampleLevel(PointSampler, ScreenUV + float2(0, 1) * UHShadowResolution.zw, 0).r;
-	float3 WorldPosDown = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
-	float3 WorldNormal = cross(WorldPosRight - WorldPos, WorldPosDown - WorldPos);
+	// reconstruct normal, simply sample from the texture
+	float3 WorldNormal = VertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz * 2.0f - 1.0f;
 
 	float MaxDist = 0;
 	float Atten = 1;
@@ -43,7 +37,7 @@ void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float Mip
 
 		// give a little gap for preventing self-shadowing, along the vertex normal direction
 		// distant pixel needs higher TMin
-		float Gap = lerp(0.1f, 0.5f, saturate(MipRate * RT_MIPRATESCALE));
+		float Gap = lerp(0.01f, 0.5f, saturate(MipRate * RT_MIPRATESCALE));
 
 		RayDesc ShadowRay = (RayDesc)0;
 		ShadowRay.Origin = WorldPos + WorldNormal * Gap;
@@ -70,7 +64,7 @@ void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float Mip
 
 void TraceTranslucentShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float MipRate, float MipLevel)
 {
-	float TranslucentDepth = TranslucentDepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r;
+	float TranslucentDepth = TranslucentDepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
 
 	UHBRANCH
 	if (OpaqueDepth == TranslucentDepth)
@@ -90,14 +84,8 @@ void TraceTranslucentShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth
 	// reconstruct world position
 	float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, TranslucentDepth);
 
-	// reconstruct normal, this needs to be done by a neighborhood pixel cross
-	// to get more precise normal, either to shoot a "search" ray first or store translucent's normal in another buffer
-	TranslucentDepth = TranslucentDepthTexture.SampleLevel(PointSampler, ScreenUV + float2(1, 0) * UHShadowResolution.zw, 0).r;
-	float3 WorldPosRight = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, TranslucentDepth);
-
-	TranslucentDepth = TranslucentDepthTexture.SampleLevel(PointSampler, ScreenUV + float2(0, 1) * UHShadowResolution.zw, 0).r;
-	float3 WorldPosDown = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, TranslucentDepth);
-	float3 WorldNormal = cross(WorldPosRight - WorldPos, WorldPosDown - WorldPos);
+	// reconstruct normal, simply sample from the texture
+	float3 WorldNormal = TranslucentVertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz * 2.0f - 1.0f;
 
 	float MaxDist = 0;
 	float Atten = 1;
@@ -109,7 +97,7 @@ void TraceTranslucentShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth
 
 		// give a little gap for preventing self-shadowing, along the vertex normal direction
 		// distant pixel needs higher TMin, also needs a higher min value for translucent as normal vector is approximate
-		float Gap = lerp(0.1f, 0.5f, saturate(MipRate * RT_MIPRATESCALE));
+		float Gap = lerp(0.01f, 0.5f, saturate(MipRate * RT_MIPRATESCALE));
 
 		RayDesc ShadowRay = (RayDesc)0;
 		ShadowRay.Origin = WorldPos + WorldNormal * Gap;
@@ -150,7 +138,7 @@ void RTShadowRayGen()
 
 	// to UV and get depth
 	float2 ScreenUV = (PixelCoord + 0.5f) * UHShadowResolution.zw;
-	float OpaqueDepth = DepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r;
+	float OpaqueDepth = DepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
 
 	// calculate mip level before ray tracing kicks off
 	float MipRate = MipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;

@@ -38,9 +38,10 @@ struct VertexOutput
 #if WITH_TANGENT_SPACE
 	// output TBN if normal mapping enabled
 	float3x3 WorldTBN : TEXCOORD2;
-#else
-	float3 Normal : NORMAL;
 #endif
+
+	// will always output vertex normal
+	float3 Normal : NORMAL;
 
 #if defined(WITH_ENVCUBE) || defined(WITH_TRANSLUCENT)
 	float3 WorldPos : TEXCOORD5;
@@ -61,6 +62,7 @@ struct MotionVertexOutput
 	float2 UV0 : TEXCOORD0;
 	float3 WorldPos : TEXCOORD1;
 	float3 PrevWorldPos : TEXCOORD2;
+	float3 Normal : NORMAL;
 };
 
 struct PostProcessVertexOutput

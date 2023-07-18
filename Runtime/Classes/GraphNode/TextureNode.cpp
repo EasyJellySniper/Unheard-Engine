@@ -69,16 +69,17 @@ std::string UHTexture2DNode::EvalDefinition()
 		// if it's compiling for ray tracing, I need to use the SampleLevel instead of Sample
 		if (bIsCompilingRayTracing)
 		{
-			std::string TextureIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].TextureIndex";
-			std::string SamplerIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].SamplerIndex";
+			const std::string TextureIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].TextureIndex";
+			const std::string SamplerIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].SamplerIndex";
 
 			// the mip level will be calculated in the shader
 			return "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].SampleLevel(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ", MipLevel)"
 				+ BumpDecode + ";\n";
 		}
 
-		return "float4 Result_" + IDString + " = UHTextureTable[Node_" + IDString + "_Index].Sample(UHSamplerTable[" 
-			+ GDefaultSamplerName + "_Index], " + UVString + ")" + BumpDecode + ";\n";
+		const std::string TextureIndexCode = "Node_" + IDString + "_Index";
+		const std::string SamplerIndexCode = GDefaultSamplerName + "_Index";
+		return "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].Sample(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ")" + BumpDecode + ";\n";
 	}
 
 	return "[ERROR] Texture not set.";

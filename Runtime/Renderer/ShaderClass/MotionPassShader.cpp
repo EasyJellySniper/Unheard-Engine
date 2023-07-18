@@ -44,7 +44,8 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	}
 
-	// UV0 Buffer
+	// UV0/normal Buffer
+	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	CreateMaterialDescriptor(ExtraLayouts);
@@ -71,7 +72,7 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 		, InMat->GetBlendMode()
 		, ShaderVS
 		, ShaderPS
-		, 1
+		, bIsTranslucent ? 2 : 1
 		, PipelineLayout);
 
 	CreateMaterialState(MaterialPassInfo);
@@ -86,4 +87,5 @@ void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<U
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	BindStorage(InRenderer->GetMesh()->GetUV0Buffer(), 3, 0, true);
+	BindStorage(InRenderer->GetMesh()->GetNormalBuffer(), 4, 0, true);
 }

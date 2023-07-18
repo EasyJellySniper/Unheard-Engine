@@ -102,6 +102,9 @@ public:
 	// clear storage buffer (must be uint32_t)
 	void ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue);
 
+	// clear image
+	void ClearRenderTexture(UHRenderTexture* InTexture);
+
 	// dispatch call
 	void Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz);
 

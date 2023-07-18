@@ -14,7 +14,8 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor(ExtraLayouts);
@@ -43,7 +44,8 @@ void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	, const UHRenderTexture* SceneMip
 	, const UHRenderTexture* SceneDepth
 	, const UHRenderTexture* TranslucentDepth
-	, const UHSampler* PointClampedSampler
+	, const UHRenderTexture* VertexNormal
+	, const UHRenderTexture* TranslucentVertexNormal
 	, const UHSampler* LinearClampedSampler)
 {
 	BindConstant(SysConst, 0);
@@ -53,6 +55,7 @@ void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderB
 	BindImage(SceneMip, 5);
 	BindImage(SceneDepth, 6);
 	BindImage(TranslucentDepth, 7);
-	BindSampler(PointClampedSampler, 8);
-	BindSampler(LinearClampedSampler, 9);
+	BindImage(VertexNormal, 8);
+	BindImage(TranslucentVertexNormal, 9);
+	BindSampler(LinearClampedSampler, 10);
 }

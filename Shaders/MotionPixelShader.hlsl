@@ -15,7 +15,10 @@ UHMaterialInputs GetMaterialInput(float2 UV0)
 	//%UHS_INPUT
 }
 
-float4 MotionObjectPS(MotionVertexOutput Vin) : SV_Target
+void MotionObjectPS(MotionVertexOutput Vin
+	, bool bIsFrontFace : SV_IsFrontFace
+	, out float4 OutVelocity : SV_Target0
+	, out float4 OutNormal : SV_Target1)
 {
 #if (WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS)) || WITH_TRANSLUCENT
 	// fetch material input
@@ -32,6 +35,13 @@ float4 MotionObjectPS(MotionVertexOutput Vin) : SV_Target
 	CurrNDCPos /= CurrNDCPos.w;
 	float2 CurrScreenPos = (CurrNDCPos.xy * 0.5f + 0.5f);
 
-	float2 Velocity = CurrScreenPos.xy - PrevScreenPos.xy;
-	return float4(Velocity, 0, 1);
+	OutVelocity = float4(CurrScreenPos.xy - PrevScreenPos.xy, 0, 1);
+
+#if WITH_TRANSLUCENT
+	float3 VertexNormal = normalize(Vin.Normal);
+	VertexNormal *= (bIsFrontFace) ? 1 : -1;
+
+	// a must be 1 to store normal as this is translucent pass
+	OutNormal = float4(VertexNormal * 0.5f + 0.5f, 1);
+#endif
 }

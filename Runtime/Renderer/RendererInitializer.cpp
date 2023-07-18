@@ -22,6 +22,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, SceneMip(nullptr)
 	, SceneDepth(nullptr)
 	, SceneTranslucentDepth(nullptr)
+	, SceneVertexNormal(nullptr)
+	, SceneTranslucentVertexNormal(nullptr)
 	, PointClampedSampler(nullptr)
 	, LinearClampedSampler(nullptr)
 	, AnisoClampedSampler(nullptr)
@@ -516,7 +518,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	}
 
 	// ------------------------------------------------ Lighting pass descriptor update
-	const std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip };
+	const std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip, SceneVertexNormal };
 	LightPassShader.BindParameters(SystemConstantsGPU, DirectionalLightBuffer, GBuffers, SceneResult, LinearClampedSampler
 		, RTInstanceCount, RTShadowResult);
 
@@ -646,7 +648,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		// bind RT shadow parameters
 		RTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, RTTranslucentShadow, DirectionalLightBuffer
-			, SceneMip, SceneDepth, SceneTranslucentDepth, PointClampedSampler, LinearClampedSampler);
+			, SceneMip, SceneDepth, SceneTranslucentDepth, SceneVertexNormal, SceneTranslucentVertexNormal, LinearClampedSampler);
 
 		// bind soft shadow parameters
 		SoftRTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, RTTranslucentShadow, SceneDepth
@@ -776,6 +778,10 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	SceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat, true);
 	SceneTranslucentDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat, true);
 
+	// vertex normal buffer for saving the "search ray" in RT shadows
+	SceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat, true);
+	SceneTranslucentVertexNormal = GraphicInterface->RequestRenderTexture("SceneTranslucentVertexNormal", RenderResolution, NormalFormat, true);
+
 	// post process buffer, use the same format as scene result
 	PostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true, true);
 	PreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, SceneResultFormat, true);
@@ -801,6 +807,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	Views.push_back(SceneMaterial->GetImageView());
 	Views.push_back(SceneResult->GetImageView());
 	Views.push_back(SceneMip->GetImageView());
+	Views.push_back(SceneVertexNormal->GetImageView());
 	Views.push_back(SceneDepth->GetImageView());
 
 	// depth frame buffer
@@ -825,10 +832,10 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// motion pass framebuffer
 	MotionCameraPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(MotionVectorRT->GetImageView(), MotionCameraPassObj.RenderPass, RenderResolution);
-	Views = { MotionVectorRT->GetImageView() , SceneDepth->GetImageView() };
+	Views = { MotionVectorRT->GetImageView(), SceneDepth->GetImageView() };
 	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionOpaquePassObj.RenderPass, RenderResolution);
 
-	Views = { MotionVectorRT->GetImageView(), SceneTranslucentDepth->GetImageView() };
+	Views = { MotionVectorRT->GetImageView(), SceneTranslucentVertexNormal->GetImageView(), SceneTranslucentDepth->GetImageView() };
 	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 
@@ -841,6 +848,8 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(SceneMip);
 	GraphicInterface->RequestReleaseRT(SceneDepth);
 	GraphicInterface->RequestReleaseRT(SceneTranslucentDepth);
+	GraphicInterface->RequestReleaseRT(SceneVertexNormal);
+	GraphicInterface->RequestReleaseRT(SceneTranslucentVertexNormal);
 	GraphicInterface->RequestReleaseRT(PostProcessRT);
 	GraphicInterface->RequestReleaseRT(PreviousSceneResult);
 	GraphicInterface->RequestReleaseRT(MotionVectorRT);
@@ -861,6 +870,7 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 	GBufferFormats.push_back(SpecularFormat);
 	GBufferFormats.push_back(SceneResultFormat);
 	GBufferFormats.push_back(SceneMipFormat);
+	GBufferFormats.push_back(NormalFormat);
 
 	// depth prepass
 	if (bEnableDepthPrePass)
@@ -890,7 +900,11 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 	MotionOpaquePassObj.RenderPass = GraphicInterface->CreateRenderPass(MotionFormat
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, DepthFormat);
-	MotionTranslucentPassObj.RenderPass = MotionOpaquePassObj.RenderPass;
+
+	std::vector<VkFormat> TranslucentMotionFormats = { MotionFormat , NormalFormat };
+	MotionTranslucentPassObj.RenderPass = GraphicInterface->CreateRenderPass(TranslucentMotionFormats
+		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+		, DepthFormat);
 }
 
 void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
@@ -908,7 +922,7 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
 		SkyboxPassObj.Release(LogicalDevice);
 		MotionCameraPassObj.Release(LogicalDevice);
 		MotionOpaquePassObj.Release(LogicalDevice);
-		MotionTranslucentPassObj.ReleaseFrameBuffer(LogicalDevice);
+		MotionTranslucentPassObj.Release(LogicalDevice);
 		PostProcessPassObj[0].ReleaseRenderPass(LogicalDevice);
 
 		for (UHRenderPassObject& P : PostProcessPassObj)

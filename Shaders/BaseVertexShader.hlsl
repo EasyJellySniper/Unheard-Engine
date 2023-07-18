@@ -22,10 +22,10 @@ VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 #if WITH_TANGENT_SPACE
 	// calculate world TBN if normal map is used
 	Vout.WorldTBN = CreateTBN(LocalToWorldNormal(NormalBuffer[Vid]), TangentBuffer[Vid]);
-#else
+#endif
+
 	// transform normal by world IT
 	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
-#endif
 
 #if defined(WITH_ENVCUBE) || defined(WITH_TRANSLUCENT)
 	Vout.WorldPos = WorldPos;

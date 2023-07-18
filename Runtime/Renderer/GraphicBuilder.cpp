@@ -554,6 +554,13 @@ void UHGraphicBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)
 	vkCmdFillBuffer(CmdList, InBuffer, 0, VK_WHOLE_SIZE, InValue);
 }
 
+void UHGraphicBuilder::ClearRenderTexture(UHRenderTexture* InTexture)
+{
+	VkClearColorValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
+	const VkImageSubresourceRange Range = InTexture->GetImageViewInfo().subresourceRange;
+	vkCmdClearColorImage(CmdList, InTexture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &ClearColor, 1, &Range);
+}
+
 void UHGraphicBuilder::Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz)
 {
 	vkCmdDispatch(CmdList, Gx, Gy, Gz);

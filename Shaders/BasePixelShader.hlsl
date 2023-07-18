@@ -25,7 +25,8 @@ void BasePS(VertexOutput Vin
 	, out float4 OutNormal : SV_Target1
 	, out float4 OutMaterial : SV_Target2
 	, out float4 OutEmissive : SV_Target3
-	, out float OutMipRate : SV_Target4)
+	, out float OutMipRate : SV_Target4
+	, out float4 OutVertexNormal : SV_Target5)
 {
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
@@ -45,6 +46,9 @@ void BasePS(VertexOutput Vin
 	OutColor = float4(saturate(BaseColor), Occlusion);
 
 	// output normal in [0,1], a is unused at the moment, also be sure to flip normal based on face
+	float3 VertexNormal = normalize(Vin.Normal);
+	VertexNormal *= (bIsFrontFace) ? 1 : -1;
+
 #if WITH_TANGENT_SPACE
 	float3 BumpNormal = MaterialInput.Normal;
 
@@ -52,8 +56,7 @@ void BasePS(VertexOutput Vin
 	BumpNormal = mul(BumpNormal, Vin.WorldTBN);
 	BumpNormal *= (bIsFrontFace) ? 1 : -1;
 #else
-	float3 BumpNormal = normalize(Vin.Normal);
-	BumpNormal *= (bIsFrontFace) ? 1 : -1;
+	float3 BumpNormal = VertexNormal;
 #endif
 
 	OutNormal = float4(BumpNormal * 0.5f + 0.5f, 0);
@@ -91,4 +94,7 @@ void BasePS(VertexOutput Vin
 	float2 Dy = ddy_fine(Vin.UV0);
 	float DeltaMax = max(length(Dx), length(Dy));
 	OutMipRate = DeltaMax;
+
+	// a is unused for now
+	OutVertexNormal = float4(VertexNormal * 0.5f + 0.5f, 0);
 }

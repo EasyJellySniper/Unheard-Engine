@@ -261,3 +261,5 @@ Almost ready for the post.
 15-07-2023: Minor change to RT shadow. Applied vertex normal for opaque shadow receiving as well. Removed the normal texture sampling in RT shadow, it's weird to sample bump normal here.
 
 16-07-2023: Changed the way to sort opaque renderers. Now I also sort them by material id, so the rendering can reduce the state change. Saved another 0.2ms!!
+
+18-07-2023: Minor code refactoring. Stored another two vertex normal buffer for RT.

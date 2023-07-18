@@ -11,7 +11,7 @@
 const uint32_t GMaxFrameInFlight = 2;
 
 // gbuffer counts, not including scene result
-const uint32_t GNumOfGBuffers = 5;
+const uint32_t GNumOfGBuffers = 6;
 
 // thread group number
 const uint32_t GThreadGroup2D_X = 8;
@@ -87,9 +87,9 @@ struct UHDirectionalLightConstants
 
 enum UHRenderPassTypes
 {
-	UpdateTopLevelAS = 0,
-	DepthPrePass,
+	DepthPrePass = 0,
 	BasePass,
+	UpdateTopLevelAS,
 	RayTracingShadow,
 	LightPass,
 	SkyPass,

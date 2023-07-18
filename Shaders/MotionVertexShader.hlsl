@@ -2,6 +2,7 @@
 #include "UHCommon.hlsli"
 
 StructuredBuffer<float2> UV0Buffer : register(t3);
+StructuredBuffer<float3> NormalBuffer : register(t4);
 
 MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 {
@@ -19,6 +20,7 @@ MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_Vert
 	Vout.UV0 = UV0Buffer[Vid];
 	Vout.WorldPos = WorldPos;
 	Vout.PrevWorldPos = PrevWorldPos;
+	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
 
 	return Vout;
 }

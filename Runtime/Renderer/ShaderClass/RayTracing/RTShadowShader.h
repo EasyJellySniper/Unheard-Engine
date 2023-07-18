@@ -20,6 +20,7 @@ public:
 		, const UHRenderTexture* SceneMip
 		, const UHRenderTexture* SceneDepth
 		, const UHRenderTexture* TranslucentDepth
-		, const UHSampler* PointClampedSampler
+		, const UHRenderTexture* VertexNormal
+		, const UHRenderTexture* TranslucentVertexNormal
 		, const UHSampler* LinearClampedSampler);
 };

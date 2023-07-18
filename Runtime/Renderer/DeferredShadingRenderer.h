@@ -253,6 +253,8 @@ private:
 	UHRenderTexture* SceneMip;
 	UHRenderTexture* SceneDepth;
 	UHRenderTexture* SceneTranslucentDepth;
+	UHRenderTexture* SceneVertexNormal;
+	UHRenderTexture* SceneTranslucentVertexNormal;
 
 	// store different base pass object, the id is renderer data index
 	std::unordered_map<int32_t, UHBasePassShader> BasePassShaders;
