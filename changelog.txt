@@ -262,4 +262,6 @@ Almost ready for the post.
 
 16-07-2023: Changed the way to sort opaque renderers. Now I also sort them by material id, so the rendering can reduce the state change. Saved another 0.2ms!!
 
-18-07-2023: Minor code refactoring. Stored another two vertex normal buffer for RT.
+18-07-2023: Minor code refactoring. Stored another two vertex normal buffer for RT. Gave a huge scale to skybox renderer to prevent glitch when vsync is off.
+
+19-07-2023: Fixed the FPS limiter bug. While loop method is more accuracy than sleep.

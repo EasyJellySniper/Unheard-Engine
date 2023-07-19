@@ -261,12 +261,13 @@ void UHEngine::EndFPSLimiter()
 	}
 
 	int64_t FrameEndTime = UHEGameTimer->GetTime();
-	float Duration = static_cast<float>((FrameEndTime - FrameBeginTime) * UHEGameTimer->GetSecondsPerCount()) * 1000.0f;
-	float DesiredDuration = (1.0f / UHEConfig->EngineSetting().FPSLimit) * 1000.0f;
+	float Duration = static_cast<float>((FrameEndTime - FrameBeginTime) * UHEGameTimer->GetSecondsPerCount());
+	float DesiredDuration = (1.0f / UHEConfig->EngineSetting().FPSLimit);
 
 	if (DesiredDuration > Duration)
 	{
-		Sleep(static_cast<DWORD>(DesiredDuration - Duration));
+		int64_t WaitDuration = static_cast<int64_t>((DesiredDuration - Duration) / UHEGameTimer->GetSecondsPerCount());
+		while (UHEGameTimer->GetTime() <= WaitDuration + FrameEndTime);
 	}
 }
 
@@ -286,20 +287,27 @@ void UHEngine::EndProfile()
 {
 	UHEProfiler.End();
 
-	// show fps on window caption
-	float FPS = UHEProfiler.CalculateFPS();
-	std::wstringstream FPSStream;
-	FPSStream << std::fixed << std::setprecision(2) << FPS;
-
-	std::wstring NewCaption = WindowCaption + L" - " + FPSStream.str() + L" FPS";
-	SetWindowText(UHEngineWindow, NewCaption.c_str());
-
 	// sync stats
 	UHStatistics& Stats = UHEProfiler.GetStatistics();
 	Stats.MainThreadTime = MainThreadProfile.GetDiff() * 1000.0f;
 	Stats.RenderThreadTime = UHERenderer->GetRenderThreadTime();
 	Stats.TotalTime = UHEProfiler.GetDiff() * 1000.0f;
-	Stats.FPS = FPS;
+
+	// calc fps from total time, only do this once a second
+	static float TimeElasped = 0.0f;
+	float GameTime = UHEGameTimer->GetTotalTime();
+	if (GameTime - TimeElasped > 1.0f)
+	{
+		float FPS = 1000.0f / Stats.TotalTime;
+		std::wstringstream FPSStream;
+		FPSStream << std::fixed << std::setprecision(2) << FPS;
+
+		std::wstring NewCaption = WindowCaption + L" - " + FPSStream.str() + L" FPS";
+		SetWindowText(UHEngineWindow, NewCaption.c_str());
+		TimeElasped = GameTime;
+		Stats.FPS = FPS;
+	}
+
 	Stats.DrawCallCount = UHERenderer->GetDrawCallCount();
 	Stats.PSOCount = static_cast<int32_t>(UHEGraphic->StatePools.size());
 	Stats.ShaderCount = static_cast<int32_t>(UHEGraphic->ShaderPools.size());

@@ -30,7 +30,7 @@ float UHGameTimer::GetTotalTime() const
 
 float UHGameTimer::GetDeltaTime() const
 {
-	return static_cast<float>(DeltaTime * SecondsPerCount);
+	return static_cast<float>(DeltaTime);
 }
 
 // get current time, GetCurrentTime() will conflict to other function, so I name it GetTime()
@@ -89,7 +89,7 @@ void UHGameTimer::Tick()
 	QueryPerformanceCounter((LARGE_INTEGER*)&CurrentTime);
 
 	// Time difference between this frame and the previous.
-	DeltaTime = static_cast<double>(CurrentTime - PreviousTime);
+	DeltaTime = static_cast<double>(CurrentTime - PreviousTime) * SecondsPerCount;
 
 	// Prepare for next frame.
 	PreviousTime = CurrentTime;
@@ -101,10 +101,10 @@ void UHGameTimer::Tick()
 
 	// check if the true delta time is larger than a threshold
 	// this can happen with debug breakpoint or some other pausing mechanisms, correct it to a constant rate
-	if (GetDeltaTime() > 1.0f)
+	if (DeltaTime > 1.0f)
 	{
 		// fix to 60hz should be fine for now, follow the target FPS in the future if needed
-		double DesiredDeltaTime = 0.0166;
-		DeltaTime = DesiredDeltaTime / SecondsPerCount;
+		double DesiredDeltaTime = 0.01666666666666666666666666666667;
+		DeltaTime = DesiredDeltaTime;
 	}
 }

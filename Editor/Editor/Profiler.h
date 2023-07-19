@@ -49,8 +49,6 @@ class UHProfiler
 public:
 	UHProfiler();
 	UHProfiler(UHGameTimer* InTimer);
-
-	float CalculateFPS();
 	UHStatistics& GetStatistics();
 
 	void Begin();
@@ -59,9 +57,7 @@ public:
 
 private:
 	UHGameTimer* Timer;
-	int32_t FrameCounter;
 	float TimeElapsedThisFrame;
-	float FPS;
 
 	UHStatistics Statistics;
 	int64_t BeginTime;

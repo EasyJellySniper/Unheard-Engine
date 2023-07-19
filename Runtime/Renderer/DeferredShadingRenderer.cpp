@@ -381,10 +381,10 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
 
 			// ****************************** start scene rendering
-			BuildTopLevelAS(GraphBuilder);
 			RenderDepthPrePass(GraphBuilder);
 			RenderBasePass(GraphBuilder);
 			RenderMotionPass(GraphBuilder);
+			BuildTopLevelAS(GraphBuilder);
 			DispatchRayShadowPass(GraphBuilder);
 			RenderLightPass(GraphBuilder);
 			RenderSkyPass(GraphBuilder);
