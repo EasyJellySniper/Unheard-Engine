@@ -133,10 +133,8 @@ void UHGraphicBuilder::EndRenderPass()
 	vkCmdEndRenderPass(CmdList);
 }
 
-void UHGraphicBuilder::ExecuteCmd(VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore)
+void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore)
 {
-	VkQueue GraphicsQueue = Gfx->GetGraphicQueue();
-
 	// summit to queue
 	VkSubmitInfo SubmitInfo{};
 	SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -156,17 +154,16 @@ void UHGraphicBuilder::ExecuteCmd(VkFence InFence, VkSemaphore InWaitSemaphore, 
 	SubmitInfo.pSignalSemaphores = SignalSemaphores;
 
 	// similar to D3D12CommandQueue::Execute()
-	if (vkQueueSubmit(GraphicsQueue, 1, &SubmitInfo, InFence) != VK_SUCCESS)
+	if (vkQueueSubmit(InQueue, 1, &SubmitInfo, InFence) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to submit draw command buffer!\n");
 		return;
 	}
 }
 
-bool UHGraphicBuilder::Present(VkSemaphore InFinishSemaphore, uint32_t InImageIdx)
+bool UHGraphicBuilder::Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx)
 {
 	VkSwapchainKHR SwapChain = Gfx->GetSwapChain();
-	VkQueue GraphicsQueue = Gfx->GetGraphicQueue();
 
 	// the signal after finish
 	VkSemaphore SignalSemaphores[] = { InFinishSemaphore };
@@ -183,7 +180,7 @@ bool UHGraphicBuilder::Present(VkSemaphore InFinishSemaphore, uint32_t InImageId
 	PresentInfo.pImageIndices = &InImageIdx;
 	PresentInfo.pResults = nullptr;
 
-	VkResult PresentResult = vkQueuePresentKHR(GraphicsQueue, &PresentInfo);
+	VkResult PresentResult = vkQueuePresentKHR(InQueue, &PresentInfo);
 
 	// return if present succeed
 	if (PresentResult == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)

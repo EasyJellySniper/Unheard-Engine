@@ -205,12 +205,6 @@ public:
 	// get swap chain render pass
 	VkRenderPass GetSwapChainRenderPass() const;
 
-	// get graphic queue
-	VkQueue GetGraphicQueue() const;
-
-	// get compute queue
-	VkQueue GetComputeQueue() const;
-
 	// get device mem props
 	VkPhysicalDeviceMemoryProperties GetDeviceMemProps() const;
 
@@ -309,9 +303,6 @@ private:
 
 	// main graphic queue, similar to ID3D12CommandQueue
 	VkQueue GraphicsQueue;
-
-	// main compute queue, similar to ID3D12CommandQueue
-	VkQueue ComputesQueue;
 
 	// queue family info
 	UHQueueFamily QueueFamily;

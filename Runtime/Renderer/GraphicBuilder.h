@@ -45,10 +45,10 @@ public:
 	void EndRenderPass();
 
 	// execute a command buffer
-	void ExecuteCmd(VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore);
+	void ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore);
 
 	// present to swap chain
-	bool Present(VkSemaphore InFinishSemaphore, uint32_t InImageIdx);
+	bool Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx);
 
 	// bind states
 	void BindGraphicState(UHGraphicState* InState);

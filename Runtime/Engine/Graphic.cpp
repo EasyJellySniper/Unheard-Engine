@@ -7,8 +7,7 @@
 #include "../Classes/AssetPath.h"
 
 UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
-	: ComputesQueue(VK_NULL_HANDLE)
-	, EnterFullScreenCallback(VK_NULL_HANDLE)
+	: EnterFullScreenCallback(VK_NULL_HANDLE)
 	, GetSurfacePresentModes2Callback(VK_NULL_HANDLE)
 	, GraphicsQueue(VK_NULL_HANDLE)
 	, CreationCommandPool(VK_NULL_HANDLE)
@@ -122,8 +121,7 @@ void UHGraphic::Release()
 	}
 
 	WindowCache = nullptr;
-	GraphicsQueue = nullptr;
-	ComputesQueue = nullptr;
+	GraphicsQueue = VK_NULL_HANDLE;
 
 	// release all shaders
 	for (auto& Shader : ShaderPools)
@@ -485,14 +483,7 @@ bool UHGraphic::CreateLogicalDevice()
 	GraphicQueueCreateInfo.queueCount = 1;
 	GraphicQueueCreateInfo.pQueuePriorities = &QueuePriority;
 
-	// compute queue
-	VkDeviceQueueCreateInfo ComputeQueueCreateInfo{};
-	ComputeQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	ComputeQueueCreateInfo.queueFamilyIndex = QueueFamily.ComputesFamily.value();
-	ComputeQueueCreateInfo.queueCount = 1;
-	ComputeQueueCreateInfo.pQueuePriorities = &QueuePriority;
-
-	VkDeviceQueueCreateInfo QueueCreateInfo[2] = { GraphicQueueCreateInfo, ComputeQueueCreateInfo };
+	std::vector<VkDeviceQueueCreateInfo> QueueCreateInfo = { GraphicQueueCreateInfo };
 
 	// define features, enable what I need in UH
 	VkPhysicalDeviceFeatures DeviceFeatures{};
@@ -547,8 +538,8 @@ bool UHGraphic::CreateLogicalDevice()
 	// device create info, pass raytracing feature to pNext of create info
 	VkDeviceCreateInfo CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	CreateInfo.pQueueCreateInfos = &QueueCreateInfo[0];
-	CreateInfo.queueCreateInfoCount = 2;
+	CreateInfo.pQueueCreateInfos = QueueCreateInfo.data();
+	CreateInfo.queueCreateInfoCount = static_cast<uint32_t>(QueueCreateInfo.size());
 	CreateInfo.pEnabledFeatures = nullptr;
 	CreateInfo.pNext = &PhyFeatures;
 
@@ -577,7 +568,6 @@ bool UHGraphic::CreateLogicalDevice()
 
 	// finally, get both graphics and computes queue
 	vkGetDeviceQueue(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0, &GraphicsQueue);
-	vkGetDeviceQueue(LogicalDevice, QueueFamily.ComputesFamily.value(), 0, &ComputesQueue);
 
 	return true;
 }
@@ -1389,16 +1379,6 @@ VkFormat UHGraphic::GetSwapChainFormat() const
 VkRenderPass UHGraphic::GetSwapChainRenderPass() const
 {
 	return SwapChainRenderPass;
-}
-
-VkQueue UHGraphic::GetGraphicQueue() const
-{
-	return GraphicsQueue;
-}
-
-VkQueue UHGraphic::GetComputeQueue() const
-{
-	return ComputesQueue;
 }
 
 VkPhysicalDeviceMemoryProperties UHGraphic::GetDeviceMemProps() const

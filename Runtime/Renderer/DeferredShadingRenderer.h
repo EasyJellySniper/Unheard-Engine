@@ -13,6 +13,7 @@
 #include "RenderingTypes.h"
 #include "GraphicBuilder.h"
 #include "ParallelSubmitter.h"
+#include "QueueSubmitter.h"
 #include <memory>
 #include <unordered_map>
 
@@ -91,17 +92,14 @@ private:
 	// prepare rendering shaders
 	void PrepareRenderingShaders();
 
-	// create command pool and buffer
-	bool CreateMainCommandPoolAndBuffer();
+	// init queue submitters
+	bool InitQueueSubmitters();
 
 	// update descriptors
 	void UpdateDescriptors();
 
 	// release shaders
 	void ReleaseShaders();
-
-	// create fences
-	bool CreateFences();
 
 	// create rendering buffers that will be used
 	void CreateRenderingBuffers();
@@ -172,24 +170,15 @@ private:
 	VkExtent2D RenderResolution;
 	VkExtent2D RTShadowExtent;
 
-	// similar to D3D12 command list allocator
-	VkCommandPool MainCommandPool;
+	// queue submitter
+	UHQueueSubmitter EndPresentQueue;
 
-	// similar to D3D12 command list
-	std::array<VkCommandBuffer, GMaxFrameInFlight> MainCommandBuffers;
-
+	// parallel submitters
 	UHParallelSubmitter DepthParallelSubmitter;
 	UHParallelSubmitter BaseParallelSubmitter;
 	UHParallelSubmitter MotionOpaqueParallelSubmitter;
 	UHParallelSubmitter MotionTranslucentParallelSubmitter;
 	UHParallelSubmitter TranslucentParallelSubmitter;
-
-	// similar to D3D12 Fence (GPU Fence)
-	std::array<VkSemaphore, GMaxFrameInFlight> SwapChainAvailableSemaphores;
-	std::array<VkSemaphore, GMaxFrameInFlight> RenderFinishedSemaphores;
-
-	// similar to D3D12 Fence
-	std::array<VkFence, GMaxFrameInFlight> MainFences;
 
 	// current frame count
 	uint32_t CurrentFrame = 0;

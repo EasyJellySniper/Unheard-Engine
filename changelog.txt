@@ -264,4 +264,4 @@ Almost ready for the post.
 
 18-07-2023: Minor code refactoring. Stored another two vertex normal buffer for RT. Gave a huge scale to skybox renderer to prevent glitch when vsync is off.
 
-19-07-2023: Fixed the FPS limiter bug. While loop method is more accuracy than sleep.
+19-07-2023: Fixed the FPS limiter bug. While loop method is more accuracy than sleep. Wrapped all command pools/buffers/fence/semaphore stuffs into a structure.

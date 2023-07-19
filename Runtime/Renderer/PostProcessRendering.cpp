@@ -115,7 +115,7 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
 
 		VkRenderPass SwapChainRenderPass = GraphicInterface->GetSwapChainRenderPass();
-		VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(SwapChainAvailableSemaphores[CurrentFrame], ImageIndex);
+		VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(EndPresentQueue.WaitingSemaphores[CurrentFrame], ImageIndex);
 		UHRenderTexture* SwapChainRT = GraphicInterface->GetSwapChainRT(ImageIndex);
 		VkExtent2D SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 

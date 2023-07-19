@@ -10,7 +10,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, TimerInterface(InTimer)
 	, RenderResolution(VkExtent2D())
 	, RTShadowExtent(VkExtent2D())
-	, MainCommandPool(VK_NULL_HANDLE)
 	, CurrentFrame(0)
 	, bIsResetNeededShared(false)
 	, CurrentScene(nullptr)
@@ -53,10 +52,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	// init static array pointers
 	for (size_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		MainCommandBuffers[Idx] = VK_NULL_HANDLE;
-		SwapChainAvailableSemaphores[Idx] = VK_NULL_HANDLE;
-		RenderFinishedSemaphores[Idx] = VK_NULL_HANDLE;
-		MainFences[Idx] = VK_NULL_HANDLE;
 		TopLevelAS[Idx] = VK_NULL_HANDLE;
 	}
 
@@ -114,7 +109,7 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	AnisoClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
 	DefaultSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), AnisoClampedSampler);
 
-	bool bIsRendererSuccess = CreateMainCommandPoolAndBuffer() && CreateFences();
+	const bool bIsRendererSuccess = InitQueueSubmitters();
 	if (bIsRendererSuccess)
 	{
 		// create render pass stuffs
@@ -169,10 +164,6 @@ void UHDeferredShadingRenderer::Release()
 	// vk destroy functions
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		vkDestroySemaphore(LogicalDevice, SwapChainAvailableSemaphores[Idx], nullptr);
-		vkDestroySemaphore(LogicalDevice, RenderFinishedSemaphores[Idx], nullptr);
-		vkDestroyFence(LogicalDevice, MainFences[Idx], nullptr);
-
 		UH_SAFE_RELEASE(SystemConstantsGPU[Idx]);
 		SystemConstantsGPU[Idx].reset();
 
@@ -192,7 +183,7 @@ void UHDeferredShadingRenderer::Release()
 	UH_SAFE_RELEASE(IndicesTypeBuffer);
 	IndicesTypeBuffer.reset();
 
-	vkDestroyCommandPool(LogicalDevice, MainCommandPool, nullptr);
+	EndPresentQueue.Release();
 	DepthParallelSubmitter.Release();
 	BaseParallelSubmitter.Release();
 	MotionOpaqueParallelSubmitter.Release();
@@ -422,38 +413,12 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 #endif
 }
 
-bool UHDeferredShadingRenderer::CreateMainCommandPoolAndBuffer()
+bool UHDeferredShadingRenderer::InitQueueSubmitters()
 {
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
-	UHQueueFamily QueueFamily = GraphicInterface->GetQueueFamily();
+	const UHQueueFamily& QueueFamily = GraphicInterface->GetQueueFamily();
 
-	VkCommandPoolCreateInfo PoolInfo{};
-	PoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-
-	// I'd like to reset and record every frame
-	PoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	PoolInfo.queueFamilyIndex = QueueFamily.GraphicsFamily.value();
-
-	if (vkCreateCommandPool(LogicalDevice, &PoolInfo, nullptr, &MainCommandPool) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to create command pool!\n");
-		return false;
-	}
-
-	// now create command buffer
-	VkCommandBufferAllocateInfo AllocInfo{};
-	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	AllocInfo.commandPool = MainCommandPool;
-	AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	AllocInfo.commandBufferCount = GMaxFrameInFlight;
-
-	if (vkAllocateCommandBuffers(LogicalDevice, &AllocInfo, MainCommandBuffers.data()) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to allocate command buffers!\n");
-		return false;
-	}
-
-	return true;
+	return EndPresentQueue.Initialize(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0);
 }
 
 void UHDeferredShadingRenderer::UpdateDescriptors()
@@ -723,34 +688,6 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 #if WITH_DEBUG
 	DebugViewShader.Release();
 #endif
-}
-
-bool UHDeferredShadingRenderer::CreateFences()
-{
-	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
-
-	// init vector
-	VkSemaphoreCreateInfo SemaphoreInfo{};
-	SemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	VkFenceCreateInfo FenceInfo{};
-	FenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-	// so fence won't be blocked on the first frame
-	FenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		if (vkCreateSemaphore(LogicalDevice, &SemaphoreInfo, nullptr, &SwapChainAvailableSemaphores[Idx]) != VK_SUCCESS ||
-			vkCreateSemaphore(LogicalDevice, &SemaphoreInfo, nullptr, &RenderFinishedSemaphores[Idx]) != VK_SUCCESS ||
-			vkCreateFence(LogicalDevice, &FenceInfo, nullptr, &MainFences[Idx]) != VK_SUCCESS)
-		{
-			UHE_LOG(L"Failed to allocate fences!\n");
-			return false;
-		}
-	}
-
-	return true;
 }
 
 void UHDeferredShadingRenderer::CreateRenderingBuffers()

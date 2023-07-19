@@ -357,7 +357,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		}
 
 		// prepare graphic builder
-		UHGraphicBuilder GraphBuilder(GraphicInterface, MainCommandBuffers[CurrentFrame]);
+		UHGraphicBuilder GraphBuilder(GraphicInterface, EndPresentQueue.CommandBuffers[CurrentFrame]);
 		uint32_t PresentIndex;
 		{
 			UHProfilerScope Profiler(&RenderThreadProfile);
@@ -373,8 +373,8 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			}
 
 			// similar to D3D12 fence wait/reset
-			GraphBuilder.WaitFence(MainFences[CurrentFrame]);
-			GraphBuilder.ResetFence(MainFences[CurrentFrame]);
+			GraphBuilder.WaitFence(EndPresentQueue.Fences[CurrentFrame]);
+			GraphBuilder.ResetFence(EndPresentQueue.Fences[CurrentFrame]);
 
 			// begin command buffer, it will reset command buffer inline
 			GraphBuilder.BeginCommandBuffer();
@@ -405,7 +405,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			// ****************************** end scene rendering
 			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
 			GraphBuilder.EndCommandBuffer();
-			GraphBuilder.ExecuteCmd(MainFences[CurrentFrame], SwapChainAvailableSemaphores[CurrentFrame], RenderFinishedSemaphores[CurrentFrame]);
+			GraphBuilder.ExecuteCmd(EndPresentQueue.Queue, EndPresentQueue.Fences[CurrentFrame], EndPresentQueue.WaitingSemaphores[CurrentFrame], EndPresentQueue.FinishedSemaphores[CurrentFrame]);
 		}
 
 	#if WITH_DEBUG
@@ -415,7 +415,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	#endif
 
 		// present
-		bIsResetNeededShared = !GraphBuilder.Present(RenderFinishedSemaphores[CurrentFrame], PresentIndex);
+		bIsResetNeededShared = !GraphBuilder.Present(EndPresentQueue.Queue, EndPresentQueue.FinishedSemaphores[CurrentFrame], PresentIndex);
 
 		// advance frame
 		CurrentFrame = (CurrentFrame + 1) % GMaxFrameInFlight;
