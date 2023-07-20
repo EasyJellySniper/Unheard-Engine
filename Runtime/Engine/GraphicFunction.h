@@ -1,0 +1,25 @@
+#pragma once
+#define VK_USE_PLATFORM_WIN32_KHR
+#include <vulkan/vulkan.h>
+#include "../../UnheardEngine.h"
+// a header that store graphic API function callback
+
+// Vulkan callback functions
+inline PFN_vkAcquireFullScreenExclusiveModeEXT GEnterFullScreenCallback;
+inline PFN_vkReleaseFullScreenExclusiveModeEXT GLeaveFullScreenCallback;
+inline PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT GGetSurfacePresentModes2Callback;
+
+#if WITH_DEBUG
+inline PFN_vkCmdBeginDebugUtilsLabelEXT GBeginCmdDebugLabelCallback;
+inline PFN_vkCmdEndDebugUtilsLabelEXT GEndCmdDebugLabelCallback;
+#endif
+
+inline PFN_vkGetAccelerationStructureDeviceAddressKHR GVkGetAccelerationStructureDeviceAddressKHR;
+inline PFN_vkGetAccelerationStructureBuildSizesKHR GVkGetAccelerationStructureBuildSizesKHR;
+inline PFN_vkCreateAccelerationStructureKHR GVkCreateAccelerationStructureKHR;
+inline PFN_vkCmdBuildAccelerationStructuresKHR GVkCmdBuildAccelerationStructuresKHR;
+inline PFN_vkDestroyAccelerationStructureKHR GVkDestroyAccelerationStructureKHR;
+inline PFN_vkCreateRayTracingPipelinesKHR GVkCreateRayTracingPipelinesKHR;
+inline PFN_vkWaitForPresentKHR GVkWaitForPresentKHR;
+inline PFN_vkCmdTraceRaysKHR GVkCmdTraceRaysKHR;
+inline PFN_vkGetRayTracingShaderGroupHandlesKHR GVkGetRayTracingShaderGroupHandlesKHR;

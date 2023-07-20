@@ -16,7 +16,6 @@ SamplerState LinearClampped : register(s6);
 #define PCSS_MINPENUMBRA 1.5f
 #define PCSS_MAXPENUMBRA 20.0f
 #define PCSS_BLOCKERSCALE 0.01f
-#define PCSS_DISTANCESCALE 0.01f
 
 // group optimization, use 1D array for the best perf
 groupshared float GDepthCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];
@@ -57,11 +56,11 @@ void SoftOpaqueShadow(uint2 PixelCoord, uint2 GTid, float2 UV, float MipRate)
 
 	// lower the penumbra based on mip level, don't apply high penumbra at distant pixels
 	float MipWeight = saturate(MipRate * RT_MIPRATESCALE);
-	Penumbra = lerp(Penumbra, PCSS_MINPENUMBRA, MipWeight);
+	Penumbra = lerp(Penumbra, 0.0f, MipWeight);
 
 	// since this is screen space sampling, there is a chance to sample a lit pixel with a shadowed pixel
 	// depth scaling reduces white artifacts when it's sampling neightbor pixels
-	Penumbra = lerp(Penumbra, PCSS_MINPENUMBRA, saturate(DepthDiff / 0.001f));
+	Penumbra = lerp(Penumbra, 0.0f, saturate(DepthDiff / 0.001f));
 
 	// actually sampling
 	float Atten = 0.0f;
@@ -120,11 +119,11 @@ void SoftTranslucentShadow(uint2 PixelCoord, uint2 GTid, float2 UV, float MipRat
 
 	// lower the penumbra based on mip level, don't apply high penumbra at distant pixels
 	float MipWeight = saturate(MipRate * RT_MIPRATESCALE);
-	Penumbra = lerp(Penumbra, 0, MipWeight);
+	Penumbra = lerp(Penumbra, 0.0f, MipWeight);
 
 	// since this is screen space sampling, there is a chance to sample a lit pixel with a shadowed pixel
 	// depth scaling reduces white artifacts when it's sampling neightbor pixels
-	Penumbra = lerp(Penumbra, 0, saturate(DepthDiff / 0.001f));
+	Penumbra = lerp(Penumbra, 0.0f, saturate(DepthDiff / 0.001f));
 
 	// actually sampling
 	float Atten = 0.0f;

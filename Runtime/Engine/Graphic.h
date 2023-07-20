@@ -1,6 +1,5 @@
 #pragma once
-#define VK_USE_PLATFORM_WIN32_KHR	// must be before vulkan/vulkan.h for win32 surface
-#include <vulkan/vulkan.h>
+#include "GraphicFunction.h"
 #include <memory>
 #include <vector>
 #include <optional>
@@ -196,6 +195,9 @@ public:
 	// get swap chain buffer
 	VkFramebuffer GetSwapChainBuffer(int32_t ImageIdx) const;
 
+	// get swap chain count
+	uint32_t GetSwapChainCount() const;
+
 	// get extent
 	VkExtent2D GetSwapChainExtent() const;
 
@@ -272,16 +274,6 @@ private:
 
 	// create swap chain
 	bool CreateSwapChain();
-
-	// Vulkan callback functions
-	PFN_vkAcquireFullScreenExclusiveModeEXT EnterFullScreenCallback;
-	PFN_vkReleaseFullScreenExclusiveModeEXT LeaveFullScreenCallback;
-	PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT GetSurfacePresentModes2Callback;
-
-#if WITH_DEBUG
-	PFN_vkCmdBeginDebugUtilsLabelEXT BeginCmdDebugLabelCallback;
-	PFN_vkCmdEndDebugUtilsLabelEXT EndCmdDebugLabelCallback;
-#endif
 
 
 	/** ====================================================== Variables ====================================================== **/

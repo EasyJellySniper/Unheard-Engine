@@ -27,11 +27,6 @@ void UHScene::Initialize(UHAssetManager* InAsset, UHGraphic* InGfx, UHConfigMana
 	{
 		Script.second->OnSceneInitialized(this, InAsset, InGfx);
 	}
-
-	if (SkyboxRenderer)
-	{
-		SkyboxRenderer->SetScale(XMFLOAT3(GWorldMax, GWorldMax, GWorldMax));
-	}
 }
 
 void UHScene::Release()

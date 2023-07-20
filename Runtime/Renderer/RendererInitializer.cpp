@@ -10,7 +10,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, TimerInterface(InTimer)
 	, RenderResolution(VkExtent2D())
 	, RTShadowExtent(VkExtent2D())
-	, CurrentFrame(0)
+	, CurrentFrameGT(0)
+	, CurrentFrameRT(0)
 	, bIsResetNeededShared(false)
 	, CurrentScene(nullptr)
 	, SystemConstantsCPU(UHSystemConstants())
@@ -40,8 +41,10 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, IndicesTypeBuffer(nullptr)
 	, NumWorkerThreads(0)
 	, RenderThread(nullptr)
-	, bParallelSubmissionGT(false)
 	, bParallelSubmissionRT(false)
+	, bVsyncRT(false)
+	, bIsSwapChainResetGT(false)
+	, bIsSwapChainResetRT(false)
 	, ParallelTask(UHParallelTask::None)
 #if WITH_DEBUG
 	, DebugViewIndex(0)
@@ -183,7 +186,8 @@ void UHDeferredShadingRenderer::Release()
 	UH_SAFE_RELEASE(IndicesTypeBuffer);
 	IndicesTypeBuffer.reset();
 
-	EndPresentQueue.Release();
+	AsyncComputeQueue.Release();
+	SceneRenderQueue.Release();
 	DepthParallelSubmitter.Release();
 	BaseParallelSubmitter.Release();
 	MotionOpaqueParallelSubmitter.Release();
@@ -418,7 +422,8 @@ bool UHDeferredShadingRenderer::InitQueueSubmitters()
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 	const UHQueueFamily& QueueFamily = GraphicInterface->GetQueueFamily();
 
-	return EndPresentQueue.Initialize(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0);
+	return AsyncComputeQueue.Initialize(LogicalDevice, QueueFamily.ComputesFamily.value(), 0)
+		&& SceneRenderQueue.Initialize(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0);
 }
 
 void UHDeferredShadingRenderer::UpdateDescriptors()

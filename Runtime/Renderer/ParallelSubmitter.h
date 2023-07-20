@@ -57,11 +57,11 @@ public:
 		}
 	}
 
-	void CollectCurrentFrameBundle(int32_t CurrentFrame)
+	void CollectCurrentFrameRTBundle(int32_t CurrentFrameRT)
 	{
 		for (int32_t Idx = 0; Idx < NumWT; Idx++)
 		{
-			WorkerBundles[Idx] = WorkerCommandBuffers[Idx * (int32_t)GMaxFrameInFlight + CurrentFrame];
+			WorkerBundles[Idx] = WorkerCommandBuffers[Idx * (int32_t)GMaxFrameInFlight + CurrentFrameRT];
 		}
 	}
 

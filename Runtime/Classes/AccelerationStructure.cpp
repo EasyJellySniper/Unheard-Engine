@@ -32,10 +32,7 @@ VkDeviceAddress UHAccelerationStructure::GetDeviceAddress(VkAccelerationStructur
 	AddressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
 	AddressInfo.accelerationStructure = InAS;
 
-	PFN_vkGetAccelerationStructureDeviceAddressKHR GetASDeviceAddress =
-		(PFN_vkGetAccelerationStructureDeviceAddressKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetAccelerationStructureDeviceAddressKHR");
-
-	return GetASDeviceAddress(LogicalDevice, &AddressInfo);
+	return GVkGetAccelerationStructureDeviceAddressKHR(LogicalDevice, &AddressInfo);
 }
 
 // this should called by meshes
@@ -86,10 +83,9 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 	GeometryInfo.pGeometries = &GeometryKHR;
 
 	// fetch the size info before creating AS based on geometry info
-	PFN_vkGetAccelerationStructureBuildSizesKHR GetASBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetAccelerationStructureBuildSizesKHR");
 	VkAccelerationStructureBuildSizesInfoKHR SizeInfo{};
 	SizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-	GetASBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &MaxPrimitiveCounts, &SizeInfo);
+	GVkGetAccelerationStructureBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &MaxPrimitiveCounts, &SizeInfo);
 
 	// build bottom-level AS after getting proper sizes
 	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>();
@@ -101,8 +97,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 	CreateInfo.buffer = AccelerationStructureBuffer->GetBuffer();
 	CreateInfo.size = SizeInfo.accelerationStructureSize;
 
-	PFN_vkCreateAccelerationStructureKHR CreateASKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCreateAccelerationStructureKHR");
-	if (CreateASKHR(LogicalDevice, &CreateInfo, nullptr, &AccelerationStructure) != VK_SUCCESS)
+	if (GVkCreateAccelerationStructureKHR(LogicalDevice, &CreateInfo, nullptr, &AccelerationStructure) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create bottom level AS!\n");
 	}
@@ -118,8 +113,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 	const VkAccelerationStructureBuildRangeInfoKHR* RangeInfos[1] = { &RangeInfo };
 	GeometryInfo.dstAccelerationStructure = AccelerationStructure;
 
-	PFN_vkCmdBuildAccelerationStructuresKHR CmdBuildASKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBuildAccelerationStructuresKHR");
-	CmdBuildASKHR(InBuffer, 1, &GeometryInfo, RangeInfos);
+	GVkCmdBuildAccelerationStructuresKHR(InBuffer, 1, &GeometryInfo, RangeInfos);
 }
 
 // this should be called by renderer
@@ -211,10 +205,9 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	GeometryInfo.pGeometries = &GeometryKHR;
 
 	// fetch the size info before creating AS based on geometry info
-	PFN_vkGetAccelerationStructureBuildSizesKHR GetASBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetAccelerationStructureBuildSizesKHR");
 	VkAccelerationStructureBuildSizesInfoKHR SizeInfo{};
 	SizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
-	GetASBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &InstanceCount, &SizeInfo);
+	GVkGetAccelerationStructureBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &InstanceCount, &SizeInfo);
 
 	// build bottom-level AS after getting proper sizes
 	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>();
@@ -226,8 +219,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	CreateInfo.buffer = AccelerationStructureBuffer->GetBuffer();
 	CreateInfo.size = SizeInfo.accelerationStructureSize;
 
-	PFN_vkCreateAccelerationStructureKHR CreateASKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCreateAccelerationStructureKHR");
-	if (CreateASKHR(LogicalDevice, &CreateInfo, nullptr, &AccelerationStructure) != VK_SUCCESS)
+	if (GVkCreateAccelerationStructureKHR(LogicalDevice, &CreateInfo, nullptr, &AccelerationStructure) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create top level AS!\n");
 	}
@@ -243,8 +235,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	const VkAccelerationStructureBuildRangeInfoKHR* RangeInfos[1] = { &RangeInfo };
 	GeometryInfo.dstAccelerationStructure = AccelerationStructure;
 
-	PFN_vkCmdBuildAccelerationStructuresKHR CmdBuildASKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBuildAccelerationStructuresKHR");
-	CmdBuildASKHR(InBuffer, 1, &GeometryInfo, RangeInfos);
+	GVkCmdBuildAccelerationStructuresKHR(InBuffer, 1, &GeometryInfo, RangeInfos);
 
 	GeometryKHRCache = GeometryKHR;
 	GeometryInfoCache = GeometryInfo;
@@ -253,13 +244,13 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 }
 
 // update top AS
-void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t CurrentFrame)
+void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t CurrentFrameRT)
 {
 	// upload changed data to ASInstanceBuffer
 	bool bNeedUpdate = false;
 	for (size_t Idx = 0; Idx < InstanceKHRs.size(); Idx++)
 	{
-		if (RendererCache[Idx]->IsRayTracingDirty(CurrentFrame))
+		if (RendererCache[Idx]->IsRayTracingDirty(CurrentFrameRT))
 		{
 			// copy transform3x4
 			XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(RendererCache[Idx]->GetWorldMatrix());
@@ -286,7 +277,7 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t Curr
 			}
 
 			ASInstanceBuffer->UploadData(&InstanceKHRs[Idx], Idx);
-			RendererCache[Idx]->SetRayTracingDirty(false, CurrentFrame);
+			RendererCache[Idx]->SetRayTracingDirty(false, CurrentFrameRT);
 			bNeedUpdate = true;
 		}
 	}
@@ -299,8 +290,7 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t Curr
 		GeometryInfoCache.pGeometries = &GeometryKHRCache;
 		const VkAccelerationStructureBuildRangeInfoKHR* RangeInfos[1] = { &RangeInfoCache };
 
-		PFN_vkCmdBuildAccelerationStructuresKHR CmdBuildASKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBuildAccelerationStructuresKHR");
-		CmdBuildASKHR(InBuffer, 1, &GeometryInfoCache, RangeInfos);
+		GVkCmdBuildAccelerationStructuresKHR(InBuffer, 1, &GeometryInfoCache, RangeInfos);
 	}
 }
 
@@ -317,8 +307,7 @@ void UHAccelerationStructure::Release()
 		UH_SAFE_RELEASE(AccelerationStructureBuffer);
 		AccelerationStructureBuffer.reset();
 
-        PFN_vkDestroyAccelerationStructureKHR DestroyASKHR = (PFN_vkDestroyAccelerationStructureKHR)vkGetInstanceProcAddr(VulkanInstance, "vkDestroyAccelerationStructureKHR");
-        DestroyASKHR(LogicalDevice, AccelerationStructure, nullptr);
+		GVkDestroyAccelerationStructureKHR(LogicalDevice, AccelerationStructure, nullptr);
     }
 }
 

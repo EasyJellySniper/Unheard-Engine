@@ -7,7 +7,7 @@
 class UHGraphicBuilder
 {
 public:
-	UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer);
+	UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder = false);
 
 	VkCommandBuffer GetCmdList();
 
@@ -44,11 +44,15 @@ public:
 	// end a pass
 	void EndRenderPass();
 
-	// execute a command buffer
+	// execute a command buffer, single and multiple semaphore wait version
 	void ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore);
+	void ExecuteCmd(VkQueue InQueue, VkFence InFence
+		, const std::vector<VkSemaphore>& InWaitSemaphores
+		, const std::vector<VkPipelineStageFlags>& InWaitStageFlags
+		, VkSemaphore InFinishSemaphore);
 
 	// present to swap chain
-	bool Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx);
+	bool Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId);
 
 	// bind states
 	void BindGraphicState(UHGraphicState* InState);
@@ -116,6 +120,7 @@ private:
 	UHGraphic* Gfx;
 	VkCommandBuffer CmdList;
 	VkDevice LogicalDevice;
+	bool bIsCompute;
 
 	// lookup table for stage flag and access flag
 	std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;

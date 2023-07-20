@@ -1,9 +1,10 @@
 #include "GraphicBuilder.h"
 
-UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer)
+UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder)
 	: Gfx(InGraphic)
 	, CmdList(InCommandBuffer)
 	, LogicalDevice(InGraphic->GetLogicalDevice())
+	, bIsCompute(bIsComputeBuilder)
 	, PrevViewport(VkExtent2D())
 	, PrevScissor(VkExtent2D())
 	, PrevGraphicState(nullptr)
@@ -27,11 +28,11 @@ UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InComma
 	LayoutToStageFlags[VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL] = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	LayoutToStageFlags[VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL] = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	LayoutToStageFlags[VK_IMAGE_LAYOUT_PRESENT_SRC_KHR] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL] = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	LayoutToStageFlags[VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL] = (bIsCompute) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	LayoutToStageFlags[VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL] = (bIsCompute) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 	LayoutToStageFlags[VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL] = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	LayoutToStageFlags[VK_IMAGE_LAYOUT_UNDEFINED] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_GENERAL] = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+	LayoutToStageFlags[VK_IMAGE_LAYOUT_GENERAL] = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 }
 
 VkCommandBuffer UHGraphicBuilder::GetCmdList()
@@ -135,23 +136,43 @@ void UHGraphicBuilder::EndRenderPass()
 
 void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore)
 {
+	std::vector<VkSemaphore> WaitSemaphores;
+	if (InWaitSemaphore != VK_NULL_HANDLE)
+	{
+		WaitSemaphores.push_back(InWaitSemaphore);
+	}
+
+	const VkPipelineStageFlags WaitStage = (bIsCompute) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	std::vector<VkPipelineStageFlags> WaitStages = { WaitStage };
+	ExecuteCmd(InQueue, InFence, WaitSemaphores, WaitStages, InFinishSemaphore);
+}
+
+void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
+	, const std::vector<VkSemaphore>& InWaitSemaphores
+	, const std::vector<VkPipelineStageFlags>& InWaitStageFlags
+	, VkSemaphore InFinishSemaphore)
+{
 	// summit to queue
 	VkSubmitInfo SubmitInfo{};
 	SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 	// wait available semaphore before begin to submit
-	VkSemaphore WaitSemaphores[] = { InWaitSemaphore };
-	VkPipelineStageFlags WaitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	SubmitInfo.waitSemaphoreCount = 1;
-	SubmitInfo.pWaitSemaphores = WaitSemaphores;
-	SubmitInfo.pWaitDstStageMask = WaitStages;
+	if (InWaitSemaphores.size() > 0)
+	{
+		SubmitInfo.waitSemaphoreCount = static_cast<uint32_t>(InWaitSemaphores.size());
+		SubmitInfo.pWaitSemaphores = InWaitSemaphores.data();
+		SubmitInfo.pWaitDstStageMask = InWaitStageFlags.data();
+	}
+
 	SubmitInfo.commandBufferCount = 1;
 	SubmitInfo.pCommandBuffers = &CmdList;
 
 	// the signal after finish
-	VkSemaphore SignalSemaphores[] = { InFinishSemaphore };
-	SubmitInfo.signalSemaphoreCount = 1;
-	SubmitInfo.pSignalSemaphores = SignalSemaphores;
+	if (InFinishSemaphore != VK_NULL_HANDLE)
+	{
+		SubmitInfo.signalSemaphoreCount = 1;
+		SubmitInfo.pSignalSemaphores = &InFinishSemaphore;
+	}
 
 	// similar to D3D12CommandQueue::Execute()
 	if (vkQueueSubmit(InQueue, 1, &SubmitInfo, InFence) != VK_SUCCESS)
@@ -161,7 +182,7 @@ void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore 
 	}
 }
 
-bool UHGraphicBuilder::Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx)
+bool UHGraphicBuilder::Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId)
 {
 	VkSwapchainKHR SwapChain = Gfx->GetSwapChain();
 
@@ -179,6 +200,13 @@ bool UHGraphicBuilder::Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, u
 	PresentInfo.pSwapchains = SwapChains;
 	PresentInfo.pImageIndices = &InImageIdx;
 	PresentInfo.pResults = nullptr;
+
+	std::vector<uint64_t> PresentIds = { PresentId };
+	VkPresentIdKHR PresentIdInfo{};
+	PresentIdInfo.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
+	PresentIdInfo.swapchainCount = 1;
+	PresentIdInfo.pPresentIds = PresentIds.data();
+	PresentInfo.pNext = &PresentIdInfo;
 
 	VkResult PresentResult = vkQueuePresentKHR(InQueue, &PresentInfo);
 
@@ -522,9 +550,7 @@ void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderReco
 	HitGroupAddress.stride = InHitGroupTable->GetBufferStride();
 
 	VkStridedDeviceAddressRegionKHR NullAddress{};
-
-	PFN_vkCmdTraceRaysKHR TraceRays = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(Gfx->GetInstance(), "vkCmdTraceRaysKHR");
-	TraceRays(CmdList, &RayGenAddress, &MissAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, 1);
+	GVkCmdTraceRaysKHR(CmdList, &RayGenAddress, &MissAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, 1);
 }
 
 void UHGraphicBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)

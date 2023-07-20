@@ -64,8 +64,8 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 			// bind texture table, they should only be bound once
 			if (DepthPassShaders.size() > 0)
 			{
-				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-					, SamplerTable.GetDescriptorSet(CurrentFrame) };
+				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+					, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 				GraphBuilder.BindDescriptorSet(DepthPassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 			}
 
@@ -95,7 +95,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 				GraphBuilder.BindGraphicState(DepthShader.GetState());
 				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrame));
+				GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrameRT));
 
 				// draw call
 				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
@@ -123,7 +123,7 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = DepthPassObj.RenderPass;
 	InheritanceInfo.framebuffer = DepthPassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, DepthParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrame]);
+	UHGraphicBuilder GraphBuilder(GraphicInterface, DepthParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
@@ -136,8 +136,8 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	// bind texture table, they should only be bound once
 	if (DepthPassShaders.size() > 0)
 	{
-		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-			, SamplerTable.GetDescriptorSet(CurrentFrame) };
+		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+			, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 		GraphBuilder.BindDescriptorSet(DepthPassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
@@ -157,7 +157,7 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 		GraphBuilder.BindGraphicState(DepthShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(DepthShader.GetPipelineLayout(), DepthShader.GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());

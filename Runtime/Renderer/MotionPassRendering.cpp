@@ -30,7 +30,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 		GraphBuilder.BindGraphicState(State);
 
 		// bind sets
-		GraphBuilder.BindDescriptorSet(MotionCameraShader.GetPipelineLayout(), MotionCameraShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(MotionCameraShader.GetPipelineLayout(), MotionCameraShader.GetDescriptorSet(CurrentFrameRT));
 
 		// doesn't need VB/IB for full screen quad
 		GraphBuilder.BindVertexBuffer(VK_NULL_HANDLE);
@@ -89,8 +89,8 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 				// bind texture table, they should only be bound once
 				if (MotionOpaqueShaders.size() > 0)
 				{
-					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-						, SamplerTable.GetDescriptorSet(CurrentFrame) };
+					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+						, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 					GraphBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 				}
 
@@ -100,7 +100,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 					UHMesh* Mesh = Renderer->GetMesh();
 
 					// skip skybox mat and only draw dirty renderer
-					if (Mat->IsSkybox() || !Renderer->IsMotionDirty(CurrentFrame))
+					if (Mat->IsSkybox() || !Renderer->IsMotionDirty(CurrentFrameRT))
 					{
 						continue;
 					}
@@ -122,12 +122,12 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 					GraphBuilder.BindGraphicState(MotionShader.GetState());
 					GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 					GraphBuilder.BindIndexBuffer(Mesh);
-					GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrame));
+					GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrameRT));
 
 					// draw call
 					GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
 					GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-					Renderer->SetMotionDirty(false, CurrentFrame);
+					Renderer->SetMotionDirty(false, CurrentFrameRT);
 				}
 			}
 
@@ -193,8 +193,8 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 				// bind texture table, they should only be bound once
 				if (MotionTranslucentShaders.size() > 0)
 				{
-					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-						, SamplerTable.GetDescriptorSet(CurrentFrame) };
+					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+						, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 					GraphBuilder.BindDescriptorSet(MotionTranslucentShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 				}
 
@@ -227,7 +227,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 					GraphBuilder.BindGraphicState(MotionShader.GetState());
 					GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 					GraphBuilder.BindIndexBuffer(Mesh);
-					GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrame));
+					GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrameRT));
 
 					// draw call
 					GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
@@ -262,7 +262,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = MotionOpaquePassObj.RenderPass;
 	InheritanceInfo.framebuffer = MotionOpaquePassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, MotionOpaqueParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrame]);
+	UHGraphicBuilder GraphBuilder(GraphicInterface, MotionOpaqueParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
@@ -275,8 +275,8 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	// bind texture table, they should only be bound once
 	if (MotionOpaqueShaders.size() > 0)
 	{
-		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-			, SamplerTable.GetDescriptorSet(CurrentFrame) };
+		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+			, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 		GraphBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
@@ -284,7 +284,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	{
 		UHMeshRendererComponent* Renderer = OpaquesToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->IsSkybox() || !Renderer->IsMotionDirty(CurrentFrame))
+		if (Mat->IsSkybox() || !Renderer->IsMotionDirty(CurrentFrameRT))
 		{
 			continue;
 		}
@@ -301,13 +301,13 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 		GraphBuilder.BindGraphicState(MotionShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
 		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-		Renderer->SetMotionDirty(false, CurrentFrame);
+		Renderer->SetMotionDirty(false, CurrentFrameRT);
 	}
 
 	GraphBuilder.EndCommandBuffer();
@@ -329,7 +329,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = MotionTranslucentPassObj.RenderPass;
 	InheritanceInfo.framebuffer = MotionTranslucentPassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, MotionTranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrame]);
+	UHGraphicBuilder GraphBuilder(GraphicInterface, MotionTranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
@@ -342,8 +342,8 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	// bind texture table, they should only be bound once
 	if (MotionTranslucentShaders.size() > 0)
 	{
-		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-			, SamplerTable.GetDescriptorSet(CurrentFrame) };
+		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+			, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 		GraphBuilder.BindDescriptorSet(MotionTranslucentShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
@@ -369,7 +369,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 		GraphBuilder.BindGraphicState(MotionShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(MotionShader.GetPipelineLayout(), MotionShader.GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());

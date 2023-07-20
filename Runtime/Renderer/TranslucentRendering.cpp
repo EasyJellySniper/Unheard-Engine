@@ -61,8 +61,8 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHGraphicBuilder& GraphBui
 			// bind texture table, they should only be bound once
 			if (TranslucentPassShaders.size() > 0)
 			{
-				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-					, SamplerTable.GetDescriptorSet(CurrentFrame) };
+				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+					, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 				GraphBuilder.BindDescriptorSet(TranslucentPassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 			}
 
@@ -91,7 +91,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHGraphicBuilder& GraphBui
 				GraphBuilder.BindGraphicState(TranslucentShader.GetState());
 				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(TranslucentShader.GetPipelineLayout(), TranslucentShader.GetDescriptorSet(CurrentFrame));
+				GraphBuilder.BindDescriptorSet(TranslucentShader.GetPipelineLayout(), TranslucentShader.GetDescriptorSet(CurrentFrameRT));
 
 				// draw call
 				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
@@ -119,7 +119,7 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = TranslucentPassObj.RenderPass;
 	InheritanceInfo.framebuffer = TranslucentPassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, TranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrame]);
+	UHGraphicBuilder GraphBuilder(GraphicInterface, TranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
@@ -132,8 +132,8 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 	// bind texture table, they should only be bound once
 	if (TranslucentPassShaders.size() > 0)
 	{
-		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrame)
-			, SamplerTable.GetDescriptorSet(CurrentFrame) };
+		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable.GetDescriptorSet(CurrentFrameRT)
+			, SamplerTable.GetDescriptorSet(CurrentFrameRT) };
 		GraphBuilder.BindDescriptorSet(TranslucentPassShaders.begin()->second.GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
@@ -153,7 +153,7 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 		GraphBuilder.BindGraphicState(TranslucentShader.GetState());
 		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
 		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(TranslucentShader.GetPipelineLayout(), TranslucentShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSet(TranslucentShader.GetPipelineLayout(), TranslucentShader.GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
 		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());

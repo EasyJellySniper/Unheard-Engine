@@ -2,6 +2,7 @@
 #include <vector>
 #include "../../UnheardEngine.h"
 #include "../Classes/Utility.h"
+#include "../../Runtime/Engine/GraphicFunction.h"
 
 UHGraphicState::UHGraphicState()
 	: UHGraphicState(UHRenderPassInfo())
@@ -400,10 +401,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	CreateInfo.pLibraryInterface = &PipelineInterfaceInfo;
 
 	// create state for ray tracing pipeline
-	PFN_vkCreateRayTracingPipelinesKHR CreateRTPipeline = 
-		(PFN_vkCreateRayTracingPipelinesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCreateRayTracingPipelinesKHR");
-	
-	VkResult Result = CreateRTPipeline(LogicalDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &CreateInfo, nullptr, &RTPipeline);
+	VkResult Result = GVkCreateRayTracingPipelinesKHR(LogicalDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &CreateInfo, nullptr, &RTPipeline);
 	if (Result != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create ray tracing pipeline!\n");

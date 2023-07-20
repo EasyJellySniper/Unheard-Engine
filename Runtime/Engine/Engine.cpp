@@ -184,7 +184,12 @@ void UHEngine::Update()
 	if (EngineResizeReason != UHEngineResizeReason::NotResizing)
 	{
 		ResizeEngine();
+		UHERenderer->SetSwapChainReset(true);
 		EngineResizeReason = UHEngineResizeReason::NotResizing;
+	}
+	else
+	{
+		UHERenderer->SetSwapChainReset(false);
 	}
 
 	// update scene

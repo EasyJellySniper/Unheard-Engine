@@ -248,6 +248,7 @@
     <ClInclude Include="Runtime\Classes\Thread.h" />
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
+    <ClInclude Include="Runtime\Engine\GraphicFunction.h" />
     <ClInclude Include="Runtime\Renderer\DescriptorHelper.h" />
     <ClInclude Include="Runtime\Components\Light.h" />
     <ClInclude Include="Runtime\Components\Camera.h" />

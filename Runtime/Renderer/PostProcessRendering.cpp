@@ -15,7 +15,7 @@ void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHGraphicB
 	GraphBuilder.BindGraphicState(State);
 
 	// bind sets
-	GraphBuilder.BindDescriptorSet(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrame));
+	GraphBuilder.BindDescriptorSet(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrameRT));
 
 	// doesn't need VB/IB for full screen quad
 	GraphBuilder.DrawFullScreenQuad();
@@ -39,7 +39,7 @@ void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHGraphi
 	GraphBuilder.BindComputeState(State);
 
 	// bind sets
-	GraphBuilder.BindDescriptorSetCompute(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrame));
+	GraphBuilder.BindDescriptorSetCompute(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrameRT));
 
 	// dispatch compute
 	GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
@@ -65,7 +65,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 	// -------------------------- Tone Mapping --------------------------//
 	{
 		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]);
-		ToneMapShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrame);
+		ToneMapShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrameRT);
 		RenderEffect(&ToneMapShader, GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
 
@@ -78,8 +78,8 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 			if (!bIsTemporalReset)
 			{
 				// only render it when it's not resetting
-				TemporalAAShader.BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrame, true);
-				TemporalAAShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrame);
+				TemporalAAShader.BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrameRT, true);
+				TemporalAAShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrameRT);
 				DispatchEffect(&TemporalAAShader, GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA");
 			}
 
@@ -115,7 +115,7 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
 
 		VkRenderPass SwapChainRenderPass = GraphicInterface->GetSwapChainRenderPass();
-		VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(EndPresentQueue.WaitingSemaphores[CurrentFrame], ImageIndex);
+		VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(SceneRenderQueue.WaitingSemaphores[CurrentFrameRT], ImageIndex);
 		UHRenderTexture* SwapChainRT = GraphicInterface->GetSwapChainRT(ImageIndex);
 		VkExtent2D SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 

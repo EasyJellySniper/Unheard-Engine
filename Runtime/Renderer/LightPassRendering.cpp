@@ -18,7 +18,7 @@ void UHDeferredShadingRenderer::RenderLightPass(UHGraphicBuilder& GraphBuilder)
 		GraphBuilder.BindComputeState(State);
 
 		// bind sets
-		GraphBuilder.BindDescriptorSetCompute(LightPassShader.GetPipelineLayout(), LightPassShader.GetDescriptorSet(CurrentFrame));
+		GraphBuilder.BindDescriptorSetCompute(LightPassShader.GetPipelineLayout(), LightPassShader.GetDescriptorSet(CurrentFrameRT));
 
 		// dispatch
 		GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);

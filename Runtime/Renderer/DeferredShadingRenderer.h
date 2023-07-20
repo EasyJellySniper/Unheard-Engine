@@ -59,6 +59,7 @@ public:
 	void Release();
 
 	void SetCurrentScene(UHScene* InScene);
+	void SetSwapChainReset(bool bInFlag);
 	bool IsNeedReset();
 
 	void Resize();
@@ -171,7 +172,8 @@ private:
 	VkExtent2D RTShadowExtent;
 
 	// queue submitter
-	UHQueueSubmitter EndPresentQueue;
+	UHQueueSubmitter AsyncComputeQueue;
+	UHQueueSubmitter SceneRenderQueue;
 
 	// parallel submitters
 	UHParallelSubmitter DepthParallelSubmitter;
@@ -181,7 +183,9 @@ private:
 	UHParallelSubmitter TranslucentParallelSubmitter;
 
 	// current frame count
-	uint32_t CurrentFrame = 0;
+	uint32_t CurrentFrameGT;
+	uint32_t CurrentFrameRT;
+	uint32_t FrameNumberRT;
 
 	// Render thread defines, UH engine will always use a thread for rendering, and doing parallel submission with worker threads
 	std::unique_ptr<UHThread> RenderThread;
@@ -189,8 +193,10 @@ private:
 	std::vector<std::unique_ptr<UHThread>> WorkerThreads;
 	bool bIsResetNeededShared;
 	UHParallelTask ParallelTask;
-	bool bParallelSubmissionGT;
 	bool bParallelSubmissionRT;
+	bool bVsyncRT;
+	bool bIsSwapChainResetGT;
+	bool bIsSwapChainResetRT;
 
 	// current scene
 	UHScene* CurrentScene;

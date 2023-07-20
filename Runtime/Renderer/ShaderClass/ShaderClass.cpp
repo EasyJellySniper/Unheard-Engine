@@ -107,9 +107,9 @@ void UHShaderClass::Release()
 	HitGroupTable.reset();
 }
 
-void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrame, bool bIsReadWrite)
+void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite)
 {
-	if (CurrentFrame < 0)
+	if (CurrentFrameRT < 0)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -122,7 +122,7 @@ void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int3
 	}
 	else
 	{
-		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrame]);
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrameRT]);
 		if (InImage)
 		{
 			Helper.WriteImage(InImage, DstBinding, bIsReadWrite);
@@ -178,9 +178,9 @@ void UHShaderClass::BindSampler(const std::vector<UHSampler*>& InSamplers, int32
 	}
 }
 
-void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrame)
+void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrameRT)
 {
-	UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrame]);
+	UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrameRT]);
 	if (InTopAS)
 	{
 		Helper.WriteTLAS(InTopAS, DstBinding);
@@ -487,10 +487,7 @@ void UHShaderClass::CreateComputeState(UHComputePassInfo InInfo)
 void UHShaderClass::InitRayGenTable()
 {
 	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
-
-	PFN_vkGetRayTracingShaderGroupHandlesKHR GetRTShaderGroupHandle = (PFN_vkGetRayTracingShaderGroupHandlesKHR)
-		vkGetInstanceProcAddr(Gfx->GetInstance(), "vkGetRayTracingShaderGroupHandlesKHR");
-	if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GRayGenTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+	if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GRayGenTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to get ray gen group handle!\n");
 	}
@@ -505,9 +502,7 @@ void UHShaderClass::InitMissTable()
 	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
 
 	// get data for HG as well
-	PFN_vkGetRayTracingShaderGroupHandlesKHR GetRTShaderGroupHandle = (PFN_vkGetRayTracingShaderGroupHandlesKHR)
-		vkGetInstanceProcAddr(Gfx->GetInstance(), "vkGetRayTracingShaderGroupHandlesKHR");
-	if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GMissTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+	if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GMissTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to get hit group handle!\n");
 	}
@@ -523,9 +518,6 @@ void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
 
 	// get data for HG as well
-	PFN_vkGetRayTracingShaderGroupHandlesKHR GetRTShaderGroupHandle = (PFN_vkGetRayTracingShaderGroupHandlesKHR)
-		vkGetInstanceProcAddr(Gfx->GetInstance(), "vkGetRayTracingShaderGroupHandlesKHR");
-
 	// create HG buffer
 	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>();
 	HitGroupTable->CreateBuffer(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
@@ -533,7 +525,7 @@ void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 	for (size_t Idx = 0; Idx < NumMaterials; Idx++)
 	{
 		// copy hit group
-		if (GetRTShaderGroupHandle(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GHitGroupTableSlot + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+		if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GHitGroupTableSlot + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 		{
 			UHE_LOG(L"Failed to get hit group handle!\n");
 			continue;

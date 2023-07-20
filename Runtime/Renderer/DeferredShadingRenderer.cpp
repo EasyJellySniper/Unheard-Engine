@@ -5,6 +5,11 @@ void UHDeferredShadingRenderer::SetCurrentScene(UHScene* InScene)
 	CurrentScene = InScene;
 }
 
+void UHDeferredShadingRenderer::SetSwapChainReset(bool bInFlag)
+{
+	bIsSwapChainResetGT = bInFlag;
+}
+
 bool UHDeferredShadingRenderer::IsNeedReset()
 {
 	// read Shared value to GT
@@ -50,9 +55,6 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
-	// sync config
-	bParallelSubmissionGT = ConfigInterface->RenderingSetting().bParallelSubmission;
-
 	// if updating has a huge spike in the future, consider assign the tasks to different worker thread
 	UploadDataBuffers();
 	FrustumCulling();
@@ -70,13 +72,20 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	}
 
 	// sync value before wake up RT thread
-	bParallelSubmissionRT = bParallelSubmissionGT;
+	bParallelSubmissionRT = ConfigInterface->RenderingSetting().bParallelSubmission;
+	CurrentFrameRT = CurrentFrameGT;
+	FrameNumberRT = GFrameNumber;
+	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
+	bIsSwapChainResetRT = bIsSwapChainResetGT;
 
 	// wake render thread
 	RenderThread->WakeThread();
 
 	// wait render thread done
 	RenderThread->WaitTask();
+
+	// advance frame after rendering is done
+	CurrentFrameGT = (CurrentFrameGT + 1) % GMaxFrameInFlight;
 }
 
 #if WITH_DEBUG
@@ -157,7 +166,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	SystemConstantsCPU.UHNumRTInstances = RTInstanceCount;
 
-	SystemConstantsGPU[CurrentFrame]->UploadAllData(&SystemConstantsCPU);
+	SystemConstantsGPU[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
 	// update object constants, only update if transform is changed
 	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
@@ -166,34 +175,34 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		// update CPU constants when the frame is dirty
 		// the dirty flag is marked in UHMeshRendererComponent::Update()
 		UHMeshRendererComponent* Renderer = Renderers[Idx];
-		if (Renderer->IsRenderDirty(CurrentFrame))
+		if (Renderer->IsRenderDirty(CurrentFrameGT))
 		{
 			ObjectConstantsCPU[Idx] = Renderer->GetConstants();
-			Renderer->SetRenderDirty(false, CurrentFrame);
+			Renderer->SetRenderDirty(false, CurrentFrameGT);
 		}
 
 		// copy material data only when it's dirty
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->IsRenderDirty(CurrentFrame))
+		if (Mat->IsRenderDirty(CurrentFrameGT))
 		{
-			Mat->UploadMaterialData(CurrentFrame, DefaultSamplerIndex);
-			Mat->SetRenderDirty(false, CurrentFrame);
+			Mat->UploadMaterialData(CurrentFrameGT, DefaultSamplerIndex);
+			Mat->SetRenderDirty(false, CurrentFrameGT);
 		}
 	}
-	ObjectConstantsGPU[CurrentFrame]->UploadAllData(ObjectConstantsCPU.data());
+	ObjectConstantsGPU[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
 
 	// update light data
 	const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirLights();
 	for (size_t Idx = 0; Idx < DirLights.size(); Idx++)
 	{
 		UHDirectionalLightComponent* Light = DirLights[Idx];
-		if (Light->IsRenderDirty(CurrentFrame))
+		if (Light->IsRenderDirty(CurrentFrameGT))
 		{
 			DirLightConstantsCPU[Idx] = Light->GetConstants();
-			Light->SetRenderDirty(false, CurrentFrame);
+			Light->SetRenderDirty(false, CurrentFrameGT);
 		}
 	}
-	DirectionalLightBuffer[CurrentFrame]->UploadAllData(DirLightConstantsCPU.data());
+	DirectionalLightBuffer[CurrentFrameGT]->UploadAllData(DirLightConstantsCPU.data());
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
@@ -345,6 +354,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	// hold a timer
 	UHGameTimer RTTimer;
 	UHProfiler RenderThreadProfile(&RTTimer);
+	bool bIsPresentedPreviously = false;
 
 	while (true)
 	{
@@ -357,7 +367,8 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		}
 
 		// prepare graphic builder
-		UHGraphicBuilder GraphBuilder(GraphicInterface, EndPresentQueue.CommandBuffers[CurrentFrame]);
+		UHGraphicBuilder AsyncComputeBuilder(GraphicInterface, AsyncComputeQueue.CommandBuffers[CurrentFrameRT], true);
+		UHGraphicBuilder SceneRenderBuilder(GraphicInterface, SceneRenderQueue.CommandBuffers[CurrentFrameRT]);
 		uint32_t PresentIndex;
 		{
 			UHProfilerScope Profiler(&RenderThreadProfile);
@@ -365,60 +376,83 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			// collect worker bundle for this frame
 			if (bParallelSubmissionRT)
 			{
-				DepthParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
-				BaseParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
-				MotionOpaqueParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
-				MotionTranslucentParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
-				TranslucentParallelSubmitter.CollectCurrentFrameBundle(CurrentFrame);
+				DepthParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
+				BaseParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
+				MotionOpaqueParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
+				MotionTranslucentParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
+				TranslucentParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 			}
 
-			// similar to D3D12 fence wait/reset
-			GraphBuilder.WaitFence(EndPresentQueue.Fences[CurrentFrame]);
-			GraphBuilder.ResetFence(EndPresentQueue.Fences[CurrentFrame]);
+			// ****************************** start async compute queue
+			// kick off the tasks that be executed on compute queue, note that not every tasks are suitable for async
+			// the golden rule of utilizing async compute queue:
+			// (1) Must be compute/raytracing shader..ofc
+			// (2) Must not access to the same resource at the same time
+			AsyncComputeBuilder.WaitFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
+			AsyncComputeBuilder.ResetFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
+			AsyncComputeBuilder.BeginCommandBuffer();
+			GraphicInterface->BeginCmdDebug(AsyncComputeBuilder.GetCmdList(), "Executing Async Compute");
+			
+			BuildTopLevelAS(AsyncComputeBuilder);
 
-			// begin command buffer, it will reset command buffer inline
-			GraphBuilder.BeginCommandBuffer();
-			GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
+			GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
+			AsyncComputeBuilder.EndCommandBuffer();
+			AsyncComputeBuilder.ExecuteCmd(AsyncComputeQueue.Queue, AsyncComputeQueue.Fences[CurrentFrameRT], VK_NULL_HANDLE, VK_NULL_HANDLE);
+			// ****************************** end async compute queue
 
 			// ****************************** start scene rendering
-			RenderDepthPrePass(GraphBuilder);
-			RenderBasePass(GraphBuilder);
-			RenderMotionPass(GraphBuilder);
-			BuildTopLevelAS(GraphBuilder);
-			DispatchRayShadowPass(GraphBuilder);
-			RenderLightPass(GraphBuilder);
-			RenderSkyPass(GraphBuilder);
-			RenderTranslucentPass(GraphBuilder);
-			RenderPostProcessing(GraphBuilder);
+			// similar to D3D12 fence wait/reset
+			SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[CurrentFrameRT]);
+			SceneRenderBuilder.ResetFence(SceneRenderQueue.Fences[CurrentFrameRT]);
+
+			// begin command buffer, it will reset command buffer inline
+			SceneRenderBuilder.BeginCommandBuffer();
+			GraphicInterface->BeginCmdDebug(SceneRenderBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
+
+			RenderDepthPrePass(SceneRenderBuilder);
+			RenderBasePass(SceneRenderBuilder);
+			RenderMotionPass(SceneRenderBuilder);
+			DispatchRayShadowPass(SceneRenderBuilder);
+			RenderLightPass(SceneRenderBuilder);
+			RenderSkyPass(SceneRenderBuilder);
+			RenderTranslucentPass(SceneRenderBuilder);
+			RenderPostProcessing(SceneRenderBuilder);
 
 			// blit scene to swap chain
-			PresentIndex = RenderSceneToSwapChain(GraphBuilder);
+			PresentIndex = RenderSceneToSwapChain(SceneRenderBuilder);
 
 		#if WITH_DEBUG
 			// get GPU times
 			for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
 			{
-				GPUTimes[Idx] = GPUTimeQueries[Idx]->GetTimeStamp(GraphBuilder.GetCmdList());
+				GPUTimes[Idx] = GPUTimeQueries[Idx]->GetTimeStamp(SceneRenderBuilder.GetCmdList());
 			}
 		#endif
 
+			GraphicInterface->EndCmdDebug(SceneRenderBuilder.GetCmdList());
+			SceneRenderBuilder.EndCommandBuffer();
+			SceneRenderBuilder.ExecuteCmd(SceneRenderQueue.Queue, SceneRenderQueue.Fences[CurrentFrameRT], SceneRenderQueue.WaitingSemaphores[CurrentFrameRT], SceneRenderQueue.FinishedSemaphores[CurrentFrameRT]);
 			// ****************************** end scene rendering
-			GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
-			GraphBuilder.EndCommandBuffer();
-			GraphBuilder.ExecuteCmd(EndPresentQueue.Queue, EndPresentQueue.Fences[CurrentFrame], EndPresentQueue.WaitingSemaphores[CurrentFrame], EndPresentQueue.FinishedSemaphores[CurrentFrame]);
 		}
 
 	#if WITH_DEBUG
 		// profile ends before Present() call, since it contains vsync time
 		RenderThreadTime = RenderThreadProfile.GetDiff() * 1000.0f;
-		DrawCalls = GraphBuilder.DrawCalls;
+		DrawCalls = SceneRenderBuilder.DrawCalls;
 	#endif
 
-		// present
-		bIsResetNeededShared = !GraphBuilder.Present(EndPresentQueue.Queue, EndPresentQueue.FinishedSemaphores[CurrentFrame], PresentIndex);
+		// if vsync isn't enabled, I have to wait the previous presentation manually
+		if (!bVsyncRT && bIsPresentedPreviously && !bIsSwapChainResetRT)
+		{
+			if (GVkWaitForPresentKHR(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetSwapChain(), FrameNumberRT - 1, 100000000) != VK_SUCCESS)
+			{
+				UHE_LOG("Waiting for presentation failed!\n");
+			}
+		}
 
-		// advance frame
-		CurrentFrame = (CurrentFrame + 1) % GMaxFrameInFlight;
+		// present
+		bIsResetNeededShared = !SceneRenderBuilder.Present(SceneRenderQueue.Queue, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT], PresentIndex, FrameNumberRT);
+		bIsPresentedPreviously = true;
 
 		// tell main thread to continue
 		RenderThread->NotifyTaskDone();

@@ -7,15 +7,8 @@
 #include "../Classes/AssetPath.h"
 
 UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
-	: EnterFullScreenCallback(VK_NULL_HANDLE)
-	, GetSurfacePresentModes2Callback(VK_NULL_HANDLE)
-	, GraphicsQueue(VK_NULL_HANDLE)
+	: GraphicsQueue(VK_NULL_HANDLE)
 	, CreationCommandPool(VK_NULL_HANDLE)
-	, LeaveFullScreenCallback(VK_NULL_HANDLE)
-#if WITH_DEBUG
-	, BeginCmdDebugLabelCallback(VK_NULL_HANDLE)
-	, EndCmdDebugLabelCallback(VK_NULL_HANDLE)
-#endif
 	, LogicalDevice(VK_NULL_HANDLE)
 	, SwapChainRenderPass(VK_NULL_HANDLE)
 	, MainSurface(VK_NULL_HANDLE)
@@ -41,7 +34,9 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_EXT_full_screen_exclusive"
 		, "VK_KHR_spirv_1_4"
 		, "VK_KHR_shader_float_controls"
-		, "VK_EXT_robustness2" };
+		, "VK_EXT_robustness2"
+		, "VK_KHR_present_id"
+		, "VK_KHR_present_wait" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -116,7 +111,7 @@ void UHGraphic::Release()
 
 	if (bIsFullScreen)
 	{
-		LeaveFullScreenCallback(LogicalDevice, SwapChain);
+		GLeaveFullScreenCallback(LogicalDevice, SwapChain);
 		bIsFullScreen = false;
 	}
 
@@ -318,14 +313,24 @@ bool UHGraphic::CreateInstance()
 	}
 
 	// get necessary function callback after instance is created
-	EnterFullScreenCallback = (PFN_vkAcquireFullScreenExclusiveModeEXT)vkGetInstanceProcAddr(VulkanInstance, "vkAcquireFullScreenExclusiveModeEXT");
-	LeaveFullScreenCallback = (PFN_vkReleaseFullScreenExclusiveModeEXT)vkGetInstanceProcAddr(VulkanInstance, "vkReleaseFullScreenExclusiveModeEXT");
-	GetSurfacePresentModes2Callback = (PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT)vkGetInstanceProcAddr(VulkanInstance, "vkGetPhysicalDeviceSurfacePresentModes2EXT");
+	GEnterFullScreenCallback = (PFN_vkAcquireFullScreenExclusiveModeEXT)vkGetInstanceProcAddr(VulkanInstance, "vkAcquireFullScreenExclusiveModeEXT");
+	GLeaveFullScreenCallback = (PFN_vkReleaseFullScreenExclusiveModeEXT)vkGetInstanceProcAddr(VulkanInstance, "vkReleaseFullScreenExclusiveModeEXT");
+	GGetSurfacePresentModes2Callback = (PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT)vkGetInstanceProcAddr(VulkanInstance, "vkGetPhysicalDeviceSurfacePresentModes2EXT");
 
 #if WITH_DEBUG
-	BeginCmdDebugLabelCallback = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginDebugUtilsLabelEXT");
-	EndCmdDebugLabelCallback = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndDebugUtilsLabelEXT");
+	GBeginCmdDebugLabelCallback = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginDebugUtilsLabelEXT");
+	GEndCmdDebugLabelCallback = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndDebugUtilsLabelEXT");
 #endif
+
+	GVkGetAccelerationStructureDeviceAddressKHR = (PFN_vkGetAccelerationStructureDeviceAddressKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetAccelerationStructureDeviceAddressKHR");
+	GVkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetAccelerationStructureBuildSizesKHR");
+	GVkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCreateAccelerationStructureKHR");
+	GVkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBuildAccelerationStructuresKHR");
+	GVkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)vkGetInstanceProcAddr(VulkanInstance, "vkDestroyAccelerationStructureKHR");
+	GVkCreateRayTracingPipelinesKHR = (PFN_vkCreateRayTracingPipelinesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCreateRayTracingPipelinesKHR");
+	GVkWaitForPresentKHR = (PFN_vkWaitForPresentKHR)vkGetInstanceProcAddr(VulkanInstance, "vkWaitForPresentKHR");
+	GVkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdTraceRaysKHR");
+	GVkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetRayTracingShaderGroupHandlesKHR");
 
 	return true;
 }
@@ -483,7 +488,14 @@ bool UHGraphic::CreateLogicalDevice()
 	GraphicQueueCreateInfo.queueCount = 1;
 	GraphicQueueCreateInfo.pQueuePriorities = &QueuePriority;
 
-	std::vector<VkDeviceQueueCreateInfo> QueueCreateInfo = { GraphicQueueCreateInfo };
+	// compute queue
+	VkDeviceQueueCreateInfo ComputeQueueCreateInfo{};
+	ComputeQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	ComputeQueueCreateInfo.queueFamilyIndex = QueueFamily.ComputesFamily.value();
+	ComputeQueueCreateInfo.queueCount = 1;
+	ComputeQueueCreateInfo.pQueuePriorities = &QueuePriority;
+
+	std::vector<VkDeviceQueueCreateInfo> QueueCreateInfo = { GraphicQueueCreateInfo, ComputeQueueCreateInfo };
 
 	// define features, enable what I need in UH
 	VkPhysicalDeviceFeatures DeviceFeatures{};
@@ -511,11 +523,19 @@ bool UHGraphic::CreateLogicalDevice()
 	RobustnessFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 	RobustnessFeatures.pNext = &Vk12Features;
 
+	VkPhysicalDevicePresentIdFeaturesKHR PresentIdFeatureKHR{};
+	PresentIdFeatureKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+	PresentIdFeatureKHR.pNext = &RobustnessFeatures;
+
+	VkPhysicalDevicePresentWaitFeaturesKHR PresentWaitFeatureKHR{};
+	PresentWaitFeatureKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+	PresentWaitFeatureKHR.pNext = &PresentIdFeatureKHR;
+
 	// device feature needs to assign in fature 2
 	VkPhysicalDeviceFeatures2 PhyFeatures{};
 	PhyFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	PhyFeatures.features = DeviceFeatures;
-	PhyFeatures.pNext = &RobustnessFeatures;
+	PhyFeatures.pNext = &PresentWaitFeatureKHR;
 
 	vkGetPhysicalDeviceFeatures2(PhysicalDevice, &PhyFeatures);
 	if (!RTFeatures.rayTracingPipeline)
@@ -628,12 +648,12 @@ UHSwapChainDetails UHGraphic::QuerySwapChainSupport(VkPhysicalDevice InDevice) c
 
 	// find present mode
 	uint32_t PresentModeCount;
-	GetSurfacePresentModes2Callback(InDevice, &Surface2Info, &PresentModeCount, nullptr);
+	GGetSurfacePresentModes2Callback(InDevice, &Surface2Info, &PresentModeCount, nullptr);
 
 	if (PresentModeCount != 0)
 	{
 		Details.PresentModes.resize(PresentModeCount);
-		GetSurfacePresentModes2Callback(InDevice, &Surface2Info, &PresentModeCount, Details.PresentModes.data());
+		GGetSurfacePresentModes2Callback(InDevice, &Surface2Info, &PresentModeCount, Details.PresentModes.data());
 	}
 
 	return Details;
@@ -665,7 +685,7 @@ VkPresentModeKHR ChooseSwapChainMode(const UHSwapChainDetails& Details, bool bUs
 	// select the present mode I want
 	for (const auto& AvailablePresentMode : Details.PresentModes)
 	{
-		if (AvailablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR && !bUseVsync)
+		if (AvailablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR && !bUseVsync)
 		{
 			return AvailablePresentMode;
 		}
@@ -1366,6 +1386,11 @@ VkFramebuffer UHGraphic::GetSwapChainBuffer(int32_t ImageIdx) const
 	return SwapChainFrameBuffer[ImageIdx];
 }
 
+uint32_t UHGraphic::GetSwapChainCount() const
+{
+	return static_cast<uint32_t>(SwapChainRT.size());
+}
+
 VkExtent2D UHGraphic::GetSwapChainExtent() const
 {
 	return SwapChainRT[0]->GetExtent();
@@ -1441,7 +1466,7 @@ void UHGraphic::BeginCmdDebug(VkCommandBuffer InBuffer, std::string InName)
 		LabelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
 		LabelInfo.pLabelName = InName.c_str();
 
-		BeginCmdDebugLabelCallback(InBuffer, &LabelInfo);
+		GBeginCmdDebugLabelCallback(InBuffer, &LabelInfo);
 	}
 #endif
 }
@@ -1451,7 +1476,7 @@ void UHGraphic::EndCmdDebug(VkCommandBuffer InBuffer)
 #if WITH_DEBUG
 	if (ConfigInterface->RenderingSetting().bEnableGPULabeling)
 	{
-		EndCmdDebugLabelCallback(InBuffer);
+		GEndCmdDebugLabelCallback(InBuffer);
 	}
 #endif
 }
