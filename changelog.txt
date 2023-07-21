@@ -269,3 +269,5 @@ Almost ready for the post.
 20-07-2023: Minor code refactoring in soft RT shadow compute shader, I messed some part of it. 
 Did the first experiment of async compute, but the update top level acceleration structure is the only one that can be excuted async...
 Fixed the glitch when Vsync is off! The key is to manually wait the presentation. Also enhanced some variables for GT/RT access.
+
+21-07-2023: Exposed bEnableAsyncCompute in setting. Enhanced the async compute queue and scene render queue semaphore.

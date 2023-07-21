@@ -71,6 +71,7 @@ public:
 		, bParallelSubmission(false)
 		, ParallelThreads(0)
 		, RTDirectionalShadowQuality(0)
+		, bEnableAsyncCompute(false)
 	{
 
 	}
@@ -86,4 +87,5 @@ public:
 	bool bParallelSubmission;
 	int32_t ParallelThreads;
 	int32_t RTDirectionalShadowQuality;
+	bool bEnableAsyncCompute;
 };

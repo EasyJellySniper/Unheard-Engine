@@ -44,6 +44,7 @@ private:
 	void ControlParallelSubmission();
 	void ControlParallelThread();
 	void ControlShadowQuality();
+	void ControlAsyncCompute();
 
 	UHConfigManager* Config;
 	UHEngine* Engine;

@@ -31,7 +31,15 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 	
 	// after update, shader descriptor for TLAS needs to be bound again
-	RTShadowShader.BindTLAS(TopLevelAS[CurrentFrameRT].get(), 1, CurrentFrameRT);
+	// note that the AS is built in async compute queue, need to bind the previous result here
+	if (bEnableAsyncComputeRT)
+	{
+		RTShadowShader.BindTLAS(TopLevelAS[1 - CurrentFrameRT].get(), 1, CurrentFrameRT);
+	}
+	else
+	{
+		RTShadowShader.BindTLAS(TopLevelAS[CurrentFrameRT].get(), 1, CurrentFrameRT);
+	}
 
 	// bind descriptors and RT states
 	std::vector<VkDescriptorSet> DescriptorSets = { RTShadowShader.GetDescriptorSet(CurrentFrameRT)

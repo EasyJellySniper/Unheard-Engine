@@ -77,6 +77,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	FrameNumberRT = GFrameNumber;
 	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
 	bIsSwapChainResetRT = bIsSwapChainResetGT;
+	bEnableAsyncComputeRT = bEnableAsyncComputeGT;
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -367,7 +368,6 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		}
 
 		// prepare graphic builder
-		UHGraphicBuilder AsyncComputeBuilder(GraphicInterface, AsyncComputeQueue.CommandBuffers[CurrentFrameRT], true);
 		UHGraphicBuilder SceneRenderBuilder(GraphicInterface, SceneRenderQueue.CommandBuffers[CurrentFrameRT]);
 		uint32_t PresentIndex;
 		{
@@ -383,22 +383,26 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				TranslucentParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 			}
 
-			// ****************************** start async compute queue
-			// kick off the tasks that be executed on compute queue, note that not every tasks are suitable for async
-			// the golden rule of utilizing async compute queue:
-			// (1) Must be compute/raytracing shader..ofc
-			// (2) Must not access to the same resource at the same time
-			AsyncComputeBuilder.WaitFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
-			AsyncComputeBuilder.ResetFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
-			AsyncComputeBuilder.BeginCommandBuffer();
-			GraphicInterface->BeginCmdDebug(AsyncComputeBuilder.GetCmdList(), "Executing Async Compute");
-			
-			BuildTopLevelAS(AsyncComputeBuilder);
+			if (bEnableAsyncComputeRT)
+			{
+				// ****************************** start async compute queue
+				// kick off the tasks that be executed on compute queue, note that not every tasks are suitable for async
+				// the golden rule of utilizing async compute queue:
+				// (1) Must be compute/raytracing shader..ofc
+				// (2) Must not access to the same resource at the same time
+				UHGraphicBuilder AsyncComputeBuilder(GraphicInterface, AsyncComputeQueue.CommandBuffers[CurrentFrameRT], true);
+				AsyncComputeBuilder.WaitFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
+				AsyncComputeBuilder.ResetFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
+				AsyncComputeBuilder.BeginCommandBuffer();
+				GraphicInterface->BeginCmdDebug(AsyncComputeBuilder.GetCmdList(), "Executing Async Compute");
 
-			GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
-			AsyncComputeBuilder.EndCommandBuffer();
-			AsyncComputeBuilder.ExecuteCmd(AsyncComputeQueue.Queue, AsyncComputeQueue.Fences[CurrentFrameRT], VK_NULL_HANDLE, VK_NULL_HANDLE);
-			// ****************************** end async compute queue
+				BuildTopLevelAS(AsyncComputeBuilder);
+
+				GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
+				AsyncComputeBuilder.EndCommandBuffer();
+				AsyncComputeBuilder.ExecuteCmd(AsyncComputeQueue.Queue, AsyncComputeQueue.Fences[CurrentFrameRT], VK_NULL_HANDLE, AsyncComputeQueue.FinishedSemaphores[CurrentFrameRT]);
+				// ****************************** end async compute queue
+			}
 
 			// ****************************** start scene rendering
 			// similar to D3D12 fence wait/reset
@@ -412,6 +416,10 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			RenderDepthPrePass(SceneRenderBuilder);
 			RenderBasePass(SceneRenderBuilder);
 			RenderMotionPass(SceneRenderBuilder);
+			if (!bEnableAsyncComputeRT)
+			{
+				BuildTopLevelAS(SceneRenderBuilder);
+			}
 			DispatchRayShadowPass(SceneRenderBuilder);
 			RenderLightPass(SceneRenderBuilder);
 			RenderSkyPass(SceneRenderBuilder);
@@ -431,7 +439,17 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 			GraphicInterface->EndCmdDebug(SceneRenderBuilder.GetCmdList());
 			SceneRenderBuilder.EndCommandBuffer();
-			SceneRenderBuilder.ExecuteCmd(SceneRenderQueue.Queue, SceneRenderQueue.Fences[CurrentFrameRT], SceneRenderQueue.WaitingSemaphores[CurrentFrameRT], SceneRenderQueue.FinishedSemaphores[CurrentFrameRT]);
+
+			// wait the previous async queue is done (that means async compute queue always advanced one frame more than graphic)
+			// also needs to wait the swap chain is ready
+			std::vector<VkSemaphore> WaitSemaphore = { SceneRenderQueue.WaitingSemaphores[CurrentFrameRT] };
+			if (bIsPresentedPreviously && bEnableAsyncComputeRT)
+			{
+				WaitSemaphore.push_back(AsyncComputeQueue.FinishedSemaphores[1 - CurrentFrameRT]);
+			}
+
+			std::vector<VkPipelineStageFlags> WaitStages = { VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+			SceneRenderBuilder.ExecuteCmd(SceneRenderQueue.Queue, SceneRenderQueue.Fences[CurrentFrameRT], WaitSemaphore, WaitStages, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT]);
 			// ****************************** end scene rendering
 		}
 

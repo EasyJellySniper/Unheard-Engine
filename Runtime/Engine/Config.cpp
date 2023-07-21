@@ -57,6 +57,7 @@ void UHConfigManager::LoadConfig()
 			RenderingSettings.bParallelSubmission = UHUtilities::ReadINIData<int32_t>(FileIn, "bParallelSubmission");
 			RenderingSettings.ParallelThreads = UHUtilities::ReadINIData<int32_t>(FileIn, "ParallelThreads");
 			RenderingSettings.RTDirectionalShadowQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTDirectionalShadowQuality");
+			RenderingSettings.bEnableAsyncCompute = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableAsyncCompute");
 
 			// clamp a few parameters
 			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
@@ -106,6 +107,7 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "bParallelSubmission", RenderingSettings.bParallelSubmission);
 		UHUtilities::WriteINIData(FileOut, "ParallelThreads", RenderingSettings.ParallelThreads);
 		UHUtilities::WriteINIData(FileOut, "RTDirectionalShadowQuality", RenderingSettings.RTDirectionalShadowQuality);
+		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 	}
 	FileOut.close();
 }

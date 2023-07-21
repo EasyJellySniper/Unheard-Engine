@@ -48,6 +48,7 @@ UHSettingDialog::UHSettingDialog(HINSTANCE InInstance, HWND InWindow, UHConfigMa
     ControlCallbacks[IDC_ENABLEPARALLELSUBMISSION] = { &UHSettingDialog::ControlParallelSubmission };
     ControlCallbacks[IDC_PARALLELTHREADS] = { &UHSettingDialog::ControlParallelThread };
     ControlCallbacks[IDC_RTSHADOWQUALITY] = { &UHSettingDialog::ControlShadowQuality };
+    ControlCallbacks[IDC_ENABLEASYNCCOMPUTE] = { &UHSettingDialog::ControlAsyncCompute };
 }
 
 // Message handler for setting window
@@ -114,6 +115,8 @@ void UHSettingDialog::ShowDialog()
 
         std::vector<std::wstring> ShadowQualities = { L"Full", L"Half", L"Quarter" };
         UHEditorUtil::InitComboBox(GSettingWindow, IDC_RTSHADOWQUALITY, ShadowQualities[RenderingSettings.RTDirectionalShadowQuality], ShadowQualities);
+
+        UHEditorUtil::SetCheckedBox(GSettingWindow, IDC_ENABLEASYNCCOMPUTE, RenderingSettings.bEnableAsyncCompute);
 
         ShowWindow(GSettingWindow, SW_SHOW);
     }
@@ -308,6 +311,12 @@ void UHSettingDialog::ControlShadowQuality()
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
     RenderingSettings.RTDirectionalShadowQuality = UHEditorUtil::GetComboBoxSelectedIndex(GSettingWindow, IDC_RTSHADOWQUALITY);
     DeferredRenderer->ResizeRTBuffers();
+}
+
+void UHSettingDialog::ControlAsyncCompute()
+{
+    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    RenderingSettings.bEnableAsyncCompute = !RenderingSettings.bEnableAsyncCompute;
 }
 
 #endif

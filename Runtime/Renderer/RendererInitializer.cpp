@@ -12,7 +12,10 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, RTShadowExtent(VkExtent2D())
 	, CurrentFrameGT(0)
 	, CurrentFrameRT(0)
+	, FrameNumberRT(0)
 	, bIsResetNeededShared(false)
+	, bEnableAsyncComputeGT(false)
+	, bEnableAsyncComputeRT(false)
 	, CurrentScene(nullptr)
 	, SystemConstantsCPU(UHSystemConstants())
 	, SceneDiffuse(nullptr)
@@ -186,7 +189,10 @@ void UHDeferredShadingRenderer::Release()
 	UH_SAFE_RELEASE(IndicesTypeBuffer);
 	IndicesTypeBuffer.reset();
 
-	AsyncComputeQueue.Release();
+	if (bEnableAsyncComputeGT)
+	{
+		AsyncComputeQueue.Release();
+	}
 	SceneRenderQueue.Release();
 	DepthParallelSubmitter.Release();
 	BaseParallelSubmitter.Release();
@@ -422,8 +428,13 @@ bool UHDeferredShadingRenderer::InitQueueSubmitters()
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 	const UHQueueFamily& QueueFamily = GraphicInterface->GetQueueFamily();
 
-	return AsyncComputeQueue.Initialize(LogicalDevice, QueueFamily.ComputesFamily.value(), 0)
-		&& SceneRenderQueue.Initialize(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0);
+	bool bAsyncInitSucceed = true;
+	if (bEnableAsyncComputeGT)
+	{
+		bAsyncInitSucceed &= AsyncComputeQueue.Initialize(LogicalDevice, QueueFamily.ComputesFamily.value(), 0);
+	}
+
+	return bAsyncInitSucceed && SceneRenderQueue.Initialize(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0);
 }
 
 void UHDeferredShadingRenderer::UpdateDescriptors()

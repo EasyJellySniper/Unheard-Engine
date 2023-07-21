@@ -172,6 +172,8 @@ private:
 	VkExtent2D RTShadowExtent;
 
 	// queue submitter
+	bool bEnableAsyncComputeGT;
+	bool bEnableAsyncComputeRT;
 	UHQueueSubmitter AsyncComputeQueue;
 	UHQueueSubmitter SceneRenderQueue;
 
