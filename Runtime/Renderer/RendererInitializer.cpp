@@ -101,6 +101,7 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	// config setup
 	bEnableDepthPrePass = GraphicInterface->IsDepthPrePassEnabled();
 	NumWorkerThreads = ConfigInterface->RenderingSetting().ParallelThreads;
+	bEnableAsyncComputeGT = ConfigInterface->RenderingSetting().bEnableAsyncCompute;
 
 	// shared sampler requests
 	UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
