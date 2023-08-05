@@ -15,6 +15,8 @@
 #define IDI_SMALL                       108
 #define IDC_UNHEARDENGINE               109
 #define IDR_MAINFRAME                   128
+#define IDD_TEXTURE                     129
+#define IDD_TEXTURECREATE               130
 #define IDC_VSYNC                       1000
 #define IDC_FULLSCREEN                  1001
 #define IDC_CAMERASPEED                 1003
@@ -44,13 +46,33 @@
 #define IDC_PARALLELTHREADS             1025
 #define IDC_ENABLEPARALLELSUBMISSION    1026
 #define IDC_MATERIAL_GRAPHAREA          1027
-#define IDC_ENABLEPARALLELSUBMISSION2   1028
 #define IDC_ENABLEASYNCCOMPUTE          1028
 #define IDC_MATERIALCOMPILE             1034
 #define IDC_MATERIALSAVE                1035
 #define IDC_MATERIALSAVEALL             1036
 #define IDC_MATERIAL_CULLMODE           1037
 #define IDC_MATERIAL_BLENDMODE          1038
+#define IDC_TEXTURE_LIST                1039
+#define IDC_TEXTURE_SAVE                1040
+#define IDC_TEXTURE_CREATE              1041
+#define IDC_TEXTURE_COMPRESSIONMODE     1042
+#define IDC_MIPLEVEL_SLIDER             1043
+#define IDC_SRGB                        1044
+#define IDC_TEXTURE_APPLY               1046
+#define IDC_TEXTUREPREVIEW              1047
+#define IDC_TEXTURE_DIMENSION           1048
+#define IDC_MIPTEXT                     1049
+#define IDC_ISNORMAL                    1050
+#define IDC_TEXTURE_CREATETYPE          1051
+#define IDC_CREATETEXTURE               1052
+#define IDC_TEXTURE_FILE_OUTPUT         1053
+#define IDC_BROWSE_INPUT                1054
+#define IDC_TEXTURE_FILE_1              1055
+#define IDC_TEXTURE_SAVEALL             1055
+#define IDC_BROWSE_OUTPUT               1056
+#define IDC_TEXTURE_RAWSOURCEPATH       1057
+#define IDC_BROWSE_RAWTEXTURE           1058
+#define IDC_MFCBUTTON1                  1059
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773
@@ -63,6 +85,7 @@
 #define ID_WINDOW_SETTINGS              32780
 #define ID_WINDOW_PROFILES              32781
 #define ID_WINDOW_MATERIAL              32782
+#define ID_WINDOW_TEXTURE               32783
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -70,9 +93,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        129
-#define _APS_NEXT_COMMAND_VALUE         32783
-#define _APS_NEXT_CONTROL_VALUE         1039
+#define _APS_NEXT_RESOURCE_VALUE        131
+#define _APS_NEXT_COMMAND_VALUE         32784
+#define _APS_NEXT_CONTROL_VALUE         1060
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

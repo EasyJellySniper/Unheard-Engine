@@ -12,12 +12,12 @@ public:
 	virtual void InputData(std::ifstream& FileIn) override;
 	virtual void OutputData(std::ofstream& FileOut) override;
 
-	void SetSelectedTextureName(std::string InSelectedTextureName);
-	std::string GetSelectedTextureName() const;
+	void SetSelectedTexturePathName(std::string InSelectedTextureName);
+	std::string GetSelectedTexturePathName() const;
 	void SetTextureIndexInMaterial(int32_t InIndex);
 
 private:
 	int32_t TextureIndexInMaterial;
-	std::string SelectedTextureName;
+	std::string SelectedTexturePathName;
 	bool bIsBumpTexture;
 };

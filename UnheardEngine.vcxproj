@@ -220,6 +220,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Editor\Classes\MaterialImporter.h" />
+    <ClInclude Include="Editor\Dialog\TextureCreationDialog.h" />
+    <ClInclude Include="Editor\Dialog\TextureDialog.h" />
+    <ClInclude Include="Editor\Editor\PreviewScene.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphNode.h" />
     <ClInclude Include="Editor\Classes\GraphNodeGUI.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphPin.h" />
@@ -245,6 +248,7 @@
     <ClInclude Include="Runtime\Classes\AssetPath.h" />
     <ClInclude Include="Runtime\Classes\GPUMemory.h" />
     <ClInclude Include="Runtime\Classes\GPUQuery.h" />
+    <ClInclude Include="Runtime\Classes\TextureCompressor.h" />
     <ClInclude Include="Runtime\Classes\Thread.h" />
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
@@ -311,6 +315,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor\Classes\MaterialImporter.cpp" />
+    <ClCompile Include="Editor\Dialog\TextureCreationDialog.cpp" />
+    <ClCompile Include="Editor\Dialog\TextureDialog.cpp" />
+    <ClCompile Include="Editor\Editor\PreviewScene.cpp" />
     <ClCompile Include="Runtime\Classes\GraphNode\GraphNode.cpp" />
     <ClCompile Include="Editor\Classes\GraphNodeGUI.cpp" />
     <ClCompile Include="Runtime\Classes\GraphNode\GraphPin.cpp" />
@@ -333,6 +340,7 @@
     <ClCompile Include="Runtime\Classes\AccelerationStructure.cpp" />
     <ClCompile Include="Runtime\Classes\GPUMemory.cpp" />
     <ClCompile Include="Runtime\Classes\GPUQuery.cpp" />
+    <ClCompile Include="Runtime\Classes\TextureCompressor.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCube.cpp" />
     <ClCompile Include="Runtime\Classes\Thread.cpp" />
     <ClCompile Include="Runtime\Classes\Types.cpp" />

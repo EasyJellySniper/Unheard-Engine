@@ -8,13 +8,13 @@
 #if WITH_DEBUG
 #include "../../Editor/Classes/GeometryUtility.h"
 #include <chrono>
+UHAssetManager* UHAssetManager::AssetMgrEditorOnly = nullptr;
 #endif
 
 UHAssetManager::UHAssetManager()
 {
 #if WITH_DEBUG
 	UHFbxImporterInterface = std::make_unique<UHFbxImporter>();
-	UHTextureImporterInterface = std::make_unique<UHTextureImporter>();
 
 	// load shader cache after initialization
 	UHShaderImporterInterface = std::make_unique<UHShaderImporter>();
@@ -28,6 +28,7 @@ UHAssetManager::UHAssetManager()
 	UHMesh BuiltInCube = UHGeometryHelper::CreateCubeMesh();
 	BuiltInCube.Export(GBuiltInMeshAssetPath, false);
 
+	AssetMgrEditorOnly = this;
 #endif
 }
 
@@ -46,8 +47,8 @@ void UHAssetManager::Release()
 	UHShaderImporterInterface->WriteShaderIncludeCache();
 	UHShaderImporterInterface.reset();
 	UHFbxImporterInterface.reset();
-	UHTextureImporterInterface.reset();
 	UHMaterialImporterInterface.reset();
+	AssetMgrEditorOnly = nullptr;
 #endif
 
 	// container cleanup
@@ -62,21 +63,22 @@ void UHAssetManager::ImportMeshes()
 	// importing from raw asset first
 	// it won't duplicate the import if mesh is cached
 #if WITH_DEBUG
-	std::vector<std::unique_ptr<UHMaterial>> ImportedMat;
-	UHFbxImporterInterface->ImportRawFbx(ImportedMat);
+	// @TODO: remove the code below after fbx import editor is done
+	//std::vector<std::unique_ptr<UHMaterial>> ImportedMat;
+	//UHFbxImporterInterface->ImportRawFbx(ImportedMat);
 
-	// FBX will also import material, so export as UH material right after import
-	for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
-	{
-		Mat->GenerateDefaultMaterialNodes();
-		Mat->Export();
-	}
+	//// FBX will also import material, so export as UH material right after import
+	//for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
+	//{
+	//	Mat->GenerateDefaultMaterialNodes();
+	//	Mat->Export();
+	//}
 
-	for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
-	{
-		Mat.reset();
-	}
-	ImportedMat.clear();
+	//for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
+	//{
+	//	Mat.reset();
+	//}
+	//ImportedMat.clear();
 #endif
 
 	// import UHMeshes
@@ -159,13 +161,6 @@ void UHAssetManager::CompileShader(std::string InShaderName, std::filesystem::pa
 
 void UHAssetManager::ImportTextures(UHGraphic* InGfx)
 {
-	// import raw texture first
-	// cached texture won't be imported again
-#if WITH_DEBUG
-	UHTextureImporterInterface->LoadCaches();
-	UHTextureImporterInterface->ImportRawTextures();
-#endif
-
 	// the same as mesh, import raw textures first, then UH texture
 	if (!std::filesystem::exists(GTextureAssetFolder))
 	{
@@ -180,23 +175,16 @@ void UHAssetManager::ImportTextures(UHGraphic* InGfx)
 		{
 			continue;
 		}
-		
-	#if WITH_DEBUG
-		if (!UHTextureImporterInterface->IsUHTextureCached(Idx->path()))
-		{
-			// need reimport
-			continue;
-		}
-	#endif
 
 		UHTexture2D LoadedTex;
 		if (LoadedTex.Import(Idx->path()))
 		{
 			// import successfully, request texture 2d from GFX
-			VkExtent2D Extent = LoadedTex.GetExtent();
+			UHTexture2D* NewTex = InGfx->RequestTexture2D(LoadedTex);
 
-			UHTexture2D* NewTex = InGfx->RequestTexture2D(Idx->path().stem().string(), LoadedTex.GetSourcePath()
-				, Extent.width, Extent.height, LoadedTex.GetTextureData(), LoadedTex.IsLinear());
+#if WITH_DEBUG
+			NewTex->SetRawSourcePath(LoadedTex.GetRawSourcePath());
+#endif
 			UHTexture2Ds.push_back(NewTex);
 		}
 	}
@@ -241,7 +229,11 @@ void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
 	{
 		for (int32_t Jdx = 0; Jdx < UHTexture2Ds.size(); Jdx++)
 		{
-			if (UHTexture2Ds[Jdx]->GetName() == RegisteredTexture)
+			if (UHTexture2Ds[Jdx]->GetSourcePath() == RegisteredTexture 
+#if WITH_DEBUG
+				|| UHTexture2Ds[Jdx]->GetSourcePath() == FindTexturePathName(RegisteredTexture)
+#endif
+				)
 			{
 				// find referenced texture and set index
 				// add to referenced texture list if doesn't exist
@@ -254,6 +246,7 @@ void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
 				}
 
 				RegisteredIndexes.push_back(TextureIdx);
+				UHTexture2Ds[Jdx]->AddReferenceObject(InMat);
 				break;
 			}
 		}
@@ -287,7 +280,7 @@ UHTexture2D* UHAssetManager::GetTexture2D(std::string InName) const
 {
 	for (UHTexture2D* Tex : UHTexture2Ds)
 	{
-		if (Tex->GetName() == InName)
+		if (Tex->GetName() == InName || Tex->GetSourcePath() == InName)
 		{
 			return Tex;
 		}
@@ -337,3 +330,45 @@ UHMesh* UHAssetManager::GetMesh(std::string InName) const
 
 	return nullptr;
 }
+
+#if WITH_DEBUG
+void UHAssetManager::AddTexture2D(UHTexture2D* InTexture2D)
+{
+	if (!UHUtilities::FindByElement(UHTexture2Ds, InTexture2D))
+	{
+		UHTexture2Ds.push_back(InTexture2D);
+	}
+}
+
+bool UHAssetManager::IsBumpTexture(std::string InPathName)
+{
+	if (AssetMgrEditorOnly == nullptr)
+	{
+		return false;
+	}
+
+	for (const UHTexture2D* Tex : AssetMgrEditorOnly->GetTexture2Ds())
+	{
+		if (Tex->GetSourcePath() == AssetMgrEditorOnly->FindTexturePathName(InPathName))
+		{
+			return Tex->GetTextureSettings().bIsNormal;
+		}
+	}
+
+	return false;
+}
+
+// find texture path name by name, used for old asset look-up
+std::string UHAssetManager::FindTexturePathName(std::string InName)
+{
+	for (const UHTexture2D* Tex : AssetMgrEditorOnly->GetTexture2Ds())
+	{
+		if (Tex->GetName() == InName)
+		{
+			return Tex->GetSourcePath();
+		}
+	}
+
+	return InName;
+}
+#endif

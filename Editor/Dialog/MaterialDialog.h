@@ -26,7 +26,6 @@ class UHMaterialNodeGUI : public UHGraphNodeGUI
 class UHMaterialDialog : public UHDialog
 {
 public:
-	UHMaterialDialog();
 	UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer);
 	~UHMaterialDialog();
 

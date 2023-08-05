@@ -182,22 +182,20 @@ void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
 	}
 }
 
-bool UHGraphicBuilder::Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId)
+bool UHGraphicBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId)
 {
-	VkSwapchainKHR SwapChain = Gfx->GetSwapChain();
-
-	// the signal after finish
-	VkSemaphore SignalSemaphores[] = { InFinishSemaphore };
-
 	// present to swap chain, after render finish fence is signaled, it will present
 	VkPresentInfoKHR PresentInfo{};
 	PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	PresentInfo.waitSemaphoreCount = 1;
-	PresentInfo.pWaitSemaphores = SignalSemaphores;
 
-	VkSwapchainKHR SwapChains[] = { SwapChain };
+	if (InFinishSemaphore != VK_NULL_HANDLE)
+	{
+		PresentInfo.waitSemaphoreCount = 1;
+		PresentInfo.pWaitSemaphores = &InFinishSemaphore;
+	}
+
 	PresentInfo.swapchainCount = 1;
-	PresentInfo.pSwapchains = SwapChains;
+	PresentInfo.pSwapchains = &InSwapChain;
 	PresentInfo.pImageIndices = &InImageIdx;
 	PresentInfo.pResults = nullptr;
 
@@ -206,7 +204,11 @@ bool UHGraphicBuilder::Present(VkQueue InQueue, VkSemaphore InFinishSemaphore, u
 	PresentIdInfo.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
 	PresentIdInfo.swapchainCount = 1;
 	PresentIdInfo.pPresentIds = PresentIds.data();
-	PresentInfo.pNext = &PresentIdInfo;
+
+	if (PresentId != UINT64_MAX)
+	{
+		PresentInfo.pNext = &PresentIdInfo;
+	}
 
 	VkResult PresentResult = vkQueuePresentKHR(InQueue, &PresentInfo);
 

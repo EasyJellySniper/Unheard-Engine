@@ -271,3 +271,30 @@ Did the first experiment of async compute, but the update top level acceleration
 Fixed the glitch when Vsync is off! The key is to manually wait the presentation. Also enhanced some variables for GT/RT access.
 
 21-07-2023: Exposed bEnableAsyncCompute in setting. Enhanced the async compute queue and scene render queue semaphore.
+
+23-07-2023: Removed the auto import behavior in engine. Started to add texture editor, and also the preview scene class.
+
+24-07-2023: Finished the texture preview, it's now very simple and does not include cube map yet. Next is to sync the sRGB / bIsNormal state and apply it to pipeline properly.
+
+25-07-2023: Done the sRGB setting in texture editor, normal setting is the next. Done with normal setting toggling, removed the old stupid method to differensiate normals.
+Removed the gamma texture old method as well. Added texture save feature.
+
+27-07-2023: Integrated linear/normal setting into a UHTextureSetting struct. It can be used for other settings in the future too.
+Also started to add texture creation feature. The 2D texture creation is done. The next is to do either texture compression or texture cube creation.
+
+31-07-2023: Kicked off the block compression implementation. Started from BC1. Looks like I'm on the right track, but the result is noisy.
+This is caused by the min/max value. Need a better way for selecting reference color.
+
+01-08-2023: Sync compression setting to texture editor. Stored mip map data in file successfully! Ofc the asset size is larger now.
+Compression for the mip map also works well. Texture now stores version and raw source file path. Next is to deal with the block compression (quailty and memory binding stuffs)
+, texture list update in material editor after texture creation, and texture editor resizing.
+
+02-08-2023: Continue working on the texture compression. Refactored the RequestTexture2D function as well. In editor, image memory request will always use uncompressed format.
+Added texture type for future use. Fully understood how block compression works, but calculating a good color reference is a nightmare!
+
+03-08-2023: Realized I stored the indices in a wrong order for BC1! It should be from LSB anyway.
+
+04-08-2023: Start other testing for choosing the best pair of reference color for BC1. Luminance min/max seems working, but it's not the best method.
+Tried the closest line search method, looks promising! Consider to fix the length at 255. There is only a few noises in the image, I have to think about them.
+
+05-08-2023: Discovered that the closest line method won't always work. So adding min/max method as a comparotor, choose the method that gives the smallest difference. 

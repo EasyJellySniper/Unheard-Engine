@@ -48,6 +48,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     srand((unsigned int)time(NULL));
 
     // Create engine instance and initialize with config settings
+    CoInitialize(nullptr);
     GUnheardEngine = std::make_unique<UHEngine>();
     GUnheardEngine->LoadConfig();
 
@@ -99,6 +100,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             }
         }
     }
+    CoUninitialize();
 
     return (int) msg.wParam;
 }

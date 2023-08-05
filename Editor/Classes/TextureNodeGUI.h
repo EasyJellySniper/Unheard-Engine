@@ -13,6 +13,7 @@ class UHTexture2DNodeGUI : public UHGraphNodeGUI
 {
 public:
 	UHTexture2DNodeGUI(UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat);
+	virtual void Update() override;
 	virtual void SetDefaultValueFromGUI() override;
 	virtual void OnSelectCombobox() override;
 

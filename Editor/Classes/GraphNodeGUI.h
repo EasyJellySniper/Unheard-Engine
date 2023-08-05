@@ -12,7 +12,8 @@ public:
 	UHGraphNodeGUI();
 	~UHGraphNodeGUI();
 
-	// function to set default value from GUI
+	// virtual callback functions
+	virtual void Update() {}
 	virtual void SetDefaultValueFromGUI() {}
 	virtual void OnSelectCombobox() {}
 

@@ -35,6 +35,16 @@ public:
 	}
 
 	template <typename T>
+	void BindConstant(const std::unique_ptr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t CurrentFrame, int32_t InOffset = 0)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrame]);
+		if (InBuffer)
+		{
+			Helper.WriteConstantBuffer(InBuffer.get(), DstBinding, InOffset);
+		}
+	}
+
+	template <typename T>
 	void BindStorage(const std::array<std::unique_ptr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)

@@ -14,6 +14,7 @@ struct UHSamplerInfo
 		, AddressModeW(InAddressModeW)
 		, MaxAnisotropy(InMaxAnisotropy)
 		, CompareOp(VK_COMPARE_OP_ALWAYS)
+		, MipBias(-1)
 	{
 	}
 
@@ -24,7 +25,8 @@ struct UHSamplerInfo
 			&& InInfo.AddressModeV == AddressModeV
 			&& InInfo.AddressModeW == AddressModeW
 			&& InInfo.MaxAnisotropy == MaxAnisotropy
-			&& InInfo.CompareOp == CompareOp;
+			&& InInfo.CompareOp == CompareOp
+			&& InInfo.MipBias == MipBias;
 	}
 
 	VkFilter FilterMode;
@@ -33,6 +35,7 @@ struct UHSamplerInfo
 	VkSamplerAddressMode AddressModeW;
 	float MaxAnisotropy;
 	VkCompareOp CompareOp;
+	float MipBias;
 };
 
 class UHSampler : public UHRenderResource

@@ -35,7 +35,7 @@ bool UHSampler::Create()
 	SamplerCreateInfo.mipmapMode = (SamplerInfo.FilterMode > VK_FILTER_NEAREST) ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
 
 	// intent to give a -1 bias for better quailty
-	SamplerCreateInfo.mipLodBias = -1.0f;
+	SamplerCreateInfo.mipLodBias = SamplerInfo.MipBias;
 	SamplerCreateInfo.minLod = 0.0f;
 	SamplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
 

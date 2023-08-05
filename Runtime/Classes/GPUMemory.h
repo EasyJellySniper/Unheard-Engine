@@ -16,7 +16,7 @@ public:
 
 	void AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex);
 	uint64_t BindMemory(uint64_t InSize, VkBuffer InBuffer);
-	uint64_t BindMemory(uint64_t InSize, VkImage InImage);
+	uint64_t BindMemory(uint64_t InSize, VkImage InImage, uint64_t ReboundOffset = ~0);
 	VkDeviceMemory GetMemory() const;
 
 private:

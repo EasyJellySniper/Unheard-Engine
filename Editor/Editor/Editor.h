@@ -8,6 +8,7 @@
 #include "../Dialog/ProfileDialog.h"
 #include "../Dialog/SettingDialog.h"
 #include "../Dialog/MaterialDialog.h"
+#include "../Dialog/TextureDialog.h"
 
 class UHEngine;
 class UHGraphic;
@@ -45,6 +46,7 @@ private:
 	// custom dialogs
 	UHProfileDialog ProfileDialog;
 	UHSettingDialog SettingDialog;
+	std::unique_ptr<UHTextureDialog> TextureDialog;
 	std::unique_ptr<UHMaterialDialog> MaterialDialog;
 };
 

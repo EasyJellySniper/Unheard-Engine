@@ -536,6 +536,7 @@ std::unique_ptr<UHMaterial> ImportMaterial(FbxNode* InNode)
 					}
 
 					// get regular texture info
+					// @TODO: Set texture file name with path instead the name only
 					FbxTexture* Texture = Property.GetSrcObject<FbxTexture>(Idx);
 					if (Texture)
 					{

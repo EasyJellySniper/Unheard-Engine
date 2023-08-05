@@ -501,6 +501,7 @@ bool UHGraphic::CreateLogicalDevice()
 	VkPhysicalDeviceFeatures DeviceFeatures{};
 	DeviceFeatures.samplerAnisotropy = true;
 	DeviceFeatures.fullDrawIndexUint32 = true;
+	DeviceFeatures.textureCompressionBC = true;
 
 	// check ray tracing & AS & ray query feature
 	VkPhysicalDeviceAccelerationStructureFeaturesKHR ASFeatures{};
@@ -975,28 +976,22 @@ void UHGraphic::RequestReleaseRT(UHRenderTexture* InRT)
 	UHUtilities::RemoveByIndex(RTPools, Idx);
 }
 
-UHTexture2D* UHGraphic::RequestTexture2D(std::string InName, std::string InSourcePath, uint32_t Width, uint32_t Height, std::vector<uint8_t> InData
-	, bool bIsLinear)
+UHTexture2D* UHGraphic::RequestTexture2D(UHTexture2D& LoadedTex)
 {
 	// return cached if there is already one
-	VkExtent2D Extent;
-	Extent.width = Width;
-	Extent.height = Height;
-
-	VkFormat TexFormat = (bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
-	UHTexture2D Temp(InName, InSourcePath, Extent, TexFormat, bIsLinear);
-
-	int32_t Idx = UHUtilities::FindIndex<UHTexture2D>(Texture2DPools, Temp);
+	int32_t Idx = UHUtilities::FindIndex<UHTexture2D>(Texture2DPools, LoadedTex);
 	if (Idx != -1)
 	{
 		return Texture2DPools[Idx].get();
 	}
 
-	std::unique_ptr<UHTexture2D> NewTex = std::make_unique<UHTexture2D>(InName, InSourcePath, Extent, TexFormat, bIsLinear);
+	std::unique_ptr<UHTexture2D> NewTex = std::make_unique<UHTexture2D>(LoadedTex.GetName()
+		, LoadedTex.GetSourcePath(), LoadedTex.GetExtent(), LoadedTex.GetFormat(), LoadedTex.GetTextureSettings());
 	NewTex->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewTex->SetGfxCache(this);
+	NewTex->SetTextureData(LoadedTex.GetTextureData());
 
-	if (NewTex->CreateTextureFromMemory(Width, Height, InData, bIsLinear))
+	if (NewTex->CreateTextureFromMemory())
 	{
 		Texture2DPools.push_back(std::move(NewTex));
 		return Texture2DPools.back().get();
@@ -1528,6 +1523,11 @@ void UHGraphic::EndOneTimeCmd(VkCommandBuffer InBuffer)
 	vkFreeCommandBuffers(LogicalDevice, CreationCommandPool, 1, &InBuffer);
 	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
 	CreationCommandPool = VK_NULL_HANDLE;
+}
+
+VkQueue UHGraphic::GetGraphicsQueue() const
+{
+	return GraphicsQueue;
 }
 
 bool UHGraphic::CreateSwapChain()

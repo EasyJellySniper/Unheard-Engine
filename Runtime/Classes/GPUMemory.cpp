@@ -58,22 +58,26 @@ uint64_t UHGPUMemory::BindMemory(uint64_t InSize, VkBuffer InBuffer)
     return StartOffset;
 }
 
-uint64_t UHGPUMemory::BindMemory(uint64_t InSize, VkImage InImage)
+uint64_t UHGPUMemory::BindMemory(uint64_t InSize, VkImage InImage, uint64_t ReboundOffset)
 {
-    if (CurrentOffset + InSize > MemoryBudgetByte)
+    uint64_t StartOffset = (ReboundOffset != UINT64_MAX) ? ReboundOffset : CurrentOffset;
+
+    if (StartOffset + InSize > MemoryBudgetByte)
     {
         UHE_LOG(L"Exceed max budget memory for images!\n");
         return ~0;
     }
 
-    if (vkBindImageMemory(LogicalDevice, InImage, BufferMemory, CurrentOffset) != VK_SUCCESS)
+    if (vkBindImageMemory(LogicalDevice, InImage, BufferMemory, StartOffset) != VK_SUCCESS)
     {
         UHE_LOG(L"Failed to bind image to GPU!\n");
         return ~0;
     }
 
-    uint64_t StartOffset = CurrentOffset;
-    CurrentOffset += InSize;
+    if (ReboundOffset == UINT64_MAX)
+    {
+        CurrentOffset += InSize;
+    }
 
     // return start offset so the object knows where to manipulate
     return StartOffset;

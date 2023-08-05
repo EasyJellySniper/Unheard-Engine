@@ -595,7 +595,10 @@ void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std
 	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
 	{
 		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
-		std::string TexName = TexNode->GetSelectedTextureName();
+		std::string TexName = TexNode->GetSelectedTexturePathName();
+#if WITH_DEBUG
+		TexName = UHAssetManager::FindTexturePathName(TexName);
+#endif
 		if (!TexName.empty())
 		{
 			Names.push_back(TexName);

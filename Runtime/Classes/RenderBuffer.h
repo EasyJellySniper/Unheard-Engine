@@ -214,7 +214,7 @@ public:
             return;
         }
 
-        // for upload buffer, map from start offset and copy 
+        // for non-upload buffer, map from start offset and copy 
         vkMapMemory(LogicalDevice, BufferMemory, Offset * BufferStride, BufferStride, 0, reinterpret_cast<void**>(&DstData));
         memcpy(&DstData[0], SrcData, BufferStride);
         vkUnmapMemory(LogicalDevice, BufferMemory);
@@ -233,6 +233,17 @@ public:
     int64_t GetBufferStride() const
     {
         return BufferStride;
+    }
+
+    std::vector<T> ReadbackData()
+    {
+        // map & unmap memory operation
+        std::vector<T> OutputData(BufferSize);
+        vkMapMemory(LogicalDevice, BufferMemory, 0, BufferSize, 0, reinterpret_cast<void**>(&DstData));
+        memcpy(OutputData.data(), &DstData[0], BufferSize);
+        vkUnmapMemory(LogicalDevice, BufferMemory);
+
+        return OutputData;
     }
 
 private:

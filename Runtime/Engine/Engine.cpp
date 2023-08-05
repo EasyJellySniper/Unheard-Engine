@@ -135,12 +135,12 @@ void UHEngine::ReleaseEngine()
 	UHEAsset.reset();
 	UHEConfig.reset();
 
-	UH_SAFE_RELEASE(UHEGraphic);
-	UHEGraphic.reset();
-
 #if WITH_DEBUG
 	UHEEditor.reset();
 #endif
+
+	UH_SAFE_RELEASE(UHEGraphic);
+	UHEGraphic.reset();
 }
 
 bool UHEngine::IsEngineInitialized()

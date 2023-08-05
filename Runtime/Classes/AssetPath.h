@@ -7,10 +7,7 @@ static std::string GTempFilePath = "Temp/";
 
 // texture paths
 static std::string GTextureAssetFolder = "Assets/Textures/";
-static std::string GRawTexturePath = "RawAssets/Textures/";
-static std::string GTextureAssetCachePath = "AssetCaches/Textures/";
 static std::string GTextureAssetExtension = ".uhtexture";
-static std::string GTextureAssetCacheExtension = ".uhtexturecache";
 
 // mesh paths
 static std::string GMeshAssetFolder = "Assets/Meshes/";
@@ -51,15 +48,6 @@ namespace UHAssetPath
 		std::filesystem::path OriginPath = InSource;
 		OriginPath = OriginPath.remove_filename();
 		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.string(), GRawMeshAssetPath);
-
-		return OriginSubpath;
-	}
-
-	inline std::string GetTextureOriginSubpath(std::filesystem::path InSource)
-	{
-		std::filesystem::path OriginPath = InSource;
-		OriginPath = OriginPath.remove_filename();
-		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.string(), GRawTexturePath);
 
 		return OriginSubpath;
 	}

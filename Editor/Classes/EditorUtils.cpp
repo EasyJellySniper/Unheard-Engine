@@ -32,6 +32,11 @@ namespace UHEditorUtil
         Edit_SetText(Hwnd, InValue.c_str());
     }
 
+    void SetEditControl(HWND Hwnd, std::string InValue)
+    {
+        SetWindowTextA(Hwnd, InValue.c_str());
+    }
+
     void SetEditControlChar(HWND Hwnd, int32_t ControlID, char InValue)
     {
         std::string Value;
@@ -55,7 +60,7 @@ namespace UHEditorUtil
         }
     }
 
-    void InitComboBox(HWND Hwnd, int32_t BoxID, std::wstring DefaultValue, std::vector<std::wstring> Options, int32_t MinVisible)
+    void InitComboBox(HWND Hwnd, int32_t BoxID, std::wstring DefaultValue, const std::vector<std::wstring>& Options, int32_t MinVisible)
     {
         HWND ComboBox = GetDlgItem(Hwnd, BoxID);
 
@@ -71,9 +76,10 @@ namespace UHEditorUtil
         }
     }
 
-    void InitComboBox(HWND Hwnd, std::string DefaultValue, std::vector<std::string> Options, int32_t MinVisible)
+    void InitComboBox(HWND Hwnd, std::string DefaultValue, const std::vector<std::string>& Options, int32_t MinVisible)
     {
         HWND ComboBox = Hwnd;
+        SendMessage(ComboBox, CB_RESETCONTENT, 0, 0);
 
         for (const std::string& Option : Options)
         {
@@ -140,6 +146,11 @@ namespace UHEditorUtil
         return UHUtilities::ToStringA(Buff);
     }
 
+    int32_t GetComboBoxItemCount(HWND Hwnd)
+    {
+        return ComboBox_GetCount(Hwnd);
+    }
+
     void AddListBoxString(HWND HWnd, int32_t BoxID, std::string InValue)
     {
         // get list box and add the string
@@ -158,6 +169,11 @@ namespace UHEditorUtil
     {
         HWND ListBox = GetDlgItem(HWnd, BoxID);
         return static_cast<int32_t>(SendMessage(ListBox, LB_GETCURSEL, 0, 0));
+    }
+
+    void SetListBoxSelectedIndex(HWND HWnd, int32_t Index)
+    {
+        SendMessage(HWnd, LB_SETCURSEL, Index, 0);
     }
 
     void SetWindowSize(HWND Hwnd, uint32_t X, uint32_t Y, uint32_t Width, uint32_t Height)
@@ -191,6 +207,88 @@ namespace UHEditorUtil
         }
 
         return false;
+    }
+
+    void SetStaticText(HWND Hwnd, std::string InText)
+    {
+        SetWindowTextA(Hwnd, InText.c_str());
+    }
+
+    void SetSliderRange(HWND Hwnd, uint32_t MinValue, uint32_t MaxValue)
+    {
+        SendMessage(Hwnd, TBM_SETRANGE,
+            (WPARAM)TRUE,
+            (LPARAM)MAKELONG(MinValue, MaxValue));
+    }
+
+    void SetSliderPos(HWND Hwnd, uint32_t InValue)
+    {
+        SendMessage(Hwnd, TBM_SETPOS,
+            (WPARAM)TRUE, 
+            (LPARAM)InValue);
+    }
+
+    uint32_t GetSliderPos(HWND Hwnd)
+    {
+        return static_cast<uint32_t>(SendMessage(Hwnd, TBM_GETPOS, 0, 0));
+    }
+
+    std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter)
+    {
+        std::wstring SelectedFile;
+        IFileDialog* FileDialog;
+        if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileDialog))))
+        {
+            FileDialog->SetFileTypes(1, &InFilter);
+
+            if (SUCCEEDED(FileDialog->Show(nullptr)))
+            {
+                IShellItem* Result;
+                if (SUCCEEDED(FileDialog->GetResult(&Result)))
+                {
+                    wchar_t* Path;
+                    if (SUCCEEDED(Result->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &Path)))
+                    {
+                        SelectedFile = Path;
+                    }
+                    Result->Release();
+                }
+            }
+            FileDialog->Release();
+        }
+
+        return SelectedFile;
+    }
+
+    std::wstring FileSelectOutputFolder()
+    {
+        std::wstring OutputFolder;
+        IFileDialog* FileDialog;
+        if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileDialog))))
+        {
+            DWORD Options;
+            if (SUCCEEDED(FileDialog->GetOptions(&Options)))
+            {
+                FileDialog->SetOptions(Options | FOS_PICKFOLDERS);
+            }
+
+            if (SUCCEEDED(FileDialog->Show(nullptr)))
+            {
+                IShellItem* Result;
+                if (SUCCEEDED(FileDialog->GetResult(&Result)))
+                {
+                    wchar_t* Path;
+                    if (SUCCEEDED(Result->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &Path)))
+                    {
+                        OutputFolder = Path;
+                    }
+                    Result->Release();
+                }
+            }
+            FileDialog->Release();
+        }
+
+        return OutputFolder;
     }
 }
 

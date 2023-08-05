@@ -56,12 +56,6 @@ std::unique_ptr<UHMaterialDialogData> GMaterialDialogData;
 std::vector<std::wstring> GCullModeNames = { L"None", L"Front", L"Back" };
 std::vector<std::wstring> GBlendModeNames = { L"Opaque", L"Masked", L"AlphaBlend", L"Addition" };
 
-UHMaterialDialog::UHMaterialDialog()
-	: UHMaterialDialog(nullptr, nullptr, nullptr, nullptr)
-{
-
-}
-
 UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer)
 	: UHDialog(InInstance, InWindow)
     , AssetManager(InAssetManager)
@@ -228,6 +222,12 @@ void UHMaterialDialog::Update()
     if (GMaterialDialogData == nullptr)
     {
         return;
+    }
+
+    // call the update function of all GUI nodes
+    for (const std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+    {
+        GUI->Update();
     }
 
     // process control callbacks

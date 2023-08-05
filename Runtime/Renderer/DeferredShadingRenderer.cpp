@@ -98,8 +98,16 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 	{
 		// wait before new binding
 		GraphicInterface->WaitGPU();
+
+		uint32_t ViewMipLevel = 0;
+		DebugViewData->UploadAllData(&ViewMipLevel);
+		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			DebugViewShader.BindConstant(DebugViewData, 0, Idx);
+		}
+
 		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
-		DebugViewShader.BindImage(Buffers[DebugViewIndex], 0);
+		DebugViewShader.BindImage(Buffers[DebugViewIndex], 1);
 	}
 }
 
@@ -469,7 +477,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		}
 
 		// present
-		bIsResetNeededShared = !SceneRenderBuilder.Present(SceneRenderQueue.Queue, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT], PresentIndex, FrameNumberRT);
+		bIsResetNeededShared = !SceneRenderBuilder.Present(GraphicInterface->GetSwapChain(), SceneRenderQueue.Queue, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT], PresentIndex, FrameNumberRT);
 		bIsPresentedPreviously = true;
 
 		// tell main thread to continue

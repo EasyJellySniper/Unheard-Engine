@@ -98,6 +98,7 @@ struct UHTransitionInfo
 };
 
 class UHEngine;
+class UHPreviewScene;
 
 // Unheard engine graphics class, mainly for device creation
 class UHGraphic
@@ -141,7 +142,7 @@ public:
 	void RequestReleaseRT(UHRenderTexture* InRT);
 
 	// request a managed texture 2d/cube
-	UHTexture2D* RequestTexture2D(std::string InName, std::string InSourcePath, uint32_t Width, uint32_t Height, std::vector<uint8_t> InData, bool bIsLinear = false);
+	UHTexture2D* RequestTexture2D(UHTexture2D& LoadedTex);
 	UHTextureCube* RequestTextureCube(std::string InName, std::vector<UHTexture2D*> InTextures);
 
 	// request a managed material
@@ -239,6 +240,7 @@ public:
 	// one-time use command buffer functions, mainly for initialization
 	VkCommandBuffer BeginOneTimeCmd();
 	void EndOneTimeCmd(VkCommandBuffer InBuffer);
+	VkQueue GetGraphicsQueue() const;
 
 private:
 
@@ -360,7 +362,8 @@ protected:
 	std::unique_ptr<UHGPUMemory> ImageSharedMemory = nullptr;
 
 #if WITH_DEBUG
-	// give access for UHEngine in debug build
+	// give access for some classes in debug build
 	friend UHEngine;
+	friend UHPreviewScene;
 #endif
 };

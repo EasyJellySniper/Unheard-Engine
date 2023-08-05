@@ -8,10 +8,10 @@ UHTextureCube::UHTextureCube()
 }
 
 UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, VkFormat InFormat)
-	: UHTexture(InName, InExtent, InFormat, false)
+	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
 	, bIsCubeBuilt(false)
 {
-
+	TextureType = TextureCube;
 }
 
 // actually builds cubemap and upload to gpu

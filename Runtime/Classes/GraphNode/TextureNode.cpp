@@ -1,8 +1,7 @@
 #include "TextureNode.h"
 #include "../Utility.h"
 #include "../MaterialLayout.h"
-
-static std::vector<std::string> BumpTextures;
+#include "../../Engine/Asset.h"
 
 UHTexture2DNode::UHTexture2DNode(std::string TexName)
 	: UHGraphNode(true)
@@ -17,28 +16,12 @@ UHTexture2DNode::UHTexture2DNode(std::string TexName)
 	Outputs.resize(1);
 	Outputs[0] = std::make_unique<UHGraphPin>("RGB", this, Float3Node);
 
-	SelectedTextureName = TexName;
-
-	// @TODO: Integrated this to texture editor if I have one, temporary stupid method
-	if (BumpTextures.size() == 0)
-	{
-		std::ifstream FileIn("BumpTextures.txt", std::ios::in);
-		if (FileIn.is_open())
-		{
-			while (!FileIn.eof())
-			{
-				std::string BumpTex;
-				std::getline(FileIn, BumpTex);
-				BumpTextures.push_back(BumpTex);
-			}
-		}
-		FileIn.close();
-	}
+	SelectedTexturePathName = TexName;
 }
 
 bool UHTexture2DNode::CanEvalHLSL()
 {
-	if (SelectedTextureName.empty())
+	if (SelectedTexturePathName.empty())
 	{
 		return false;
 	}
@@ -48,6 +31,7 @@ bool UHTexture2DNode::CanEvalHLSL()
 
 std::string UHTexture2DNode::EvalDefinition()
 {
+#if WITH_DEBUG
 	// Eval local definition for texture sample, so it will only be sampled once only
 	// this also considers the bindless rendering
 	// float4 Result_1234 = UHTextureTable[Node_1234_Index].Sample(Sampler_Index, UV);
@@ -62,8 +46,7 @@ std::string UHTexture2DNode::EvalDefinition()
 		}
 
 		// consider if this is a bump texture and insert decode
-		// @TODO: Remove this temporary method
-		const bool bIsBumpTexture = UHUtilities::FindByElement(BumpTextures, SelectedTextureName);
+		const bool bIsBumpTexture = UHAssetManager::IsBumpTexture(SelectedTexturePathName);
 		const std::string BumpDecode = bIsBumpTexture ? " * 2.0f - 1.0f" : "";
 
 		// if it's compiling for ray tracing, I need to use the SampleLevel instead of Sample
@@ -81,7 +64,7 @@ std::string UHTexture2DNode::EvalDefinition()
 		const std::string SamplerIndexCode = GDefaultSamplerName + "_Index";
 		return "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].Sample(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ")" + BumpDecode + ";\n";
 	}
-
+#endif
 	return "[ERROR] Texture not set.";
 }
 
@@ -99,22 +82,22 @@ std::string UHTexture2DNode::EvalHLSL()
 
 void UHTexture2DNode::InputData(std::ifstream& FileIn)
 {
-	UHUtilities::ReadStringData(FileIn, SelectedTextureName);
+	UHUtilities::ReadStringData(FileIn, SelectedTexturePathName);
 }
 
 void UHTexture2DNode::OutputData(std::ofstream& FileOut)
 {
-	UHUtilities::WriteStringData(FileOut, SelectedTextureName);
+	UHUtilities::WriteStringData(FileOut, SelectedTexturePathName);
 }
 
-void UHTexture2DNode::SetSelectedTextureName(std::string InSelectedTextureName)
+void UHTexture2DNode::SetSelectedTexturePathName(std::string InSelectedTextureName)
 {
-	SelectedTextureName = InSelectedTextureName;
+	SelectedTexturePathName = InSelectedTextureName;
 }
 
-std::string UHTexture2DNode::GetSelectedTextureName() const
+std::string UHTexture2DNode::GetSelectedTexturePathName() const
 {
-	return SelectedTextureName;
+	return SelectedTexturePathName;
 }
 
 void UHTexture2DNode::SetTextureIndexInMaterial(int32_t InIndex)

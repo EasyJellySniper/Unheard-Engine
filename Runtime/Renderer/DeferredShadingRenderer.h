@@ -69,6 +69,7 @@ public:
 
 	// only resize RT buffers
 	void ResizeRTBuffers();
+	void UpdateTextureDescriptors();
 
 #if WITH_DEBUG
 	void SetDebugViewIndex(int32_t Idx);
@@ -89,6 +90,9 @@ private:
 	// prepare textures
 	void CheckTextureReference(UHMaterial* InMat);
 	void PrepareTextures();
+
+	// prepare samplers
+	void PrepareSamplers();
 
 	// prepare rendering shaders
 	void PrepareRenderingShaders();
@@ -299,6 +303,7 @@ private:
 	// debug view shader
 	UHDebugViewShader DebugViewShader;
 	int32_t DebugViewIndex;
+	std::unique_ptr<UHRenderBuffer<uint32_t>> DebugViewData;
 
 	// profiles
 	float RenderThreadTime;

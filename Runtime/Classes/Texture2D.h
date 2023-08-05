@@ -12,16 +12,17 @@ class UHTexture2D : public UHTexture
 {
 public:
 	UHTexture2D();
-	UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, VkFormat InFormat, bool bInIsLinear);
-	void ReleaseCPUTextureData();
+	UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings);
 
+	void ReleaseCPUTextureData();
 	bool Import(std::filesystem::path InTexturePath);
+	void SetTextureData(std::vector<uint8_t> InData);
 
 #if WITH_DEBUG
+	virtual void Recreate() override;
+	virtual std::vector<uint8_t> ReadbackTextureData() override;
 	void Export(std::filesystem::path InTexturePath);
 #endif
-
-	void SetTextureData(std::vector<uint8_t> InData);
 	std::vector<uint8_t>& GetTextureData();
 
 	// upload texture data to GPU
@@ -31,10 +32,10 @@ public:
 	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) override;
 
 private:
-	bool CreateTextureFromMemory(uint32_t Width, uint32_t Height, std::vector<uint8_t> InTextureData, bool bIsLinear = false);
+	bool CreateTextureFromMemory();
 
 	std::vector<uint8_t> TextureData;
-	UHRenderBuffer<uint8_t> StageBuffer;
+	std::vector<UHRenderBuffer<uint8_t>> RawStageBuffers;
 
 	friend UHGraphic;
 };

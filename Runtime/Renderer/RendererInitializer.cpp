@@ -97,24 +97,12 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	CurrentScene = InScene;
 	PrepareMeshes();
 	PrepareTextures();
+	PrepareSamplers();
 
 	// config setup
 	bEnableDepthPrePass = GraphicInterface->IsDepthPrePassEnabled();
 	NumWorkerThreads = ConfigInterface->RenderingSetting().ParallelThreads;
 	bEnableAsyncComputeGT = ConfigInterface->RenderingSetting().bEnableAsyncCompute;
-
-	// shared sampler requests
-	UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-	PointClampedInfo.MaxAnisotropy = 1;
-	PointClampedSampler = GraphicInterface->RequestTextureSampler(PointClampedInfo);
-
-	UHSamplerInfo LinearClampedInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-	LinearClampedInfo.MaxAnisotropy = 1;
-	LinearClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
-
-	LinearClampedInfo.MaxAnisotropy = 16;
-	AnisoClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
-	DefaultSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), AnisoClampedSampler);
 
 	const bool bIsRendererSuccess = InitQueueSubmitters();
 	if (bIsRendererSuccess)
@@ -265,7 +253,6 @@ void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
 		if (Tex)
 		{
 			Tex->UploadToGPU(GraphicInterface, CreationCmd, GraphBuilder);
-			Tex->GenerateMipMaps(GraphicInterface, CreationCmd, GraphBuilder);
 		}
 	}
 
@@ -311,10 +298,32 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 }
 
+void UHDeferredShadingRenderer::PrepareSamplers()
+{
+	// shared sampler requests
+	UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	PointClampedInfo.MaxAnisotropy = 1;
+	PointClampedSampler = GraphicInterface->RequestTextureSampler(PointClampedInfo);
+
+#if WITH_DEBUG
+	// request a sampler for preview scene
+	PointClampedInfo.MipBias = 0;
+	GraphicInterface->RequestTextureSampler(PointClampedInfo);
+#endif
+
+	UHSamplerInfo LinearClampedInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	LinearClampedInfo.MaxAnisotropy = 1;
+	LinearClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
+
+	LinearClampedInfo.MaxAnisotropy = 16;
+	AnisoClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
+	DefaultSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), AnisoClampedSampler);
+}
+
 void UHDeferredShadingRenderer::PrepareRenderingShaders()
 {
 	// bindless table
-	TextureTable = UHTextureTable(GraphicInterface, "TextureTable", static_cast<uint32_t>(AssetManagerInterface->GetTexture2Ds().size()));
+	TextureTable = UHTextureTable(GraphicInterface, "TextureTable");
 	SamplerTable = UHSamplerTable(GraphicInterface, "SamplerTable", static_cast<uint32_t>(GraphicInterface->GetSamplers().size()));
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable.GetDescriptorSetLayout(), SamplerTable.GetDescriptorSetLayout()};
 
@@ -421,6 +430,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 #if WITH_DEBUG
 	DebugViewShader = UHDebugViewShader(GraphicInterface, "DebugViewShader", PostProcessPassObj[0].RenderPass);
+	DebugViewData = GraphicInterface->RequestRenderBuffer<uint32_t>();
+	DebugViewData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 #endif
 }
 
@@ -443,22 +454,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 
 	// ------------------------------------------------ Bindless table update
-	// bind texture table
-	std::vector<UHTexture*> Texes(AssetManagerInterface->GetReferencedTexture2Ds().size());
-	for (size_t Idx = 0; Idx < Texes.size(); Idx++)
-	{
-		Texes[Idx] = AssetManagerInterface->GetReferencedTexture2Ds()[Idx];
-	}
-
-	size_t ReferencedSize = Texes.size();
-	while (ReferencedSize < AssetManagerInterface->GetTexture2Ds().size())
-	{
-		// fill with null image for non-referenced textures
-		Texes.push_back(nullptr);
-		ReferencedSize++;
-	}
-
-	TextureTable.BindImage(Texes, 0);
+	UpdateTextureDescriptors();
 
 	// bind sampler table
 	std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
@@ -641,9 +637,9 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 #if WITH_DEBUG
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		DebugViewShader.BindImage(RTShadowResult, 0);
+		DebugViewShader.BindImage(RTShadowResult, 1);
 	}
-	DebugViewShader.BindSampler(PointClampedSampler, 1);
+	DebugViewShader.BindSampler(PointClampedSampler, 2);
 #endif
 }
 
@@ -704,6 +700,8 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 
 #if WITH_DEBUG
 	DebugViewShader.Release();
+	UH_SAFE_RELEASE(DebugViewData);
+	DebugViewData.reset();
 #endif
 }
 
@@ -986,6 +984,27 @@ void UHDeferredShadingRenderer::ResizeRTBuffers()
 		// need to rewrite descriptors after resize
 		UpdateDescriptors();
 	}
+}
+
+void UHDeferredShadingRenderer::UpdateTextureDescriptors()
+{
+	// ------------------------------------------------ Bindless table update
+	// bind texture table
+	std::vector<UHTexture*> Texes(AssetManagerInterface->GetReferencedTexture2Ds().size());
+	for (size_t Idx = 0; Idx < Texes.size(); Idx++)
+	{
+		Texes[Idx] = AssetManagerInterface->GetReferencedTexture2Ds()[Idx];
+	}
+
+	size_t ReferencedSize = Texes.size();
+	while (ReferencedSize < GTextureTableSize)
+	{
+		// fill with null image for non-referenced textures
+		Texes.push_back(nullptr);
+		ReferencedSize++;
+	}
+
+	TextureTable.BindImage(Texes, 0);
 }
 
 #if WITH_DEBUG

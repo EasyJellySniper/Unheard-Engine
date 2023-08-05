@@ -3,11 +3,11 @@
 #include "../../UnheardEngine.h"
 
 UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bReadWrite, bool bShadowRT)
-	: UHTexture(InName, InExtent, InFormat, bIsLinear)
+	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
 	, bIsReadWrite(bReadWrite)
 	, bIsShadowRT(bShadowRT)
 {
-
+	TextureSettings.bIsLinear = bIsLinear;
 }
 
 // create image based on format and extent info

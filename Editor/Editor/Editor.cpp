@@ -26,12 +26,14 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     ProfileTimer.Reset();
     SettingDialog = UHSettingDialog(HInstance, HWnd, Config, Engine, DeferredRenderer, Input);
     ProfileDialog = UHProfileDialog(HInstance, HWnd);
+    TextureDialog = std::make_unique<UHTextureDialog>(HInstance, HWnd, AssetManager, InGfx, InRenderer);
     MaterialDialog = std::make_unique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
 }
 
 UHEditor::~UHEditor()
 {
     MaterialDialog.reset();
+    TextureDialog.reset();
 }
 
 void UHEditor::OnEditorUpdate()
@@ -39,6 +41,7 @@ void UHEditor::OnEditorUpdate()
     ProfileTimer.Tick();
     SettingDialog.Update();
     ProfileDialog.SyncProfileStatistics(Profile, &ProfileTimer, Config);
+    TextureDialog->Update();
     MaterialDialog->Update();
 }
 
@@ -56,6 +59,9 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         break;
     case ID_WINDOW_MATERIAL:
         MaterialDialog->ShowDialog();
+        break;
+    case ID_WINDOW_TEXTURE:
+        TextureDialog->ShowDialog();
         break;
     default:
         break;

@@ -108,7 +108,13 @@ namespace UHUtilities
 
 	std::string RemoveSubString(std::string InString, std::string InSubString)
 	{
-		return InString.erase(InString.find(InSubString), InSubString.length());
+		size_t Pos = InString.find(InSubString);
+		if (Pos == std::string::npos)
+		{
+			return InString;
+		}
+
+		return InString.erase(Pos, InSubString.length());
 	}
 
 	void WriteINISection(std::ofstream& FileOut, std::string InSection)
@@ -189,12 +195,13 @@ namespace UHUtilities
 	std::string StringReplace(std::string InString, std::string InKeyWord, std::string InValue)
 	{
 		size_t MarkerPos = StringFindIndex(InString, InKeyWord);
-		if (MarkerPos == std::string::npos)
+		while (MarkerPos != std::string::npos)
 		{
-			return InString;
+			InString = InString.replace(MarkerPos, InKeyWord.size(), InValue);
+			MarkerPos = StringFindIndex(InString, InKeyWord);
 		}
 
-		return InString.replace(MarkerPos, InKeyWord.size(), InValue);
+		return InString;
 	}
 
 	std::wstring FloatToWString(float InValue, int32_t InPrecision)

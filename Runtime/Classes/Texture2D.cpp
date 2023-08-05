@@ -4,6 +4,7 @@
 #include "AssetPath.h"
 #include "../Engine/Graphic.h"
 #include "../Renderer/GraphicBuilder.h"
+#include "TextureCompressor.h"
 
 UHTexture2D::UHTexture2D()
 	: UHTexture()
@@ -11,20 +12,29 @@ UHTexture2D::UHTexture2D()
 
 }
 
-UHTexture2D::UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, VkFormat InFormat, bool bInIsLinear)
-	: UHTexture(InName, InExtent, InFormat, bInIsLinear)
+UHTexture2D::UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings)
+	: UHTexture(InName, InExtent, InFormat, InSettings)
 {
 	SourcePath = InSourcePath;
+	TextureType = Texture2D;
 }
 
 void UHTexture2D::ReleaseCPUTextureData()
 {
-	StageBuffer.Release();
 	TextureData.clear();
+	for (UHRenderBuffer<uint8_t>& Buffer : RawStageBuffers)
+	{
+		Buffer.Release();
+	}
 }
 
 bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 {
+	if (InTexturePath.extension() != GTextureAssetExtension)
+	{
+		return false;
+	}
+
 	std::ifstream FileIn(InTexturePath.string().c_str(), std::ios::in | std::ios::binary);
 	if (!FileIn.is_open())
 	{
@@ -32,9 +42,14 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 		return false;
 	}
 
-	// read texture name
+	// read version and type
+	FileIn.read(reinterpret_cast<char*>(&TextureVersion), sizeof(TextureVersion));
+	FileIn.read(reinterpret_cast<char*>(&TextureType), sizeof(TextureType));
+
+	// read texture name, source path
 	UHUtilities::ReadStringData(FileIn, Name);
 	UHUtilities::ReadStringData(FileIn, SourcePath);
+	UHUtilities::ReadStringData(FileIn, RawSourcePath);
 
 	// read extent
 	FileIn.read(reinterpret_cast<char*>(&ImageExtent.width), sizeof(ImageExtent.width));
@@ -43,8 +58,8 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 	// read texture data
 	UHUtilities::ReadVectorData(FileIn, TextureData);
 
-	// read linear flag
-	FileIn.read(reinterpret_cast<char*>(&bIsLinear), sizeof(bIsLinear));
+	// read texture settings
+	FileIn.read(reinterpret_cast<char*>(&TextureSettings), sizeof(TextureSettings));
 
 	FileIn.close();
 
@@ -52,19 +67,134 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 }
 
 #if WITH_DEBUG
-void UHTexture2D::Export(std::filesystem::path InTexturePath)
+void UHTexture2D::Recreate()
 {
-	if (!std::filesystem::exists(InTexturePath))
+	GfxCache->WaitGPU();
+	for (UHRenderBuffer<uint8_t>& Buffer : RawStageBuffers)
 	{
-		std::filesystem::create_directories(InTexturePath);
+		Buffer.Release();
+	}
+	Release();
+	TextureSettings.bIsCompressed = false;
+	CreateTextureFromMemory();
+
+	// upload the 1st slice and generate mip map
+	VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
+	UHGraphicBuilder UploadBuilder(GfxCache, UploadCmd);
+	UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
+	GenerateMipMaps(GfxCache, UploadCmd, UploadBuilder);
+	GfxCache->EndOneTimeCmd(UploadCmd);
+
+	// readback CPU data for storage
+	TextureData = ReadbackTextureData();
+
+	// since the mip map generation can't be done in block compression, always process compression after raw data is done
+	if (TextureSettings.CompressionSetting != CompressionNone)
+	{
+		std::vector<uint64_t> CompressedData;
+		uint64_t MipStartIndex = 0;
+		uint64_t MipEndIndex = ImageExtent.width * ImageExtent.height * 4;
+		for (uint32_t Idx = 0; Idx < GetMipMapCount(); Idx++)
+		{
+			std::vector<uint8_t> MipData(TextureData.begin() + MipStartIndex, TextureData.begin() + MipEndIndex);
+			std::vector<uint64_t> CompressedMipData;
+			if (TextureSettings.CompressionSetting == BC1)
+			{
+				CompressedMipData = UHTextureCompressor::CompressBC1(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+			}
+			else
+			{
+				CompressedMipData = UHTextureCompressor::CompressBC3(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+			}
+			CompressedData.insert(CompressedData.end(), CompressedMipData.begin(), CompressedMipData.end());
+
+			MipStartIndex = MipEndIndex;
+			MipEndIndex += (ImageExtent.width >> (Idx + 1)) * (ImageExtent.height >> (Idx + 1)) * 4;
+		}
+
+		// convert to uint8 array
+		TextureData.clear();
+		TextureData.resize(CompressedData.size() * 8);
+		memcpy(TextureData.data(), CompressedData.data(), CompressedData.size() * sizeof(uint64_t));
+		TextureSettings.bIsCompressed = true;
+
+		// repeat the texture creation for compressed texture
+		for (UHRenderBuffer<uint8_t>& Buffer : RawStageBuffers)
+		{
+			Buffer.Release();
+		}
+		Release();
+		CreateTextureFromMemory();
+
+		// upload compressed data
+		VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
+		UHGraphicBuilder UploadBuilder(GfxCache, UploadCmd);
+		UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
+		GfxCache->EndOneTimeCmd(UploadCmd);
+	}
+}
+
+std::vector<uint8_t> UHTexture2D::ReadbackTextureData()
+{
+	uint32_t MipCount = GetMipMapCount();
+	std::vector<uint8_t> NewData;
+	std::vector<UHRenderBuffer<uint8_t>> ReadbackBuffer(MipCount);
+
+	VkCommandBuffer ReadbackCmd = GfxCache->BeginOneTimeCmd();
+	UHGraphicBuilder ReadbackBuilder(GfxCache, ReadbackCmd);
+
+	// readback per mip slice
+	for (uint32_t MipIdx = 0; MipIdx < MipCount; MipIdx++)
+	{
+		uint32_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * 4;
+
+		ReadbackBuffer[MipIdx].SetDeviceInfo(GfxCache->GetLogicalDevice(), GfxCache->GetDeviceMemProps());
+		ReadbackBuffer[MipIdx].CreateBuffer(MipSize, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+
+		VkBufferImageCopy Region{};
+		Region.bufferOffset = 0;
+		Region.bufferRowLength = 0;
+		Region.bufferImageHeight = 0;
+
+		Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		Region.imageSubresource.mipLevel = MipIdx;
+		Region.imageSubresource.baseArrayLayer = 0;
+		Region.imageSubresource.layerCount = 1;
+
+		Region.imageOffset = { 0, 0, 0 };
+		Region.imageExtent = { ImageExtent.width >> MipIdx, ImageExtent.height >> MipIdx, 1 };
+
+		ReadbackBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, MipIdx);
+		vkCmdCopyImageToBuffer(ReadbackCmd, ImageSource, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, ReadbackBuffer[MipIdx].GetBuffer(), 1, &Region);
+		ReadbackBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, MipIdx);
 	}
 
-	// open UHMesh file
-	std::ofstream FileOut(InTexturePath.string() + Name + GTextureAssetExtension, std::ios::out | std::ios::binary);
+	GfxCache->EndOneTimeCmd(ReadbackCmd);
 
-	// write texture name
+	for (uint32_t MipIdx = 0; MipIdx < MipCount; MipIdx++)
+	{
+		std::vector<uint8_t> MipData = ReadbackBuffer[MipIdx].ReadbackData();
+		NewData.insert(NewData.end(), MipData.begin(), MipData.end());
+		ReadbackBuffer[MipIdx].Release();
+	}
+
+	return NewData;
+}
+
+void UHTexture2D::Export(std::filesystem::path InTexturePath)
+{
+	// open UHTexture file
+	std::ofstream FileOut(InTexturePath.string() + GTextureAssetExtension, std::ios::out | std::ios::binary);
+
+	// write version and type
+	TextureVersion = static_cast<UHTextureVersion>(TextureVersionMax - 1);
+	FileOut.write(reinterpret_cast<const char*>(&TextureVersion), sizeof(TextureVersion));
+	FileOut.write(reinterpret_cast<const char*>(&TextureType), sizeof(TextureType));
+
+	// write texture name, source path
 	UHUtilities::WriteStringData(FileOut, Name);
 	UHUtilities::WriteStringData(FileOut, SourcePath);
+	UHUtilities::WriteStringData(FileOut, RawSourcePath);
 
 	// write image extent
 	FileOut.write(reinterpret_cast<const char*>(&ImageExtent.width), sizeof(ImageExtent.width));
@@ -73,8 +203,8 @@ void UHTexture2D::Export(std::filesystem::path InTexturePath)
 	// write texture data
 	UHUtilities::WriteVectorData(FileOut, TextureData);
 
-	// write linear flag
-	FileOut.write(reinterpret_cast<const char*>(&bIsLinear), sizeof(bIsLinear));
+	// write texture settings
+	FileOut.write(reinterpret_cast<char*>(&TextureSettings), sizeof(TextureSettings));
 
 	FileOut.close();
 }
@@ -97,39 +227,75 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphic
 		return;
 	}
 
+	// calculate byte stride
+	const uint64_t ByteStrides[] = { 1,8,4 };
+	const uint64_t MinMipSize[] = { 1,8,16 };
+	uint64_t ByteDivider = 1;
+	if (TextureSettings.bIsCompressed)
+	{
+		ByteDivider = ByteStrides[TextureSettings.CompressionSetting];
+	}
+
 	// copy data to staging buffer first
-	StageBuffer.SetDeviceInfo(InGfx->GetLogicalDevice(), InGfx->GetDeviceMemProps());
-	StageBuffer.CreateBuffer(static_cast<uint64_t>(TextureData.size()), VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-	StageBuffer.UploadAllData(TextureData.data());
+	RawStageBuffers.resize(GetMipMapCount());
+	uint64_t MipStartIndex = 0;
+	for (uint32_t MipIdx = 0; MipIdx < GetMipMapCount(); MipIdx++)
+	{
+		uint64_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * 4 / ByteDivider;
+		if (TextureSettings.bIsCompressed)
+		{
+			MipSize = std::max(MipSize, MinMipSize[TextureSettings.CompressionSetting]);
+		}
 
-	// copy buffer to image
-	VkBuffer SrcBuffer = StageBuffer.GetBuffer();
-	VkImage DstImage = GetImage();
-	VkExtent2D Extent = GetExtent();
+		if (MipStartIndex >= TextureData.size())
+		{
+			continue;
+		}
 
-	// set up copying region
-	VkBufferImageCopy Region{};
-	Region.bufferOffset = 0;
-	Region.bufferRowLength = 0;
-	Region.bufferImageHeight = 0;
+		RawStageBuffers[MipIdx].SetDeviceInfo(InGfx->GetLogicalDevice(), InGfx->GetDeviceMemProps());
+		RawStageBuffers[MipIdx].CreateBuffer(MipSize, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+		RawStageBuffers[MipIdx].UploadAllData(TextureData.data() + MipStartIndex);
+		MipStartIndex += MipSize;
+	}
 
-	Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	Region.imageSubresource.mipLevel = 0;
-	Region.imageSubresource.baseArrayLayer = 0;
-	Region.imageSubresource.layerCount = 1;
+	for (uint32_t Mdx = 0; Mdx < GetMipMapCount(); Mdx++)
+	{
+		// copy buffer to image
+		VkBuffer SrcBuffer = RawStageBuffers[Mdx].GetBuffer();
+		VkImage DstImage = GetImage();
+		VkExtent2D Extent = GetExtent();
 
-	Region.imageOffset = { 0, 0, 0 };
-	Region.imageExtent = { Extent.width, Extent.height, 1 };
+		if (SrcBuffer == VK_NULL_HANDLE)
+		{
+			continue;
+		}
 
-	// transition to dst before copy
-	InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	vkCmdCopyBufferToImage(InCmd, SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
+		// set up copying region
+		VkBufferImageCopy Region{};
+		Region.bufferOffset = 0;
+		Region.bufferRowLength = 0;
+		Region.bufferImageHeight = 0;
+
+		Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		Region.imageSubresource.mipLevel = Mdx;
+		Region.imageSubresource.baseArrayLayer = 0;
+		Region.imageSubresource.layerCount = 1;
+
+		Region.imageOffset = { 0, 0, 0 };
+		Region.imageExtent = { Extent.width >> Mdx, Extent.height >> Mdx, 1 };
+
+		// transition to dst before copy
+		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
+		vkCmdCopyBufferToImage(InCmd, SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
+		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
+	}
 
 	bHasUploadedToGPU = true;
 }
 
 void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder)
 {
+	// generate mip maps for this texture, should be called in editor only
 	if (bIsMipMapGenerated)
 	{
 		return;
@@ -142,7 +308,7 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGra
 	for (uint32_t Mdx = 1; Mdx < TexInfo.subresourceRange.levelCount; Mdx++)
 	{
 		// transition mip M-1 to SRC BIT, and M to DST BIT, note mip M is still layout undefined at this point
-		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx - 1);
+		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx - 1);
 		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
 
 		// blit to proper mip slices
@@ -153,6 +319,7 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGra
 		DstExtent.width = MipWidth >> 1;
 		DstExtent.height = MipHeight >> 1;
 		InGraphBuilder.Blit(this, this, SrcExtent, DstExtent, Mdx - 1, Mdx);
+		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 
 		// for next mip
 		MipWidth = MipWidth >> 1;
@@ -167,27 +334,30 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGra
 		{
 			InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 		}
-		else
-		{
-			InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
-		}
 	}
 
 	bIsMipMapGenerated = true;
 }
 
-bool UHTexture2D::CreateTextureFromMemory(uint32_t Width, uint32_t Height, std::vector<uint8_t> InTextureData, bool bIsLinear)
+bool UHTexture2D::CreateTextureFromMemory()
 {
-	VkExtent2D Extent;
-	Extent.width = Width;
-	Extent.height = Height;
-
-	TextureData = InTextureData;
-
 	// texture also needs SRC/DST bits for copying/blit operation
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D
-		, VK_IMAGE_VIEW_TYPE_2D, (bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB, Extent
+		, VK_IMAGE_VIEW_TYPE_2D, (TextureSettings.bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB, ImageExtent
 		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, true);
+	Info.ReboundOffset = MemoryOffset;
+
+	if (TextureSettings.bIsCompressed)
+	{
+		if (TextureSettings.CompressionSetting == BC1)
+		{
+			Info.Format = (TextureSettings.bIsLinear) ? VK_FORMAT_BC1_RGB_UNORM_BLOCK : VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+		}
+		else if (TextureSettings.CompressionSetting == BC3)
+		{
+			Info.Format = (TextureSettings.bIsLinear) ? VK_FORMAT_BC3_UNORM_BLOCK : VK_FORMAT_BC3_SRGB_BLOCK;
+		}
+	}
 
 	return Create(Info, GfxCache->GetImageSharedMemory());
 }

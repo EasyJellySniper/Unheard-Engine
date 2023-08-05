@@ -6,6 +6,7 @@
 #include <DirectXCollision.h>
 #include <limits>
 #include <algorithm>
+#include <vector>
 using namespace DirectX;
 
 static float GEpsilon = std::numeric_limits<float>::epsilon();
@@ -46,6 +47,12 @@ namespace MathHelpers
     XMFLOAT3 LerpVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2, const float& T);
 
     float VectorDistanceSqr(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
+
+    template <typename T>
+    T CubicInterpolate(const std::vector<T>& InData, const float InWeight);
+
+    template <typename T>
+    T BicubicInterpolate(const std::vector<T>& InData, const float InWeight1, const float InWeight2);
 }
 
 // operator for XMFLOAT3 multipication
@@ -56,3 +63,30 @@ XMFLOAT3 operator+(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
 
 // operator for XMFLOAT3 subtraction
 XMFLOAT3 operator-(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
+
+struct UHColorRGB
+{
+    UHColorRGB();
+    UHColorRGB(const float InR, const float InG, const float InB);
+
+    static float SquareDiff(const UHColorRGB& ColorA, const UHColorRGB& ColorB);
+	static UHColorRGB Lerp(const UHColorRGB& ColorA, const UHColorRGB& ColorB, const float& FactorA, const float& FactorB);
+    static UHColorRGB Min(const UHColorRGB& ColorA, const UHColorRGB& ColorB);
+    static UHColorRGB Max(const UHColorRGB& ColorA, const UHColorRGB& ColorB);
+    void Clamp();
+    void Abs();
+    float Lumin() const;
+    float Length() const;
+
+	UHColorRGB& operator+=(const UHColorRGB& Rhs);
+	UHColorRGB& operator/=(const float& Rhs);
+    friend UHColorRGB operator+(const UHColorRGB& Lhs, const UHColorRGB& Rhs);
+    friend UHColorRGB operator-(const UHColorRGB& Lhs, const UHColorRGB& Rhs);
+
+	float R;
+	float G;
+	float B;
+};
+
+UHColorRGB operator*(float Lhs, const UHColorRGB& Rhs);
+UHColorRGB operator/(const UHColorRGB& Lhs, float Rhs);

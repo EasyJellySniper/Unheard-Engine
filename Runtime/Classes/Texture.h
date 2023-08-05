@@ -5,6 +5,25 @@
 #include "../../UnheardEngine.h"
 #include "GPUMemory.h"
 
+enum UHTextureVersion
+{
+	InitialTexture = 0,
+	TextureVersionMax
+};
+
+enum UHTextureType
+{
+	Texture2D,
+	TextureCube
+};
+
+enum UHTextureCompressionSettings
+{
+	CompressionNone,
+	BC1,
+	BC3
+};
+
 struct UHTextureInfo
 {
 	UHTextureInfo()
@@ -22,6 +41,7 @@ struct UHTextureInfo
 		, bIsRT(bInIsRT)
 		, bUseMipMap(bInUseMipMap)
 		, bIsShadowRT(false)
+		, ReboundOffset(~0)
 	{
 
 	}
@@ -34,6 +54,23 @@ struct UHTextureInfo
 	bool bIsRT;
 	bool bUseMipMap;
 	bool bIsShadowRT;
+	uint64_t ReboundOffset;
+};
+
+struct UHTextureSettings
+{
+	UHTextureSettings()
+		: bIsLinear(false)
+		, bIsNormal(false)
+		, CompressionSetting(CompressionNone)
+		, bIsCompressed(false)
+	{
+	}
+
+	bool bIsLinear;
+	bool bIsNormal;
+	UHTextureCompressionSettings CompressionSetting;
+	bool bIsCompressed;
 };
 
 class UHGraphic;
@@ -44,10 +81,18 @@ class UHTexture : public UHRenderResource
 {
 public:
 	UHTexture();
-	UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bInIsLinear);
+	UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings);
 
-	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {};
-	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {};
+	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}
+	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}
+
+#if WITH_DEBUG
+	virtual void Recreate() {}
+	virtual std::vector<uint8_t> ReadbackTextureData() { return std::vector<uint8_t>(); }
+	void SetTextureSettings(UHTextureSettings InSetting);
+	void SetRawSourcePath(std::string InPath);
+	void SetExtent(uint32_t Width, uint32_t Height);
+#endif
 
 	// release
 	void Release();
@@ -60,6 +105,9 @@ public:
 
 	// get source path
 	std::string GetSourcePath() const;
+
+	// get raw source path
+	std::string GetRawSourcePath() const;
 
 	// get format
 	VkFormat GetFormat() const;
@@ -78,9 +126,10 @@ public:
 
 	uint32_t GetMipMapCount() const;
 
+	UHTextureSettings GetTextureSettings() const;
+
 	bool HasUploadedToGPU() const;
 
-	bool IsLinear() const;
 	// is depth format?
 	bool IsDepthFormat() const;
 
@@ -90,24 +139,27 @@ protected:
 	bool Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory);
 	std::string Name;
 	std::string SourcePath;
+	std::string RawSourcePath;
 
 	VkFormat ImageFormat;
 	VkExtent2D ImageExtent;
 	VkDeviceMemory ImageMemory;
+	VkImage ImageSource;
 
 	bool bHasUploadedToGPU;
 	bool bIsMipMapGenerated;
-	bool bIsLinear;
+	UHTextureSettings TextureSettings;
+	uint64_t MemoryOffset;
+	UHTextureVersion TextureVersion;
+	UHTextureType TextureType;
 
 private:
 
 	// create image view based on stored format and image
 	bool CreateImageView(VkImageViewType InViewType);
-
 	bool bIsSourceCreatedByThis;
 
 	// device variables
-	VkImage ImageSource;
 	VkImageView ImageView;
 	VkImageViewCreateInfo ImageViewInfo;
 	uint32_t MipMapCount;

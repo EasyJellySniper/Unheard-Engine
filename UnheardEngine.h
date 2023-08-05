@@ -6,6 +6,8 @@
 #include <Windows.h>
 #include <string>
 #include <filesystem>
+#include <wrl.h>
+#include <wincodec.h>
 
 // debug define
 #define WITH_DEBUG !NDEBUG || WITH_EDITOR

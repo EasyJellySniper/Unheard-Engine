@@ -4,12 +4,12 @@
 #include "../CoreGlobals.h"
 
 UHTexture::UHTexture()
-	: UHTexture("", VkExtent2D(), VK_FORMAT_R8G8B8A8_SRGB, false)
+	: UHTexture("", VkExtent2D(), VK_FORMAT_R8G8B8A8_SRGB, UHTextureSettings())
 {
 
 }
 
-UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bInIsLinear)
+UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings)
 	: Name(InName)
 	, ImageFormat(InFormat)
 	, ImageExtent(InExtent)
@@ -20,22 +20,48 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat,
 	, bIsSourceCreatedByThis(false)
 	, bHasUploadedToGPU(false)
 	, bIsMipMapGenerated(false)
-	, bIsLinear(bInIsLinear)
+	, TextureSettings(InSettings)
+	, MemoryOffset(~0)
+	, TextureVersion(InitialTexture)
 {
 
 }
 
+#if WITH_DEBUG
+void UHTexture::SetTextureSettings(UHTextureSettings InSetting)
+{
+	TextureSettings = InSetting;
+}
+
+void UHTexture::SetRawSourcePath(std::string InPath)
+{
+	RawSourcePath = InPath;
+}
+
+void UHTexture::SetExtent(uint32_t Width, uint32_t Height)
+{
+	ImageExtent.width = Width;
+	ImageExtent.height = Height;
+}
+#endif
+
 void UHTexture::Release()
 {
 	vkFreeMemory(LogicalDevice, ImageMemory, nullptr);
+	ImageMemory = VK_NULL_HANDLE;
 	vkDestroyImageView(LogicalDevice, ImageView, nullptr);
+	ImageView = VK_NULL_HANDLE;
 
 	// only destroy source if it's created by this
 	// image like swap chain can't be destroyed here
 	if (bIsSourceCreatedByThis)
 	{
 		vkDestroyImage(LogicalDevice, ImageSource, nullptr);
+		ImageSource = VK_NULL_HANDLE;
 	}
+
+	bHasUploadedToGPU = false;
+	bIsMipMapGenerated = false;
 }
 
 void UHTexture::SetImage(VkImage InImage)
@@ -47,11 +73,11 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 {
 	ImageFormat = InInfo.Format;
 	ImageExtent = InInfo.Extent;
-	MipMapCount = InInfo.bUseMipMap ? static_cast<uint32_t>(std::floor(std::log2((std::max)(ImageExtent.width, ImageExtent.height)))) + 1
+	MipMapCount = InInfo.bUseMipMap ? static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1
 		: 1;
 	TextureInfo = InInfo;
 
-	// only create if the source
+	// only create if the source is null, otherwise create image view only
 	if (ImageSource == VK_NULL_HANDLE)
 	{
 		VkImageCreateInfo CreateInfo{};
@@ -91,15 +117,36 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			return false;
 		}
 
-		// try to commit image to GPU memory
-		VkMemoryRequirements MemRequirements;
+		// try to commit image to GPU memory, if it's in the editor mode, always request uncompressed memory size, so toggling between compression won't be an issue
+		VkMemoryRequirements MemRequirements{};
 		vkGetImageMemoryRequirements(LogicalDevice, ImageSource, &MemRequirements);
+
+#if WITH_DEBUG
+		VkDeviceImageMemoryRequirements ImageMemoryReqs{};
+		ImageMemoryReqs.sType = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS;
+		CreateInfo.format = (TextureSettings.bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+		ImageMemoryReqs.pCreateInfo = &CreateInfo;
+
+		VkMemoryRequirements2 MemoryReqs2{};
+		MemoryReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+
+		vkGetDeviceImageMemoryRequirements(LogicalDevice, &ImageMemoryReqs, &MemoryReqs2);
+		MemRequirements = MemoryReqs2.memoryRequirements;
+#endif
+		// validate the alignment
+		if ((MemRequirements.size % MemRequirements.alignment) != 0)
+		{
+			// make the size is always the multiple of alignment
+			VkDeviceSize Stride = MemRequirements.size / MemRequirements.alignment;
+			MemRequirements.size = MemRequirements.alignment * (Stride + 1);
+		}
 
 		// bind to shared memory if available, otherwise, creating memory individually
 		if (InSharedMemory)
 		{
-			uint64_t Offset = InSharedMemory->BindMemory(MemRequirements.size, ImageSource);
-			if (Offset == ~0)
+			// cache the memory offset in shared memory, when it's re-creating, bind to the same offset
+			MemoryOffset = InSharedMemory->BindMemory(MemRequirements.size, ImageSource, InInfo.ReboundOffset);
+			if (MemoryOffset == ~0)
 			{
 				UHE_LOG(L"Failed to bind image to GPU. Exceed image memory budget!\n");
 				return false;
@@ -190,6 +237,11 @@ std::string UHTexture::GetSourcePath() const
 	return SourcePath;
 }
 
+std::string UHTexture::GetRawSourcePath() const
+{
+	return RawSourcePath;
+}
+
 VkFormat UHTexture::GetFormat() const
 {
 	return ImageFormat;
@@ -220,14 +272,14 @@ uint32_t UHTexture::GetMipMapCount() const
 	return MipMapCount;
 }
 
+UHTextureSettings UHTexture::GetTextureSettings() const
+{
+	return TextureSettings;
+}
+
 bool UHTexture::HasUploadedToGPU() const
 {
 	return bHasUploadedToGPU;
-}
-
-bool UHTexture::IsLinear() const
-{
-	return bIsLinear;
 }
 
 bool UHTexture::operator==(const UHTexture& InTexture)
@@ -235,5 +287,7 @@ bool UHTexture::operator==(const UHTexture& InTexture)
 	return InTexture.Name == Name
 		&& InTexture.ImageFormat == ImageFormat
 		&& InTexture.ImageExtent.width == ImageExtent.width
-		&& InTexture.ImageExtent.height == ImageExtent.height;
+		&& InTexture.ImageExtent.height == ImageExtent.height
+		&& TextureSettings.bIsLinear == InTexture.TextureSettings.bIsLinear
+		&& TextureSettings.bIsNormal == InTexture.TextureSettings.bIsNormal;
 }
