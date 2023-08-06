@@ -80,7 +80,7 @@ namespace UHTextureCompressor
 			uint32_t ClosestIdx = 0;
 			for (uint32_t Jdx = 0; Jdx < 4; Jdx++)
 			{
-				float Diff = UHColorRGB::SquareDiff(BlockColors[Idx], RefColor[Jdx]);
+				const float Diff = sqrtf(UHColorRGB::SquareDiff(BlockColors[Idx], RefColor[Jdx]));
 				if (Diff < MinDiff)
 				{
 					MinDiff = Diff;
