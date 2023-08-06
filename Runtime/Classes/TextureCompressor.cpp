@@ -6,10 +6,13 @@
 #include <array>
 #include "Utility.h"
 #include <unordered_map>
+#include <thread>
 
 namespace UHTextureCompressor
 {
-	float GOneDivide255 = 0.0039215686274509803921568627451f;
+	const uint32_t GCompressThreadCount = 4;
+	std::thread GCompressTasks[GCompressThreadCount];
+	const float GOneDivide255 = 0.0039215686274509803921568627451f;
 	// compress raw texture data to block compression, implementation follows the Microsoft document
 	// https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression
 	// input is assumed as RGBA8888 for now
@@ -231,6 +234,17 @@ namespace UHTextureCompressor
 		return OutResult;
 	}
 
+	void WaitCompressionThreads()
+	{
+		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
+		{
+			if (GCompressTasks[Tdx].joinable())
+			{
+				GCompressTasks[Tdx].join();
+			}
+		}
+	}
+
 	std::vector<uint64_t> CompressBC1(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
 	{
 		// 8 bytes per 4x4 block, BC1 compression, alpha channel will be discard
@@ -246,17 +260,36 @@ namespace UHTextureCompressor
 			RGB888[Idx].B = (float)Input[Idx * RawColorStride + 2];
 		}
 
-		int32_t OutputIdx = 0;
-		for (uint32_t Y = 0; Y < Height; Y += 4)
+		// assign BC tasks to threads, divided based on the height
+		assert(GCompressThreadCount == 4);
+		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
 		{
-			for (uint32_t X = 0; X < Width; X += 4)
+			// when height is < 8, use one thread only
+			if (Height <= 8 && Tdx > 0)
 			{
-				if (OutputIdx < static_cast<int32_t>(Output.size()))
-				{
-					Output[OutputIdx++] = BlockCompressionColor(RGB888, Width, Height, (int32_t)Y, (int32_t)X);
-				}
+				break;
 			}
+
+			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &RGB888, &Output]()
+				{
+					const uint32_t YProcessCount = Height / GCompressThreadCount;
+					const uint32_t StartY = (Height > 8) ? Tdx * YProcessCount : 0;
+					const uint32_t EndY = (Height > 8) ? StartY + YProcessCount : Height;
+
+					for (uint32_t Y = StartY; Y < EndY; Y += 4)
+					{
+						for (uint32_t X = 0; X < Width; X += 4)
+						{
+							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
+							if (OutputIdx < static_cast<int32_t>(OutputSize))
+							{
+								Output[OutputIdx] = BlockCompressionColor(RGB888, Width, Height, (int32_t)Y, (int32_t)X);
+							}
+						}
+					}
+				});
 		}
+		WaitCompressionThreads();
 
 		return Output;
 	}
@@ -279,19 +312,37 @@ namespace UHTextureCompressor
 			Alpha8[Idx] = Input[Idx * RawColorStride + 3];
 		}
 
-		int32_t OutputIdx = 0;
-		for (uint32_t Y = 0; Y < Height; Y += 4)
+		// assign BC tasks to threads, divided based on the height
+		assert(GCompressThreadCount == 4);
+		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
 		{
-			for (uint32_t X = 0; X < Width; X += 4)
+			// when height is < 8, use one thread only
+			if (Height <= 8 && Tdx > 0)
 			{
-				if (OutputIdx < static_cast<int32_t>(Output.size()))
-				{
-					// block compress alpha first, then the color
-					Output[OutputIdx++] = BlockCompressionAlpha(Alpha8, Width, Height, (int32_t)Y, (int32_t)X);
-					Output[OutputIdx++] = BlockCompressionColor(RGB888, Width, Height, (int32_t)Y, (int32_t)X);
-				}
+				break;
 			}
+
+			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &RGB888, &Alpha8, &Output]()
+				{
+					const uint32_t YProcessCount = Height / GCompressThreadCount;
+					const uint32_t StartY = (Height > 8) ? Tdx * YProcessCount : 0;
+					const uint32_t EndY = (Height > 8) ? StartY + YProcessCount : Height;
+
+					for (uint32_t Y = StartY; Y < EndY; Y += 4)
+					{
+						for (uint32_t X = 0; X < Width; X += 4)
+						{
+							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
+							if (OutputIdx < static_cast<int32_t>(OutputSize))
+							{
+								Output[2 * OutputIdx] = BlockCompressionAlpha(Alpha8, Width, Height, (int32_t)Y, (int32_t)X);
+								Output[2 * OutputIdx + 1] = BlockCompressionColor(RGB888, Width, Height, (int32_t)Y, (int32_t)X);
+							}
+						}
+					}
+				});
 		}
+		WaitCompressionThreads();
 
 		return Output;
 	}

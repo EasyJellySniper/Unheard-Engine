@@ -297,4 +297,6 @@ Added texture type for future use. Fully understood how block compression works,
 04-08-2023: Start other testing for choosing the best pair of reference color for BC1. Luminance min/max seems working, but it's not the best method.
 Tried the closest line search method, looks promising! Consider to fix the length at 255. There is only a few noises in the image, I have to think about them.
 
-05-08-2023: Discovered that the closest line method won't always work. So adding min/max method as a comparotor, choose the method that gives the smallest difference. 
+05-08-2023: Discovered that the closest line method won't always work. So adding min/max method as a comparotor, choose the method that gives the smallest difference.
+
+06-08-2023: Multi-threaded the block compression.
