@@ -20,7 +20,7 @@ UHCameraComponent::UHCameraComponent()
 	, CameraFrustum(BoundingFrustum())
 	, CullingDistance(1000.0f)
 	, JitterScaleMin(0.01f)
-	, JitterEndDistance(50.0f)
+	, JitterEndDistance(500.0f)
 {
 
 }
@@ -220,8 +220,8 @@ void UHCameraComponent::BuildProjectionMatrix()
 	if (bUseJitterOffset)
 	{
 		const XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
-		JitterOffset.x = Offset.x / Width;
-		JitterOffset.y = Offset.y / Height;
+		JitterOffset.x = Offset.x / Width * 0.5f;
+		JitterOffset.y = Offset.y / Height * 0.5f;
 
 		const XMMATRIX JitterMatrix = XMMatrixTranslation(JitterOffset.x, JitterOffset.y, 0);
 		XMStoreFloat4x4(&ProjectionMatrix, P * JitterMatrix);
