@@ -21,7 +21,7 @@ UHFbxImporter::~UHFbxImporter()
 	FbxSDKManager = nullptr;
 }
 
-void UHFbxImporter::ImportRawFbx(std::vector<std::unique_ptr<UHMaterial>>& InMatVector)
+void UHFbxImporter::ImportRawFbx(std::vector<UniquePtr<UHMaterial>>& InMatVector)
 {
 	// IO settings initialization
 	FbxIOSettings* FbxSDKIOSettings = FbxIOSettings::Create(FbxSDKManager, IOSROOT);
@@ -424,9 +424,9 @@ std::vector<XMFLOAT4> ReadTangents(FbxMesh* InMesh, int32_t VertexCount, bool bM
 }
 
 // mirror from FBX example: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_material_8cxx_example_html
-std::unique_ptr<UHMaterial> ImportMaterial(FbxNode* InNode)
+UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode)
 {
-	std::unique_ptr<UHMaterial> UHMat = std::make_unique<UHMaterial>();
+	UniquePtr<UHMaterial> UHMat = MakeUnique<UHMaterial>();
 	int32_t MatCount = InNode->GetMaterialCount();
 
 	// only import single material per mesh at the moment
@@ -584,7 +584,7 @@ std::unique_ptr<UHMaterial> ImportMaterial(FbxNode* InNode)
 	return UHMat;
 }
 
-void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath, std::vector<std::unique_ptr<UHMaterial>>& InMatVector, UHRawMeshAssetCache& Cache)
+void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath, std::vector<UniquePtr<UHMaterial>>& InMatVector, UHRawMeshAssetCache& Cache)
 {
 	// model loading here is straight forward, I only load what I need at the moment
 	// if normal/tangent data is missing, I'd rely on Fbx's generation only
@@ -718,7 +718,7 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		NewMesh.SetTangentData(MeshTangent);
 
 		// at last, try to import material as well
-		std::unique_ptr<UHMaterial> NewMat = ImportMaterial(InNode);
+		UniquePtr<UHMaterial> NewMat = ImportMaterial(InNode);
 		NewMesh.SetImportedMaterialName(NewMat->GetName());
 		if (!UHUtilities::FindByElement(ImportedMaterialNames, NewMat->GetName()))
 		{

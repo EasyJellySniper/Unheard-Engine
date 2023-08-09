@@ -151,18 +151,18 @@ public:
 
 	// request a unique render buffer, due to the template, this can not be managed by Graphic class
 	template<typename T>
-	std::unique_ptr<UHRenderBuffer<T>> RequestRenderBuffer() const
+	UniquePtr<UHRenderBuffer<T>> RequestRenderBuffer() const
 	{
-		std::unique_ptr<UHRenderBuffer<T>> NewBuffer = std::make_unique<UHRenderBuffer<T>>();
+		UniquePtr<UHRenderBuffer<T>> NewBuffer = MakeUnique<UHRenderBuffer<T>>();
 		NewBuffer->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 		return std::move(NewBuffer);
 	}
 
 	// request acceleration structure
-	std::unique_ptr<UHAccelerationStructure> RequestAccelerationStructure();
+	UniquePtr<UHAccelerationStructure> RequestAccelerationStructure();
 
 	// request a shader reference based on input
-	bool CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::filesystem::path OutputShaderPath);
+	bool CreateShaderModule(UniquePtr<UHShader>& NewShader, std::filesystem::path OutputShaderPath);
 	uint32_t RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> InMacro = std::vector<std::string>());
 	uint32_t RequestMaterialShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
@@ -348,18 +348,18 @@ private:
 
 protected:
 	// system managed pools
-	std::vector<std::unique_ptr<UHShader>> ShaderPools;
-	std::vector<std::unique_ptr<UHGraphicState>> StatePools;
-	std::vector<std::unique_ptr<UHRenderTexture>> RTPools;
-	std::vector<std::unique_ptr<UHSampler>> SamplerPools;
-	std::vector<std::unique_ptr<UHTexture2D>> Texture2DPools;
-	std::vector<std::unique_ptr<UHTextureCube>> TextureCubePools;
-	std::vector<std::unique_ptr<UHMaterial>> MaterialPools;
-	std::vector<std::unique_ptr<UHGPUQuery>> QueryPools;
+	std::vector<UniquePtr<UHShader>> ShaderPools;
+	std::vector<UniquePtr<UHGraphicState>> StatePools;
+	std::vector<UniquePtr<UHRenderTexture>> RTPools;
+	std::vector<UniquePtr<UHSampler>> SamplerPools;
+	std::vector<UniquePtr<UHTexture2D>> Texture2DPools;
+	std::vector<UniquePtr<UHTextureCube>> TextureCubePools;
+	std::vector<UniquePtr<UHMaterial>> MaterialPools;
+	std::vector<UniquePtr<UHGPUQuery>> QueryPools;
 
 	// shared GPU memory
-	std::unique_ptr<UHGPUMemory> MeshBufferSharedMemory = nullptr;
-	std::unique_ptr<UHGPUMemory> ImageSharedMemory = nullptr;
+	UniquePtr<UHGPUMemory> MeshBufferSharedMemory = nullptr;
+	UniquePtr<UHGPUMemory> ImageSharedMemory = nullptr;
 
 #if WITH_DEBUG
 	// give access for some classes in debug build

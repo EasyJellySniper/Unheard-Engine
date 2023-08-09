@@ -43,20 +43,20 @@ public:
 
 private:
 	// loaded meshes
-	std::vector<std::unique_ptr<UHMesh>> UHMeshes;
+	std::vector<UniquePtr<UHMesh>> UHMeshes;
 
 	// cache of loaded meshes
 	std::vector<UHMesh*> UHMeshesCache;
 
 #if WITH_DEBUG
 	// fbx importer class, only import raw mesh in debug mode
-	std::unique_ptr<UHFbxImporter> UHFbxImporterInterface;
+	UniquePtr<UHFbxImporter> UHFbxImporterInterface;
 
 	// shader importer, only compile shader in debug mode
-	std::unique_ptr<UHShaderImporter> UHShaderImporterInterface;
+	UniquePtr<UHShaderImporter> UHShaderImporterInterface;
 
 	// material importer
-	std::unique_ptr<UHMaterialImporter> UHMaterialImporterInterface;
+	UniquePtr<UHMaterialImporter> UHMaterialImporterInterface;
 
 	static UHAssetManager* AssetMgrEditorOnly;
 #endif

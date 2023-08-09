@@ -87,8 +87,8 @@ bool UHGraphic::InitGraphics(HWND Hwnd)
 	if (bInitSuccess)
 	{
 		// allocate shared GPU memory if initialization succeed
-		ImageSharedMemory = std::make_unique<UHGPUMemory>();
-		MeshBufferSharedMemory = std::make_unique<UHGPUMemory>();
+		ImageSharedMemory = MakeUnique<UHGPUMemory>();
+		MeshBufferSharedMemory = MakeUnique<UHGPUMemory>();
 
 		ImageSharedMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 		MeshBufferSharedMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
@@ -920,7 +920,7 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView,
 
 UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 {
-	std::unique_ptr<UHGPUQuery> NewQuery = std::make_unique<UHGPUQuery>();
+	UniquePtr<UHGPUQuery> NewQuery = MakeUnique<UHGPUQuery>();
 	NewQuery->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewQuery->SetGfxCache(this);
 	NewQuery->CreateQueryPool(Count, QueueType);
@@ -949,7 +949,7 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 		return RTPools[Idx].get();
 	}
 
-	std::unique_ptr<UHRenderTexture> NewRT = std::make_unique<UHRenderTexture>(InName, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
+	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
 	NewRT->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewRT->SetImage(InImage);
 
@@ -985,7 +985,7 @@ UHTexture2D* UHGraphic::RequestTexture2D(UHTexture2D& LoadedTex)
 		return Texture2DPools[Idx].get();
 	}
 
-	std::unique_ptr<UHTexture2D> NewTex = std::make_unique<UHTexture2D>(LoadedTex.GetName()
+	UniquePtr<UHTexture2D> NewTex = MakeUnique<UHTexture2D>(LoadedTex.GetName()
 		, LoadedTex.GetSourcePath(), LoadedTex.GetExtent(), LoadedTex.GetFormat(), LoadedTex.GetTextureSettings());
 	NewTex->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewTex->SetGfxCache(this);
@@ -1060,7 +1060,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 		return TextureCubePools[Idx].get();
 	}
 
-	std::unique_ptr<UHTextureCube> NewCube = std::make_unique<UHTextureCube>(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
+	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
 	NewCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewCube->SetGfxCache(this);
 
@@ -1077,7 +1077,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 // mostly used for engine materials
 UHMaterial* UHGraphic::RequestMaterial()
 {
-	std::unique_ptr<UHMaterial> NewMat = std::make_unique<UHMaterial>();
+	UniquePtr<UHMaterial> NewMat = MakeUnique<UHMaterial>();
 	MaterialPools.push_back(std::move(NewMat));
 	return MaterialPools.back().get();
 }
@@ -1086,7 +1086,7 @@ UHMaterial* UHGraphic::RequestMaterial(std::filesystem::path InPath)
 {
 	// for now this function just allocate a new material
 	// might have other usage in the future
-	std::unique_ptr<UHMaterial> NewMat = std::make_unique<UHMaterial>();
+	UniquePtr<UHMaterial> NewMat = MakeUnique<UHMaterial>();
 	if (NewMat->Import(InPath))
 	{
 		NewMat->SetGfxCache(this);
@@ -1098,9 +1098,9 @@ UHMaterial* UHGraphic::RequestMaterial(std::filesystem::path InPath)
 	return nullptr;
 }
 
-std::unique_ptr<UHAccelerationStructure> UHGraphic::RequestAccelerationStructure()
+UniquePtr<UHAccelerationStructure> UHGraphic::RequestAccelerationStructure()
 {
-	std::unique_ptr<UHAccelerationStructure> NewAS = std::make_unique<UHAccelerationStructure>();
+	UniquePtr<UHAccelerationStructure> NewAS = MakeUnique<UHAccelerationStructure>();
 	NewAS->SetGfxCache(this);
 	NewAS->SetVulkanInstance(VulkanInstance);
 	NewAS->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
@@ -1108,7 +1108,7 @@ std::unique_ptr<UHAccelerationStructure> UHGraphic::RequestAccelerationStructure
 	return std::move(NewAS);
 }
 
-bool UHGraphic::CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::filesystem::path OutputShaderPath)
+bool UHGraphic::CreateShaderModule(UniquePtr<UHShader>& NewShader, std::filesystem::path OutputShaderPath)
 {
 	// setup input shader path, read from compiled shader
 	if (!std::filesystem::exists(OutputShaderPath))
@@ -1147,7 +1147,7 @@ bool UHGraphic::CreateShaderModule(std::unique_ptr<UHShader>& NewShader, std::fi
 uint32_t UHGraphic::RequestShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 	, std::vector<std::string> InMacro)
 {
-	std::unique_ptr<UHShader> NewShader = std::make_unique<UHShader>(InShaderName, InSource, EntryName, ProfileName, InMacro);
+	UniquePtr<UHShader> NewShader = MakeUnique<UHShader>(InShaderName, InSource, EntryName, ProfileName, InMacro);
 	NewShader->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 	// early return if it's exist in pool
@@ -1202,7 +1202,7 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 	}
 #endif
 
-	std::unique_ptr<UHShader> NewShader = std::make_unique<UHShader>(OutName, InSource, EntryName, ProfileName, true, InMacro);
+	UniquePtr<UHShader> NewShader = MakeUnique<UHShader>(OutName, InSource, EntryName, ProfileName, true, InMacro);
 	NewShader->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 	// early return if it's exist in pool and does not need recompile
@@ -1253,7 +1253,7 @@ UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 		return StatePools[Idx].get();
 	}
 
-	std::unique_ptr<UHGraphicState> NewState = std::make_unique<UHGraphicState>();
+	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>();
 	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	
 	if (!NewState->CreateState(InInfo))
@@ -1291,7 +1291,7 @@ UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 		return StatePools[Idx].get();
 	}
 
-	std::unique_ptr<UHGraphicState> NewState = std::make_unique<UHGraphicState>();
+	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>();
 	NewState->SetVulkanInstance(VulkanInstance);
 	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
@@ -1315,7 +1315,7 @@ UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 		return StatePools[Idx].get();
 	}
 
-	std::unique_ptr<UHComputeState> NewState = std::make_unique<UHComputeState>();
+	UniquePtr<UHComputeState> NewState = MakeUnique<UHComputeState>();
 	NewState->SetVulkanInstance(VulkanInstance);
 	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
@@ -1339,7 +1339,7 @@ UHSampler* UHGraphic::RequestTextureSampler(UHSamplerInfo InInfo)
 	}
 
 	// create new one if cache fails
-	std::unique_ptr<UHSampler> NewSampler = std::make_unique<UHSampler>(InInfo);
+	UniquePtr<UHSampler> NewSampler = MakeUnique<UHSampler>(InInfo);
 	NewSampler->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 	if (!NewSampler->Create())

@@ -7,11 +7,11 @@ UHMathNode::UHMathNode(UHMathNodeOperator DefaultOp)
 	NodeType = MathNode;
 
 	Inputs.resize(2);
-	Inputs[0] = std::make_unique<UHGraphPin>("A", this, AnyNode);
-	Inputs[1] = std::make_unique<UHGraphPin>("B", this, AnyNode);
+	Inputs[0] = MakeUnique<UHGraphPin>("A", this, AnyNode);
+	Inputs[1] = MakeUnique<UHGraphPin>("B", this, AnyNode);
 
 	Outputs.resize(1);
-	Outputs[0] = std::make_unique<UHGraphPin>("Result", this, AnyNode);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, AnyNode);
 
 	CurrentOperator = DefaultOp;
 }

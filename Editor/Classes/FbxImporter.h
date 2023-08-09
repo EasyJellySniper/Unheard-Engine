@@ -54,14 +54,14 @@ public:
 	~UHFbxImporter();
 
 	// this will output the UHMesh list
-	void ImportRawFbx(std::vector<std::unique_ptr<UHMaterial>>& InMatVector);
+	void ImportRawFbx(std::vector<UniquePtr<UHMaterial>>& InMatVector);
 
 	// is UHMesh cached?
 	bool IsUHMeshCached(std::filesystem::path InUHMeshAssetPath);
 
 private:
 	// create UH meshes
-	void CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath, std::vector<std::unique_ptr<UHMaterial>>& InMatVector, UHRawMeshAssetCache& Cache);
+	void CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath, std::vector<UniquePtr<UHMaterial>>& InMatVector, UHRawMeshAssetCache& Cache);
 
 	// add raw mesh asset cache
 	void AddRawMeshAssetCache(UHRawMeshAssetCache InAssetCache);

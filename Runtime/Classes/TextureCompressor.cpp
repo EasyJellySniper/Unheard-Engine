@@ -154,7 +154,7 @@ namespace UHTextureCompressor
 		}
 
 		uint64_t OutResult;
-		memcpy(&OutResult, &FinalResult, sizeof(UHColorBC1));
+		memcpy_s(&OutResult, sizeof(UHColorBC1), &FinalResult, sizeof(UHColorBC1));
 		return OutResult;
 	}
 
@@ -227,10 +227,10 @@ namespace UHTextureCompressor
 		}
 
 		// copy 48-bit to result
-		memcpy(&Result.AlphaIndices[0], &Indices, sizeof(uint8_t) * 6);
+		memcpy_s(&Result.AlphaIndices[0], sizeof(uint8_t) * 6, &Indices, sizeof(uint8_t) * 6);
 
 		uint64_t OutResult;
-		memcpy(&OutResult, &Result, sizeof(UHColorBC3));
+		memcpy_s(&OutResult, sizeof(UHColorBC3), &Result, sizeof(UHColorBC3));
 		return OutResult;
 	}
 

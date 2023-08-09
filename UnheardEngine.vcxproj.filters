@@ -261,9 +261,6 @@
     <ClInclude Include="Editor\Classes\TextureNodeGUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Editor\Classes\GUIDefines.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Editor\Classes\MaterialImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -292,6 +289,39 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Classes\TextureCompressor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Dialog\StatusDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\GUIControl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\Button.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\CheckBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\TextBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\ComboBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\ListBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\GroupBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\RadioButton.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\Label.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\Controls\Slider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -552,6 +582,39 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Classes\TextureCompressor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Dialog\StatusDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\GUIControl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\Button.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\CheckBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\TextBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\ComboBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\ListBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\GroupBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\RadioButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\Label.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Controls\Slider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

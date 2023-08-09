@@ -46,8 +46,8 @@ private:
 	// custom dialogs
 	UHProfileDialog ProfileDialog;
 	UHSettingDialog SettingDialog;
-	std::unique_ptr<UHTextureDialog> TextureDialog;
-	std::unique_ptr<UHMaterialDialog> MaterialDialog;
+	UniquePtr<UHTextureDialog> TextureDialog;
+	UniquePtr<UHMaterialDialog> MaterialDialog;
 };
 
 #endif

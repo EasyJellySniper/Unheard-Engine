@@ -121,15 +121,15 @@ public:
 	UHSampler* GetSystemSampler(UHSystemTextureType InType) const;
 	std::vector<std::string> GetMaterialDefines() const;
 	std::vector<std::string> GetRegisteredTextureNames();
-	const std::array<std::unique_ptr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
+	const std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
 	UHRenderBuffer<UHMaterialData>* GetRTMaterialDataGPU() const;
 
 	bool operator==(const UHMaterial& InMat);
 
 #if WITH_DEBUG
 	void GenerateDefaultMaterialNodes();
-	std::unique_ptr<UHMaterialNode>& GetMaterialNode();
-	std::vector<std::unique_ptr<UHGraphNode>>& GetEditNodes();
+	UniquePtr<UHMaterialNode>& GetMaterialNode();
+	std::vector<UniquePtr<UHGraphNode>>& GetEditNodes();
 
 	void SetGUIRelativePos(std::vector<POINT> InPos);
 	std::vector<POINT>& GetGUIRelativePos();
@@ -157,8 +157,8 @@ private:
 	std::array<UHSampler*, UHSystemTextureType::TextureTypeMax> SystemSamplers;
 	std::array<std::string, UHMaterialInputs::MaterialMax> TexFileNames;
 
-	std::unique_ptr<UHMaterialNode> MaterialNode;
-	std::vector<std::unique_ptr<UHGraphNode>> EditNodes;
+	UniquePtr<UHMaterialNode> MaterialNode;
+	std::vector<UniquePtr<UHGraphNode>> EditNodes;
 	std::vector<POINT> EditGUIRelativePos;
 
 	// GUI positions relative to material node
@@ -168,6 +168,6 @@ private:
 	// material constant buffer, the size will be following the result of graph
 	size_t MaterialBufferSize;
 	std::vector<uint8_t> MaterialConstantsCPU;
-	std::array<std::unique_ptr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight> MaterialConstantsGPU;
-	std::unique_ptr<UHRenderBuffer<UHMaterialData>> MaterialRTDataGPU;
+	std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight> MaterialConstantsGPU;
+	UniquePtr<UHRenderBuffer<UHMaterialData>> MaterialRTDataGPU;
 };

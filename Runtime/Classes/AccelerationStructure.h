@@ -29,9 +29,9 @@ private:
 	VkDeviceAddress GetDeviceAddress(VkBuffer InBuffer);
 	VkDeviceAddress GetDeviceAddress(VkAccelerationStructureKHR InAS);
 
-	std::unique_ptr<UHRenderBuffer<BYTE>> ScratchBuffer;
-	std::unique_ptr<UHRenderBuffer<VkAccelerationStructureInstanceKHR>> ASInstanceBuffer;
-	std::unique_ptr<UHRenderBuffer<BYTE>> AccelerationStructureBuffer;
+	UniquePtr<UHRenderBuffer<BYTE>> ScratchBuffer;
+	UniquePtr<UHRenderBuffer<VkAccelerationStructureInstanceKHR>> ASInstanceBuffer;
+	UniquePtr<UHRenderBuffer<BYTE>> AccelerationStructureBuffer;
 	VkAccelerationStructureKHR AccelerationStructure;
 
 	// instance KHRs and renderer cache, both should the same length

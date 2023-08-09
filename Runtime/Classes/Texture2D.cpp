@@ -115,7 +115,7 @@ void UHTexture2D::Recreate()
 		// convert to uint8 array
 		TextureData.clear();
 		TextureData.resize(CompressedData.size() * 8);
-		memcpy(TextureData.data(), CompressedData.data(), CompressedData.size() * sizeof(uint64_t));
+		memcpy_s(TextureData.data(), CompressedData.size() * sizeof(uint64_t), CompressedData.data(), CompressedData.size() * sizeof(uint64_t));
 		TextureSettings.bIsCompressed = true;
 
 		// repeat the texture creation for compressed texture

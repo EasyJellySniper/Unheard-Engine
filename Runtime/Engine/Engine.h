@@ -82,26 +82,26 @@ private:
 	HINSTANCE UHWindowInstance;
 
 	// graphic class
-	std::unique_ptr<UHGraphic> UHEGraphic;
+	UniquePtr<UHGraphic> UHEGraphic;
 
 	// input class
-	std::unique_ptr<UHRawInput> UHERawInput;
+	UniquePtr<UHRawInput> UHERawInput;
 
 	// game timer class
-	std::unique_ptr<UHGameTimer> UHEGameTimer;
+	UniquePtr<UHGameTimer> UHEGameTimer;
 
 	// asset class
-	std::unique_ptr<UHAssetManager> UHEAsset;
+	UniquePtr<UHAssetManager> UHEAsset;
 
 	// config class
-	std::unique_ptr<UHConfigManager> UHEConfig;
+	UniquePtr<UHConfigManager> UHEConfig;
 
 	// renderer class
-	std::unique_ptr<UHDeferredShadingRenderer> UHERenderer;
+	UniquePtr<UHDeferredShadingRenderer> UHERenderer;
 
 #if WITH_DEBUG
 	// editor class
-	std::unique_ptr<UHEditor> UHEEditor;
+	UniquePtr<UHEditor> UHEEditor;
 	std::wstring WindowCaption;
 #endif
 

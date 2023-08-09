@@ -4,13 +4,16 @@
 #if WITH_DEBUG
 #include <vector>
 #include "../../Runtime/Classes/GraphNode/GraphNode.h"
-#include "GUIDefines.h"
+#include "../Controls/GroupBox.h"
+#include "../Controls/TextBox.h"
+#include "../Controls/ComboBox.h"
+#include "../Controls/RadioButton.h"
 
 class UHGraphNodeGUI
 {
 public:
 	UHGraphNodeGUI();
-	~UHGraphNodeGUI();
+	virtual ~UHGraphNodeGUI();
 
 	// virtual callback functions
 	virtual void Update() {}
@@ -25,30 +28,29 @@ public:
 	UHGraphPin* GetInputPinByMousePos(POINT InMousePos, int32_t& OutIndex) const;
 
 	HWND GetHWND() const;
-	HWND GetInputPin(int32_t InIndex) const;
-	HWND GetOutputPin(int32_t InIndex) const;
-	HWND GetCombobox() const;
+	UHRadioButton* GetInputPin(int32_t InIndex) const;
+	UHRadioButton* GetOutputPin(int32_t InIndex) const;
 	UHGraphNode* GetNode();
 
 protected:
 	virtual void PreAddingPins() = 0;
 	virtual void PostAddingPins() = 0;
-	HWND NodeGUI;
+	UniquePtr<UHGroupBox> NodeGUI;
 	UHGraphNode* GraphNode;
 
 	// textField input
 	int32_t InputTextFieldLength;
-	std::vector<HWND> InputsTextField;
+	std::vector<UniquePtr<UHTextBox>> InputsTextFields;
 
 	// combo box input
-	UHGUIMeasurement ComboBoxMeasure;
-	std::vector<std::string> ComboBoxItems;
-	HWND ComboBox;
+	UniquePtr<UHComboBox> ComboBox;
+	std::vector<std::wstring> ComboBoxItems;
+	UHGUIProperty ComboBoxProp;
 
 private:
 	std::string GUIName;
-	std::vector<HWND> InputsButton;
-	std::vector<HWND> OutputsButton;
+	std::vector<UniquePtr<UHRadioButton>> InputsButton;
+	std::vector<UniquePtr<UHRadioButton>> OutputsButton;
 };
 
 struct UHPinSelectInfo
@@ -69,6 +71,6 @@ struct UHPinSelectInfo
 	bool bReadyForConnect;
 };
 
-extern std::unique_ptr<UHPinSelectInfo> GPinSelectInfo;
+extern UniquePtr<UHPinSelectInfo> GPinSelectInfo;
 
 #endif

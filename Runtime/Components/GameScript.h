@@ -16,6 +16,7 @@ class UHGameScript : public UHComponent
 {
 public:
 	UHGameScript();
+	virtual ~UHGameScript() {}
 	virtual void Update() override {}
 	virtual void OnEngineUpdate(UHGameTimer* InGameTimer) {}
 	virtual void OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx) {}

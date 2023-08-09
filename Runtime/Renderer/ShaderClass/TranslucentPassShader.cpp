@@ -57,9 +57,9 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHTranslucentPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& LightConst
+void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& LightConst
 	, const UHRenderTexture* RTShadowResult
 	, const UHSampler* LinearClamppedSampler
 	, const UHMeshRendererComponent* InRenderer)

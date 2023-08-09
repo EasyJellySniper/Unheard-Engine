@@ -3,6 +3,11 @@
 
 #if WITH_DEBUG
 #include <unordered_map>
+#include <memory>
+#include "../Controls/CheckBox.h"
+#include "../Controls/TextBox.h"
+#include "../Controls/Button.h"
+#include "../Controls/ComboBox.h"
 
 class UHConfigManager;
 class UHEngine;
@@ -19,6 +24,34 @@ public:
 	virtual void Update() override;
 
 private:
+	// GUI controls
+	UniquePtr<UHCheckBox> VSyncGUI;
+	UniquePtr<UHCheckBox> FullScreenGUI;
+	UniquePtr<UHTextBox> CameraMoveSpeedGUI;
+	UniquePtr<UHTextBox> MouseRotateSpeedGUI;
+	UniquePtr<UHTextBox> ForwardKeyGUI;
+	UniquePtr<UHTextBox> BackKeyGUI;
+	UniquePtr<UHTextBox> LeftKeyGUI;
+	UniquePtr<UHTextBox> RightKeyGUI;
+	UniquePtr<UHTextBox> DownKeyGUI;
+	UniquePtr<UHTextBox> UpKeyGUI;
+	UniquePtr<UHTextBox> FPSLimitGUI;
+	UniquePtr<UHTextBox> MeshMemBudgetGUI;
+	UniquePtr<UHTextBox> TexMemBudgetGUI;
+
+	UniquePtr<UHTextBox> RenderWidthGUI;
+	UniquePtr<UHTextBox> RenderHeightGUI;
+	UniquePtr<UHButton> ApplyResolutionGUI;
+	UniquePtr<UHCheckBox>  EnableTaaGUI;
+	UniquePtr<UHCheckBox>  EnableRtGUI;
+	UniquePtr<UHCheckBox>  EnableGPULabelGUI;
+	UniquePtr<UHCheckBox>  EnableLayerValidationGUI;
+	UniquePtr<UHCheckBox>  EnableGPUTimingGUI;
+	UniquePtr<UHCheckBox>  EnableDepthPrePassGUI;
+	UniquePtr<UHCheckBox>  EnableParallelSubmissionGUI;
+	UniquePtr<UHTextBox> ParallelThreadCountGUI;
+	UniquePtr<UHComboBox>  RTShadowQualityGUI;
+	UniquePtr<UHCheckBox>  EnableAsyncComputeGUI;
 
 	// control functions
 	void ControlVsync();

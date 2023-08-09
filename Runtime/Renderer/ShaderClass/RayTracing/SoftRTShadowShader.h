@@ -7,7 +7,7 @@ public:
 	UHSoftRTShadowShader() {}
 	UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name);
 
-	void BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const UHRenderTexture* RTShadowResult
 		, const UHRenderTexture* RTTranslucentShadowResult
 		, const UHRenderTexture* DepthTexture

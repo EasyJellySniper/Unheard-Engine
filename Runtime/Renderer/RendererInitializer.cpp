@@ -82,13 +82,13 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	// a buffer to store vertex normal (different than bump normal) and mip map level
 	SceneMipFormat = VK_FORMAT_R16_SFLOAT;
 
-#if WITH_DEBUG
 	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
 	{
 		GPUTimeQueries[Idx] = nullptr;
+#if WITH_DEBUG
 		GPUTimes[Idx] = 0.0f;
-	}
 #endif
+	}
 }
 
 bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
@@ -944,13 +944,13 @@ void UHDeferredShadingRenderer::CreateThreadObjects()
 	TranslucentParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
 
 	// init threads, it will wait at the beginning
-	RenderThread = std::make_unique<UHThread>();
+	RenderThread = MakeUnique<UHThread>();
 	RenderThread->BeginThread(std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this), GRenderThreadAffinity);
 	WorkerThreads.resize(NumWorkerThreads);
 
 	for (int32_t Idx = 0; Idx < NumWorkerThreads; Idx++)
 	{
-		WorkerThreads[Idx] = std::make_unique<UHThread>();
+		WorkerThreads[Idx] = MakeUnique<UHThread>();
 		WorkerThreads[Idx]->BeginThread(std::thread(&UHDeferredShadingRenderer::WorkerThreadLoop, this, Idx), GWorkerThreadAffinity + Idx);
 	}
 }

@@ -30,33 +30,33 @@ UHFloat4NodeGUI::UHFloat4NodeGUI()
 
 void UHFloatNodeGUI::SetDefaultValueFromGUI()
 {
-	Node->SetValue(std::stof(UHEditorUtil::GetEditControlText(InputsTextField[0])));
+	Node->SetValue(InputsTextFields[0]->Parse<float>());
 }
 
 void UHFloat2NodeGUI::SetDefaultValueFromGUI()
 {
 	XMFLOAT2 Value;
-	Value.x = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[0]));
-	Value.y = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[1]));
+	Value.x = InputsTextFields[0]->Parse<float>();
+	Value.y = InputsTextFields[1]->Parse<float>();
 	Node->SetValue(Value);
 }
 
 void UHFloat3NodeGUI::SetDefaultValueFromGUI()
 {
 	XMFLOAT3 Value;
-	Value.x = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[0]));
-	Value.y = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[1]));
-	Value.z = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[2]));
+	Value.x = InputsTextFields[0]->Parse<float>();
+	Value.y = InputsTextFields[1]->Parse<float>();
+	Value.z = InputsTextFields[2]->Parse<float>();
 	Node->SetValue(Value);
 }
 
 void UHFloat4NodeGUI::SetDefaultValueFromGUI()
 {
 	XMFLOAT4 Value;
-	Value.x = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[0]));
-	Value.y = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[1]));
-	Value.z = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[2]));
-	Value.w = std::stof(UHEditorUtil::GetEditControlText(InputsTextField[3]));
+	Value.x = InputsTextFields[0]->Parse<float>();
+	Value.y = InputsTextFields[1]->Parse<float>();
+	Value.z = InputsTextFields[2]->Parse<float>();
+	Value.w = InputsTextFields[3]->Parse<float>();
 	Node->SetValue(Value);
 }
 
@@ -87,34 +87,34 @@ void UHFloat4NodeGUI::PreAddingPins()
 void UHFloatNodeGUI::PostAddingPins()
 {
 	// sync value to control
-	UHEditorUtil::SetEditControl(InputsTextField[0], UHUtilities::FloatToWString(Node->GetValue()));
+	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Node->GetValue()));
 }
 
 void UHFloat2NodeGUI::PostAddingPins()
 {
 	// sync value to control
 	XMFLOAT2 Value = Node->GetValue();
-	UHEditorUtil::SetEditControl(InputsTextField[0], UHUtilities::FloatToWString(Value.x));
-	UHEditorUtil::SetEditControl(InputsTextField[1], UHUtilities::FloatToWString(Value.y));
+	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.x));
+	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.y));
 }
 
 void UHFloat3NodeGUI::PostAddingPins()
 {
 	// sync value to control
 	XMFLOAT3 Value = Node->GetValue();
-	UHEditorUtil::SetEditControl(InputsTextField[0], UHUtilities::FloatToWString(Value.x));
-	UHEditorUtil::SetEditControl(InputsTextField[1], UHUtilities::FloatToWString(Value.y));
-	UHEditorUtil::SetEditControl(InputsTextField[2], UHUtilities::FloatToWString(Value.z));
+	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.x));
+	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.y));
+	InputsTextFields[2]->SetText(UHUtilities::FloatToWString(Value.z));
 }
 
 void UHFloat4NodeGUI::PostAddingPins()
 {
 	// sync value to control
 	XMFLOAT4 Value = Node->GetValue();
-	UHEditorUtil::SetEditControl(InputsTextField[0], UHUtilities::FloatToWString(Value.x));
-	UHEditorUtil::SetEditControl(InputsTextField[1], UHUtilities::FloatToWString(Value.y));
-	UHEditorUtil::SetEditControl(InputsTextField[2], UHUtilities::FloatToWString(Value.z));
-	UHEditorUtil::SetEditControl(InputsTextField[3], UHUtilities::FloatToWString(Value.w));
+	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.x));
+	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.y));
+	InputsTextFields[2]->SetText(UHUtilities::FloatToWString(Value.z));
+	InputsTextFields[3]->SetText(UHUtilities::FloatToWString(Value.w));
 }
 
 #endif

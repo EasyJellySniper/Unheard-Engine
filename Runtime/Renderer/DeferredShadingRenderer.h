@@ -194,9 +194,9 @@ private:
 	uint32_t FrameNumberRT;
 
 	// Render thread defines, UH engine will always use a thread for rendering, and doing parallel submission with worker threads
-	std::unique_ptr<UHThread> RenderThread;
+	UniquePtr<UHThread> RenderThread;
 	int32_t NumWorkerThreads;
-	std::vector<std::unique_ptr<UHThread>> WorkerThreads;
+	std::vector<UniquePtr<UHThread>> WorkerThreads;
 	bool bIsResetNeededShared;
 	UHParallelTask ParallelTask;
 	bool bParallelSubmissionRT;
@@ -209,15 +209,15 @@ private:
 
 	// system constant
 	UHSystemConstants SystemConstantsCPU;
-	std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight> SystemConstantsGPU;
+	std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight> SystemConstantsGPU;
 
 	// object & material constants, I'll create constant buffer which are big enough for all renderers
 	std::vector<UHObjectConstants> ObjectConstantsCPU;
-	std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight> ObjectConstantsGPU;
+	std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight> ObjectConstantsGPU;
 
 	// light buffers, this will be used as structure buffer instead of constant
 	std::vector<UHDirectionalLightConstants> DirLightConstantsCPU;
-	std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight> DirectionalLightBuffer;
+	std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight> DirectionalLightBuffer;
 
 	// shared samplers
 	UHSampler* PointClampedSampler;
@@ -303,7 +303,7 @@ private:
 	// debug view shader
 	UHDebugViewShader DebugViewShader;
 	int32_t DebugViewIndex;
-	std::unique_ptr<UHRenderBuffer<uint32_t>> DebugViewData;
+	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
 
 	// profiles
 	float RenderThreadTime;
@@ -315,7 +315,7 @@ private:
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
 	VkFormat RTShadowFormat;
-	std::array<std::unique_ptr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
+	std::array<UniquePtr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
 
 	UHRTDefaultHitGroupShader RTDefaultHitGroupShader;
 	UHSoftRTShadowShader SoftRTShadowShader;
@@ -328,7 +328,7 @@ private:
 	UHRTIndicesTable RTIndicesTable;
 	UHRTIndicesTypeTable RTIndicesTypeTable;
 	UHRTMaterialDataTable RTMaterialDataTable;
-	std::unique_ptr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
+	UniquePtr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
 
 	uint32_t RTInstanceCount;
 

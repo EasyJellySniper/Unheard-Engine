@@ -85,14 +85,14 @@ private:
 	bool bIndexBuffer32Bit;
 
 	// GPU VB/IB buffer
-	std::unique_ptr<UHRenderBuffer<XMFLOAT3>> PositionBuffer;
-	std::unique_ptr<UHRenderBuffer<XMFLOAT2>> UV0Buffer;
-	std::unique_ptr<UHRenderBuffer<XMFLOAT3>> NormalBuffer;
-	std::unique_ptr<UHRenderBuffer<XMFLOAT4>> TangentBuffer;
+	UniquePtr<UHRenderBuffer<XMFLOAT3>> PositionBuffer;
+	UniquePtr<UHRenderBuffer<XMFLOAT2>> UV0Buffer;
+	UniquePtr<UHRenderBuffer<XMFLOAT3>> NormalBuffer;
+	UniquePtr<UHRenderBuffer<XMFLOAT4>> TangentBuffer;
 
-	std::unique_ptr<UHRenderBuffer<uint32_t>> IndexBuffer;
-	std::unique_ptr<UHRenderBuffer<uint16_t>> IndexBuffer16;
-	std::unique_ptr<UHAccelerationStructure> BottomLevelAS;
+	UniquePtr<UHRenderBuffer<uint32_t>> IndexBuffer;
+	UniquePtr<UHRenderBuffer<uint16_t>> IndexBuffer16;
+	UniquePtr<UHAccelerationStructure> BottomLevelAS;
 
 	// bound of the mesh
 	BoundingBox MeshBound;

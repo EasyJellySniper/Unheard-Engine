@@ -2,6 +2,7 @@
 #include "Dialog.h"
 
 #if WITH_DEBUG
+#include "../Controls/Label.h"
 
 class UHProfiler;
 class UHGameTimer;
@@ -14,6 +15,10 @@ public:
 	UHProfileDialog(HINSTANCE InInstance, HWND InWindow);
 	virtual void ShowDialog() override;
 	void SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer* InGameTimer, UHConfigManager* InConfig);
+
+private:
+	UHLabel CPUProfileLabel;
+	UHLabel GPUProfileLabel;
 };
 
 #endif

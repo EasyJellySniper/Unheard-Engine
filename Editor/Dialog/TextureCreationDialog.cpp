@@ -7,9 +7,7 @@
 #include <filesystem>
 #include "TextureDialog.h"
 #include "../../Runtime/Classes/AssetPath.h"
-
-HWND GTextureCreationWindow = nullptr;
-WPARAM GLatestTextureCreationControl = 0;
+#include "StatusDialog.h"
 
 UHTextureCreationDialog::UHTextureCreationDialog()
     : UHDialog(nullptr, nullptr)
@@ -24,105 +22,69 @@ UHTextureCreationDialog::UHTextureCreationDialog(HINSTANCE InInstance, HWND InWi
 {
     TextureImporter = InTextureImporter;
     TextureDialog = InTextureDialog;
-
-    ControlCallbacks[IDC_CREATETEXTURE] = { &UHTextureCreationDialog::ControlTextureCreate };
-    ControlCallbacks[IDC_BROWSE_INPUT] = { &UHTextureCreationDialog::ControlBrowserInput };
-    ControlCallbacks[IDC_BROWSE_OUTPUT] = { &UHTextureCreationDialog::ControlBrowserOutputFolder };
-}
-
-// Message handler for dialog
-INT_PTR CALLBACK TextureCreationDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        GLatestTextureCreationControl = wParam;
-        if (LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            GTextureCreationWindow = nullptr;
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
 }
 
 void UHTextureCreationDialog::ShowDialog()
 {
-    if (GTextureCreationWindow == nullptr)
+    if (!IsDialogActive(IDD_TEXTURECREATE))
     {
         // init texture creation dialog
-        GTextureCreationWindow = CreateDialog(Instance, MAKEINTRESOURCE(IDD_TEXTURECREATE), Window, (DLGPROC)TextureCreationDialogProc);
-        UHEditorUtil::InitComboBox(GTextureCreationWindow, IDC_TEXTURE_COMPRESSIONMODE, L"None", GCompressionModeText);
+        Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_TEXTURECREATE), ParentWindow, (DLGPROC)GDialogProc);
+        RegisterUniqueActiveDialog(IDD_TEXTURECREATE, this);
 
-        ShowWindow(GTextureCreationWindow, SW_SHOW);
-    }
-}
+        CompressionModeGUI = MakeUnique<UHComboBox>(GetDlgItem(Dialog, IDC_TEXTURE_COMPRESSIONMODE));
+        CompressionModeGUI->Init(L"None", GCompressionModeText);
 
-void UHTextureCreationDialog::Update()
-{
-    if (GTextureCreationWindow == nullptr)
-    {
-        return;
-    }
+        SrgbGUI = MakeUnique<UHCheckBox>(GetDlgItem(Dialog, IDC_SRGB));
+        NormalGUI = MakeUnique<UHCheckBox>(GetDlgItem(Dialog, IDC_ISNORMAL));
 
-    // process control callbacks
-    if (GLatestTextureCreationControl != 0)
-    {
-        if (ControlCallbacks.find(LOWORD(GLatestTextureCreationControl)) != ControlCallbacks.end())
-        {
-            if (HIWORD(GLatestTextureCreationControl) == EN_CHANGE || HIWORD(GLatestTextureCreationControl) == BN_CLICKED
-                || HIWORD(GLatestTextureCreationControl) == CBN_SELCHANGE)
-            {
-                (this->*ControlCallbacks[LOWORD(GLatestTextureCreationControl)])();
-            }
-        }
+        CreateTextureGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_CREATETEXTURE));
+        CreateTextureGUI->OnClicked.push_back(StdBind(&UHTextureCreationDialog::ControlTextureCreate, this));
 
-        GLatestTextureCreationControl = 0;
-    }
-}
+        BrowseInputGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_BROWSE_INPUT));
+        BrowseInputGUI->OnClicked.push_back(StdBind(&UHTextureCreationDialog::ControlBrowserInput, this));
 
-void UHTextureCreationDialog::TerminateDialog()
-{
-    if (GTextureCreationWindow)
-    {
-        EndDialog(GTextureCreationWindow, 0);
-        GTextureCreationWindow = nullptr;
+        BrowseOutputGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_BROWSE_OUTPUT));
+        BrowseOutputGUI->OnClicked.push_back(StdBind(&UHTextureCreationDialog::ControlBrowserOutputFolder, this));
+
+        TextureInputGUI = MakeUnique<UHTextBox>(GetDlgItem(Dialog, IDC_TEXTURE_FILE_1));
+        TextureOutputGUI = MakeUnique<UHTextBox>(GetDlgItem(Dialog, IDC_TEXTURE_FILE_OUTPUT));
+
+        ShowWindow(Dialog, SW_SHOW);
     }
 }
 
 void UHTextureCreationDialog::ControlTextureCreate()
 {
-    const std::filesystem::path InputSource = UHEditorUtil::GetEditControlText(GetDlgItem(GTextureCreationWindow, IDC_TEXTURE_FILE_1));
-    std::filesystem::path OutputFolder = UHEditorUtil::GetEditControlText(GetDlgItem(GTextureCreationWindow, IDC_TEXTURE_FILE_OUTPUT));
+    HWND CurrDialog = Dialog;
+
+    const std::filesystem::path InputSource = TextureInputGUI->GetText();
+    std::filesystem::path OutputFolder = TextureOutputGUI->GetText();
     std::filesystem::path TextureAssetPath = GTextureAssetFolder;
     TextureAssetPath = std::filesystem::absolute(TextureAssetPath);
     const bool bIsValidOutputFolder = UHUtilities::StringFind(OutputFolder.string() + "\\", TextureAssetPath.string());
 
     if (!std::filesystem::exists(InputSource))
     {
-        MessageBoxA(GTextureCreationWindow, "Invalid input source!", "Texture Creation", MB_OK);
+        MessageBoxA(CurrDialog, "Invalid input source!", "Texture Creation", MB_OK);
         return;
     }
 
     if (!std::filesystem::exists(OutputFolder) || !bIsValidOutputFolder)
     {
-        MessageBoxA(GTextureCreationWindow, "Invalid output folder or it's not under the engine path Assets/Textures!", "Texture Creation", MB_OK);
+        MessageBoxA(CurrDialog, "Invalid output folder or it's not under the engine path Assets/Textures!", "Texture Creation", MB_OK);
         return;
     }
+
+    UHStatusDialogScope StatusDialog(Instance, CurrDialog, "Creating...");
 
     // remove the project folder
     OutputFolder = std::filesystem::relative(OutputFolder);
 
     UHTextureSettings TextureSetting;
-    TextureSetting.bIsLinear = !UHEditorUtil::GetCheckedBox(GTextureCreationWindow, IDC_SRGB);
-    TextureSetting.bIsNormal = UHEditorUtil::GetCheckedBox(GTextureCreationWindow, IDC_ISNORMAL);
-    TextureSetting.CompressionSetting = (UHTextureCompressionSettings)UHEditorUtil::GetComboBoxSelectedIndex(GTextureCreationWindow, IDC_TEXTURE_COMPRESSIONMODE);
+    TextureSetting.bIsLinear = !SrgbGUI->IsChecked();
+    TextureSetting.bIsNormal = NormalGUI->IsChecked();
+    TextureSetting.CompressionSetting = (UHTextureCompressionSettings)CompressionModeGUI->GetSelectedIndex();
 
     std::filesystem::path RawSourcePath = std::filesystem::relative(InputSource);
     if (RawSourcePath.string().empty())
@@ -136,12 +98,12 @@ void UHTextureCreationDialog::ControlTextureCreate()
 
 void UHTextureCreationDialog::ControlBrowserInput()
 {
-    UHEditorUtil::SetEditControl(GTextureCreationWindow, IDC_TEXTURE_FILE_1, UHEditorUtil::FileSelectInput(GImageFilter));
+    TextureInputGUI->SetText(UHEditorUtil::FileSelectInput(GImageFilter));
 }
 
 void UHTextureCreationDialog::ControlBrowserOutputFolder()
 {
-    UHEditorUtil::SetEditControl(GTextureCreationWindow, IDC_TEXTURE_FILE_OUTPUT, UHEditorUtil::FileSelectOutputFolder());
+    TextureOutputGUI->SetText(UHEditorUtil::FileSelectOutputFolder());
 }
 
 #endif

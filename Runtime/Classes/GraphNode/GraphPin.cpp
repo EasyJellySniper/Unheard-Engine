@@ -8,7 +8,9 @@ UHGraphPin::UHGraphPin(std::string InName, UHGraphNode* InNode, UHGraphPinType I
 	, SrcPin(nullptr)
 	, Type(InType)
 	, bNeedInputField(bInNeedInputField)
+#if WITH_DEBUG
 	, PinGUI(nullptr)
+#endif
 {
 
 }
@@ -18,10 +20,17 @@ UHGraphPin::~UHGraphPin()
 	DestPins.clear();
 }
 
-void UHGraphPin::SetPinGUI(HWND InGUI)
+#if WITH_DEBUG
+void UHGraphPin::SetPinGUI(UHRadioButton* InGUI)
 {
 	PinGUI = InGUI;
 }
+
+UHRadioButton* UHGraphPin::GetPinGUI() const
+{
+	return PinGUI;
+}
+#endif
 
 bool UHGraphPin::ConnectFrom(UHGraphPin* InSrcPin)
 {
@@ -97,11 +106,6 @@ UHGraphPin* UHGraphPin::GetSrcPin() const
 std::vector<UHGraphPin*>& UHGraphPin::GetDestPins()
 {
 	return DestPins;
-}
-
-HWND UHGraphPin::GetPinGUI() const
-{
-	return PinGUI;
 }
 
 bool UHGraphPin::NeedInputField() const

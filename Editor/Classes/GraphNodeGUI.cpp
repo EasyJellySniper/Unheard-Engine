@@ -7,7 +7,7 @@
 #include <CommCtrl.h>
 #pragma comment(lib, "Comctl32.lib")
 
-std::unique_ptr<UHPinSelectInfo> GPinSelectInfo;
+UniquePtr<UHPinSelectInfo> GPinSelectInfo;
 
 UHGraphNodeGUI::UHGraphNodeGUI()
 	: NodeGUI(nullptr)
@@ -86,16 +86,19 @@ void UHGraphNodeGUI::Init(HINSTANCE InInstance, HWND InParent, UHGraphNode* InNo
 	GUIName = InGUIName;
 
 	// width & height of node will be measured below
-	NodeGUI = CreateWindowA("BUTTON", InGUIName.c_str(), WS_CHILD | BS_GROUPBOX | BS_CENTER
-		, PosX, PosY, 10, 10, InParent, nullptr, InInstance, nullptr);
+	NodeGUI = MakeUnique<UHGroupBox>(GUIName, UHGUIProperty()
+		.SetInstance(InInstance)
+		.SetParent(InParent)
+		.SetPosX(PosX).SetPosY(PosY)
+		.SetWidth(10).SetHeight(10));
 
 	// call back before adding pins
 	this->PreAddingPins();
 
-	std::vector<std::unique_ptr<UHGraphPin>>& Inputs = InNode->GetInputs();
-	std::vector<std::unique_ptr<UHGraphPin>>& Outputs = InNode->GetOutputs();
+	std::vector<UniquePtr<UHGraphPin>>& Inputs = InNode->GetInputs();
+	std::vector<UniquePtr<UHGraphPin>>& Outputs = InNode->GetOutputs();
 
-	HDC NodeDC = GetDC(NodeGUI);
+	HDC NodeDC = GetDC(NodeGUI->GetHwnd());
 
 	int32_t MaxWidth = 0;
 	int32_t MaxHeight = 0;
@@ -105,15 +108,12 @@ void UHGraphNodeGUI::Init(HINSTANCE InInstance, HWND InParent, UHGraphNode* InNo
 	{
 		if (ComboBoxItems.size() > 0)
 		{
-			ComboBox = CreateWindow(WC_COMBOBOX, L"",
-				CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE | WS_VSCROLL,
-				ComboBoxMeasure.PosX, ComboBoxMeasure.PosY, ComboBoxMeasure.Width, ComboBoxMeasure.Height, NodeGUI, nullptr, InInstance, nullptr);
+			ComboBox = MakeUnique<UHComboBox>(ComboBoxProp.SetInstance(InInstance).SetParent(NodeGUI->GetHwnd()));
+			SetWindowSubclass(ComboBox->GetHwnd(), (SUBCLASSPROC)NodeComboBoxProc, 0, (DWORD_PTR)this);
+			ComboBox->Init(ComboBoxItems[0], ComboBoxItems, ComboBoxProp.MinVisibleItem);
 
-			SetWindowSubclass(ComboBox, (SUBCLASSPROC)NodeComboBoxProc, 0, (DWORD_PTR)this);
-			UHEditorUtil::InitComboBox(ComboBox, ComboBoxItems[0], ComboBoxItems, ComboBoxMeasure.MinVisibleItem);
-
-			WidthMargin += ComboBoxMeasure.Margin;
-			MaxWidth += ComboBoxMeasure.Width;
+			WidthMargin += ComboBoxProp.MarginX;
+			MaxWidth += ComboBoxProp.InitWidth;
 			MaxHeight += 10;
 		}
 	}
@@ -127,29 +127,36 @@ void UHGraphNodeGUI::Init(HINSTANCE InInstance, HWND InParent, UHGraphNode* InNo
 
 			// Add pin radio button
 			{
-				HWND NewPin = CreateWindowA("BUTTON", Inputs[Idx]->GetName().c_str()
-					, BS_RADIOBUTTON | WS_CHILD, 5, 15 + Idx * (TextSize.cy + 2), TextSize.cx + 30, TextSize.cy, NodeGUI, NULL, InInstance, NULL);
+				UniquePtr<UHRadioButton> NewPin = MakeUnique<UHRadioButton>(Inputs[Idx]->GetName()
+					, UHGUIProperty().SetInstance(InInstance).SetParent(NodeGUI->GetHwnd())
+					.SetPosX(5)
+					.SetPosY(15 + Idx * (TextSize.cy + 2))
+					.SetWidth(TextSize.cx + 30)
+					.SetHeight(TextSize.cy), false);
 
 				// register window callback for pins
-				SetWindowSubclass(NewPin, (SUBCLASSPROC)NodeInputPinProc, 0, (DWORD_PTR)Inputs[Idx].get());
+				SetWindowSubclass(NewPin->GetHwnd(), (SUBCLASSPROC)NodeInputPinProc, 0, (DWORD_PTR)Inputs[Idx].get());
 
 				MaxWidth = (std::max)(MaxWidth + WidthMargin, (int32_t)TextSize.cx + 30);
 				MaxHeight += (TextSize.cy + 2);
 
-				Inputs[Idx]->SetPinGUI(NewPin);
-				InputsButton.push_back(NewPin);
-				ShowWindow(NewPin, SW_SHOW);
+				Inputs[Idx]->SetPinGUI(NewPin.get());
+				ShowWindow(NewPin->GetHwnd(), SW_SHOW);
+				InputsButton.push_back(std::move(NewPin));
 			}
 
 			// add edit control if it's requested
 			if (InputTextFieldLength > 0 && Inputs[Idx]->NeedInputField())
 			{
-				HWND NewEdit = CreateWindowA("EDIT", "0", WS_BORDER | WS_CHILD, 5 + TextSize.cx + 30, 15 + Idx * (TextSize.cy + 2)
-					, InputTextFieldLength, TextSize.cy, NodeGUI, NULL, InInstance, NULL);
+				UniquePtr<UHTextBox> NewEdit = MakeUnique<UHTextBox>("0", UHGUIProperty().SetInstance(InInstance).SetParent(NodeGUI->GetHwnd())
+					.SetPosX(5 + TextSize.cx + 30)
+					.SetPosY(15 + Idx * (TextSize.cy + 2))
+					.SetWidth(InputTextFieldLength)
+					.SetHeight(TextSize.cy));
 
 				MaxWidth = (std::max)(MaxWidth, (int32_t)TextSize.cx + 40 + InputTextFieldLength);
-				InputsTextField.push_back(NewEdit);
-				ShowWindow(NewEdit, SW_SHOW);
+				ShowWindow(NewEdit->GetHwnd(), SW_SHOW);
+				InputsTextFields.push_back(std::move(NewEdit));
 			}
 		}
 	}
@@ -163,73 +170,54 @@ void UHGraphNodeGUI::Init(HINSTANCE InInstance, HWND InParent, UHGraphNode* InNo
 			SIZE TextSize;
 			GetTextExtentPoint32A(NodeDC, Outputs[Idx]->GetName().c_str(), (int32_t)Outputs[Idx]->GetName().length(), &TextSize);
 
-			HWND NewPin = CreateWindowA("BUTTON", Outputs[Idx]->GetName().c_str()
-				, BS_RADIOBUTTON | WS_CHILD | BS_LEFTTEXT
-				, OutputStartX, 15 + Idx * (TextSize.cy + 2), TextSize.cx + 30, TextSize.cy, NodeGUI, NULL, InInstance, NULL);
+			UniquePtr<UHRadioButton> NewPin = MakeUnique<UHRadioButton>(Outputs[Idx]->GetName()
+				, UHGUIProperty().SetInstance(InInstance).SetParent(NodeGUI->GetHwnd())
+				.SetPosX(OutputStartX)
+				.SetPosY(15 + Idx * (TextSize.cy + 2))
+				.SetWidth(TextSize.cx + 30)
+				.SetHeight(TextSize.cy), true);
 
 			// register window callback for pins
-			SetWindowSubclass(NewPin, (SUBCLASSPROC)NodeOutputPinProc, 0, (DWORD_PTR)Outputs[Idx].get());
+			SetWindowSubclass(NewPin->GetHwnd(), (SUBCLASSPROC)NodeOutputPinProc, 0, (DWORD_PTR)Outputs[Idx].get());
 
 			MaxWidth = (std::max)(MaxWidth, (int32_t)TextSize.cx + 30 + OutputStartX);
 			MaxHeightOutput += (TextSize.cy + 2);
 
-			Outputs[Idx]->SetPinGUI(NewPin);
-			OutputsButton.push_back(NewPin);
-			ShowWindow(NewPin, SW_SHOW);
+			Outputs[Idx]->SetPinGUI(NewPin.get());
+			ShowWindow(NewPin->GetHwnd(), SW_SHOW);
+			OutputsButton.push_back(std::move(NewPin));
 		}
 	}
 	MaxHeight = (std::max)(MaxHeight, MaxHeightOutput);
 
 	this->PostAddingPins();
-	MoveWindow(NodeGUI, PosX, PosY, MaxWidth + 10, MaxHeight + 20, false);
-	ShowWindow(NodeGUI, SW_SHOW);
-	ReleaseDC(NodeGUI, NodeDC);
+	MoveWindow(NodeGUI->GetHwnd(), PosX, PosY, MaxWidth + 10, MaxHeight + 20, false);
+	ShowWindow(NodeGUI->GetHwnd(), SW_SHOW);
+	ReleaseDC(NodeGUI->GetHwnd(), NodeDC);
 }
 
 void UHGraphNodeGUI::Release()
 {
-	for (HWND Hwnd : InputsButton)
-	{
-		DestroyWindow(Hwnd);
-	}
-
-	for (HWND Hwnd : InputsTextField)
-	{
-		DestroyWindow(Hwnd);
-	}
-
-	for (HWND Hwnd : OutputsButton)
-	{
-		DestroyWindow(Hwnd);
-	}
-	DestroyWindow(ComboBox);
-	DestroyWindow(NodeGUI);
-
 	NodeGUI = nullptr;
 	InputsButton.clear();
-	InputsTextField.clear();
+	InputsTextFields.clear();
 	OutputsButton.clear();
 	ComboBoxItems.clear();
 }
 
 bool UHGraphNodeGUI::IsPointInside(POINT InMousePos) const
 {
-	if (UHEditorUtil::IsPointInsideClient(NodeGUI, InMousePos))
-	{
-		return true;
-	}
-
-	return false;
+	return NodeGUI->IsPointInside(InMousePos);
 }
 
 UHGraphPin* UHGraphNodeGUI::GetInputPinByMousePos(POINT InMousePos, int32_t& OutIndex) const
 {
-	if (UHEditorUtil::IsPointInsideClient(NodeGUI, InMousePos))
+	if (NodeGUI->IsPointInside(InMousePos))
 	{
-		std::vector<std::unique_ptr<UHGraphPin>>& InputPins = GraphNode->GetInputs();
+		std::vector<UniquePtr<UHGraphPin>>& InputPins = GraphNode->GetInputs();
 		for (int32_t Idx = 0; Idx < static_cast<int32_t>(InputsButton.size()); Idx++)
 		{
-			if (UHEditorUtil::IsPointInsideClient(InputsButton[Idx], InMousePos))
+			if (InputsButton[Idx]->IsPointInside(InMousePos))
 			{
 				OutIndex = Idx;
 				return InputPins[Idx].get();
@@ -242,32 +230,27 @@ UHGraphPin* UHGraphNodeGUI::GetInputPinByMousePos(POINT InMousePos, int32_t& Out
 
 HWND UHGraphNodeGUI::GetHWND() const
 {
-	return NodeGUI;
+	return NodeGUI->GetHwnd();
 }
 
-HWND UHGraphNodeGUI::GetInputPin(int32_t InIndex) const
+UHRadioButton* UHGraphNodeGUI::GetInputPin(int32_t InIndex) const
 {
 	if (InIndex >= static_cast<int32_t>(InputsButton.size()))
 	{
 		return nullptr;
 	}
 
-	return InputsButton[InIndex];
+	return InputsButton[InIndex].get();
 }
 
-HWND UHGraphNodeGUI::GetOutputPin(int32_t InIndex) const
+UHRadioButton* UHGraphNodeGUI::GetOutputPin(int32_t InIndex) const
 {
 	if (InIndex >= static_cast<int32_t>(OutputsButton.size()))
 	{
 		return nullptr;
 	}
 
-	return OutputsButton[InIndex];
-}
-
-HWND UHGraphNodeGUI::GetCombobox() const
-{
-	return ComboBox;
+	return OutputsButton[InIndex].get();
 }
 
 UHGraphNode* UHGraphNodeGUI::GetNode()

@@ -4,11 +4,8 @@
 #include "../../resource.h"
 #include "../Editor/Profiler.h"
 #include "../../Runtime/Engine/Config.h"
-#include "../Classes/EditorUtils.h"
 #include <sstream>
 #include <iomanip>
-
-HWND GProfileWindow = nullptr;
 
 UHProfileDialog::UHProfileDialog()
     : UHDialog(nullptr, nullptr)
@@ -22,40 +19,22 @@ UHProfileDialog::UHProfileDialog(HINSTANCE InInstance, HWND InWindow)
 
 }
 
-
-// Message handler for setting window
-INT_PTR CALLBACK ProfileProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            GProfileWindow = nullptr;
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
-}
-
 void UHProfileDialog::ShowDialog()
 {
-    if (GProfileWindow == nullptr)
+    if (!IsDialogActive(IDD_PROFILE))
     {
-        GProfileWindow = CreateDialog(Instance, MAKEINTRESOURCE(IDD_PROFILE), Window, (DLGPROC)ProfileProc);
-        ShowWindow(GProfileWindow, SW_SHOW);
+        Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_PROFILE), ParentWindow, (DLGPROC)GDialogProc);
+        RegisterUniqueActiveDialog(IDD_PROFILE, this);
+        CPUProfileLabel = UHLabel(GetDlgItem(Dialog, IDC_PROFILECPU), UHGUIProperty());
+        GPUProfileLabel = UHLabel(GetDlgItem(Dialog, IDC_PROFILEGPU), UHGUIProperty());
+
+        ShowWindow(Dialog, SW_SHOW);
     }
 }
 
 void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer* InGameTimer, UHConfigManager* InConfig)
 {
-    if (GProfileWindow == nullptr)
+    if (!IsDialogActive(IDD_PROFILE))
     {
         return;
     }
@@ -82,7 +61,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << "Number of texture cubes: " << Stats.TextureCubeCount << "\n";
         CPUStatTex << "Number of materials: " << Stats.MateralCount << "\n";
 
-        UHEditorUtil::SetEditControl(GProfileWindow, IDC_PROFILECPU, CPUStatTex.str());
+        CPUProfileLabel.SetText(CPUStatTex.str());
 
         // GPU stat section
         std::wstring GPUStatStrings[UHRenderPassMax] = { L"Depth Pre Pass"
@@ -106,7 +85,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         }
         GPUStatTex << "Render Resolution: " << InConfig->RenderingSetting().RenderWidth << "x" << InConfig->RenderingSetting().RenderHeight;
 
-        UHEditorUtil::SetEditControl(GProfileWindow, IDC_PROFILEGPU, GPUStatTex.str());
+        GPUProfileLabel.SetText(GPUStatTex.str());
 
         InGameTimer->Reset();
     }

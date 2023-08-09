@@ -11,10 +11,10 @@ UHTexture2DNode::UHTexture2DNode(std::string TexName)
 	TextureIndexInMaterial = -1;
 
 	Inputs.resize(1);
-	Inputs[0] = std::make_unique<UHGraphPin>("UV", this, Float2Node);
+	Inputs[0] = MakeUnique<UHGraphPin>("UV", this, Float2Node);
 
 	Outputs.resize(1);
-	Outputs[0] = std::make_unique<UHGraphPin>("RGB", this, Float3Node);
+	Outputs[0] = MakeUnique<UHGraphPin>("RGB", this, Float3Node);
 
 	SelectedTexturePathName = TexName;
 }

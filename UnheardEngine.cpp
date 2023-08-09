@@ -1,11 +1,12 @@
 // UnheardEngine.cpp : Defines the entry point for the application.
 //
 
+#include "UnheardEngine.h"
 #include "framework.h"
 #include "resource.h"
-#include "UnheardEngine.h"
 #include "Runtime/Engine/Engine.h"
 #include "Runtime/Engine/Input.h"
+#include "Editor/Dialog/StatusDialog.h"
 
 #define MAX_LOADSTRING 100
 
@@ -22,7 +23,7 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 // Unheard Engine Instance
-std::unique_ptr<UHEngine> GUnheardEngine = nullptr;
+UniquePtr<UHEngine> GUnheardEngine = nullptr;
 bool GIsMinimized = false;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -30,6 +31,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
+#if WITH_DEBUG
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -49,15 +54,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Create engine instance and initialize with config settings
     CoInitialize(nullptr);
-    GUnheardEngine = std::make_unique<UHEngine>();
-    GUnheardEngine->LoadConfig();
 
-    if (!GUnheardEngine->InitEngine(hInst, UHEngineWindow))
     {
-        UHE_LOG(L"Engine creation failed!\n");
-        GUnheardEngine->ReleaseEngine();
-        GUnheardEngine.reset();
-        return FALSE;
+        UHStatusDialogScope StatusDialog(hInstance, UHEngineWindow, "Loading...");
+        GUnheardEngine = MakeUnique<UHEngine>();
+        GUnheardEngine->LoadConfig();
+
+        if (!GUnheardEngine->InitEngine(hInst, UHEngineWindow))
+        {
+            UHE_LOG(L"Engine creation failed!\n");
+            GUnheardEngine->ReleaseEngine();
+            GUnheardEngine.reset();
+            return FALSE;
+        }
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_UNHEARDENGINE));

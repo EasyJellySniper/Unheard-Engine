@@ -36,3 +36,15 @@ inline void UHE_LOG(std::string InString)
 {
 	LogMessage(std::filesystem::path(InString).wstring().c_str());
 }
+
+template <typename T>
+using UniquePtr = std::unique_ptr<T>;
+
+#define MakeUnique std::make_unique
+#define StdBind std::bind
+
+#if WITH_DEBUG
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+#endif

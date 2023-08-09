@@ -82,6 +82,7 @@ class UHTexture : public UHRenderResource
 public:
 	UHTexture();
 	UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings);
+	virtual ~UHTexture() {}
 
 	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}
 	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}

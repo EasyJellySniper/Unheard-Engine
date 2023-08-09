@@ -28,7 +28,7 @@ UHMaterial::UHMaterial()
 		SystemSamplers[Idx] = nullptr;
 	}
 
-	MaterialNode = std::make_unique<UHMaterialNode>(this);
+	MaterialNode = MakeUnique<UHMaterialNode>(this);
 	DefaultMaterialNodePos.x = 544;
 	DefaultMaterialNodePos.y = 208;
 }
@@ -109,7 +109,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 		FileIn.read(reinterpret_cast<char*>(&Type), sizeof(Type));
 
 		// allocate node by type
-		std::unique_ptr<UHGraphNode> NewNode = AllocateNewGraphNode(Type);
+		UniquePtr<UHGraphNode> NewNode = AllocateNewGraphNode(Type);
 		NewNode->InputData(FileIn);
 		EditNodes.push_back(std::move(NewNode));
 	}
@@ -119,7 +119,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 		size_t NumInputs;
 		FileIn.read(reinterpret_cast<char*>(&NumInputs), sizeof(NumInputs));
 
-		std::vector<std::unique_ptr<UHGraphPin>>& Inputs = EditNodes[Idx]->GetInputs();
+		std::vector<UniquePtr<UHGraphPin>>& Inputs = EditNodes[Idx]->GetInputs();
 		for (size_t Jdx = 0; Jdx < NumInputs; Jdx++)
 		{
 			// restore connection state based on node index
@@ -134,7 +134,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 	}
 
 	// finally, restore the connection for material inputs
-	std::vector<std::unique_ptr<UHGraphPin>>& MaterialInputs = MaterialNode->GetInputs();
+	std::vector<UniquePtr<UHGraphPin>>& MaterialInputs = MaterialNode->GetInputs();
 	for (size_t Idx = 0; Idx < NumMaterialInputs; Idx++)
 	{
 		int32_t NodeIdx = MaterialInputConnections[Idx];
@@ -283,7 +283,7 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	};
 
 	// 1 & 2
-	const std::vector<std::unique_ptr<UHGraphPin>>& Inputs = MaterialNode->GetInputs();
+	const std::vector<UniquePtr<UHGraphPin>>& Inputs = MaterialNode->GetInputs();
 	size_t NumMaterialInputs = Inputs.size();
 	FileOut.write(reinterpret_cast<const char*>(&NumMaterialInputs), sizeof(NumMaterialInputs));
 
@@ -310,7 +310,7 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 		size_t NumInputs = EditNodes[Idx]->GetInputs().size();
 		FileOut.write(reinterpret_cast<const char*>(&NumInputs), sizeof(NumInputs));
 
-		const std::vector<std::unique_ptr<UHGraphPin>>& NodeInputs = EditNodes[Idx]->GetInputs();
+		const std::vector<UniquePtr<UHGraphPin>>& NodeInputs = EditNodes[Idx]->GetInputs();
 		for (size_t Jdx = 0; Jdx < NumInputs; Jdx++)
 		{
 			int32_t NodeIdx = FindEditNodeIndex(NodeInputs[Jdx]->GetSrcPin());
@@ -341,7 +341,7 @@ void CollectTextureIndex(const UHGraphPin* Pin, std::string& Code, std::unordere
 	}
 
 	// trace all input pins
-	for (const std::unique_ptr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
 	{
 		CollectTextureIndex(InputPins.get(), Code, OutDefTable, OutSize);
 	}
@@ -356,7 +356,7 @@ std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 	std::unordered_map<uint32_t, bool> TexTable;
 
 	// simply collect the texture index used in bindless rendering
-	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
+	for (const UniquePtr<UHGraphPin>& Input : MaterialNode->GetInputs())
 	{
 		CollectTextureIndex(Input.get(), Code, TexTable, OutSize);
 	}
@@ -477,29 +477,29 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 		TextureIndexData[Idx].SamplerIndex = DefaultSamplerIndex;
 		TextureIndexData[Idx].Cutoff = MaterialProps.Cutoff;
 
-		memcpy(MaterialConstantsCPU.data() + BufferAddress, &RegisteredTextureIndexes[Idx], Stride);
+		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &RegisteredTextureIndexes[Idx], Stride);
 		BufferAddress += Stride;
 	}
 
 	// fill the index of sampler
 	// @TODO: Differentiate samplers
-	memcpy(MaterialConstantsCPU.data() + BufferAddress, &DefaultSamplerIndex, Stride);
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &DefaultSamplerIndex, Stride);
 	BufferAddress += Stride;
 
 	// fill cutoff
-	memcpy(MaterialConstantsCPU.data() + BufferAddress, &MaterialProps.Cutoff, Stride);
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaterialProps.Cutoff, Stride);
 	BufferAddress += Stride;
 
 	// fill env cube mip map count
 	if (SystemTextures[UHSystemTextureType::SkyCube] != nullptr)
 	{
 		float EnvCubeMipMapCount = static_cast<float>(SystemTextures[UHSystemTextureType::SkyCube]->GetMipMapCount());
-		memcpy(MaterialConstantsCPU.data() + BufferAddress, &EnvCubeMipMapCount, Stride);
+		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &EnvCubeMipMapCount, Stride);
 		BufferAddress += Stride;
 	}
 
 	// upload material data
-	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data());
+	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data(), MaterialBufferSize);
 	if (RegisteredTextureIndexes.size() > 0)
 	{
 		MaterialRTDataGPU->UploadAllData(TextureIndexData.data());
@@ -608,7 +608,7 @@ void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std
 	}
 
 	// trace all input pins
-	for (const std::unique_ptr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
 	{
 		CollectTexNames(InputPins.get(), Names, OutDefTable);
 	}
@@ -620,7 +620,7 @@ std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
 	RegisteredTextureNames.clear();
 	std::unordered_map<uint32_t, bool> TexTable;
 
-	for (const std::unique_ptr<UHGraphPin>& Input : MaterialNode->GetInputs())
+	for (const UniquePtr<UHGraphPin>& Input : MaterialNode->GetInputs())
 	{
 		CollectTexNames(Input.get(), RegisteredTextureNames, TexTable);
 	}
@@ -629,7 +629,7 @@ std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
 	return RegisteredTextureNames;
 }
 
-const std::array<std::unique_ptr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& UHMaterial::GetMaterialConst()
+const std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& UHMaterial::GetMaterialConst()
 {
 	return MaterialConstantsGPU;
 }
@@ -655,10 +655,10 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	EditGUIRelativePos.clear();
 	EditNodes.clear();
 	MaterialNode.reset();
-	MaterialNode = std::make_unique<UHMaterialNode>(this);
+	MaterialNode = MakeUnique<UHMaterialNode>(this);
 
-	std::unique_ptr<UHGraphNode> NewNode;
-	std::vector<std::unique_ptr<UHGraphPin>>& MaterialPins = MaterialNode->GetInputs();
+	UniquePtr<UHGraphNode> NewNode;
+	std::vector<UniquePtr<UHGraphPin>>& MaterialPins = MaterialNode->GetInputs();
 
 	POINT Pos{};
 	int32_t GUIToLeft = 300;
@@ -676,11 +676,11 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	auto AddTextureNode = [this, &TextureNodeTable](std::string InName, POINT InPos)
 	{
 		size_t Hash = UHUtilities::StringToHash(InName);
-		std::unique_ptr<UHGraphNode> NewTexNode;
+		UniquePtr<UHGraphNode> NewTexNode;
 
 		if (TextureNodeTable.find(Hash) == TextureNodeTable.end())
 		{
-			NewTexNode = std::make_unique<UHTexture2DNode>(InName);
+			NewTexNode = MakeUnique<UHTexture2DNode>(InName);
 			EditNodes.push_back(std::move(NewTexNode));
 			TextureNodeTable[Hash] = EditNodes.back().get();
 			EditGUIRelativePos.push_back(InPos);
@@ -689,7 +689,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	};
 
 	// add parameter node
-	auto AddParameterNode = [this, &ParameterNodeTable](std::unique_ptr<UHGraphNode> InNewNode, POINT InPos)
+	auto AddParameterNode = [this, &ParameterNodeTable](UniquePtr<UHGraphNode> InNewNode, POINT InPos)
 	{
 		for (UHGraphNode* Node : ParameterNodeTable)
 		{
@@ -713,7 +713,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepYLarger;
 
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloat3Node>(MaterialProps.Diffuse), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Diffuse), Pos);
 		UHGraphPin* DiffusePin = NewParameterNode->GetOutputs()[0].get();
 		MaterialPins[UHMaterialInputs::Diffuse]->ConnectFrom(DiffusePin);
 	}
@@ -722,10 +722,10 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		// Diffuse = DiffuseColor * DiffuseTexture
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloat3Node>(MaterialProps.Diffuse), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Diffuse), Pos);
 		UHGraphPin* DiffusePin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = std::make_unique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -749,7 +749,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepYLarger;
 
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloatNode>(MaterialProps.Occlusion), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.Occlusion), Pos);
 		UHGraphPin* OcclusionPin = NewParameterNode->GetOutputs()[0].get();
 		MaterialPins[UHMaterialInputs::Occlusion]->ConnectFrom(OcclusionPin);
 	}
@@ -758,10 +758,10 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		// Occlusion = Occlusion * OcclusionTexture
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloatNode>(MaterialProps.Occlusion), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.Occlusion), Pos);
 		UHGraphPin* OcclusionPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = std::make_unique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -786,7 +786,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepYLarger;
 
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloat3Node>(MaterialProps.Specular), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Specular), Pos);
 		UHGraphPin* SpecularPin = NewParameterNode->GetOutputs()[0].get();
 		MaterialPins[UHMaterialInputs::Specular]->ConnectFrom(SpecularPin);
 	}
@@ -795,10 +795,10 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		// Specular = SpecularColor * SpecularTexture
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloat3Node>(MaterialProps.Specular), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Specular), Pos);
 		UHGraphPin* SpecularPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = std::make_unique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -820,10 +820,10 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		// Normal = BumpScale * BumpTexture
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloatNode>(MaterialProps.BumpScale), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.BumpScale), Pos);
 		UHGraphPin* NormalPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = std::make_unique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -846,10 +846,10 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		// Opacity = OpacityColor * OpacityTexture
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepYLarger;
-		UHGraphNode* NewParameterNode = AddParameterNode(std::make_unique<UHFloatNode>(MaterialProps.Opacity), Pos);
+		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.Opacity), Pos);
 		UHGraphPin* OpacityPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = std::make_unique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -879,12 +879,12 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	GetRegisteredTextureNames();
 }
 
-std::unique_ptr<UHMaterialNode>& UHMaterial::GetMaterialNode()
+UniquePtr<UHMaterialNode>& UHMaterial::GetMaterialNode()
 {
 	return MaterialNode;
 }
 
-std::vector<std::unique_ptr<UHGraphNode>>& UHMaterial::GetEditNodes()
+std::vector<UniquePtr<UHGraphNode>>& UHMaterial::GetEditNodes()
 {
 	return EditNodes;
 }

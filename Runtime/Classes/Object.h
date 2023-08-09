@@ -8,7 +8,7 @@ class UHObject
 {
 public:
 	UHObject();
-	~UHObject();
+	virtual ~UHObject();
 
 	void AddReferenceObject(UHObject*);
 	std::vector<UHObject*> GetReferenceObjects() const;

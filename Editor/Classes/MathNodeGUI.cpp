@@ -2,6 +2,7 @@
 
 #if WITH_DEBUG
 #include "EditorUtils.h"
+std::wstring GOperatorString[] = { L"+",L"-",L"*",L"/" };
 
 UHMathNodeGUI::UHMathNodeGUI()
 	: Node(nullptr)
@@ -11,31 +12,24 @@ UHMathNodeGUI::UHMathNodeGUI()
 
 void UHMathNodeGUI::SetDefaultValueFromGUI()
 {
-	Node->SetOperator(static_cast<UHMathNodeOperator>(UHEditorUtil::GetComboBoxSelectedIndex(ComboBox)));
+	Node->SetOperator(static_cast<UHMathNodeOperator>(ComboBox->GetSelectedIndex()));
 }
 
 void UHMathNodeGUI::PreAddingPins()
 {
 	Node = static_cast<UHMathNode*>(GraphNode);
-
-	std::string OperatorString[] = { "+","-","*","/" };
-	for (const std::string& Operator : OperatorString)
+	for (const std::wstring& Operator : GOperatorString)
 	{
 		ComboBoxItems.push_back(Operator);
 	}
 
-	ComboBoxMeasure.PosX = 50;
-	ComboBoxMeasure.PosY = 20;
-	ComboBoxMeasure.Width = 50;
-	ComboBoxMeasure.Height = 100;
-	ComboBoxMeasure.Margin = 25;
+	ComboBoxProp.SetPosX(50).SetPosY(20).SetWidth(50).SetHeight(100).SetMarginX(25).SetMinVisibleItem(15);
 }
 
 void UHMathNodeGUI::PostAddingPins()
 {
-	std::string OperatorString[] = { "+","-","*","/" };
-	int32_t Operator = Node->GetOperator();
-	UHEditorUtil::SelectComboBox(ComboBox, OperatorString[Operator]);
+	const int32_t Operator = Node->GetOperator();
+	ComboBox->Select(GOperatorString[Operator]);
 }
 
 #endif

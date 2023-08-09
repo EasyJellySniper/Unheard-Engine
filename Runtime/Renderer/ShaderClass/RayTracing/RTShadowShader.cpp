@@ -37,10 +37,10 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	InitHitGroupTable(InAnyHits.size());
 }
 
-void UHRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+void UHRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const UHRenderTexture* RTShadowResult
 	, const UHRenderTexture* RTTranslucentShadow
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
+	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
 	, const UHRenderTexture* SceneMip
 	, const UHRenderTexture* SceneDepth
 	, const UHRenderTexture* TranslucentDepth

@@ -5,6 +5,14 @@
 #include <unordered_map>
 #include "TextureCreationDialog.h"
 #include <shtypes.h>
+#include "../Controls/Label.h"
+#include "../Controls/ListBox.h"
+#include "../Controls/Button.h"
+#include "../Controls/ComboBox.h"
+#include "../Controls/GroupBox.h"
+#include "../Controls/CheckBox.h"
+#include "../Controls/TextBox.h"
+#include "../Controls/Slider.h"
 
 class UHAssetManager;
 class UHTexture2D;
@@ -31,12 +39,34 @@ private:
 	void SelectTexture(int32_t TexIndex);
 	void UpdatePreviewScene();
 
+	// GUI controls
+	UniquePtr<UHListBox> TextureListGUI;
+	UniquePtr<UHButton> CreateButtonGUI;
+	UniquePtr<UHButton> SaveButtonGUI;
+	UniquePtr<UHButton> SaveAllButtonGUI;
+	UniquePtr<UHLabel> SizeLabelGUI;
+	UniquePtr<UHLabel> MipLabelGUI;
+	UniquePtr<UHSlider> MipSliderGUI;
+
+	UniquePtr<UHGroupBox> TexturePreviewGUI;
+	UniquePtr<UHComboBox> CompressionGUI;
+	UniquePtr<UHCheckBox> SrgbGUI;
+	UniquePtr<UHCheckBox> NormalGUI;
+	UniquePtr<UHButton> ApplyGUI;
+	UniquePtr<UHTextBox> FileNameGUI;
+	UniquePtr<UHButton> BrowseGUI;
+
+	UniquePtr<UHLabel> CompressionTextGUI;
+	UniquePtr<UHLabel> SourceFileTextGUI;
+	UniquePtr<UHLabel> HintTextGUI;
+
 	// control functions
 	void ControlApply();
 	void ControlSave();
 	void ControlSaveAll();
 	void ControlTextureCreate();
 	void ControlBrowseRawTexture();
+	void ControlTexturePreview();
 
 	UHAssetManager* AssetMgr;
 	UHTextureImporter TextureImporter;
@@ -46,9 +76,10 @@ private:
 	UHTexture2D* CurrentTexture;
 	uint32_t CurrentMip;
 
-	// declare function pointer type for editor control
-	std::unordered_map<int32_t, void(UHTextureDialog::*)()> ControlCallbacks;
-	std::unique_ptr<UHPreviewScene> PreviewScene;
+	// preview scene
+	UniquePtr<UHPreviewScene> PreviewScene;
+	UHTextureCreationDialog TextureCreationDialog;
+
 };
 
 #endif

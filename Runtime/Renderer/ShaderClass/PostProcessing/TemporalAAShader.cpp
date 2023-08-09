@@ -22,7 +22,7 @@ UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name)
 	CreateComputeState(CInfo);
 }
 
-void UHTemporalAAShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+void UHTemporalAAShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const UHRenderTexture* PreviousSceneResult
 	, const UHRenderTexture* MotionVectorRT
 	, const UHRenderTexture* PrevMotionVectorRT

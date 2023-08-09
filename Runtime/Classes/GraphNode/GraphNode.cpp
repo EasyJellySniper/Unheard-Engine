@@ -55,12 +55,12 @@ UHGraphNodeType UHGraphNode::GetType() const
 	return NodeType;
 }
 
-std::vector<std::unique_ptr<UHGraphPin>>& UHGraphNode::GetInputs()
+std::vector<UniquePtr<UHGraphPin>>& UHGraphNode::GetInputs()
 {
 	return Inputs;
 }
 
-std::vector<std::unique_ptr<UHGraphPin>>& UHGraphNode::GetOutputs()
+std::vector<UniquePtr<UHGraphPin>>& UHGraphNode::GetOutputs()
 {
 	return Outputs;
 }

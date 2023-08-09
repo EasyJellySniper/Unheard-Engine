@@ -49,8 +49,8 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHBasePassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
+void UHBasePassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
 	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);

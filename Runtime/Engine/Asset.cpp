@@ -14,14 +14,14 @@ UHAssetManager* UHAssetManager::AssetMgrEditorOnly = nullptr;
 UHAssetManager::UHAssetManager()
 {
 #if WITH_DEBUG
-	UHFbxImporterInterface = std::make_unique<UHFbxImporter>();
+	UHFbxImporterInterface = MakeUnique<UHFbxImporter>();
 
 	// load shader cache after initialization
-	UHShaderImporterInterface = std::make_unique<UHShaderImporter>();
+	UHShaderImporterInterface = MakeUnique<UHShaderImporter>();
 	UHShaderImporterInterface->LoadShaderCache();
 	UHShaderImporterInterface->CompileHLSL("FallbackPixelShader", GRawShaderPath + "FallbackPixelShader.hlsl", "FallbackPS", "ps_6_0", std::vector<std::string>());
 
-	UHMaterialImporterInterface = std::make_unique<UHMaterialImporter>();
+	UHMaterialImporterInterface = MakeUnique<UHMaterialImporter>();
 	UHMaterialImporterInterface->LoadMaterialCache();
 
 	// generate built-in meshes
@@ -64,17 +64,17 @@ void UHAssetManager::ImportMeshes()
 	// it won't duplicate the import if mesh is cached
 #if WITH_DEBUG
 	// @TODO: remove the code below after fbx import editor is done
-	//std::vector<std::unique_ptr<UHMaterial>> ImportedMat;
+	//std::vector<UniquePtr<UHMaterial>> ImportedMat;
 	//UHFbxImporterInterface->ImportRawFbx(ImportedMat);
 
 	//// FBX will also import material, so export as UH material right after import
-	//for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
+	//for (UniquePtr<UHMaterial>& Mat : ImportedMat)
 	//{
 	//	Mat->GenerateDefaultMaterialNodes();
 	//	Mat->Export();
 	//}
 
-	//for (std::unique_ptr<UHMaterial>& Mat : ImportedMat)
+	//for (UniquePtr<UHMaterial>& Mat : ImportedMat)
 	//{
 	//	Mat.reset();
 	//}
@@ -107,7 +107,7 @@ void UHAssetManager::ImportMeshes()
 #endif
 
 		// try to import UHMesh, transfer to list if it's loaded successfully
-		std::unique_ptr<UHMesh> LoadedMesh = std::make_unique<UHMesh>();
+		UniquePtr<UHMesh> LoadedMesh = MakeUnique<UHMesh>();
 		if (LoadedMesh->Import(Idx->path()))
 		{
 			UHMeshes.push_back(std::move(LoadedMesh));

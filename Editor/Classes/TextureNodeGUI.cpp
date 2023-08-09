@@ -4,6 +4,7 @@
 #include "../../Runtime/Engine/Asset.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "EditorUtils.h"
+#include "../../Runtime/Classes/Utility.h"
 
 UHTexture2DNodeGUI::UHTexture2DNodeGUI(UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)
@@ -16,7 +17,7 @@ UHTexture2DNodeGUI::UHTexture2DNodeGUI(UHAssetManager* InAssetManager, UHDeferre
 
 void UHTexture2DNodeGUI::Update()
 {
-	const int32_t ItemCount = UHEditorUtil::GetComboBoxItemCount(ComboBox);
+	const int32_t ItemCount = ComboBox->GetItemCount();
 	const int32_t TextureCount = static_cast<int32_t>(AssetManager->GetTexture2Ds().size());
 
 	// refresh the combobox if texture count doesn't match
@@ -25,18 +26,18 @@ void UHTexture2DNodeGUI::Update()
 		ComboBoxItems.clear();
 		for (const UHTexture2D* Tex : AssetManager->GetTexture2Ds())
 		{
-			const std::string Name = Tex->GetSourcePath();
+			const std::wstring Name = UHUtilities::ToStringW(Tex->GetSourcePath());
 			ComboBoxItems.push_back(Name);
 		}
 
-		const std::string PrevSelected = UHEditorUtil::GetComboBoxSelectedText(ComboBox);
-		UHEditorUtil::InitComboBox(ComboBox, PrevSelected, ComboBoxItems);
+		const std::wstring PrevSelected = ComboBox->GetSelectedItem();
+		ComboBox->Init(PrevSelected, ComboBoxItems);
 	}
 }
 
 void UHTexture2DNodeGUI::SetDefaultValueFromGUI()
 {
-	Node->SetSelectedTexturePathName(UHEditorUtil::GetComboBoxSelectedText(ComboBox));
+	Node->SetSelectedTexturePathName(UHUtilities::ToStringA(ComboBox->GetSelectedItem()));
 }
 
 void UHTexture2DNodeGUI::OnSelectCombobox()
@@ -61,20 +62,21 @@ void UHTexture2DNodeGUI::PreAddingPins()
 	for (const UHTexture2D* Tex : AssetManager->GetTexture2Ds())
 	{
 		const std::string Name = Tex->GetSourcePath();
-		ComboBoxItems.push_back(Name);
+		ComboBoxItems.push_back(UHUtilities::ToStringW(Name));
 		TextLength = (std::max)(TextLength, Name.length());
 	}
 
-	ComboBoxMeasure.PosX = 55;
-	ComboBoxMeasure.PosY = 20;
-	ComboBoxMeasure.Width = static_cast<int32_t>(TextLength) * 5;
-	ComboBoxMeasure.Height = static_cast<int32_t>(ItemCount) * 5;
-	ComboBoxMeasure.Margin = 30;
+	ComboBoxProp.SetPosX(55).SetPosY(20)
+		.SetWidth(static_cast<int32_t>(TextLength) * 5)
+		.SetHeight(static_cast<int32_t>(ItemCount) * 5)
+		.SetMarginX(30)
+		.SetMinVisibleItem(15);
 }
 
 void UHTexture2DNodeGUI::PostAddingPins()
 {
-	UHEditorUtil::SelectComboBox(ComboBox, AssetManager->FindTexturePathName(Node->GetSelectedTexturePathName()));
+	const std::wstring TexturePathName = UHUtilities::ToStringW(AssetManager->FindTexturePathName(Node->GetSelectedTexturePathName()));
+	ComboBox->Select(TexturePathName);
 }
 
 #endif

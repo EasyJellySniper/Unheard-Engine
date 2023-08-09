@@ -173,21 +173,22 @@ public:
     }
 
 	// upload all data, this will copy whole buffer
-	void UploadAllData(void* SrcData)
+	void UploadAllData(void* SrcData, size_t InCopySize = 0)
 	{
         // upload buffer is mapped when initialization, simply copy it
+        const int64_t CopySize = (InCopySize == 0) ? BufferSize : static_cast<int64_t>(InCopySize);
         if (bIsUploadBuffer)
         {
             // if it's constant buffer, it will be mapped on creation until destruction
             // simply copy to it without unmap
             // app must have cpu-gpu sync work flow and prevents accessing it at the same time
-            memcpy(&DstData[0], SrcData, BufferSize);
+            memcpy_s(&DstData[0], BufferSize, SrcData, CopySize);
             return;
         }
 
         // for non-constant buffer, copy once and unmap it
-		vkMapMemory(LogicalDevice, BufferMemory, 0, BufferSize, 0, reinterpret_cast<void**>(&DstData));
-		memcpy(&DstData[0], SrcData, BufferSize);
+		vkMapMemory(LogicalDevice, BufferMemory, 0, CopySize, 0, reinterpret_cast<void**>(&DstData));
+		memcpy_s(&DstData[0], BufferSize, SrcData, CopySize);
 		vkUnmapMemory(LogicalDevice, BufferMemory);
 	}
 
@@ -200,7 +201,7 @@ public:
         }
 
         vkMapMemory(LogicalDevice, InMemory->GetMemory(), OffsetInSharedMemory, BufferSize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy(&DstData[0], SrcData, BufferSize);
+        memcpy_s(&DstData[0], BufferSize, SrcData, BufferSize);
         vkUnmapMemory(LogicalDevice, InMemory->GetMemory());
     }
 
@@ -210,13 +211,13 @@ public:
         // upload buffer is mapped when initialization, simply copy it
         if (bIsUploadBuffer)
         {
-            memcpy(&DstData[Offset * BufferStride], SrcData, BufferStride);
+            memcpy_s(&DstData[Offset * BufferStride], BufferSize, SrcData, BufferStride);
             return;
         }
 
         // for non-upload buffer, map from start offset and copy 
         vkMapMemory(LogicalDevice, BufferMemory, Offset * BufferStride, BufferStride, 0, reinterpret_cast<void**>(&DstData));
-        memcpy(&DstData[0], SrcData, BufferStride);
+        memcpy_s(&DstData[0], BufferSize, SrcData, BufferStride);
         vkUnmapMemory(LogicalDevice, BufferMemory);
     }
 
@@ -240,7 +241,7 @@ public:
         // map & unmap memory operation
         std::vector<T> OutputData(BufferSize);
         vkMapMemory(LogicalDevice, BufferMemory, 0, BufferSize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy(OutputData.data(), &DstData[0], BufferSize);
+        memcpy_s(OutputData.data(), BufferSize, &DstData[0], BufferSize);
         vkUnmapMemory(LogicalDevice, BufferMemory);
 
         return OutputData;

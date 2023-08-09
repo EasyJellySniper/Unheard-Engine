@@ -13,10 +13,10 @@ public:
 		, const std::vector<uint32_t>& InAnyHits
 		, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 
-	void BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const UHRenderTexture* RTShadowResult
 		, const UHRenderTexture* RTTranslucentShadow
-		, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
+		, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
 		, const UHRenderTexture* SceneMip
 		, const UHRenderTexture* SceneDepth
 		, const UHRenderTexture* TranslucentDepth

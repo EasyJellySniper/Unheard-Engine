@@ -22,7 +22,7 @@ UHSoftRTShadowShader::UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name)
 	CreateComputeState(Info);
 }
 
-void UHSoftRTShadowShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+void UHSoftRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const UHRenderTexture* RTShadowResult
 	, const UHRenderTexture* RTTranslucentShadowResult
 	, const UHRenderTexture* DepthTexture

@@ -22,7 +22,7 @@ public:
 	void Release();
 
 	template <typename T>
-	void BindConstant(const std::array<std::unique_ptr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
+	void BindConstant(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -35,7 +35,7 @@ public:
 	}
 
 	template <typename T>
-	void BindConstant(const std::unique_ptr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t CurrentFrame, int32_t InOffset = 0)
+	void BindConstant(const UniquePtr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t CurrentFrame, int32_t InOffset = 0)
 	{
 		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrame]);
 		if (InBuffer)
@@ -45,7 +45,7 @@ public:
 	}
 
 	template <typename T>
-	void BindStorage(const std::array<std::unique_ptr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
+	void BindStorage(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -161,8 +161,8 @@ protected:
 	UHGraphicState* RTState;
 
 	// shader table
-	std::unique_ptr<UHRenderBuffer<UHShaderRecord>> RayGenTable;
-	std::unique_ptr<UHRenderBuffer<UHShaderRecord>> HitGroupTable;
-	std::unique_ptr<UHRenderBuffer<UHShaderRecord>> MissTable;
+	UniquePtr<UHRenderBuffer<UHShaderRecord>> RayGenTable;
+	UniquePtr<UHRenderBuffer<UHShaderRecord>> HitGroupTable;
+	UniquePtr<UHRenderBuffer<UHShaderRecord>> MissTable;
 };
 

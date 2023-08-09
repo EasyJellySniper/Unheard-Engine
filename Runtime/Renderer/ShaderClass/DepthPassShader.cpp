@@ -41,8 +41,8 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHDepthPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
+void UHDepthPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
 	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);

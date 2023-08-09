@@ -64,7 +64,7 @@ void BasePS(VertexOutput Vin
 	// output specular color and roughness
 	float3 Specular = MaterialInput.Specular;
 	Specular = ComputeSpecularColor(Specular, MaterialInput.Diffuse, Metallic);
-	OutMaterial = float4(Specular * MaterialInput.ReflectionFactor, Roughness);
+	OutMaterial = float4(Specular, Roughness);
 
 	float3 IndirectSpecular = 0;
 #if WITH_ENVCUBE

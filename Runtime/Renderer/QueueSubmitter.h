@@ -8,6 +8,7 @@ public:
 	UHQueueSubmitter()
 		: CommandPool(VK_NULL_HANDLE)
 		, LogicalDevice(VK_NULL_HANDLE)
+		, Queue(VK_NULL_HANDLE)
 	{
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{

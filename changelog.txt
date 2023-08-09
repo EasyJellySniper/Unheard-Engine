@@ -300,3 +300,13 @@ Tried the closest line search method, looks promising! Consider to fix the lengt
 05-08-2023: Discovered that the closest line method won't always work. So adding min/max method as a comparotor, choose the method that gives the smallest difference.
 
 06-08-2023: Multi-threaded the block compression. Adjusted TAA parameter again. Apply the unused texture to proper material.
+
+07-08-2023: Added a simple status text dialog for heavy tasks. Started adding high level implementation for managing GUI.
+Started applying high level control to dialog...painful!
+
+08-08-2023: Applied high level GUI class to texture editor too. Wrapped std::bind std::unique_ptr std::make_unique calls. Fixed the memory leak caused by lack of virtual destructor for UHGraphNode.
+The material editor is the final one to apply high level class...painful!
+
+09-08-2023: Refactored material gui controls. Found the roughness difference between base and translucent pass, need to address it. Fixed the indirect specular issue, I forgot adding result in the end of light compute shader.
+Add size parameter to UploadAllData() function. Enhanced memcpy safety by using memcpy_s instead.
+Finally refactored all GUIs used in editors.

@@ -22,7 +22,7 @@ UHEngine::UHEngine()
 #endif
 {
 	// config manager needs to be initialze as early as possible
-	UHEConfig = std::make_unique<UHConfigManager>();
+	UHEConfig = MakeUnique<UHConfigManager>();
 }
 
 // function to load settings from config file
@@ -43,14 +43,14 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
 
 	// init asset manager
-	UHEAsset = std::make_unique<UHAssetManager>();
+	UHEAsset = MakeUnique<UHAssetManager>();
 
 	// init graphic 
 	const UHPresentationSettings PresentationSettings = UHEConfig->PresentationSetting();
 	UHEngineWindow = EngineWindow;
 	UHWindowInstance = Instance;
 
-	UHEGraphic = std::make_unique<UHGraphic>(UHEAsset.get(), UHEConfig.get());
+	UHEGraphic = MakeUnique<UHGraphic>(UHEAsset.get(), UHEConfig.get());
 	if (!UHEGraphic->InitGraphics(UHEngineWindow))
 	{
 		UHE_LOG(L"Can't initialize graphic class!\n");
@@ -63,7 +63,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	UHEAsset->ImportMaterials(UHEGraphic.get());
 
 	// init input 
-	UHERawInput = std::make_unique<UHRawInput>();
+	UHERawInput = MakeUnique<UHRawInput>();
 	if (!UHERawInput->InitRawInput())
 	{
 		// print a log to remind users that inputs aren't available, and it's okay to proceed
@@ -71,7 +71,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	}
 
 	// init game timer , and reset timer immediately
-	UHEGameTimer = std::make_unique<UHGameTimer>();
+	UHEGameTimer = MakeUnique<UHGameTimer>();
 	UHEGameTimer->Reset();
 
 	// init profiler
@@ -85,7 +85,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	UHEGraphic->ToggleFullScreen(PresentationSettings.bFullScreen);
 
 	// init renderer
-	UHERenderer = std::make_unique<UHDeferredShadingRenderer>(UHEGraphic.get(), UHEAsset.get(), UHEConfig.get(), UHEGameTimer.get());
+	UHERenderer = MakeUnique<UHDeferredShadingRenderer>(UHEGraphic.get(), UHEAsset.get(), UHEConfig.get(), UHEGameTimer.get());
 	if (!UHERenderer->Initialize(&DefaultScene))
 	{
 		UHE_LOG(L"Can't initialize renderer class!\n");
@@ -113,7 +113,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 #if WITH_DEBUG
 	// init editor instance
-	UHEEditor = std::make_unique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
+	UHEEditor = MakeUnique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
 		, UHEAsset.get(), UHEGraphic.get());
 #endif
 

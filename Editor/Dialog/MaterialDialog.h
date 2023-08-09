@@ -6,6 +6,11 @@
 #include "../Classes/GraphNodeGUI.h"
 #include "../Classes/MenuGUI.h"
 #include <memory>
+#include "../Controls/ListBox.h"
+#include "../Controls/Button.h"
+#include "../Controls/GroupBox.h"
+#include "../Controls/Label.h"
+#include "../Controls/ComboBox.h"
 
 // for drawing lines
 #include <gdiplus.h>
@@ -33,11 +38,19 @@ public:
 	virtual void Update() override;
 
 	void Init();
+	void CreateWorkAreaMemDC(int32_t Width, int32_t Height);
 	void RecompileMaterial(int32_t MatIndex);
 	void ResaveMaterial(int32_t MatIndex);
 	void ResaveAllMaterials();
 
 private:
+	// dialog callbacks
+	void OnFinished();
+	void OnMenuHit(uint32_t wParamLow);
+	void OnResizing();
+	void OnDrawing(HDC Hdc);
+
+	// material editing
 	void SelectMaterial(int32_t MatIndex);
 	void TryAddNodes(UHGraphNode* InputNode = nullptr, POINT GUIRelativePos = POINT());
 	void TryDeleteNodes();
@@ -47,7 +60,17 @@ private:
 	void ProcessPopMenu();
 	void DrawPinConnectionLine();
 
-	// control functions
+	// controls
+	UniquePtr<UHListBox> MaterialListGUI;
+	UniquePtr<UHButton> CompileButtonGUI;
+	UniquePtr<UHButton> SaveButtonGUI;
+	UniquePtr<UHButton> SaveAllButtonGUI;
+	UniquePtr<UHLabel> CullTextGUI;
+	UniquePtr<UHLabel> BlendTextGUI;
+	UniquePtr<UHComboBox> CullModeGUI;
+	UniquePtr<UHComboBox> BlendModeGUI;
+	UniquePtr<UHGroupBox> WorkAreaGUI;
+
 	void ControlRecompileMaterial();
 	void ControlResaveMaterial();
 	void ControlResaveAllMaterials();
@@ -55,7 +78,7 @@ private:
 	void ControlBlendMode();
 
 	// all node GUI, the first element is material GUI
-	std::vector<std::unique_ptr<UHGraphNodeGUI>> EditNodeGUIs;
+	std::vector<UniquePtr<UHGraphNodeGUI>> EditNodeGUIs;
 
 	UHMenuGUI NodeFunctionMenu;
 	UHMenuGUI NodePinMenu;
@@ -64,6 +87,9 @@ private:
 	UHMenuGUI TextureMenu;
 	UHGraphNode* NodeToDelete;
 	UHGraphPin* PinToDisconnect;
+	int32_t NodeMenuAction;
+	bool bNeedRepaint;
+
 	int32_t CurrentMaterialIndex;
 	UHMaterial* CurrentMaterial;
 
@@ -78,9 +104,8 @@ private:
 	// GDI stuff
 	GdiplusStartupInput GdiplusStartupInput;
 	ULONG_PTR GdiplusToken;
-
-	// declare function pointer type for editor control
-	std::unordered_map<int32_t, void(UHMaterialDialog::*)()> ControlCallbacks;
+	HDC WorkAreaMemDC;
+	HBITMAP WorkAreaBmp;
 };
 
 #endif

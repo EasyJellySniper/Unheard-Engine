@@ -115,7 +115,7 @@ UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* In
 		return nullptr;
 	}
 
-	std::unique_ptr<UHMeshRendererComponent> NewRenderer = std::make_unique<UHMeshRendererComponent>(InMesh, InMaterial);
+	UniquePtr<UHMeshRendererComponent> NewRenderer = MakeUnique<UHMeshRendererComponent>(InMesh, InMaterial);
 
 	// set transform from imported info
 	NewRenderer->SetPosition(InMesh->GetImportedTranslation());

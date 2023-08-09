@@ -13,16 +13,16 @@ UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 
 	// declare the input pins for material node
 	Inputs.resize(UHMaterialInputs::MaterialMax);
-	Inputs[UHMaterialInputs::Diffuse] = std::make_unique<UHGraphPin>("Diffuse (RGB)", this, Float3Node);
-	Inputs[UHMaterialInputs::Occlusion] = std::make_unique<UHGraphPin>("Occlusion (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Specular] = std::make_unique<UHGraphPin>("Specular (RGB)", this, Float3Node);
-	Inputs[UHMaterialInputs::Normal] = std::make_unique<UHGraphPin>("Normal (RGB)", this, Float3Node);
-	Inputs[UHMaterialInputs::Opacity] = std::make_unique<UHGraphPin>("Opacity (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Metallic] = std::make_unique<UHGraphPin>("Metallic (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Roughness] = std::make_unique<UHGraphPin>("Roughness (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::FresnelFactor] = std::make_unique<UHGraphPin>("Fresnel Factor (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::ReflectionFactor] = std::make_unique<UHGraphPin>("Reflection Factor (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Emissive] = std::make_unique<UHGraphPin>("Emissive (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Diffuse] = MakeUnique<UHGraphPin>("Diffuse (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Occlusion] = MakeUnique<UHGraphPin>("Occlusion (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Specular] = MakeUnique<UHGraphPin>("Specular (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Normal] = MakeUnique<UHGraphPin>("Normal (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Opacity] = MakeUnique<UHGraphPin>("Opacity (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Metallic] = MakeUnique<UHGraphPin>("Metallic (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Roughness] = MakeUnique<UHGraphPin>("Roughness (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::FresnelFactor] = MakeUnique<UHGraphPin>("Fresnel Factor (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::ReflectionFactor] = MakeUnique<UHGraphPin>("Reflection Factor (R)", this, FloatNode);
+	Inputs[UHMaterialInputs::Emissive] = MakeUnique<UHGraphPin>("Emissive (RGB)", this, Float3Node);
 }
 
 void CollectDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing, int32_t& TextureIndexInMaterial
@@ -57,7 +57,7 @@ void CollectDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing
 	}
 
 	// trace all input pins
-	for (const std::unique_ptr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
 	{
 		CollectDefinitions(InputPins.get(), bIsCompilingRayTracing, TextureIndexInMaterial, OutDefinitions, OutDefTable);
 	}
@@ -214,29 +214,29 @@ std::string UHMaterialNode::EvalHLSL()
 	return Code;
 }
 
-std::unique_ptr<UHGraphNode> AllocateNewGraphNode(UHGraphNodeType InType)
+UniquePtr<UHGraphNode> AllocateNewGraphNode(UHGraphNodeType InType)
 {
-	std::unique_ptr<UHGraphNode> NewNode;
+	UniquePtr<UHGraphNode> NewNode;
 
 	switch (InType)
 	{
 	case UHGraphNodeType::Float:
-		NewNode = std::make_unique<UHFloatNode>();
+		NewNode = MakeUnique<UHFloatNode>();
 		break;
 	case UHGraphNodeType::Float2:
-		NewNode = std::make_unique<UHFloat2Node>();
+		NewNode = MakeUnique<UHFloat2Node>();
 		break;
 	case UHGraphNodeType::Float3:
-		NewNode = std::make_unique<UHFloat3Node>();
+		NewNode = MakeUnique<UHFloat3Node>();
 		break;
 	case UHGraphNodeType::Float4:
-		NewNode = std::make_unique<UHFloat4Node>();
+		NewNode = MakeUnique<UHFloat4Node>();
 		break;
 	case UHGraphNodeType::MathNode:
-		NewNode = std::make_unique<UHMathNode>();
+		NewNode = MakeUnique<UHMathNode>();
 		break;
 	case UHGraphNodeType::Texture2DNode:
-		NewNode = std::make_unique<UHTexture2DNode>();
+		NewNode = MakeUnique<UHTexture2DNode>();
 		break;
 	}
 

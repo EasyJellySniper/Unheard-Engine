@@ -1,6 +1,9 @@
 #pragma once
 #include "../../../UnheardEngine.h"
 #include "../../../Runtime/Classes/Object.h"
+#if WITH_DEBUG
+#include "../../../Editor/Controls/RadioButton.h"
+#endif
 
 enum UHGraphPinType
 {
@@ -23,7 +26,10 @@ public:
     UHGraphPin(std::string InName, UHGraphNode* InNode, UHGraphPinType InType, bool bInNeedInputField = false);
     ~UHGraphPin();
 
-    void SetPinGUI(HWND InGUI);
+#if WITH_DEBUG
+    void SetPinGUI(UHRadioButton* InGUI);
+    UHRadioButton* GetPinGUI() const;
+#endif
     bool ConnectFrom(UHGraphPin* InSrcPin);
     void ConnectTo(UHGraphPin* InDestPin);
     void Disconnect(uint32_t DestPinID = UINT32_MAX);
@@ -33,7 +39,6 @@ public:
     UHGraphPinType GetType() const;
     UHGraphPin* GetSrcPin() const;
     std::vector<UHGraphPin*>& GetDestPins();
-    HWND GetPinGUI() const;
     bool NeedInputField() const;
 
 private:
@@ -52,7 +57,9 @@ private:
     UHGraphPinType Type;
 
     // pin GUI
-    HWND PinGUI;
+#if WITH_DEBUG
+    UHRadioButton* PinGUI;
+#endif
 
     // if need input text field
     bool bNeedInputField;

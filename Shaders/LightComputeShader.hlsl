@@ -17,6 +17,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	}
 
 	float Depth = SceneBuffers[3][DTid.xy].r;
+    float3 CurrSceneColor = SceneResult[DTid.xy].rgb;
 
 	// don't apply lighting to empty pixels or there is no light
 	UHBRANCH
@@ -57,5 +58,5 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	// indirect light accumulation
 	Result += LightIndirect(Diffuse.rgb, Normal, Diffuse.a);
 
-	SceneResult[DTid.xy] = float4(Result, 0);
+    SceneResult[DTid.xy] = float4(CurrSceneColor + Result, 0);
 }

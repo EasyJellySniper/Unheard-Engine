@@ -3,7 +3,6 @@
 #if WITH_DEBUG
 #include "../../Resource.h"
 #include "../../Runtime/Engine/Asset.h"
-#include "../../Runtime/Engine/Input.h"
 #include "../Classes/EditorUtils.h"
 #include "../Classes/ParameterNodeGUI.h"
 #include "../Classes/MathNodeGUI.h"
@@ -21,37 +20,6 @@ enum UHNodeMenuAction
     AddNode,
 };
 
-// a few global defines for window proc stuff
-struct UHMaterialDialogData
-{
-    UHMaterialDialogData()
-        : Window(nullptr)
-        , WorkArea(nullptr)
-        , WorkAreaMemDC(nullptr)
-        , WorkAreaBmp(nullptr)
-        , InitWindowRect(RECT{})
-        , InitWorkAreaRect(RECT{})
-        , NodeMenuAction(UHNodeMenuAction::NoAction)
-        , bNeedRepaint(false)
-        , LatestControl(0)
-    {
-    }
-
-    UHMaterialDialog* MaterialDialog;
-    HWND Window;
-    HWND WorkArea;
-    HDC WorkAreaMemDC;
-    HBITMAP WorkAreaBmp;
-    RECT InitWindowRect;
-    RECT InitWorkAreaRect;
-    RECT CurrentWorkAreaRect;
-    UHRawInput Input;
-    int32_t NodeMenuAction;
-    bool bNeedRepaint;
-    WPARAM LatestControl;
-};
-std::unique_ptr<UHMaterialDialogData> GMaterialDialogData;
-
 // the number of the names must follow the enum number (or smaller)
 std::vector<std::wstring> GCullModeNames = { L"None", L"Front", L"Back" };
 std::vector<std::wstring> GBlendModeNames = { L"Opaque", L"Masked", L"AlphaBlend", L"Addition" };
@@ -65,9 +33,13 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , MousePosWhenRightDown(POINT())
     , NodeToDelete(nullptr)
     , PinToDisconnect(nullptr)
+    , NodeMenuAction(UHNodeMenuAction::NoAction)
+    , bNeedRepaint(false)
     , CurrentMaterialIndex(-1)
     , CurrentMaterial(nullptr)
     , GdiplusToken(0)
+    , WorkAreaBmp(nullptr)
+    , WorkAreaMemDC(nullptr)
 {
     // create popup menu for node functions, only do these in construction time
     ParameterMenu.InsertOption("Float", UHGraphNodeType::Float);
@@ -87,18 +59,16 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
 
     GdiplusStartup(&GdiplusToken, &GdiplusStartupInput, NULL);
 
-    // callbacks
-    ControlCallbacks[IDC_MATERIALCOMPILE] = { &UHMaterialDialog::ControlRecompileMaterial };
-    ControlCallbacks[IDC_MATERIALSAVE] = { &UHMaterialDialog::ControlResaveMaterial };
-    ControlCallbacks[IDC_MATERIALSAVEALL] = { &UHMaterialDialog::ControlResaveAllMaterials };
-    ControlCallbacks[IDC_MATERIAL_CULLMODE] = { &UHMaterialDialog::ControlCullMode };
-    ControlCallbacks[IDC_MATERIAL_BLENDMODE] = { &UHMaterialDialog::ControlBlendMode };
+    OnDestroy.push_back(StdBind(&UHMaterialDialog::OnFinished, this));
+    OnMenuClicked.push_back(StdBind(&UHMaterialDialog::OnMenuHit, this, std::placeholders::_1));
+    OnPaint.push_back(StdBind(&UHMaterialDialog::OnDrawing, this, std::placeholders::_1));
+    OnResized.push_back(StdBind(&UHMaterialDialog::OnResizing, this));
 }
 
 UHMaterialDialog::~UHMaterialDialog()
 {
     // clear GUI
-    for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+    for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
     {
         GUI.reset();
     }
@@ -107,168 +77,60 @@ UHMaterialDialog::~UHMaterialDialog()
     GdiplusShutdown(GdiplusToken);
 }
 
-void CreateWorkAreaMemDC(int32_t Width, int32_t Height)
+void UHMaterialDialog::CreateWorkAreaMemDC(int32_t Width, int32_t Height)
 {
     // create mem DC / bitmap for workarea
-    HDC WorkAreaDC = GetDC(GMaterialDialogData->WorkArea);
-    GMaterialDialogData->WorkAreaMemDC = CreateCompatibleDC(WorkAreaDC);
-    GMaterialDialogData->WorkAreaBmp = CreateCompatibleBitmap(WorkAreaDC
-        , Width
-        , Height);
-    ReleaseDC(GMaterialDialogData->WorkArea, WorkAreaDC);
-
-    // store latest work area rect
-    UHEditorUtil::GetWindowSize(GMaterialDialogData->WorkArea, GMaterialDialogData->CurrentWorkAreaRect, GMaterialDialogData->Window);
-}
-
-// Message handler for material window
-INT_PTR CALLBACK MaterialProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        GMaterialDialogData->LatestControl = wParam;
-        if (LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            DeleteDC(GMaterialDialogData->WorkAreaMemDC);
-            DeleteObject(GMaterialDialogData->WorkAreaBmp);
-            GMaterialDialogData.reset();
-            GPinSelectInfo.reset();
-            return (INT_PTR)TRUE;
-        }
-        else if (HIWORD(wParam) == BN_CLICKED)
-        {
-            // choose the add node menu action
-            GMaterialDialogData->NodeMenuAction = static_cast<int32_t>(LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        return (INT_PTR)FALSE;
-
-    case WM_SIZE:
-        {
-            uint32_t NewWidth = LOWORD(lParam);
-            uint32_t NewHeight = HIWORD(lParam);
-            uint32_t GroupBoxWidth = GMaterialDialogData->InitWorkAreaRect.right - GMaterialDialogData->InitWorkAreaRect.left;
-            uint32_t GroupBoxHeight = GMaterialDialogData->InitWorkAreaRect.bottom - GMaterialDialogData->InitWorkAreaRect.top;
-            uint32_t MaterialWndWidth = GMaterialDialogData->InitWindowRect.right - GMaterialDialogData->InitWindowRect.left;
-            uint32_t MaterialWndHeight = GMaterialDialogData->InitWindowRect.bottom - GMaterialDialogData->InitWindowRect.top;
-
-            UHEditorUtil::SetWindowSize(GMaterialDialogData->WorkArea, GMaterialDialogData->InitWorkAreaRect.left, GMaterialDialogData->InitWorkAreaRect.top
-                , NewWidth - (MaterialWndWidth - GroupBoxWidth), NewHeight - (MaterialWndHeight - GroupBoxHeight));
-
-            // resize bitmap
-            DeleteDC(GMaterialDialogData->WorkAreaMemDC);
-            DeleteObject(GMaterialDialogData->WorkAreaBmp);
-            CreateWorkAreaMemDC(NewWidth - (MaterialWndWidth - GroupBoxWidth), NewHeight - (MaterialWndHeight - GroupBoxHeight));
-
-            GMaterialDialogData->bNeedRepaint = true;
-
-            return (INT_PTR)TRUE;
-        }
-
-    case WM_LBUTTONDOWN:
-        GMaterialDialogData->Input.SetLeftMousePressed(true);
-        SetCapture(GMaterialDialogData->Window);
-        return (INT_PTR)TRUE;
-
-    case WM_RBUTTONDOWN:
-        GMaterialDialogData->Input.SetRightMousePressed(true);
-        SetCapture(GMaterialDialogData->Window);
-        return (INT_PTR)TRUE;
-
-    case WM_LBUTTONUP:
-        GMaterialDialogData->Input.SetLeftMousePressed(false);
-        ReleaseCapture();
-        return (INT_PTR)TRUE;
-
-    case WM_RBUTTONUP:
-        GMaterialDialogData->Input.SetRightMousePressed(false);
-        ReleaseCapture();
-        return (INT_PTR)TRUE;
-
-    case WM_PAINT:
-        PAINTSTRUCT Ps;
-        HDC Hdc = BeginPaint(hDlg, &Ps);
-
-        // copy drawing result to work area
-        RECT R;
-        UHEditorUtil::GetWindowSize(GMaterialDialogData->WorkArea, R, GMaterialDialogData->Window);
-        BitBlt(Hdc, R.left, R.top, R.right - R.left, R.bottom - R.top
-           , GMaterialDialogData->WorkAreaMemDC, 0, 0, SRCCOPY);
-
-        EndPaint(hDlg, &Ps);
-        return (INT_PTR)TRUE;
-    }
-    return (INT_PTR)FALSE;
+    HDC WorkAreaDC = GetDC(WorkAreaGUI->GetHwnd());
+    WorkAreaMemDC = CreateCompatibleDC(WorkAreaDC);
+    WorkAreaBmp = CreateCompatibleBitmap(WorkAreaDC, Width, Height);
+    ReleaseDC(WorkAreaGUI->GetHwnd(), WorkAreaDC);
 }
 
 void UHMaterialDialog::ShowDialog()
 {
-    if (GMaterialDialogData == nullptr)
+    if (!IsDialogActive(IDD_MATERIAL))
     {
         Init();
-        ShowWindow(GMaterialDialogData->Window, SW_SHOW);
+        ShowWindow(Dialog, SW_SHOW);
     }
 }
 
 void UHMaterialDialog::Update()
 {
-    if (GMaterialDialogData == nullptr)
+    if (!IsDialogActive(IDD_MATERIAL))
     {
         return;
     }
 
     // call the update function of all GUI nodes
-    for (const std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+    for (const UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
     {
         GUI->Update();
     }
 
-    // process control callbacks
-    WPARAM& LatestControl = GMaterialDialogData->LatestControl;
-    if (LatestControl != 0)
-    {
-        if (ControlCallbacks.find(LOWORD(LatestControl)) != ControlCallbacks.end())
-        {
-            if (HIWORD(LatestControl) == EN_CHANGE || HIWORD(LatestControl) == BN_CLICKED
-                || HIWORD(LatestControl) == CBN_SELCHANGE)
-            {
-                (this->*ControlCallbacks[LOWORD(LatestControl)])();
-            }
-        }
-
-        LatestControl = 0;
-    }
-
     // store mouse states
     GetCursorPos(&MousePos);
-    if (GMaterialDialogData->Input.IsRightMouseDown())
+    if (RawInput.IsRightMouseDown())
     {
         MousePosWhenRightDown = MousePos;
     }
 
     // get current selected material index
-    int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
-
+    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
     if (MatIndex != CurrentMaterialIndex)
     {
         // select material
         SelectMaterial(MatIndex);
         CurrentMaterialIndex = MatIndex;
-        GMaterialDialogData->bNeedRepaint = true;
+        bNeedRepaint = true;
     }
 
     // force a invalidate if it needs repainting
-    if (GMaterialDialogData->bNeedRepaint)
+    if (bNeedRepaint)
     {
-        InvalidateRect(GMaterialDialogData->Window, &GMaterialDialogData->CurrentWorkAreaRect, false);
-        GMaterialDialogData->bNeedRepaint = false;
+        RECT R = WorkAreaGUI->GetCurrentRelativeRect();
+        InvalidateRect(Dialog, &R, false);
+        bNeedRepaint = false;
     }
 
     // only do node operation when a material is selected
@@ -283,40 +145,84 @@ void UHMaterialDialog::Update()
         ProcessPopMenu();
     }
 
-    GMaterialDialogData->Input.CacheKeyStates();
+    RawInput.CacheKeyStates();
 }
 
 void UHMaterialDialog::Init()
 {
-    GMaterialDialogData = std::make_unique<UHMaterialDialogData>();
-    GMaterialDialogData->MaterialDialog = this;
-    GMaterialDialogData->Window = CreateDialog(Instance, MAKEINTRESOURCE(IDD_MATERIAL), Window, (DLGPROC)MaterialProc);
-    GMaterialDialogData->WorkArea = GetDlgItem(GMaterialDialogData->Window, IDC_MATERIAL_GRAPHAREA);
-    GMaterialDialogData->Input.ResetMouseState();
-    GPinSelectInfo = std::make_unique<UHPinSelectInfo>();
+    Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_MATERIAL), ParentWindow, (DLGPROC)GDialogProc);
+    Dialog = Dialog;
+    RawInput.ResetMouseState();
+    GPinSelectInfo = MakeUnique<UHPinSelectInfo>();
 
-    // get the material list from assets manager
+    HWND Wnd = Dialog;
+    RegisterUniqueActiveDialog(IDD_MATERIAL, this);
+
+    // controls init
+    MaterialListGUI = MakeUnique<UHListBox>(GetDlgItem(Wnd, IDC_MATERIAL_LIST), UHGUIProperty().SetAutoSize(AutoSizeY));
     const std::vector<UHMaterial*>& Materials = AssetManager->GetMaterials();
     for (const UHMaterial* Mat : Materials)
     {
-        UHEditorUtil::AddListBoxString(GMaterialDialogData->Window, IDC_MATERIAL_LIST, Mat->GetName());
+        MaterialListGUI->AddItem(Mat->GetName());
     }
 
-    // cache init window size for resizing purpose
-    UHEditorUtil::GetWindowSize(GMaterialDialogData->Window, GMaterialDialogData->InitWindowRect, nullptr);
-    UHEditorUtil::GetWindowSize(GMaterialDialogData->WorkArea, GMaterialDialogData->InitWorkAreaRect, GMaterialDialogData->Window);
+    CompileButtonGUI = MakeUnique<UHButton>(GetDlgItem(Wnd, IDC_MATERIALCOMPILE), UHGUIProperty().SetAutoMove(AutoMoveY));
+    CompileButtonGUI->OnClicked.push_back(StdBind(&UHMaterialDialog::ControlRecompileMaterial, this));
 
-    // create mem DC / bitmap for workarea
-    CreateWorkAreaMemDC(GMaterialDialogData->InitWorkAreaRect.right - GMaterialDialogData->InitWorkAreaRect.left
-        , GMaterialDialogData->InitWorkAreaRect.bottom - GMaterialDialogData->InitWorkAreaRect.top);
+    SaveButtonGUI = MakeUnique<UHButton>(GetDlgItem(Wnd, IDC_MATERIALSAVE), UHGUIProperty().SetAutoMove(AutoMoveY));
+    SaveButtonGUI->OnClicked.push_back(StdBind(&UHMaterialDialog::ControlResaveMaterial, this));
+
+    SaveAllButtonGUI = MakeUnique<UHButton>(GetDlgItem(Wnd, IDC_MATERIALSAVEALL), UHGUIProperty().SetAutoMove(AutoMoveY));
+    SaveAllButtonGUI->OnClicked.push_back(StdBind(&UHMaterialDialog::ControlResaveAllMaterials, this));
+
+    CullTextGUI = MakeUnique<UHLabel>(GetDlgItem(Wnd, IDC_CULLTEXT), UHGUIProperty().SetAutoMove(AutoMoveY));
+    CullModeGUI = MakeUnique<UHComboBox>(GetDlgItem(Wnd, IDC_MATERIAL_CULLMODE), UHGUIProperty().SetAutoMove(AutoMoveY));
+    CullModeGUI->Init(L"None", GCullModeNames);
+    CullModeGUI->OnSelected.push_back(StdBind(&UHMaterialDialog::ControlCullMode, this));
+
+    BlendTextGUI = MakeUnique<UHLabel>(GetDlgItem(Wnd, IDC_BLENDTEXT), UHGUIProperty().SetAutoMove(AutoMoveY));
+    BlendModeGUI = MakeUnique<UHComboBox>(GetDlgItem(Wnd, IDC_MATERIAL_BLENDMODE), UHGUIProperty().SetAutoMove(AutoMoveY));
+    BlendModeGUI->Init(L"Opaque", GBlendModeNames);
+    BlendModeGUI->OnSelected.push_back(StdBind(&UHMaterialDialog::ControlBlendMode, this));
+
+    WorkAreaGUI = MakeUnique<UHGroupBox>(GetDlgItem(Wnd, IDC_MATERIAL_GRAPHAREA), UHGUIProperty().SetAutoSize(AutoSizeBoth));
+    RECT R = WorkAreaGUI->GetCurrentRelativeRect();
+    CreateWorkAreaMemDC((int32_t)(R.right - R.left), (int32_t)(R.bottom - R.top));
 
     // reset material selection
     CurrentMaterialIndex = -1;
     CurrentMaterial = nullptr;
+}
 
-    // init drop list for cull mode and blend mode
-    UHEditorUtil::InitComboBox(GMaterialDialogData->Window, IDC_MATERIAL_CULLMODE, L"None", GCullModeNames);
-    UHEditorUtil::InitComboBox(GMaterialDialogData->Window, IDC_MATERIAL_BLENDMODE, L"Opaque", GBlendModeNames);
+void UHMaterialDialog::OnFinished()
+{
+    DeleteDC(WorkAreaMemDC);
+    DeleteObject(WorkAreaBmp);
+    GPinSelectInfo.reset();
+}
+
+void UHMaterialDialog::OnMenuHit(uint32_t wParamLow)
+{
+    NodeMenuAction = static_cast<int32_t>(wParamLow);
+}
+
+void UHMaterialDialog::OnResizing()
+{
+    // resize bitmap
+    DeleteDC(WorkAreaMemDC);
+    DeleteObject(WorkAreaBmp);
+
+    RECT R = WorkAreaGUI->GetCurrentRelativeRect();
+    CreateWorkAreaMemDC((int32_t)(R.right - R.left), (int32_t)(R.bottom - R.top));
+
+    bNeedRepaint = true;
+}
+
+void UHMaterialDialog::OnDrawing(HDC Hdc)
+{
+    // copy bitmap to work area
+    RECT R = WorkAreaGUI->GetCurrentRelativeRect();
+    BitBlt(Hdc, R.left, R.top, R.right - R.left, R.bottom - R.top, WorkAreaMemDC, 0, 0, SRCCOPY);
 }
 
 void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
@@ -324,7 +230,7 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
     CurrentMaterial = AssetManager->GetMaterials()[MatIndex];
 
     // initialize GUI
-    for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+    for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
     {
         GUI.reset();
     }
@@ -332,95 +238,93 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
 
     // init node GUI
     POINT MaterialNodePos = CurrentMaterial->GetDefaultMaterialNodePos();
-    EditNodeGUIs.push_back(std::move(std::make_unique<UHMaterialNodeGUI>()));
-    EditNodeGUIs[0]->Init(Instance, GMaterialDialogData->WorkArea, CurrentMaterial->GetMaterialNode().get(), "Material Inputs", MaterialNodePos.x, MaterialNodePos.y);
+    EditNodeGUIs.push_back(std::move(MakeUnique<UHMaterialNodeGUI>()));
+    EditNodeGUIs[0]->Init(Instance, WorkAreaGUI->GetHwnd(), CurrentMaterial->GetMaterialNode().get(), "Material Inputs", MaterialNodePos.x, MaterialNodePos.y);
 
-    const std::vector<std::unique_ptr<UHGraphNode>>& EditNodes = CurrentMaterial->GetEditNodes();
+    const std::vector<UniquePtr<UHGraphNode>>& EditNodes = CurrentMaterial->GetEditNodes();
     const std::vector<POINT>& GUIRelativePos = CurrentMaterial->GetGUIRelativePos();
 
     for (size_t Idx = 0; Idx < EditNodes.size(); Idx++)
     {
-        GMaterialDialogData->NodeMenuAction = EditNodes[Idx].get()->GetType();
+        NodeMenuAction = EditNodes[Idx].get()->GetType();
         TryAddNodes(EditNodes[Idx].get(), GUIRelativePos[Idx]);
     }
 
     // mark pin button state for both material node and edit nodes
-    for (std::unique_ptr<UHGraphPin>& Input : CurrentMaterial->GetMaterialNode()->GetInputs())
+    for (UniquePtr<UHGraphPin>& Input : CurrentMaterial->GetMaterialNode()->GetInputs())
     {
         if (UHGraphPin* Pin = Input->GetSrcPin())
         {
-            Button_SetCheck(Input->GetPinGUI(), BST_CHECKED);
-            Button_SetCheck(Pin->GetPinGUI(), BST_CHECKED);
+            Input->GetPinGUI()->Checked(true);
+            Pin->GetPinGUI()->Checked(true);
         }
     }
 
-    for (std::unique_ptr<UHGraphNode>& Node : CurrentMaterial->GetEditNodes())
+    for (UniquePtr<UHGraphNode>& Node : CurrentMaterial->GetEditNodes())
     {
-        for (std::unique_ptr<UHGraphPin>& Input : Node->GetInputs())
+        for (UniquePtr<UHGraphPin>& Input : Node->GetInputs())
         {
             if (UHGraphPin* Pin = Input->GetSrcPin())
             {
-                Button_SetCheck(Input->GetPinGUI(), BST_CHECKED);
-                Button_SetCheck(Pin->GetPinGUI(), BST_CHECKED);
+                Input->GetPinGUI()->Checked(true);
+                Pin->GetPinGUI()->Checked(true);
             }
         }
     }
 
     // select cull mode and blend mode
-    HWND Combobox = GetDlgItem(GMaterialDialogData->Window, IDC_MATERIAL_CULLMODE);
-    UHEditorUtil::SelectComboBox(Combobox, GCullModeNames[CurrentMaterial->GetCullMode()]);
-
-    Combobox = GetDlgItem(GMaterialDialogData->Window, IDC_MATERIAL_BLENDMODE);
-    UHEditorUtil::SelectComboBox(Combobox, GBlendModeNames[CurrentMaterial->GetBlendMode()]);
+    CullModeGUI->Select(GCullModeNames[CurrentMaterial->GetCullMode()]);
+    BlendModeGUI->Select(GBlendModeNames[CurrentMaterial->GetBlendMode()]);
 }
 
 void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
 {
     // Node menu action for adding could be from individual node type
     // return if it's not adding nodes, this also means AddNode needs to be put the bottom of UHNodeMenuAction
-    if (GMaterialDialogData->NodeMenuAction < UHNodeMenuAction::AddNode)
+    if (NodeMenuAction < UHNodeMenuAction::AddNode)
     {
         return;
     }
 
-    std::unique_ptr<UHGraphNode> NewNode = AllocateNewGraphNode(static_cast<UHGraphNodeType>(GMaterialDialogData->NodeMenuAction));
-    std::unique_ptr<UHGraphNodeGUI> NewGUI;
+    UniquePtr<UHGraphNode> NewNode = AllocateNewGraphNode(static_cast<UHGraphNodeType>(NodeMenuAction));
+    UniquePtr<UHGraphNodeGUI> NewGUI;
     std::string GUIName = "";
 
-    switch (GMaterialDialogData->NodeMenuAction)
+    switch (NodeMenuAction)
     {
     case UHGraphNodeType::Float:
-        NewGUI = std::make_unique<UHFloatNodeGUI>();
+        NewGUI = MakeUnique<UHFloatNodeGUI>();
         GUIName = "Float";
         break;
     case UHGraphNodeType::Float2:
-        NewGUI = std::make_unique<UHFloat2NodeGUI>();
+        NewGUI = MakeUnique<UHFloat2NodeGUI>();
         GUIName = "Float2";
         break;
     case UHGraphNodeType::Float3:
-        NewGUI = std::make_unique<UHFloat3NodeGUI>();
+        NewGUI = MakeUnique<UHFloat3NodeGUI>();
         GUIName = "Float3";
         break;
     case UHGraphNodeType::Float4:
-        NewGUI = std::make_unique<UHFloat4NodeGUI>();
+        NewGUI = MakeUnique<UHFloat4NodeGUI>();
         GUIName = "Float4";
         break;
     case UHGraphNodeType::MathNode:
-        NewGUI = std::make_unique<UHMathNodeGUI>();
+        NewGUI = MakeUnique<UHMathNodeGUI>();
         GUIName = "Math";
         break;
     case UHGraphNodeType::Texture2DNode:
-        NewGUI = std::make_unique<UHTexture2DNodeGUI>(AssetManager, Renderer, CurrentMaterial);
+        NewGUI = MakeUnique<UHTexture2DNodeGUI>(AssetManager, Renderer, CurrentMaterial);
         GUIName = "Texture2D";
         break;
     }
 
     // add GUI only if there is an input node, otherwise adding a new node
+    HWND WorkArea = WorkAreaGUI->GetHwnd();
     if (InputNode)
     {
         POINT P = CurrentMaterial->GetDefaultMaterialNodePos();
         NewNode.reset();
-        NewGUI->Init(Instance, GMaterialDialogData->WorkArea, InputNode, GUIName, P.x + GUIRelativePos.x, P.y + GUIRelativePos.y);
+        NewGUI->Init(Instance, WorkArea, InputNode, GUIName, P.x + GUIRelativePos.x, P.y + GUIRelativePos.y);
 
         EditNodeGUIs.push_back(std::move(NewGUI));
     }
@@ -429,8 +333,8 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
         CurrentMaterial->GetEditNodes().push_back(std::move(NewNode));
 
         POINT P = MousePosWhenRightDown;
-        ScreenToClient(GMaterialDialogData->WorkArea, &P);
-        NewGUI->Init(Instance, GMaterialDialogData->WorkArea, CurrentMaterial->GetEditNodes().back().get(), GUIName, P.x, P.y);
+        ScreenToClient(WorkArea, &P);
+        NewGUI->Init(Instance, WorkArea, CurrentMaterial->GetEditNodes().back().get(), GUIName, P.x, P.y);
 
         // syc the gui relative pos as well
         RECT R;
@@ -442,32 +346,36 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
         EditNodeGUIs.push_back(std::move(NewGUI));
     }
 
-    GMaterialDialogData->NodeMenuAction = UHNodeMenuAction::NoAction;
+    NodeMenuAction = UHNodeMenuAction::NoAction;
 }
 
 void UHMaterialDialog::TryDeleteNodes()
 {
-    if (GMaterialDialogData->NodeMenuAction != UHNodeMenuAction::Deletion || NodeToDelete == nullptr)
+    if (NodeMenuAction != UHNodeMenuAction::Deletion || NodeToDelete == nullptr)
     {
         return;
     }
 
     // disconnect all input pin GUI
-    for (std::unique_ptr<UHGraphPin>& InputPin : NodeToDelete->GetInputs())
+    for (UniquePtr<UHGraphPin>& InputPin : NodeToDelete->GetInputs())
     {
         if (UHGraphPin* SrcPin = InputPin->GetSrcPin())
         {
-            Button_SetCheck(SrcPin->GetPinGUI(), BST_UNCHECKED);
+            SrcPin->Disconnect(InputPin->GetId());
+            if (SrcPin->GetDestPins().size() == 0)
+            {
+                SrcPin->GetPinGUI()->Checked(false);
+            }
         }
     }
 
     // disconnect all output pin GUI
-    for (std::unique_ptr<UHGraphPin>& OutputPin : NodeToDelete->GetOutputs())
+    for (UniquePtr<UHGraphPin>& OutputPin : NodeToDelete->GetOutputs())
     {
         for (UHGraphPin* DestPin : OutputPin->GetDestPins())
         {
             DestPin->Disconnect();
-            Button_SetCheck(DestPin->GetPinGUI(), BST_UNCHECKED);
+            DestPin->GetPinGUI()->Checked(false);
         }
     }
 
@@ -492,23 +400,27 @@ void UHMaterialDialog::TryDeleteNodes()
         }
     }
 
-    GMaterialDialogData->NodeMenuAction = UHNodeMenuAction::NoAction;
+    NodeMenuAction = UHNodeMenuAction::NoAction;
     NodeToDelete = nullptr;
-    GMaterialDialogData->bNeedRepaint = true;
+    bNeedRepaint = true;
 }
 
 void UHMaterialDialog::TryDisconnectPin()
 {
-    if (GMaterialDialogData->NodeMenuAction != UHNodeMenuAction::Disconnect || PinToDisconnect == nullptr)
+    if (NodeMenuAction != UHNodeMenuAction::Disconnect || PinToDisconnect == nullptr)
     {
         return;
     }
 
     // disconnect an input pin
-    Button_SetCheck(PinToDisconnect->GetPinGUI(), BST_UNCHECKED);
+    PinToDisconnect->GetPinGUI()->Checked(false);
     if (PinToDisconnect->GetSrcPin())
     {
-        Button_SetCheck(PinToDisconnect->GetSrcPin()->GetPinGUI(), BST_UNCHECKED);
+        PinToDisconnect->GetSrcPin()->Disconnect(PinToDisconnect->GetId());
+        if (PinToDisconnect->GetSrcPin()->GetDestPins().size() == 0)
+        {
+            PinToDisconnect->GetSrcPin()->GetPinGUI()->Checked(false);
+        }
         PinToDisconnect->Disconnect();
     }
     else
@@ -516,24 +428,24 @@ void UHMaterialDialog::TryDisconnectPin()
         // disconnect an output pin
         for (UHGraphPin* DestPin : PinToDisconnect->GetDestPins())
         {
-            Button_SetCheck(DestPin->GetPinGUI(), BST_UNCHECKED);
+            DestPin->GetPinGUI()->Checked(false);
             PinToDisconnect->Disconnect(DestPin->GetId());
             DestPin->Disconnect();
         }
     }
 
-    GMaterialDialogData->NodeMenuAction = UHNodeMenuAction::NoAction;
+    NodeMenuAction = UHNodeMenuAction::NoAction;
     PinToDisconnect = nullptr;
-    GMaterialDialogData->bNeedRepaint = true;
+    bNeedRepaint = true;
 }
 
 void UHMaterialDialog::TryMoveNodes()
 {
     // select node to move first
-    if (GMaterialDialogData->Input.IsLeftMouseDown())
+    if (RawInput.IsLeftMouseDown())
     {
         // move one GUI at the same time
-        for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+        for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
         {
             if (GUI->IsPointInside(MousePos))
             {
@@ -542,42 +454,43 @@ void UHMaterialDialog::TryMoveNodes()
             }
         }
     }
-    else if (GMaterialDialogData->Input.IsLeftMouseUp())
+    else if (RawInput.IsLeftMouseUp())
     {
         GUIToMove = nullptr;
     }
 
     // function for move GUI
-    auto MoveGUI = [](HWND GUIToMove, uint32_t Dx, uint32_t Dy)
+    HWND WorkArea = WorkAreaGUI->GetHwnd();
+    auto MoveGUI = [WorkArea](HWND GUIToMove, uint32_t Dx, uint32_t Dy)
     {
         RECT R;
-        UHEditorUtil::GetWindowSize(GUIToMove, R, GMaterialDialogData->WorkArea);
+        UHEditorUtil::GetWindowSize(GUIToMove, R, WorkArea);
         MoveWindow(GUIToMove, R.left + Dx, R.top + Dy, R.right - R.left, R.bottom - R.top, false);
     };
 
     // cache mouse movement before doing any operations
     uint32_t MouseDeltaX;
     uint32_t MouseDeltaY;
-    GMaterialDialogData->Input.GetMouseDelta(MouseDeltaX, MouseDeltaY);
+    RawInput.GetMouseDelta(MouseDeltaX, MouseDeltaY);
 
-    if (UHEditorUtil::IsPointInsideClient(GMaterialDialogData->WorkArea, MousePos))
+    if (WorkAreaGUI->IsPointInside(MousePos))
     {
-        if (GMaterialDialogData->Input.IsLeftMouseHold() && GUIToMove != nullptr)
+        if (RawInput.IsLeftMouseHold() && GUIToMove != nullptr)
         {
             // move node
             MoveGUI(GUIToMove, MouseDeltaX, MouseDeltaY);
 
-            GMaterialDialogData->bNeedRepaint = true;
+            bNeedRepaint = true;
         }
-        else if (GMaterialDialogData->Input.IsRightMouseHold())
+        else if (RawInput.IsRightMouseHold())
         {
             // move all nodes as like we're moving the view client
-            for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+            for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
             {
                 MoveGUI(GUI->GetHWND(), MouseDeltaX, MouseDeltaY);
             }
 
-            GMaterialDialogData->bNeedRepaint = true;
+            bNeedRepaint = true;
         }
     }
 }
@@ -590,7 +503,7 @@ void UHMaterialDialog::TryConnectNodes()
     }
 
     // ready for connect, find the GUI we're connecting to
-    for (std::unique_ptr<UHGraphNodeGUI>& NodeGUI : EditNodeGUIs)
+    for (UniquePtr<UHGraphNodeGUI>& NodeGUI : EditNodeGUIs)
     {
         // can not connect to self of course..
         if (NodeGUI->GetNode() == GPinSelectInfo->CurrOutputPin->GetOriginNode())
@@ -607,12 +520,12 @@ void UHMaterialDialog::TryConnectNodes()
             if (bConnectSucceed)
             {
                 // mark radio button
-                Button_SetCheck(GPinSelectInfo->CurrOutputPin->GetPinGUI(), BST_CHECKED);
-                Button_SetCheck(DestPin->GetPinGUI(), BST_CHECKED);
+                GPinSelectInfo->CurrOutputPin->GetPinGUI()->Checked(true);
+                DestPin->GetPinGUI()->Checked(true);
 
                 if (OldSrcPin && OldSrcPin->GetDestPins().size() == 0)
                 {
-                    Button_SetCheck(OldSrcPin->GetPinGUI(), BST_UNCHECKED);
+                    OldSrcPin->GetPinGUI()->Checked(false);
                 }
             }
         }
@@ -621,17 +534,17 @@ void UHMaterialDialog::TryConnectNodes()
     // clear the selection in the end
     GPinSelectInfo->bReadyForConnect = false;
     GPinSelectInfo->CurrOutputPin = nullptr;
-    GMaterialDialogData->bNeedRepaint = true;
+    bNeedRepaint = true;
 }
 
 void UHMaterialDialog::ProcessPopMenu()
 {
-    if (GMaterialDialogData->Input.IsRightMouseUp() && UHEditorUtil::IsPointInsideClient(GMaterialDialogData->WorkArea, MousePos))
+    if (RawInput.IsRightMouseUp() && WorkAreaGUI->IsPointInside(MousePos))
     {
         if (MousePosWhenRightDown.x == MousePos.x && MousePosWhenRightDown.y == MousePos.y)
         {
             // see if there is a node to delete
-            for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+            for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
             {
                 if (GUI->IsPointInside(MousePos) && GUI->GetNode()->CanBeDeleted())
                 {
@@ -641,13 +554,13 @@ void UHMaterialDialog::ProcessPopMenu()
             }
 
             NodeFunctionMenu.SetOptionActive(1, NodeToDelete != nullptr);
-            NodeFunctionMenu.ShowMenu(GMaterialDialogData->Window, MousePos.x, MousePos.y);
+            NodeFunctionMenu.ShowMenu(Dialog, MousePos.x, MousePos.y);
         }
     }
     else if (GPinSelectInfo->RightClickedPin != nullptr)
     {
         // process pin disconnect menu
-        NodePinMenu.ShowMenu(GMaterialDialogData->Window, MousePos.x, MousePos.y);
+        NodePinMenu.ShowMenu(Dialog, MousePos.x, MousePos.y);
         PinToDisconnect = GPinSelectInfo->RightClickedPin;
         GPinSelectInfo->RightClickedPin = nullptr;
     }
@@ -655,37 +568,38 @@ void UHMaterialDialog::ProcessPopMenu()
 
 void UHMaterialDialog::DrawPinConnectionLine()
 {
-    SelectObject(GMaterialDialogData->WorkAreaMemDC, GMaterialDialogData->WorkAreaBmp);
-    Graphics Graphics(GMaterialDialogData->WorkAreaMemDC);
+    SelectObject(WorkAreaMemDC, WorkAreaBmp);
+    Graphics Graphics(WorkAreaMemDC);
     Pen Pen(Color(255, 0, 0, 255));
     Graphics.Clear(Color(255, 240, 240, 240));
 
     // draw line when user is dragging
+    HWND WorkArea = WorkAreaGUI->GetHwnd();
     if (GPinSelectInfo->CurrOutputPin)
     {
         // draw line, point is relative to window 
         POINT P1 = GPinSelectInfo->MouseDownPos;
         POINT P2 = MousePos;
-        ScreenToClient(GMaterialDialogData->WorkArea, &P1);
-        ScreenToClient(GMaterialDialogData->WorkArea, &P2);
+        ScreenToClient(WorkArea, &P1);
+        ScreenToClient(WorkArea, &P2);
 
         Graphics.DrawLine(&Pen, (int32_t)P1.x, (int32_t)P1.y, (int32_t)P2.x, (int32_t)P2.y);
-        GMaterialDialogData->bNeedRepaint = true;
+        bNeedRepaint = true;
     }
 
     // draw line for connected pins
-    for (std::unique_ptr<UHGraphNodeGUI>& NodeGUI : EditNodeGUIs)
+    for (UniquePtr<UHGraphNodeGUI>& NodeGUI : EditNodeGUIs)
     {
         UHGraphNode* SrcNode = NodeGUI->GetNode();
 
-        const std::vector<std::unique_ptr<UHGraphPin>>& Inputs = SrcNode->GetInputs();
+        const std::vector<UniquePtr<UHGraphPin>>& Inputs = SrcNode->GetInputs();
         for (int32_t Idx = 0; Idx < static_cast<int32_t>(Inputs.size()); Idx++)
         {
             // only draw when the pin is connected
             if (UHGraphPin* Pin = Inputs[Idx]->GetSrcPin())
             {
-                HWND Src = Pin->GetPinGUI();
-                HWND Dst = NodeGUI->GetInputPin(Idx);
+                HWND Src = Pin->GetPinGUI()->GetHwnd();
+                HWND Dst = NodeGUI->GetInputPin(Idx)->GetHwnd();
 
                 RECT R1{};
                 RECT R2{};
@@ -699,8 +613,8 @@ void UHMaterialDialog::DrawPinConnectionLine()
                 P2.x = R2.left;
                 P2.y = (R2.top + R2.bottom) / 2;
 
-                ScreenToClient(GMaterialDialogData->WorkArea, &P1);
-                ScreenToClient(GMaterialDialogData->WorkArea, &P2);
+                ScreenToClient(WorkArea, &P1);
+                ScreenToClient(WorkArea, &P2);
 
                 Graphics.DrawLine(&Pen, (int32_t)P1.x, (int32_t)P1.y, (int32_t)P2.x, (int32_t)P2.y);
             }
@@ -710,7 +624,7 @@ void UHMaterialDialog::DrawPinConnectionLine()
 
 void UHMaterialDialog::ControlRecompileMaterial()
 {
-    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
     if (MatIndex == -1)
     {
         return;
@@ -723,7 +637,7 @@ void UHMaterialDialog::ControlRecompileMaterial()
 
 void UHMaterialDialog::ControlResaveMaterial()
 {
-    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
     if (MatIndex == -1)
     {
         return;
@@ -732,7 +646,7 @@ void UHMaterialDialog::ControlResaveMaterial()
     UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
     Mat->SetCompileFlag(FullCompileResave);
     ResaveMaterial(MatIndex);
-    MessageBoxA(GMaterialDialogData->Window, "Current editing material is saved.", "Material Editor", MB_OK);
+    MessageBoxA(Dialog, "Current editing material is saved.", "Material Editor", MB_OK);
 }
 
 void UHMaterialDialog::ControlResaveAllMaterials()
@@ -742,13 +656,13 @@ void UHMaterialDialog::ControlResaveAllMaterials()
 
 void UHMaterialDialog::ControlCullMode()
 {
-    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
     if (MatIndex == -1)
     {
         return;
     }
 
-    const int32_t SelectedCullMode = UHEditorUtil::GetComboBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_CULLMODE);
+    const int32_t SelectedCullMode = CullModeGUI->GetSelectedIndex();
     UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
     Mat->SetCullMode(static_cast<UHCullMode>(SelectedCullMode));
 
@@ -759,7 +673,7 @@ void UHMaterialDialog::ControlCullMode()
 
 void UHMaterialDialog::ControlBlendMode()
 {
-    const int32_t MatIndex = UHEditorUtil::GetListBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_LIST);
+    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
     if (MatIndex == -1)
     {
         return;
@@ -767,7 +681,7 @@ void UHMaterialDialog::ControlBlendMode()
 
     // toggling blend mode does a little more than cull mode. it not only needs re-compiling, but also the renderer list refactoring
     // for example: when an object goes alpha blend from masked object, it needs to be in TranslucentRenderer list instead of OpaqueRenderer list
-    const int32_t SelectedBlendMode = UHEditorUtil::GetComboBoxSelectedIndex(GMaterialDialogData->Window, IDC_MATERIAL_BLENDMODE);
+    const int32_t SelectedBlendMode = BlendModeGUI->GetSelectedIndex();
     UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
 
     const UHBlendMode OldMode = Mat->GetBlendMode();
@@ -793,7 +707,7 @@ void UHMaterialDialog::RecompileMaterial(int32_t MatIndex)
 
     if (CurrentMaterialIndex == MatIndex)
     {
-        for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+        for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
         {
             GUI->SetDefaultValueFromGUI();
         }
@@ -814,7 +728,7 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
     {
         // GUI sync if it's the current material
         RECT Rect;
-        UHEditorUtil::GetWindowSize(EditNodeGUIs[0]->GetHWND(), Rect, GMaterialDialogData->WorkArea);
+        UHEditorUtil::GetWindowSize(EditNodeGUIs[0]->GetHWND(), Rect, WorkAreaGUI->GetHwnd());
         POINT Pos{};
         Pos.x = Rect.left;
         Pos.y = Rect.top;
@@ -831,7 +745,7 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
         CurrentMaterial->SetGUIRelativePos(EditGUIPos);
 
         // sync value from GUI
-        for (std::unique_ptr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+        for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
         {
             GUI->SetDefaultValueFromGUI();
         }
@@ -851,7 +765,7 @@ void UHMaterialDialog::ResaveAllMaterials()
         ResaveMaterial(Idx);
     }
 
-    MessageBoxA(GMaterialDialogData->Window, "All materials are saved.", "Material Editor", MB_OK);
+    MessageBoxA(Dialog, "All materials are saved.", "Material Editor", MB_OK);
 }
 
 #endif

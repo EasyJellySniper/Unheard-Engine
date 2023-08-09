@@ -35,4 +35,4 @@ private:
 	UHMaterialCompileData CompileData;
 };
 
-extern std::unique_ptr<UHGraphNode> AllocateNewGraphNode(UHGraphNodeType InType);
+extern UniquePtr<UHGraphNode> AllocateNewGraphNode(UHGraphNodeType InType);

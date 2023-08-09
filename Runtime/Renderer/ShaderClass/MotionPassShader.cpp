@@ -25,7 +25,7 @@ UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string
 	CreateGraphicState(Info);
 }
 
-void UHMotionCameraPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+void UHMotionCameraPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const UHRenderTexture* DepthTexture
 	, const UHSampler* PointClamppedSampler)
 {
@@ -78,8 +78,8 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHMotionObjectPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
+void UHMotionObjectPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
 	, const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(SysConst, 0);

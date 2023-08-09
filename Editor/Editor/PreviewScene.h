@@ -34,7 +34,7 @@ private:
 	UHPreviewSceneType PreviewSceneType;
 
 	// shaders
-	std::unique_ptr<UHRenderBuffer<uint32_t>> DebugViewData;
+	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
 	UHDebugViewShader DebugViewShader;
 	uint32_t CurrentMip;
 

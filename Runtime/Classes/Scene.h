@@ -59,7 +59,7 @@ private:
 	UHCameraComponent DefaultCamera;
 	UHSkyLightComponent* CurrentSkyLight;
 
-	std::vector<std::unique_ptr<UHMeshRendererComponent>> MeshRenderers;
+	std::vector<UniquePtr<UHMeshRendererComponent>> MeshRenderers;
 	std::vector<UHMaterial*> Materials;
 	std::vector<UHMeshRendererComponent*> Renderers;
 	std::vector<UHMeshRendererComponent*> OpaqueRenderers;

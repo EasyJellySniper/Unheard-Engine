@@ -220,13 +220,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Editor\Classes\MaterialImporter.h" />
+    <ClInclude Include="Editor\Controls\Button.h" />
+    <ClInclude Include="Editor\Controls\CheckBox.h" />
+    <ClInclude Include="Editor\Controls\ComboBox.h" />
+    <ClInclude Include="Editor\Controls\GroupBox.h" />
+    <ClInclude Include="Editor\Controls\GUIControl.h" />
+    <ClInclude Include="Editor\Controls\Label.h" />
+    <ClInclude Include="Editor\Controls\ListBox.h" />
+    <ClInclude Include="Editor\Controls\RadioButton.h" />
+    <ClInclude Include="Editor\Controls\Slider.h" />
+    <ClInclude Include="Editor\Controls\TextBox.h" />
+    <ClInclude Include="Editor\Dialog\StatusDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureCreationDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureDialog.h" />
     <ClInclude Include="Editor\Editor\PreviewScene.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphNode.h" />
     <ClInclude Include="Editor\Classes\GraphNodeGUI.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphPin.h" />
-    <ClInclude Include="Editor\Classes\GUIDefines.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\MaterialNode.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\MathNode.h" />
     <ClInclude Include="Editor\Classes\MathNodeGUI.h" />
@@ -315,6 +325,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor\Classes\MaterialImporter.cpp" />
+    <ClCompile Include="Editor\Controls\Button.cpp" />
+    <ClCompile Include="Editor\Controls\CheckBox.cpp" />
+    <ClCompile Include="Editor\Controls\ComboBox.cpp" />
+    <ClCompile Include="Editor\Controls\GroupBox.cpp" />
+    <ClCompile Include="Editor\Controls\GUIControl.cpp" />
+    <ClCompile Include="Editor\Controls\Label.cpp" />
+    <ClCompile Include="Editor\Controls\ListBox.cpp" />
+    <ClCompile Include="Editor\Controls\RadioButton.cpp" />
+    <ClCompile Include="Editor\Controls\Slider.cpp" />
+    <ClCompile Include="Editor\Controls\TextBox.cpp" />
+    <ClCompile Include="Editor\Dialog\StatusDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureCreationDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureDialog.cpp" />
     <ClCompile Include="Editor\Editor\PreviewScene.cpp" />

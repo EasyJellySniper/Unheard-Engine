@@ -79,7 +79,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	float3 Result = 0;
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
-		Result += LightBRDF(UHDirLights[Ldx], BaseColor, float4(Specular * MaterialInput.ReflectionFactor, Roughness), BumpNormal, Vin.WorldPos, ShadowMask);
+		Result += LightBRDF(UHDirLights[Ldx], BaseColor, float4(Specular, Roughness), BumpNormal, Vin.WorldPos, ShadowMask);
 	}
 
 	// indirect light accumulation

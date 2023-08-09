@@ -30,8 +30,8 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 	CreateComputeState(Info);
 }
 
-void UHLightPassShader::BindParameters(const std::array<std::unique_ptr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<std::unique_ptr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& LightConst
+void UHLightPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& LightConst
 	, const std::vector<UHTexture*>& GBuffers
 	, const UHRenderTexture* SceneResult
 	, const UHSampler* LinearClamppedSampler

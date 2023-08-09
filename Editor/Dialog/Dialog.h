@@ -1,19 +1,47 @@
 #pragma once
 #include "../../UnheardEngine.h"
-
-#if WITH_DEBUG
+#include <unordered_map>
+#include "../Controls/GUIControl.h"
+#include "../../Runtime/Engine/Input.h"
 
 // UH shared Dialog class, needs to implement ShowDialog in child class
 class UHDialog
 {
 public:
 	UHDialog(HINSTANCE InInstance, HWND InWindow);
+	virtual ~UHDialog() {}
+
 	virtual void ShowDialog() = 0;
 	virtual void Update() {};
 
+	HWND GetDialog() const;
+
+	// callbacks
+	std::vector<std::function<void()>> OnDestroy;
+	std::vector<std::function<void(uint32_t)>> OnMenuClicked;
+	std::vector<std::function<void()>> OnResized;
+	std::vector<std::function<void(HDC)>> OnPaint;
+
+	UHRawInput RawInput;
+
 protected:
 	HINSTANCE Instance;
-	HWND Window;
+	HWND ParentWindow;
+	HWND Dialog;
 };
 
-#endif
+// shared global dialog proc
+extern INT_PTR CALLBACK GDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+extern std::unordered_map<int32_t, UHDialog*> GActiveDialogTable;
+extern std::unordered_map<HWND, UHGUIControlBase*> GControlGUITable;
+
+// register unique active dialog
+inline void RegisterUniqueActiveDialog(int32_t Id, UHDialog* InDialog)
+{
+	GActiveDialogTable[Id] = InDialog;
+}
+
+inline bool IsDialogActive(int32_t Id)
+{
+	return GActiveDialogTable.find(Id) != GActiveDialogTable.end();
+}

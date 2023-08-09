@@ -17,6 +17,7 @@
 #define IDR_MAINFRAME                   128
 #define IDD_TEXTURE                     129
 #define IDD_TEXTURECREATE               130
+#define IDD_STATUS                      131
 #define IDC_VSYNC                       1000
 #define IDC_FULLSCREEN                  1001
 #define IDC_CAMERASPEED                 1003
@@ -63,7 +64,6 @@
 #define IDC_TEXTURE_DIMENSION           1048
 #define IDC_MIPTEXT                     1049
 #define IDC_ISNORMAL                    1050
-#define IDC_TEXTURE_CREATETYPE          1051
 #define IDC_CREATETEXTURE               1052
 #define IDC_TEXTURE_FILE_OUTPUT         1053
 #define IDC_BROWSE_INPUT                1054
@@ -72,7 +72,12 @@
 #define IDC_BROWSE_OUTPUT               1056
 #define IDC_TEXTURE_RAWSOURCEPATH       1057
 #define IDC_BROWSE_RAWTEXTURE           1058
-#define IDC_MFCBUTTON1                  1059
+#define IDC_STATUS_TEXT                 1060
+#define IDC_COMPRESSMODE_TEXT           1061
+#define IDC_SOURCEFILE_TEXT             1062
+#define IDC_HINT_TEXT                   1063
+#define IDC_CULLTEXT                    1064
+#define IDC_BLENDTEXT                   1065
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773
@@ -93,9 +98,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        131
+#define _APS_NEXT_RESOURCE_VALUE        132
 #define _APS_NEXT_COMMAND_VALUE         32784
-#define _APS_NEXT_CONTROL_VALUE         1060
+#define _APS_NEXT_CONTROL_VALUE         1066
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

@@ -24,7 +24,7 @@ class UHGraphNode : public UHObject
 {
 public:
     UHGraphNode(bool bInCanBeDeleted);
-    ~UHGraphNode();
+    virtual ~UHGraphNode();
 
     // node functions
     virtual bool CanEvalHLSL() { return true; }
@@ -45,15 +45,15 @@ public:
 
     std::string GetName() const;
     UHGraphNodeType GetType() const;
-    std::vector<std::unique_ptr<UHGraphPin>>& GetInputs();
-    std::vector<std::unique_ptr<UHGraphPin>>& GetOutputs();
+    std::vector<UniquePtr<UHGraphPin>>& GetInputs();
+    std::vector<UniquePtr<UHGraphPin>>& GetOutputs();
     bool CanBeDeleted() const;
 
 protected:
     std::string Name;
     UHGraphNodeType NodeType;
-    std::vector<std::unique_ptr<UHGraphPin>> Inputs;
-    std::vector<std::unique_ptr<UHGraphPin>> Outputs;
+    std::vector<UniquePtr<UHGraphPin>> Inputs;
+    std::vector<UniquePtr<UHGraphPin>> Outputs;
     bool bCanBeDeleted;
     bool bIsCompilingRayTracing;
 
