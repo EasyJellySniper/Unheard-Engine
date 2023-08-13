@@ -58,7 +58,7 @@ private:
 	void TryMoveNodes();
 	void TryConnectNodes();
 	void ProcessPopMenu();
-	void DrawPinConnectionLine();
+	void DrawPinConnectionLine(bool bIsErasing = false);
 
 	// controls
 	UniquePtr<UHListBox> MaterialListGUI;
@@ -97,6 +97,9 @@ private:
 
 	POINT MousePos;
 	POINT MousePosWhenRightDown;
+	POINT PrevMousePos;
+	bool bIsUpdatingDragLine;
+	RECT DragRect;
 
 	UHAssetManager* AssetManager;
 	UHDeferredShadingRenderer* Renderer;

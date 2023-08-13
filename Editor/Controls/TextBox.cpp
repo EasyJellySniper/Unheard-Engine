@@ -17,7 +17,13 @@ UHTextBox::UHTextBox(HWND InControl, UHGUIProperty InProperties)
 
 UHTextBox::UHTextBox(std::string InGUIName, UHGUIProperty InProperties)
 {
-	ControlObj = CreateWindowA("EDIT", "0", WS_BORDER | WS_CHILD, InProperties.InitPosX, InProperties.InitPosY
+	DWORD Style = WS_BORDER | WS_CHILD;
+	if (InProperties.bClipped)
+	{
+		Style |= WS_CLIPCHILDREN;
+	}
+
+	ControlObj = CreateWindowA("EDIT", "0", Style, InProperties.InitPosX, InProperties.InitPosY
 		, InProperties.InitWidth, InProperties.InitHeight, InProperties.ParentWnd, NULL, InProperties.Instance, NULL);
 
 	InternalInit(ControlObj, InProperties);

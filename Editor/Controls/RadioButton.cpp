@@ -17,6 +17,11 @@ UHRadioButton::UHRadioButton(std::string InGUIName, UHGUIProperty InProperties, 
 		Style |= BS_LEFTTEXT;
 	}
 
+	if (InProperties.bClipped)
+	{
+		Style |= WS_CLIPCHILDREN;
+	}
+
 	ControlObj = CreateWindowA("BUTTON", InGUIName.c_str()
 		, Style
 		, InProperties.InitPosX, InProperties.InitPosY

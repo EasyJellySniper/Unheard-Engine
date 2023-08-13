@@ -18,8 +18,13 @@ UHComboBox::UHComboBox(HWND InControl, UHGUIProperty InProperties)
 
 UHComboBox::UHComboBox(UHGUIProperty InProperties)
 {
-	ControlObj = CreateWindow(WC_COMBOBOX, L"",
-		CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE | WS_VSCROLL,
+	DWORD Style = CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE | WS_VSCROLL;
+	if (InProperties.bClipped)
+	{
+		Style |= WS_CLIPCHILDREN;
+	}
+
+	ControlObj = CreateWindow( WC_COMBOBOX, L"", Style,
 		InProperties.InitPosX, InProperties.InitPosY, InProperties.InitWidth, InProperties.InitHeight, InProperties.ParentWnd, nullptr, InProperties.Instance, nullptr);
 
 	InternalInit(ControlObj, InProperties);

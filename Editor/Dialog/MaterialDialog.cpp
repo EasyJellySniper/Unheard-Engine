@@ -25,11 +25,12 @@ std::vector<std::wstring> GCullModeNames = { L"None", L"Front", L"Back" };
 std::vector<std::wstring> GBlendModeNames = { L"Opaque", L"Masked", L"AlphaBlend", L"Addition" };
 
 UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer)
-	: UHDialog(InInstance, InWindow)
+    : UHDialog(InInstance, InWindow)
     , AssetManager(InAssetManager)
     , Renderer(InRenderer)
     , GUIToMove(nullptr)
     , MousePos(POINT())
+    , PrevMousePos(POINT())
     , MousePosWhenRightDown(POINT())
     , NodeToDelete(nullptr)
     , PinToDisconnect(nullptr)
@@ -40,6 +41,8 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , GdiplusToken(0)
     , WorkAreaBmp(nullptr)
     , WorkAreaMemDC(nullptr)
+    , bIsUpdatingDragLine(false)
+    , DragRect(RECT())
 {
     // create popup menu for node functions, only do these in construction time
     ParameterMenu.InsertOption("Float", UHGraphNodeType::Float);
@@ -145,6 +148,7 @@ void UHMaterialDialog::Update()
         ProcessPopMenu();
     }
 
+    PrevMousePos = MousePos;
     RawInput.CacheKeyStates();
 }
 
@@ -477,10 +481,31 @@ void UHMaterialDialog::TryMoveNodes()
     {
         if (RawInput.IsLeftMouseHold() && GUIToMove != nullptr)
         {
+            RECT OldRect;
+            UHEditorUtil::GetWindowSize(GUIToMove, OldRect, Dialog);
+
+            // erase old lines
+            bIsUpdatingDragLine = true;
+            DragRect = OldRect;
+            DrawPinConnectionLine(true);
+
             // move node
             MoveGUI(GUIToMove, MouseDeltaX, MouseDeltaY);
 
-            bNeedRepaint = true;
+            RECT NewRect;
+            UHEditorUtil::GetWindowSize(GUIToMove, NewRect, Dialog);
+
+            // invalidate the node rect
+            NewRect.left = std::min(NewRect.left, OldRect.left) - 10;
+            NewRect.top = std::min(NewRect.top, OldRect.top) - 10;
+            NewRect.right = std::max(NewRect.right, OldRect.right) + 10;
+            NewRect.bottom = std::max(NewRect.bottom, OldRect.bottom) + 10;
+            InvalidateRect(Dialog, &NewRect, false);
+
+            // invalidate the line drawing after moving
+            bIsUpdatingDragLine = true;
+            DragRect = NewRect;
+            DrawPinConnectionLine();
         }
         else if (RawInput.IsRightMouseHold())
         {
@@ -566,7 +591,7 @@ void UHMaterialDialog::ProcessPopMenu()
     }
 }
 
-void UHMaterialDialog::DrawPinConnectionLine()
+void UHMaterialDialog::DrawPinConnectionLine(bool bIsErasing)
 {
     SelectObject(WorkAreaMemDC, WorkAreaBmp);
     Graphics Graphics(WorkAreaMemDC);
@@ -575,6 +600,7 @@ void UHMaterialDialog::DrawPinConnectionLine()
 
     // draw line when user is dragging
     HWND WorkArea = WorkAreaGUI->GetHwnd();
+
     if (GPinSelectInfo->CurrOutputPin)
     {
         // draw line, point is relative to window 
@@ -584,7 +610,27 @@ void UHMaterialDialog::DrawPinConnectionLine()
         ScreenToClient(WorkArea, &P2);
 
         Graphics.DrawLine(&Pen, (int32_t)P1.x, (int32_t)P1.y, (int32_t)P2.x, (int32_t)P2.y);
-        bNeedRepaint = true;
+
+        P1 = GPinSelectInfo->MouseDownPos;
+        P2 = MousePos;
+        POINT P3 = PrevMousePos;
+        ScreenToClient(Dialog, &P1);
+        ScreenToClient(Dialog, &P2);
+        ScreenToClient(Dialog, &P3);
+
+        DragRect.left = std::min(P1.x, P2.x);
+        DragRect.right = std::max(P1.x, P2.x);
+        DragRect.top = std::min(P1.y, P2.y);
+        DragRect.bottom = std::max(P1.y, P2.y);
+ 
+        DragRect.left = std::min(DragRect.left, P3.x) - 10;
+        DragRect.right = std::max(DragRect.right, P3.x) + 10;
+        DragRect.top = std::min(DragRect.top, P3.y) - 10;
+        DragRect.bottom = std::max(DragRect.bottom, P3.y) + 10;
+
+        // only invalidate the rect passed by the line, include previous mouse position
+        InvalidateRect(Dialog, &DragRect, false);
+        bIsUpdatingDragLine = true;
     }
 
     // draw line for connected pins
@@ -613,13 +659,36 @@ void UHMaterialDialog::DrawPinConnectionLine()
                 P2.x = R2.left;
                 P2.y = (R2.top + R2.bottom) / 2;
 
+                POINT P3 = P1;
+                POINT P4 = P2;
+
                 ScreenToClient(WorkArea, &P1);
                 ScreenToClient(WorkArea, &P2);
+                ScreenToClient(Dialog, &P3);
+                ScreenToClient(Dialog, &P4);
 
-                Graphics.DrawLine(&Pen, (int32_t)P1.x, (int32_t)P1.y, (int32_t)P2.x, (int32_t)P2.y);
+                if (!bIsErasing)
+                {
+                    Graphics.DrawLine(&Pen, (int32_t)P1.x, (int32_t)P1.y, (int32_t)P2.x, (int32_t)P2.y);
+                }
+
+                // invalidate rect when necessary
+                RECT R;
+                R.left = std::min(P3.x, P4.x) - 10;
+                R.right = std::max(P3.x, P4.x) + 10;
+                R.top = std::min(P3.y, P4.y) - 10;
+                R.bottom = std::max(P3.y, P4.y) + 10;
+
+                RECT Dummy;
+                if (bIsUpdatingDragLine && IntersectRect(&Dummy, &R, &DragRect))
+                {
+                    InvalidateRect(Dialog, &R, false);
+                }
             }
         }
     }
+
+    bIsUpdatingDragLine = false;
 }
 
 void UHMaterialDialog::ControlRecompileMaterial()

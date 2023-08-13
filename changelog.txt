@@ -310,3 +310,7 @@ The material editor is the final one to apply high level class...painful!
 09-08-2023: Refactored material gui controls. Found the roughness difference between base and translucent pass, need to address it. Fixed the indirect specular issue, I forgot adding result in the end of light compute shader.
 Add size parameter to UploadAllData() function. Enhanced memcpy safety by using memcpy_s instead.
 Finally refactored all GUIs used in editors.
+
+10-08-2023: Reduced the flickering when dragging a pin line in material editor.
+
+13-08-2023: Improved GUI flickering when dragging a single node in material editor. Spent too much time on the GUIs..next is to add point/spot light implemenation.

@@ -35,6 +35,7 @@ struct UHGUIProperty
 	UHGUIProperty& SetMinVisibleItem(const int32_t InMinVisible);
 	UHGUIProperty& SetMarginX(const int32_t Val);
 	UHGUIProperty& SetMarginY(const int32_t Val);
+	UHGUIProperty& SetClip(bool InFlag);
 
 	UHAutoSizeMethod AutoSize;
 	UHAutoMoveMethod AutoMove;
@@ -47,6 +48,7 @@ struct UHGUIProperty
 	int32_t MinVisibleItem;
 	int32_t MarginX;
 	int32_t MarginY;
+	bool bClipped;
 };
 
 // base class for all GUI controls, for now it contains the native window object for the control

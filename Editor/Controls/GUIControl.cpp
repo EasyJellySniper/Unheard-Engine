@@ -10,6 +10,12 @@ UHGUIProperty::UHGUIProperty()
 	, InitPosY(0)
 	, InitWidth(0)
 	, InitHeight(0)
+	, Instance(nullptr)
+	, MarginX(0)
+	, MarginY(0)
+	, MinVisibleItem(15)
+	, ParentWnd(nullptr)
+	, bClipped(false)
 {
 
 }
@@ -77,6 +83,12 @@ UHGUIProperty& UHGUIProperty::SetMarginX(const int32_t Val)
 UHGUIProperty& UHGUIProperty::SetMarginY(const int32_t Val)
 {
 	MarginY = Val;
+	return *this;
+}
+
+UHGUIProperty& UHGUIProperty::SetClip(bool InFlag)
+{
+	bClipped = InFlag;
 	return *this;
 }
 
