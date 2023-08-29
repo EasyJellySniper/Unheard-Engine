@@ -47,7 +47,6 @@ std::string UHTexture2DNode::EvalDefinition()
 
 		// consider if this is a bump texture and insert decode
 		const bool bIsBumpTexture = UHAssetManager::IsBumpTexture(SelectedTexturePathName);
-		const std::string BumpDecode = bIsBumpTexture ? " * 2.0f - 1.0f" : "";
 
 		// if it's compiling for ray tracing, I need to use the SampleLevel instead of Sample
 		if (bIsCompilingRayTracing)
@@ -56,13 +55,28 @@ std::string UHTexture2DNode::EvalDefinition()
 			const std::string SamplerIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].SamplerIndex";
 
 			// the mip level will be calculated in the shader
-			return "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].SampleLevel(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ", MipLevel)"
-				+ BumpDecode + ";\n";
+			std::string Result =
+				"float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].SampleLevel(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ", MipLevel);\n";
+
+			if (bIsBumpTexture)
+			{
+				// insert decode bump normal code if it's normal map
+				Result += "Result_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz" + ");\n";
+			}
+
+			return Result;
 		}
 
 		const std::string TextureIndexCode = "Node_" + IDString + "_Index";
 		const std::string SamplerIndexCode = GDefaultSamplerName + "_Index";
-		return "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].Sample(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ")" + BumpDecode + ";\n";
+		std::string Result = "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].Sample(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ");\n";
+
+		if (bIsBumpTexture)
+		{
+			// insert decode bump normal code if it's normal map
+			Result += "Result_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz" + ");\n";
+		}
+		return Result;
 	}
 #endif
 	return "[ERROR] Texture not set.";

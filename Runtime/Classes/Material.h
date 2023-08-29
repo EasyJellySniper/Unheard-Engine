@@ -119,7 +119,7 @@ public:
 
 	UHTexture* GetSystemTex(UHSystemTextureType InType) const;
 	UHSampler* GetSystemSampler(UHSystemTextureType InType) const;
-	std::vector<std::string> GetMaterialDefines() const;
+	std::vector<std::string> GetMaterialDefines();
 	std::vector<std::string> GetRegisteredTextureNames();
 	const std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
 	UHRenderBuffer<UHMaterialData>* GetRTMaterialDataGPU() const;

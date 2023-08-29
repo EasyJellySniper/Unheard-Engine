@@ -122,16 +122,19 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 		vkGetImageMemoryRequirements(LogicalDevice, ImageSource, &MemRequirements);
 
 #if WITH_DEBUG
-		VkDeviceImageMemoryRequirements ImageMemoryReqs{};
-		ImageMemoryReqs.sType = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS;
-		CreateInfo.format = (TextureSettings.bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
-		ImageMemoryReqs.pCreateInfo = &CreateInfo;
+		if (!InInfo.bIsRT)
+		{
+			VkDeviceImageMemoryRequirements ImageMemoryReqs{};
+			ImageMemoryReqs.sType = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS;
+			CreateInfo.format = (TextureSettings.bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+			ImageMemoryReqs.pCreateInfo = &CreateInfo;
 
-		VkMemoryRequirements2 MemoryReqs2{};
-		MemoryReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+			VkMemoryRequirements2 MemoryReqs2{};
+			MemoryReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
 
-		vkGetDeviceImageMemoryRequirements(LogicalDevice, &ImageMemoryReqs, &MemoryReqs2);
-		MemRequirements = MemoryReqs2.memoryRequirements;
+			vkGetDeviceImageMemoryRequirements(LogicalDevice, &ImageMemoryReqs, &MemoryReqs2);
+			MemRequirements = MemoryReqs2.memoryRequirements;
+		}
 #endif
 		// validate the alignment
 		if ((MemRequirements.size % MemRequirements.alignment) != 0)

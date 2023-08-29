@@ -77,7 +77,8 @@ void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
         , ID_VIEWMODE_DEPTH
         , ID_VIEWMODE_MOTION
         , ID_VIEWMODE_VERTEXNORMALMIP
-        , ID_VIEWMODE_RTSHADOW };
+        , ID_VIEWMODE_RTSHADOW
+        , ID_VIEWMODE_RTSHADOW_TRANSLUCENT};
 
     for (size_t Idx = 0; Idx < ViewModeMenuIDs.size(); Idx++)
     {

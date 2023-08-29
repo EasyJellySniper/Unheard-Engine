@@ -9,6 +9,7 @@ UHDemoScript::UHDemoScript()
 	, Geo364OriginPos(XMFLOAT3())
 	, TimeCounter(0)
 	, TimeSign(1)
+	, bTestNight(true)
 {
 
 }
@@ -16,7 +17,10 @@ UHDemoScript::UHDemoScript()
 void UHDemoScript::OnEngineUpdate(UHGameTimer* InGameTimer)
 {
 	float LightRotSpd = 5.0f * InGameTimer->GetDeltaTime();
-	DefaultDirectionalLight.Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+	if (!bTestNight)
+	{
+		DefaultDirectionalLight.Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+	}
 
 	// move geo364
 	if (Geo364Renderer)
@@ -101,16 +105,16 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	InScene->AddMeshRenderer(SkyCube, SkyMat);
 
 	// setup default light
-	DefaultDirectionalLight.SetLightColor(XMFLOAT4(0.95f, 0.91f, 0.6f, 0.4f));
-	DefaultDirectionalLight.SetIntensity(4.5f);
-	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, 180, 0));
+	DefaultDirectionalLight.SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
+	DefaultDirectionalLight.SetIntensity(bTestNight ? 0.5f : 4.5f);
+	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, 250, 0));
 	InScene->AddDirectionalLight(&DefaultDirectionalLight);
 
 	// setup default sky light
 	DefaultSkyLight.SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
 	DefaultSkyLight.SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
-	DefaultSkyLight.SetSkyIntensity(1.0f);
-	DefaultSkyLight.SetGroundIntensity(1.5f);
+	DefaultSkyLight.SetSkyIntensity(bTestNight ? 0.1f : 1.0f);
+	DefaultSkyLight.SetGroundIntensity(bTestNight ? 0.5f : 1.5f);
 	InScene->SetSkyLight(&DefaultSkyLight);
 
 	// setup default camera
@@ -120,8 +124,50 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	InScene->GetMainCamera()->SetCullingDistance(1000.0f);
 
 	// secondary light test
-	SecondDirectionalLight.SetLightColor(XMFLOAT4(1.0f, 0.55f, 0.0f, 0.7f));
+	SecondDirectionalLight.SetLightColor(XMFLOAT3(1.0f, 0.55f, 0.0f));
 	SecondDirectionalLight.SetIntensity(2.5f);
 	SecondDirectionalLight.SetRotation(XMFLOAT3(45, -30, 0));
-	InScene->AddDirectionalLight(&SecondDirectionalLight);
+	if (!bTestNight)
+	{
+		InScene->AddDirectionalLight(&SecondDirectionalLight);
+	}
+
+	if (bTestNight)
+	{
+		// point light test
+		float PointLightStartX = -105;
+		float PointLightStartZ = -25;
+		float MinColor = 0.2f;
+
+		TestPointLights.resize(27);
+		for (int32_t Idx = 0; Idx < 3; Idx++)
+		{
+			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
+			{
+				const int32_t LightIndex = Idx * 9 + Jdx;
+				TestPointLights[LightIndex].SetIntensity(8.0f);
+				TestPointLights[LightIndex].SetRadius(10.0f);
+				TestPointLights[LightIndex].SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
+				TestPointLights[LightIndex].SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
+				InScene->AddPointLight(&TestPointLights[LightIndex]);
+			}
+		}
+
+		// point light test - the 2nd group
+		PointLightStartX = -95;
+		PointLightStartZ = -25;
+		TestPointLights2.resize(27);
+		for (int32_t Idx = 0; Idx < 3; Idx++)
+		{
+			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
+			{
+				const int32_t LightIndex = Idx * 9 + Jdx;
+				TestPointLights2[LightIndex].SetIntensity(8.0f);
+				TestPointLights2[LightIndex].SetRadius(10.0f);
+				TestPointLights2[LightIndex].SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
+				TestPointLights2[LightIndex].SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
+				InScene->AddPointLight(&TestPointLights2[LightIndex]);
+			}
+		}
+	}
 }

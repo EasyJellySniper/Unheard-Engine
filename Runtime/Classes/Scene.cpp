@@ -43,6 +43,7 @@ void UHScene::Release()
 	OpaqueRenderers.clear();
 	TranslucentRenderers.clear();
 	DirectionalLights.clear();
+	PointLights.clear();
 }
 
 void UHScene::Update()
@@ -66,6 +67,14 @@ void UHScene::Update()
 	}
 
 	for (UHDirectionalLightComponent* Light : DirectionalLights)
+	{
+		if (Light->IsWorldDirty())
+		{
+			Light->Update();
+		}
+	}
+
+	for (UHPointLightComponent* Light : PointLights)
 	{
 		if (Light->IsWorldDirty())
 		{
@@ -175,6 +184,12 @@ void UHScene::AddDirectionalLight(UHDirectionalLightComponent* InLight)
 	DirectionalLights.push_back(InLight);
 }
 
+void UHScene::AddPointLight(UHPointLightComponent* InLight)
+{
+	InLight->SetBufferDataIndex(static_cast<int32_t>(PointLights.size()));
+	PointLights.push_back(InLight);
+}
+
 void UHScene::SetSkyLight(UHSkyLightComponent* InSkyLight)
 {
 	CurrentSkyLight = InSkyLight;
@@ -195,6 +210,11 @@ size_t UHScene::GetDirLightCount() const
 	return DirectionalLights.size();
 }
 
+size_t UHScene::GetPointLightCount() const
+{
+	return PointLights.size();
+}
+
 std::vector<UHMeshRendererComponent*> UHScene::GetAllRenderers() const
 {
 	return Renderers;
@@ -213,6 +233,11 @@ std::vector<UHMeshRendererComponent*> UHScene::GetTranslucentRenderers() const
 std::vector<UHDirectionalLightComponent*> UHScene::GetDirLights() const
 {
 	return DirectionalLights;
+}
+
+std::vector<UHPointLightComponent*> UHScene::GetPointLights() const
+{
+	return PointLights;
 }
 
 std::vector<UHMaterial*> UHScene::GetMaterials() const

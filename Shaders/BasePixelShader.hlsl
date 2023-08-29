@@ -59,7 +59,7 @@ void BasePS(VertexOutput Vin
 	float3 BumpNormal = VertexNormal;
 #endif
 
-	OutNormal = float4(BumpNormal * 0.5f + 0.5f, 0);
+    OutNormal = float4(EncodeNormal(BumpNormal), 0);
 
 	// output specular color and roughness
 	float3 Specular = MaterialInput.Specular;
@@ -96,5 +96,5 @@ void BasePS(VertexOutput Vin
 	OutMipRate = DeltaMax;
 
 	// a is unused for now
-	OutVertexNormal = float4(VertexNormal * 0.5f + 0.5f, 0);
+    OutVertexNormal = float4(EncodeNormal(VertexNormal), 0);
 }

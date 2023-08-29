@@ -68,6 +68,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
             , L"Base Pass"
             , L"Update Top Level AS"
             , L"Ray Tracing Shadow"
+            , L"Light Culling"
             , L"Light Pass"
             , L"Skybox Pass"
             , L"Motion Pass"

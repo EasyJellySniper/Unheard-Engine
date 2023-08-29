@@ -1,98 +1,94 @@
 #include "Light.h"
 
-UHDirectionalLightComponent::UHDirectionalLightComponent()
-	: LightViewProj(MathHelpers::Identity4x4())
-	, LightViewProjInv(MathHelpers::Identity4x4())
-	, LightColor(XMFLOAT4())
-	, ShadowReferencePoint(XMFLOAT3())
+// ************************************** Light Base ************************************** //
+UHLightBase::UHLightBase()
+	: LightColor(XMFLOAT3(1, 1, 1))
 	, Intensity(1.0f)
-	, ShadowRange(500)
-	, ShadowDistance(1000)
 {
 
 }
 
-void UHDirectionalLightComponent::Update()
-{
-	SetPosition(ShadowReferencePoint - Forward * ShadowDistance * 0.5f);
-	UHTransformComponent::Update();
-
-	if (IsTransformChanged())
-	{
-		BuildLightMatrix();
-		SetRenderDirties(true);
-	}
-}
-
-void UHDirectionalLightComponent::SetLightColor(XMFLOAT4 InLightColor)
+void UHLightBase::SetLightColor(XMFLOAT3 InLightColor)
 {
 	LightColor = InLightColor;
-
-	// clamp shadow atten
-	LightColor.w = std::clamp(LightColor.w, 0.0f, 1.0f);
-
 	SetRenderDirties(true);
 }
 
-void UHDirectionalLightComponent::SetIntensity(float InIntensity)
+void UHLightBase::SetIntensity(float InIntensity)
 {
 	Intensity = InIntensity;
 	SetRenderDirties(true);
 }
 
-// set shadow range/distance used in orthographic matrix
-void UHDirectionalLightComponent::SetShadowRange(float Range, float Distance)
-{
-	ShadowRange = Range;
-	ShadowDistance = Distance;
-}
 
-// directional light will follow the reference point (usually camera) when building shadow matrix
-void UHDirectionalLightComponent::SetShadowReferencePoint(XMFLOAT3 InPos)
+// ************************************** Directional Light ************************************** //
+void UHDirectionalLightComponent::Update()
 {
-	ShadowReferencePoint = InPos;
+	// light update doesn't need to calculate world matrix
+	bTransformChanged = bIsWorldDirty;
+
+	if (IsTransformChanged())
+	{
+		SetRenderDirties(true);
+		bTransformChanged = false;
+	}
 }
 
 UHDirectionalLightConstants UHDirectionalLightComponent::GetConstants() const
 {
 	UHDirectionalLightConstants Consts;
-	Consts.Color = LightColor;
+	Consts.Color.x = LightColor.x;
+	Consts.Color.y = LightColor.y;
+	Consts.Color.z = LightColor.z;
 	Consts.Dir = Forward;
 
 	Consts.Color.x *= Intensity;
 	Consts.Color.y *= Intensity;
 	Consts.Color.z *= Intensity;
+	Consts.Color.w = Intensity;
 
 	return Consts;
 }
 
-XMFLOAT4X4 UHDirectionalLightComponent::GetLightViewProj() const
+
+// ************************************** Point Light ************************************** //
+UHPointLightComponent::UHPointLightComponent()
+	: Radius(50.0f)
 {
-	return LightViewProj;
+
 }
 
-XMFLOAT4X4 UHDirectionalLightComponent::GetLightViewProjInv() const
+void UHPointLightComponent::Update()
 {
-	return LightViewProjInv;
+	// light update doesn't need to calculate world matrix
+	bTransformChanged = bIsWorldDirty;
+
+	if (IsTransformChanged())
+	{
+		SetRenderDirties(true);
+		bTransformChanged = false;
+	}
 }
 
-void UHDirectionalLightComponent::BuildLightMatrix()
+void UHPointLightComponent::SetRadius(float InRadius)
 {
-	// build light view matrix
-	const XMVECTOR U = -XMLoadFloat3(&Up);
-	const XMVECTOR F = XMLoadFloat3(&Forward);
-	const XMVECTOR P = XMLoadFloat3(&Position);
+	Radius = InRadius;
+}
 
-	const XMMATRIX View = XMMatrixLookToRH(P, F, U);
+UHPointLightConstants UHPointLightComponent::GetConstants() const
+{
+	UHPointLightConstants Consts;
+	Consts.Color.x = LightColor.x;
+	Consts.Color.y = LightColor.y;
+	Consts.Color.z = LightColor.z;
+	Consts.Radius = Radius;
 
-	// build light projection matrix, reversed orthographic one
-	const XMMATRIX Proj = XMMatrixOrthographicRH(ShadowRange, ShadowRange, ShadowDistance, 0);
+	Consts.Color.x *= Intensity;
+	Consts.Color.y *= Intensity;
+	Consts.Color.z *= Intensity;
+	Consts.Color.w = Intensity;
 
-	const XMMATRIX ViewProj = XMMatrixTranspose(Proj) * XMMatrixTranspose(View);
-	XMStoreFloat4x4(&LightViewProj, ViewProj);
+	Consts.Position = Position;
 
-	// build inv view proj as well
-	XMVECTOR Det = XMMatrixDeterminant(ViewProj);
-	const XMMATRIX InvViewProj = XMMatrixInverse(&Det, ViewProj);
-	XMStoreFloat4x4(&LightViewProjInv, InvViewProj);
+	return Consts;
 }

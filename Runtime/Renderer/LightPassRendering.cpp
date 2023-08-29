@@ -1,5 +1,35 @@
 #include "DeferredShadingRenderer.h"
 
+void UHDeferredShadingRenderer::DispatchLightCulling(UHGraphicBuilder& GraphBuilder)
+{
+	if (CurrentScene == nullptr || CurrentScene->GetPointLightCount() == 0)
+	{
+		return;
+	}
+
+	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Dispatch Light Culling");
+	{
+		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightCulling]);
+
+		// clear the point light list buffer
+		GraphBuilder.ClearUAVBuffer(PointLightListBuffer->GetBuffer(), 0);
+		GraphBuilder.ClearUAVBuffer(PointLightListTransBuffer->GetBuffer(), 0);
+
+		// bind state
+		UHComputeState* State = LightCullingShader.GetComputeState();
+		GraphBuilder.BindComputeState(State);
+
+		// bind sets
+		GraphBuilder.BindDescriptorSetCompute(LightCullingShader.GetPipelineLayout(), LightCullingShader.GetDescriptorSet(CurrentFrameRT));
+
+		// dispatch light culliong
+		uint32_t TileCountX, TileCountY;
+		GetLightCullingTileCount(TileCountX, TileCountY);
+		GraphBuilder.Dispatch(TileCountX, TileCountY, 1);
+	}
+	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+}
+
 void UHDeferredShadingRenderer::RenderLightPass(UHGraphicBuilder& GraphBuilder)
 {
 	if (CurrentScene == nullptr || CurrentScene->GetDirLightCount() == 0)

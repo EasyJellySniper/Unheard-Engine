@@ -106,7 +106,7 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			DebugViewShader.BindConstant(DebugViewData, 0, Idx);
 		}
 
-		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
+		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTDirShadowResult };
 		DebugViewShader.BindImage(Buffers[DebugViewIndex], 1);
 	}
 }
@@ -144,6 +144,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.UHPrevViewProj_NonJittered = CurrentCamera->GetPrevViewProjMatrixNonJittered();
 	SystemConstantsCPU.UHViewProj_NonJittered = CurrentCamera->GetViewProjMatrixNonJittered();
 	SystemConstantsCPU.UHViewProjInv_NonJittered = CurrentCamera->GetInvViewProjMatrixNonJittered();
+	SystemConstantsCPU.UHView = CurrentCamera->GetViewMatrix();
+	SystemConstantsCPU.UHProjInv = CurrentCamera->GetInvProjMatrix();
+	SystemConstantsCPU.UHProjInv_NonJittered = CurrentCamera->GetInvProjMatrixNonJittered();
 
 	SystemConstantsCPU.UHResolution.x = static_cast<float>(RenderResolution.width);
 	SystemConstantsCPU.UHResolution.y = static_cast<float>(RenderResolution.height);
@@ -152,7 +155,12 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	SystemConstantsCPU.UHCameraPos = CurrentCamera->GetPosition();
 	SystemConstantsCPU.UHCameraDir = CurrentCamera->GetForward();
-	SystemConstantsCPU.NumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
+	SystemConstantsCPU.UHNumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
+	SystemConstantsCPU.UHNumPointLights = static_cast<uint32_t>(CurrentScene->GetPointLightCount());
+	SystemConstantsCPU.UHMaxPointLightPerTile = MaxPointLightPerTile;
+
+	uint32_t Dummy;
+	GetLightCullingTileCount(SystemConstantsCPU.UHLightTileCountX, Dummy);
 
 	if (ConfigInterface->RenderingSetting().bTemporalAA)
 	{
@@ -178,40 +186,62 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsGPU[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
 	// update object constants, only update if transform is changed
-	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
+	if (CurrentScene->GetAllRendererCount() > 0)
 	{
-		// update CPU constants when the frame is dirty
-		// the dirty flag is marked in UHMeshRendererComponent::Update()
-		UHMeshRendererComponent* Renderer = Renderers[Idx];
-		if (Renderer->IsRenderDirty(CurrentFrameGT))
+		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
+		for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
 		{
-			ObjectConstantsCPU[Idx] = Renderer->GetConstants();
-			Renderer->SetRenderDirty(false, CurrentFrameGT);
-		}
+			// update CPU constants when the frame is dirty
+			// the dirty flag is marked in UHMeshRendererComponent::Update()
+			UHMeshRendererComponent* Renderer = Renderers[Idx];
+			if (Renderer->IsRenderDirty(CurrentFrameGT))
+			{
+				ObjectConstantsCPU[Idx] = Renderer->GetConstants();
+				Renderer->SetRenderDirty(false, CurrentFrameGT);
+			}
 
-		// copy material data only when it's dirty
-		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->IsRenderDirty(CurrentFrameGT))
-		{
-			Mat->UploadMaterialData(CurrentFrameGT, DefaultSamplerIndex);
-			Mat->SetRenderDirty(false, CurrentFrameGT);
+			// copy material data only when it's dirty
+			UHMaterial* Mat = Renderer->GetMaterial();
+			if (Mat->IsRenderDirty(CurrentFrameGT))
+			{
+				Mat->UploadMaterialData(CurrentFrameGT, DefaultSamplerIndex);
+				Mat->SetRenderDirty(false, CurrentFrameGT);
+			}
 		}
+		ObjectConstantsGPU[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
 	}
-	ObjectConstantsGPU[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
 
-	// update light data
-	const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirLights();
-	for (size_t Idx = 0; Idx < DirLights.size(); Idx++)
+	// update directional light data
+	if (CurrentScene->GetDirLightCount() > 0)
 	{
-		UHDirectionalLightComponent* Light = DirLights[Idx];
-		if (Light->IsRenderDirty(CurrentFrameGT))
+		const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirLights();
+		for (size_t Idx = 0; Idx < DirLights.size(); Idx++)
 		{
-			DirLightConstantsCPU[Idx] = Light->GetConstants();
-			Light->SetRenderDirty(false, CurrentFrameGT);
+			UHDirectionalLightComponent* Light = DirLights[Idx];
+			if (Light->IsRenderDirty(CurrentFrameGT))
+			{
+				DirLightConstantsCPU[Idx] = Light->GetConstants();
+				Light->SetRenderDirty(false, CurrentFrameGT);
+			}
 		}
+		DirectionalLightBuffer[CurrentFrameGT]->UploadAllData(DirLightConstantsCPU.data());
 	}
-	DirectionalLightBuffer[CurrentFrameGT]->UploadAllData(DirLightConstantsCPU.data());
+
+	// update point light data
+	if (CurrentScene->GetPointLightCount() > 0)
+	{
+		const std::vector<UHPointLightComponent*>& PointLights = CurrentScene->GetPointLights();
+		for (size_t Idx = 0; Idx < PointLights.size(); Idx++)
+		{
+			UHPointLightComponent* Light = PointLights[Idx];
+			if (Light->IsRenderDirty(CurrentFrameGT))
+			{
+				PointLightConstantsCPU[Idx] = Light->GetConstants();
+				Light->SetRenderDirty(false, CurrentFrameGT);
+			}
+		}
+		PointLightBuffer[CurrentFrameGT]->UploadAllData(PointLightConstantsCPU.data());
+	}
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
@@ -318,6 +348,13 @@ void UHDeferredShadingRenderer::SortRenderer()
 
 			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) > MathHelpers::VectorDistanceSqr(ZB, CameraPos);
 		});
+}
+
+void UHDeferredShadingRenderer::GetLightCullingTileCount(uint32_t& TileCountX, uint32_t& TileCountY)
+{
+	// safely round up the tile counts, doing culling at half resolution
+	TileCountX = ((RenderResolution.width >> 1) + LightCullingTileSize) / LightCullingTileSize;
+	TileCountY = ((RenderResolution.height >> 1) + LightCullingTileSize) / LightCullingTileSize;
 }
 
 void UHDeferredShadingRenderer::SortingOpaqueTask(int32_t ThreadIdx)
@@ -428,6 +465,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			{
 				BuildTopLevelAS(SceneRenderBuilder);
 			}
+			DispatchLightCulling(SceneRenderBuilder);
 			DispatchRayShadowPass(SceneRenderBuilder);
 			RenderLightPass(SceneRenderBuilder);
 			RenderSkyPass(SceneRenderBuilder);

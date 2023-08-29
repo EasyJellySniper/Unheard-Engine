@@ -38,8 +38,9 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bIsTemporalReset(true)
 	, MotionVectorRT(nullptr)
 	, PrevMotionVectorRT(nullptr)
-	, RTShadowResult(nullptr)
-	, RTTranslucentShadow(nullptr)
+	, RTDirShadowResult(nullptr)
+	, RTPointShadowResult(nullptr)
+	, RTSharedTexture(nullptr)
 	, RTInstanceCount(0)
 	, IndicesTypeBuffer(nullptr)
 	, NumWorkerThreads(0)
@@ -49,6 +50,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bIsSwapChainResetGT(false)
 	, bIsSwapChainResetRT(false)
 	, ParallelTask(UHParallelTask::None)
+	, LightCullingTileSize(16)
+	, MaxPointLightPerTile(16)
 #if WITH_DEBUG
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
@@ -72,14 +75,15 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	SpecularFormat = VK_FORMAT_R8G8B8A8_UNORM;
 	SceneResultFormat = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 	DepthFormat = VK_FORMAT_X8_D24_UNORM_PACK32;
+	HDRFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
 
 	// half precision for motion vector
 	MotionFormat = VK_FORMAT_R16G16_SFLOAT;
 
-	// RT result format, R for distance to blocker, G for shadow strength
-	RTShadowFormat = VK_FORMAT_R16G16_SFLOAT;
+	// RT result format, store soften mask
+	RTShadowFormat = VK_FORMAT_R8_UNORM;
 
-	// a buffer to store vertex normal (different than bump normal) and mip map level
+	// mip rate format
 	SceneMipFormat = VK_FORMAT_R16_SFLOAT;
 
 	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
@@ -155,28 +159,6 @@ void UHDeferredShadingRenderer::Release()
 	// release descriptors & render pass stuffs
 	ReleaseRenderPassObjects();
 	ReleaseShaders();
-
-	// vk destroy functions
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		UH_SAFE_RELEASE(SystemConstantsGPU[Idx]);
-		SystemConstantsGPU[Idx].reset();
-
-		UH_SAFE_RELEASE(ObjectConstantsGPU[Idx]);
-		ObjectConstantsGPU[Idx].reset();
-
-		UH_SAFE_RELEASE(DirectionalLightBuffer[Idx]);
-		DirectionalLightBuffer[Idx].reset();
-
-		if (GraphicInterface->IsRayTracingEnabled())
-		{
-			UH_SAFE_RELEASE(TopLevelAS[Idx]);
-			TopLevelAS[Idx].reset();
-		}
-	}
-
-	UH_SAFE_RELEASE(IndicesTypeBuffer);
-	IndicesTypeBuffer.reset();
 
 	if (bEnableAsyncComputeGT)
 	{
@@ -350,7 +332,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		}
 	}
 
-	// light pass shaders
+	// light culling and pass shaders
+	LightCullingShader = UHLightCullingShader(GraphicInterface, "LightCullingShader");
 	LightPassShader = UHLightPassShader(GraphicInterface, "LightPassShader", RTInstanceCount);
 
 	// sky pass shader
@@ -495,10 +478,14 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		BaseShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, Renderer);
 	}
 
+	// ------------------------------------------------ Lighting culling descriptor update
+	LightCullingShader.BindParameters(SystemConstantsGPU, PointLightBuffer, PointLightListBuffer, PointLightListTransBuffer, SceneDepth, SceneTranslucentDepth
+		, LinearClampedSampler);
+
 	// ------------------------------------------------ Lighting pass descriptor update
 	const std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip, SceneVertexNormal };
-	LightPassShader.BindParameters(SystemConstantsGPU, DirectionalLightBuffer, GBuffers, SceneResult, LinearClampedSampler
-		, RTInstanceCount, RTShadowResult);
+	LightPassShader.BindParameters(SystemConstantsGPU, DirectionalLightBuffer, PointLightBuffer, PointLightListBuffer
+		, GBuffers, SceneResult, LinearClampedSampler, RTInstanceCount, RTDirShadowResult, RTPointShadowResult);
 
 	// ------------------------------------------------ sky pass descriptor update
 	if (const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer())
@@ -559,7 +546,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		UHTranslucentPassShader& TranslucentShader = TranslucentPassShaders[Renderer->GetBufferDataIndex()];
 		TranslucentShader.BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
-			, RTTranslucentShadow, LinearClampedSampler, Renderer);
+			, PointLightBuffer, PointLightListTransBuffer
+			, RTDirShadowResult, RTPointShadowResult, LinearClampedSampler, Renderer, RTInstanceCount);
 	}
 
 	// ------------------------------------------------ post process pass descriptor update
@@ -571,7 +559,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		, LinearClampedSampler);
 
 	// ------------------------------------------------ ray tracing pass descriptor update
-	if (GraphicInterface->IsRayTracingEnabled() && TopLevelAS[0] && RTInstanceCount > 0)
+	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
 		// bind VB/IB table
 		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
@@ -625,19 +613,20 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		RTMaterialDataTable.BindStorage(TextureIndexData, 0);
 
 		// bind RT shadow parameters
-		RTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, RTTranslucentShadow, DirectionalLightBuffer
+		RTShadowShader.BindParameters(SystemConstantsGPU, RTSharedTexture, DirectionalLightBuffer
+			, PointLightBuffer, PointLightListBuffer, PointLightListTransBuffer
 			, SceneMip, SceneDepth, SceneTranslucentDepth, SceneVertexNormal, SceneTranslucentVertexNormal, LinearClampedSampler);
 
 		// bind soft shadow parameters
-		SoftRTShadowShader.BindParameters(SystemConstantsGPU, RTShadowResult, RTTranslucentShadow, SceneDepth
-			, SceneTranslucentDepth, SceneMip, LinearClampedSampler);
+		SoftRTShadowShader.BindParameters(SystemConstantsGPU, RTDirShadowResult, RTPointShadowResult, RTSharedTexture
+			, SceneDepth, SceneTranslucentDepth, SceneMip, LinearClampedSampler);
 	}
 
 	// ------------------------------------------------ debug view pass descriptor update
 #if WITH_DEBUG
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		DebugViewShader.BindImage(RTShadowResult, 1);
+		DebugViewShader.BindImage(RTDirShadowResult, 1);
 	}
 	DebugViewShader.BindSampler(PointClampedSampler, 2);
 #endif
@@ -678,6 +667,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	}
 	TranslucentPassShaders.clear();
 
+	LightCullingShader.Release();
 	LightPassShader.Release();
 	SkyPassShader.Release();
 	MotionCameraShader.Release();
@@ -748,8 +738,9 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		RTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true, true);
-		RTTranslucentShadow = GraphicInterface->RequestRenderTexture("RTTranslucentShadow", RTShadowExtent, RTShadowFormat, true, true);
+		RTDirShadowResult = GraphicInterface->RequestRenderTexture("RTDirShadowResult", RTShadowExtent, RTShadowFormat, true, true);
+		RTPointShadowResult = GraphicInterface->RequestRenderTexture("RTPointShadowResult", RTShadowExtent, RTShadowFormat, true, true);
+		RTSharedTexture = GraphicInterface->RequestRenderTexture("RTSharedTexture", RTShadowExtent, HDRFormat, true, true);
 	}
 
 	// collect image views for creaing one frame buffer
@@ -789,6 +780,18 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	Views = { MotionVectorRT->GetImageView(), SceneTranslucentVertexNormal->GetImageView(), SceneTranslucentDepth->GetImageView() };
 	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
+
+	// create light culling tile buffer
+	uint32_t TileCountX, TileCountY;
+	GetLightCullingTileCount(TileCountX, TileCountY);
+
+	// data size per tile: (MaxPointLightPerTile + 1), the extra one is for the number of lights in this tile
+	// so it's TileCountX * TileCountY * (MaxPointLightPerTile + 1) in total
+	PointLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
+	PointLightListBuffer->CreateBuffer(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+	PointLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
+	PointLightListTransBuffer->CreateBuffer(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
 void UHDeferredShadingRenderer::RelaseRenderingBuffers()
@@ -809,9 +812,17 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
-		GraphicInterface->RequestReleaseRT(RTShadowResult);
-		GraphicInterface->RequestReleaseRT(RTTranslucentShadow);
+		GraphicInterface->RequestReleaseRT(RTDirShadowResult);
+		GraphicInterface->RequestReleaseRT(RTPointShadowResult);
+		GraphicInterface->RequestReleaseRT(RTSharedTexture);
 	}
+
+	// point light list needs to be resized, so release it here instead in ReleaseDataBuffers()
+	UH_SAFE_RELEASE(PointLightListBuffer);
+	PointLightListBuffer.reset();
+
+	UH_SAFE_RELEASE(PointLightListTransBuffer);
+	PointLightListTransBuffer.reset();
 }
 
 void UHDeferredShadingRenderer::CreateRenderPasses()
@@ -923,6 +934,10 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		DirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>();
 		DirectionalLightBuffer[Idx]->CreateBuffer(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		DirLightConstantsCPU.resize(CurrentScene->GetDirLightCount());
+
+		PointLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHPointLightConstants>();
+		PointLightBuffer[Idx]->CreateBuffer(CurrentScene->GetPointLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		PointLightConstantsCPU.resize(CurrentScene->GetPointLightCount());
 	}
 }
 
@@ -957,6 +972,7 @@ void UHDeferredShadingRenderer::CreateThreadObjects()
 
 void UHDeferredShadingRenderer::ReleaseDataBuffers()
 {
+	// vk destroy functions
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		UH_SAFE_RELEASE(SystemConstantsGPU[Idx]);
@@ -964,22 +980,39 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 
 		UH_SAFE_RELEASE(ObjectConstantsGPU[Idx]);
 		ObjectConstantsGPU[Idx].reset();
+
+		UH_SAFE_RELEASE(DirectionalLightBuffer[Idx]);
+		DirectionalLightBuffer[Idx].reset();
+
+		UH_SAFE_RELEASE(PointLightBuffer[Idx]);
+		PointLightBuffer[Idx].reset();
+
+		if (GraphicInterface->IsRayTracingEnabled())
+		{
+			UH_SAFE_RELEASE(TopLevelAS[Idx]);
+			TopLevelAS[Idx].reset();
+		}
 	}
+
+	UH_SAFE_RELEASE(IndicesTypeBuffer);
+	IndicesTypeBuffer.reset();
 }
 
-void UHDeferredShadingRenderer::ResizeRTBuffers()
+void UHDeferredShadingRenderer::ResizeRayTracingBuffers()
 {
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		GraphicInterface->WaitGPU();
-		GraphicInterface->RequestReleaseRT(RTShadowResult);
-		GraphicInterface->RequestReleaseRT(RTTranslucentShadow);
+		GraphicInterface->RequestReleaseRT(RTDirShadowResult);
+		GraphicInterface->RequestReleaseRT(RTPointShadowResult);
+		GraphicInterface->RequestReleaseRT(RTSharedTexture);
 
 		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		RTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true, true);
-		RTTranslucentShadow = GraphicInterface->RequestRenderTexture("RTTranslucentShadow", RTShadowExtent, RTShadowFormat, true, true);
+		RTDirShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true, true);
+		RTPointShadowResult = GraphicInterface->RequestRenderTexture("RTPointShadowResult", RTShadowExtent, RTShadowFormat, true, true);
+		RTSharedTexture = GraphicInterface->RequestRenderTexture("RTSharedTexture", RTShadowExtent, HDRFormat, true, true);
 
 		// need to rewrite descriptors after resize
 		UpdateDescriptors();
@@ -1070,7 +1103,8 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 				{
 					MotionTranslucentShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, Renderer);
 					TranslucentPassShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
-						, RTTranslucentShadow, LinearClampedSampler, Renderer);
+						, PointLightBuffer, PointLightListTransBuffer
+						, RTDirShadowResult, RTPointShadowResult, LinearClampedSampler, Renderer, RTInstanceCount);
 				}
 			}
 			else if (CompileFlag == StateChangedOnly)
@@ -1139,7 +1173,8 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 					TranslucentPassShaders[RendererBufferIndex]
 						= UHTranslucentPassShader(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, Mat, BindlessLayouts);
 					TranslucentPassShaders[RendererBufferIndex].BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
-						, RTTranslucentShadow, LinearClampedSampler, Renderer);
+						, PointLightBuffer, PointLightListTransBuffer
+						, RTDirShadowResult, RTPointShadowResult, LinearClampedSampler, Renderer, RTInstanceCount);
 				}
 
 				Renderer->SetRayTracingDirties(true);

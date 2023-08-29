@@ -20,6 +20,7 @@
 // shader includes
 #include "ShaderClass/DepthPassShader.h"
 #include "ShaderClass/BasePassShader.h"
+#include "ShaderClass/LightCullingShader.h"
 #include "ShaderClass/LightPassShader.h"
 #include "ShaderClass/SkyPassShader.h"
 #include "ShaderClass/MotionPassShader.h"
@@ -68,7 +69,7 @@ public:
 	void NotifyRenderThread();
 
 	// only resize RT buffers
-	void ResizeRTBuffers();
+	void ResizeRayTracingBuffers();
 	void UpdateTextureDescriptors();
 
 #if WITH_DEBUG
@@ -139,11 +140,15 @@ private:
 	// sort renderer
 	void SortRenderer();
 
+	// get light culling tile count
+	void GetLightCullingTileCount(uint32_t& TileCountX, uint32_t& TileCountY);
+
 
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHGraphicBuilder& GraphBuilder);
 	void RenderDepthPrePass(UHGraphicBuilder& GraphBuilder);
 	void RenderBasePass(UHGraphicBuilder& GraphBuilder);
+	void DispatchLightCulling(UHGraphicBuilder& GraphBuilder);
 	void DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder);
 	void RenderLightPass(UHGraphicBuilder& GraphBuilder);
 	void RenderSkyPass(UHGraphicBuilder& GraphBuilder);
@@ -218,6 +223,12 @@ private:
 	// light buffers, this will be used as structure buffer instead of constant
 	std::vector<UHDirectionalLightConstants> DirLightConstantsCPU;
 	std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight> DirectionalLightBuffer;
+	std::vector<UHPointLightConstants> PointLightConstantsCPU;
+	std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight> PointLightBuffer;
+
+	// light culling buffers
+	UniquePtr<UHRenderBuffer<uint32_t>> PointLightListBuffer;
+	UniquePtr<UHRenderBuffer<uint32_t>> PointLightListTransBuffer;
 
 	// shared samplers
 	UHSampler* PointClampedSampler;
@@ -246,6 +257,7 @@ private:
 	VkFormat SceneResultFormat;
 	VkFormat SceneMipFormat;
 	VkFormat DepthFormat;
+	VkFormat HDRFormat;
 
 	UHRenderTexture* SceneDiffuse;
 	UHRenderTexture* SceneNormal;
@@ -261,7 +273,10 @@ private:
 	std::unordered_map<int32_t, UHBasePassShader> BasePassShaders;
 	UHRenderPassObject BasePassObj;
 
-	// -------------------------------------------- Light Pass -------------------------------------------- //
+	// -------------------------------------------- Light and Light Culling Pass -------------------------------------------- //
+	const uint32_t LightCullingTileSize;
+	const uint32_t MaxPointLightPerTile;
+	UHLightCullingShader LightCullingShader;
 	UHLightPassShader LightPassShader;
 
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
@@ -321,8 +336,11 @@ private:
 	UHSoftRTShadowShader SoftRTShadowShader;
 	UHRTShadowShader RTShadowShader;
 
-	UHRenderTexture* RTShadowResult;
-	UHRenderTexture* RTTranslucentShadow;
+	UHRenderTexture* RTDirShadowResult;
+	UHRenderTexture* RTPointShadowResult;
+
+	// shared texture aim for being reused during rendering
+	UHRenderTexture* RTSharedTexture;
 
 	UHRTVertexTable RTVertexTable;
 	UHRTIndicesTable RTIndicesTable;

@@ -33,11 +33,13 @@ public:
 	size_t GetAllRendererCount() const;
 	size_t GetMaterialCount() const;
 	size_t GetDirLightCount() const;
+	size_t GetPointLightCount() const;
 
 	std::vector<UHMeshRendererComponent*> GetAllRenderers() const;
 	std::vector<UHMeshRendererComponent*> GetOpaqueRenderers() const;
 	std::vector<UHMeshRendererComponent*> GetTranslucentRenderers() const;
 	std::vector<UHDirectionalLightComponent*> GetDirLights() const;
+	std::vector<UHPointLightComponent*> GetPointLights() const;
 	std::vector<UHMaterial*> GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight();
@@ -45,6 +47,7 @@ public:
 
 	UHMeshRendererComponent* AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial);
 	void AddDirectionalLight(UHDirectionalLightComponent* InLight);
+	void AddPointLight(UHPointLightComponent* InLight);
 	void SetSkyLight(UHSkyLightComponent* InSkyLight);
 
 private:
@@ -65,5 +68,6 @@ private:
 	std::vector<UHMeshRendererComponent*> OpaqueRenderers;
 	std::vector<UHMeshRendererComponent*> TranslucentRenderers;
 	std::vector<UHDirectionalLightComponent*> DirectionalLights;
+	std::vector<UHPointLightComponent*> PointLights;
 	UHMeshRendererComponent* SkyboxRenderer;
 };

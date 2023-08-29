@@ -137,11 +137,9 @@ void UHGUIControlBase::Resize(int32_t NewWidth, int32_t NewHeight)
 	const int32_t ControlW = InitAbsoluteRect.right - InitAbsoluteRect.left;
 	const int32_t ControlH = InitAbsoluteRect.bottom - InitAbsoluteRect.top;
 
-	// for moving, it needs to find relative rect to parent
-	RECT R = InitAbsoluteRect;
-	MapWindowPoints(HWND_DESKTOP, ParentControl, (LPPOINT)&R, 2);
-	const int32_t ControlX = static_cast<int32_t>(R.left);
-	const int32_t ControlY = static_cast<int32_t>(R.top);
+	// for moving, it needs to use the original relative rect
+	const int32_t ControlX = static_cast<int32_t>(InitRelativeRect.left);
+	const int32_t ControlY = static_cast<int32_t>(InitRelativeRect.top);
 
 	// process auto size, minimum size won't be smaller than its original size
 	switch (ControlProperty.AutoSize)
@@ -243,6 +241,9 @@ void UHGUIControlBase::InternalInit(HWND InControl, UHGUIProperty InProperties)
 
 	// cache the rect at the beginning
 	GetWindowRect(ControlObj, &InitAbsoluteRect);
-	GetClientRect(ControlObj, &InitRelativeRect);
+
+	InitRelativeRect = InitAbsoluteRect;
+	MapWindowPoints(HWND_DESKTOP, ParentControl, (LPPOINT)&InitRelativeRect, 2);
+
 	GetClientRect(ParentControl, &InitParentRect);
 }

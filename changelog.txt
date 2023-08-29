@@ -314,3 +314,19 @@ Finally refactored all GUIs used in editors.
 10-08-2023: Reduced the flickering when dragging a pin line in material editor.
 
 13-08-2023: Improved GUI flickering when dragging a single node in material editor. Spent too much time on the GUIs..next is to add point/spot light implemenation.
+
+22-08-2023: Started adding point light implementation. Finished adding the point light components.
+
+23-08-2023: Added point light calculation in the base pass shader.
+
+24-08-2023: Started adding point light culling shader.
+
+25-08-2023: Started adding point light tile buffers on C++ side. Also started applying culling results. Implementation works well. Gave up the frustum box-sphere intersection as I want to keep point light per tile as low as possible.
+The feature is finished, next is to try async compute and doing culling at half resolution.
+
+27-08-2023: Continued optimizing light culling pass. Applied point light to translucent objects. Fixed specular highlight issue. Fixed tangent space editor bug.
+
+28-08-2023: Finished adding point light RT shadow. But need to address the white artifact (again!)
+
+29-08-2023: Input shadow from another buffer in softing pass, for better quailty. Trying to improve shadow softing today. Finished the improvement. Fixed GUI resizing as well.
+Redone the shadow attenuation calculation.

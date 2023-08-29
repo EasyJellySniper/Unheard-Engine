@@ -13,6 +13,8 @@ UHCameraComponent::UHCameraComponent()
 	, ViewProjMatrix_NonJittered(MathHelpers::Identity4x4())
 	, PrevViewProjMatrix_NonJittered(MathHelpers::Identity4x4())
 	, InvViewProjMatrix_NonJittered(MathHelpers::Identity4x4())
+	, InvProjMatrix(MathHelpers::Identity4x4())
+	, InvProjMatrix_NonJittered(MathHelpers::Identity4x4())
 	, bUseJitterOffset(false)
 	, JitterOffset(XMFLOAT2())
 	, Width(1)
@@ -54,6 +56,15 @@ void UHCameraComponent::Update()
 	Det = XMMatrixDeterminant(ViewProj_NonJittered);
 	InvViewProj = XMMatrixInverse(&Det, ViewProj_NonJittered);
 	XMStoreFloat4x4(&InvViewProjMatrix_NonJittered, InvViewProj);
+
+	// inv proj
+	Det = XMMatrixDeterminant(Proj);
+	XMMATRIX InvProj = XMMatrixInverse(&Det, Proj);
+	XMStoreFloat4x4(&InvProjMatrix, InvProj);
+
+	Det = XMMatrixDeterminant(Proj_NonJittered);
+	XMMATRIX InvProj_NonJittered = XMMatrixInverse(&Det, Proj_NonJittered);
+	XMStoreFloat4x4(&InvProjMatrix_NonJittered, InvProj_NonJittered);
 
 	// update camera frustum, note that this is a bit different than rendering matrix
 	// in UHE, +X/+Y/+Z is used, so it needs to be left hand for culling
@@ -136,6 +147,16 @@ XMFLOAT4X4 UHCameraComponent::GetInvViewProjMatrix() const
 XMFLOAT4X4 UHCameraComponent::GetInvViewProjMatrixNonJittered() const
 {
 	return InvViewProjMatrix_NonJittered;
+}
+
+XMFLOAT4X4 UHCameraComponent::GetInvProjMatrix() const
+{
+	return InvProjMatrix;
+}
+
+XMFLOAT4X4 UHCameraComponent::GetInvProjMatrixNonJittered() const
+{
+	return InvProjMatrix_NonJittered;
 }
 
 XMFLOAT4 UHCameraComponent::GetJitterOffset() const

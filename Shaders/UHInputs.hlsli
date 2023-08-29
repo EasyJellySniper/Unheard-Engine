@@ -17,19 +17,26 @@
 #endif
 
 #ifndef UHDIRLIGHT_BIND
-#define UHDIRLIGHT_BIND t0
+#define UHDIRLIGHT_BIND t3
 #endif
 
 #ifndef UHGBUFFER_BIND
-#define UHGBUFFER_BIND t1
+#define UHGBUFFER_BIND t4
+#endif
+
+#ifndef UHPOINTLIGHT_BIND
+#define UHPOINTLIGHT_BIND t5
 #endif
 
 #define UHBRANCH [branch]
 #define UHFLATTEN [flatten]
 #define UHUNROLL [unroll]
+#define UHLOOP [loop]
 
 #define UHTHREAD_GROUP2D_X 8
 #define UHTHREAD_GROUP2D_Y 8
+#define UHLIGHTCULLING_TILE 16
+#define UHLIGHTCULLING_UPSCALE 2
 
 struct VertexOutput
 {
@@ -78,6 +85,9 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
 	float4x4 UHViewProj_NonJittered;
 	float4x4 UHViewProjInv_NonJittered;
 	float4x4 UHPrevViewProj_NonJittered;
+    float4x4 UHProjInv;
+    float4x4 UHProjInv_NonJittered;
+    float4x4 UHView;
 	float4 UHResolution;		// xy for resolution, zw for 1/resolution
 	float4 UHShadowResolution; // xy for resolution, zw for 1/resolution
 	float3 UHCameraPos;
@@ -93,6 +103,10 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
 
 	float JitterScaleMin;	// minimum jitter scale
 	float JitterScaleFactor;	// jitter scale factorto multiply with
+    uint UHNumPointLights;
+    uint UHLightTileCountX;
+	
+    uint UHMaxPointLightPerTile;
 }
 
 // IT means inverse-transposed
@@ -121,11 +135,21 @@ struct UHMaterialInputs
 
 struct UHDirectionalLight
 {
+	// color.a for intensity, but it's already applied to color
 	float4 Color;
 	float3 Dir;
 	float Padding;
 };
 StructuredBuffer<UHDirectionalLight> UHDirLights : register(UHDIRLIGHT_BIND);
+
+struct UHPointLight
+{
+	// color.a for intensity, but it's already applied to color
+    float4 Color;
+    float Radius;
+    float3 Position;
+};
+StructuredBuffer<UHPointLight> UHPointLights : register(UHPOINTLIGHT_BIND);
 
 // 0: Color + AO
 // 1: Normal
@@ -133,5 +157,11 @@ StructuredBuffer<UHDirectionalLight> UHDirLights : register(UHDIRLIGHT_BIND);
 // 3: Depth
 // 4: vertex normal + mipmap level
 Texture2D SceneBuffers[5] : register(UHGBUFFER_BIND);
+
+struct UHBoundingBox
+{
+    float3 BoxMax;
+    float3 BoxMin;
+};
 
 #endif

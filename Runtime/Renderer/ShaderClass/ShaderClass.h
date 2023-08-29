@@ -59,12 +59,20 @@ public:
 
 	// bind single storage
 	template <typename T>
-	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false)
+	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false, int32_t FrameIdx = -1)
 	{
-		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		if (FrameIdx != -1)
 		{
-			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[FrameIdx]);
 			Helper.WriteStorageBuffer(InBuffer, DstBinding, InOffset, bFullRange);
+		}
+		else
+		{
+			for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+			{
+				UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+				Helper.WriteStorageBuffer(InBuffer, DstBinding, InOffset, bFullRange);
+			}
 		}
 	}
 

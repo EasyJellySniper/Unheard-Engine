@@ -9,6 +9,7 @@ UHSoftRTShadowShader::UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor();
@@ -23,18 +24,20 @@ UHSoftRTShadowShader::UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name)
 }
 
 void UHSoftRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const UHRenderTexture* RTShadowResult
-	, const UHRenderTexture* RTTranslucentShadowResult
+	, const UHRenderTexture* RTDirShadowResult
+	, const UHRenderTexture* RTPointShadowResult
+	, const UHRenderTexture* InputRTShadow
 	, const UHRenderTexture* DepthTexture
 	, const UHRenderTexture* TranslucentDepth
 	, const UHRenderTexture* SceneMip
 	, const UHSampler* LinearClamppedSampler)
 {
 	BindConstant(SysConst, 0);
-	BindRWImage(RTShadowResult, 1);
-	BindRWImage(RTTranslucentShadowResult, 2);
-	BindImage(DepthTexture, 3);
-	BindImage(TranslucentDepth, 4);
-	BindImage(SceneMip, 5);
-	BindSampler(LinearClamppedSampler, 6);
+	BindRWImage(RTDirShadowResult, 1);
+	BindRWImage(RTPointShadowResult, 2);
+	BindImage(InputRTShadow, 3);
+	BindImage(DepthTexture, 4);
+	BindImage(TranslucentDepth, 5);
+	BindImage(SceneMip, 6);
+	BindSampler(LinearClamppedSampler, 7);
 }

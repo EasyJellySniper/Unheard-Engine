@@ -15,8 +15,10 @@ public:
 
 	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const UHRenderTexture* RTShadowResult
-		, const UHRenderTexture* RTTranslucentShadow
 		, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
+		, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLights
+		, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
+		, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightListTrans
 		, const UHRenderTexture* SceneMip
 		, const UHRenderTexture* SceneDepth
 		, const UHRenderTexture* TranslucentDepth

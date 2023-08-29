@@ -56,6 +56,9 @@ protected:
 
 	bool bTransformChanged;
 
+	// dirty flag
+	bool bIsWorldDirty;
+
 private:
 	// world matrix, also store previous frame's world matrix
 	XMFLOAT4X4 WorldMatrix;
@@ -66,7 +69,4 @@ private:
 
 	// rotation only matrix
 	XMFLOAT4X4 RotationMatrix;
-
-	// dirty flag
-	bool bIsWorldDirty;
 };

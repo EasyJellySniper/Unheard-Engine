@@ -316,7 +316,7 @@ void UHSettingDialog::ControlShadowQuality()
 {
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
     RenderingSettings.RTDirectionalShadowQuality = RTShadowQualityGUI->GetSelectedIndex();
-    DeferredRenderer->ResizeRTBuffers();
+    DeferredRenderer->ResizeRayTracingBuffers();
 }
 
 void UHSettingDialog::ControlAsyncCompute()

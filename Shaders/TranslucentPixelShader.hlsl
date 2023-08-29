@@ -1,11 +1,14 @@
 #define UHDIRLIGHT_BIND t6
+#define UHPOINTLIGHT_BIND t7
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
 
-Texture2D RTShadow : register(t7);
-SamplerState LinearClamppedSampler : register(s8);
-TextureCube EnvCube : register(t9);
-SamplerState EnvSampler : register(s10);
+Texture2D RTDirShadow : register(t8);
+Texture2D RTPointShadow : register(t9);
+ByteAddressBuffer PointLightListTrans : register(t10);
+SamplerState LinearClamppedSampler : register(s11);
+TextureCube EnvCube : register(t12);
+SamplerState EnvSampler : register(s13);
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -68,19 +71,67 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	IndirectSpecular *= MaterialInput.ReflectionFactor;
 #endif
 
+	// ------------------------------------------------------------------------------------------ dir lights accumulation
 	// sample shadows
-	float ShadowMask = 1.0f;
+	float DirShadowMask = 1.0f;
 #if WITH_RTSHADOWS
 	float2 UV = Vin.Position.xy * UHResolution.zw;
-	ShadowMask = RTShadow.Sample(LinearClamppedSampler, UV).g;
+	DirShadowMask = RTDirShadow.Sample(LinearClamppedSampler, UV).r;
 #endif
 
-	// light calculation
+	// light calculation, be sure to normalize vector before using it
 	float3 Result = 0;
+	
+    UHLightInfo LightInfo;
+    LightInfo.Diffuse = BaseColor;
+    LightInfo.Specular = float4(Specular, Roughness);
+    LightInfo.Normal = normalize(BumpNormal);
+    LightInfo.WorldPos = Vin.WorldPos;
+    LightInfo.ShadowMask = DirShadowMask;
+	
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
-		Result += LightBRDF(UHDirLights[Ldx], BaseColor, float4(Specular, Roughness), BumpNormal, Vin.WorldPos, ShadowMask);
-	}
+        LightInfo.LightColor = UHDirLights[Ldx].Color.rgb;
+        LightInfo.LightDir = UHDirLights[Ldx].Dir;
+        Result += LightBRDF(LightInfo);
+    }
+	
+	    // ------------------------------------------------------------------------------------------ point lights accumulation
+	// point lights accumulation, fetch the tile index here, note that the system culls at half resolution
+    uint TileX = uint(Vin.Position.x) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileY = uint(Vin.Position.y) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileIndex = TileX + TileY * UHLightTileCountX;
+    uint TileOffset = GetPointLightOffset(TileIndex);
+    uint TileCount = PointLightListTrans.Load(TileOffset);
+    TileOffset += 4;
+	
+    float3 WorldToLight;
+    float LightAtten;
+    float AttenNoise = lerp(-0.01f, 0.01f, CoordinateToHash(Vin.Position.xy));
+	
+    float PointShadowMask = 1.0f;
+#if WITH_RTSHADOWS
+	PointShadowMask = RTPointShadow.SampleLevel(LinearClamppedSampler, UV, 0).r;
+#endif
+    
+    for (Ldx = 0; Ldx < TileCount; Ldx++)
+    {
+        uint PointLightIdx = PointLightListTrans.Load(TileOffset);
+       
+        UHPointLight PointLight = UHPointLights[PointLightIdx];
+        LightInfo.LightColor = PointLight.Color.rgb;
+		
+        WorldToLight = Vin.WorldPos - PointLight.Position;
+        LightInfo.LightDir = normalize(WorldToLight);
+		
+		// square distance attenuation
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius) + AttenNoise;
+        LightAtten *= LightAtten;
+        LightInfo.ShadowMask = LightAtten * PointShadowMask;
+		
+        Result += LightBRDF(LightInfo);
+        TileOffset += 4;
+    }
 
 	// indirect light accumulation
 	Result += LightIndirect(BaseColor, BumpNormal, Occlusion);

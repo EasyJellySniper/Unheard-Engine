@@ -2,30 +2,42 @@
 #include "../Renderer/RenderingTypes.h"
 #include "Transform.h"
 
-// directional lighting component, this cares direction only
-class UHDirectionalLightComponent : public UHTransformComponent, public UHRenderState
+// shared light base class
+class UHLightBase : public UHTransformComponent, public UHRenderState
 {
 public:
-	UHDirectionalLightComponent();
+	UHLightBase();
+	virtual ~UHLightBase() {}
+
+	void SetLightColor(XMFLOAT3 InLightColor);
+	void SetIntensity(float InIntensity);
+
+protected:
+	XMFLOAT3 LightColor;
+	float Intensity;
+};
+
+// directional lighting component, this cares direction only, which can be obtained from transform component
+class UHDirectionalLightComponent : public UHLightBase
+{
+public:
+	UHDirectionalLightComponent() {}
 	virtual void Update() override;
 
-	void SetLightColor(XMFLOAT4 InLightColor);
-	void SetIntensity(float InIntensity);
-	void SetShadowRange(float Range, float Distance);
-	void SetShadowReferencePoint(XMFLOAT3 InPos);
-
 	UHDirectionalLightConstants GetConstants() const;
-	XMFLOAT4X4 GetLightViewProj() const;
-	XMFLOAT4X4 GetLightViewProjInv() const;
+};
+
+// point light component, has the radius info, use square attenuation for now
+class UHPointLightComponent : public UHLightBase
+{
+public:
+	UHPointLightComponent();
+	virtual void Update() override;
+
+	void SetRadius(float InRadius);
+
+	UHPointLightConstants GetConstants() const;
 
 private:
-	void BuildLightMatrix();
-
-	XMFLOAT4X4 LightViewProj;
-	XMFLOAT4X4 LightViewProjInv;
-	XMFLOAT4 LightColor;
-	XMFLOAT3 ShadowReferencePoint;
-	float Intensity;
-	float ShadowRange;
-	float ShadowDistance;
+	float Radius;
 };

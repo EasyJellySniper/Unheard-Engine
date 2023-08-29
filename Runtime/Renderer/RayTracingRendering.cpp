@@ -19,26 +19,21 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHGraphicBuilder& GraphBuilder)
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder)
 {
-	if (!GraphicInterface->IsRayTracingEnabled() || !TopLevelAS[CurrentFrameRT] || RTInstanceCount == 0)
+	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
 	{
 		return;
 	}
 
 	UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingShadow]);
 
-	// transition RW buffer to VK_IMAGE_LAYOUT_GENERAL
-	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
+	GraphBuilder.ResourceBarrier(RTSharedTexture, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 	
 	// after update, shader descriptor for TLAS needs to be bound again
 	// note that the AS is built in async compute queue, need to bind the previous result here
 	if (bEnableAsyncComputeRT)
 	{
 		RTShadowShader.BindTLAS(TopLevelAS[1 - CurrentFrameRT].get(), 1, CurrentFrameRT);
-	}
-	else
-	{
-		RTShadowShader.BindTLAS(TopLevelAS[CurrentFrameRT].get(), 1, CurrentFrameRT);
 	}
 
 	// bind descriptors and RT states
@@ -56,22 +51,18 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHGraphicBuilder& GraphBui
 	// trace!
 	GraphBuilder.TraceRay(RTShadowExtent, RTShadowShader.GetRayGenTable(), RTShadowShader.GetMissTable(), RTShadowShader.GetHitGroupTable());
 
-	// transition to shader read after tracing
-	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	// transition soften pass RTs
+	GraphBuilder.ResourceBarrier(RTDirShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	GraphBuilder.ResourceBarrier(RTPointShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	GraphBuilder.ResourceBarrier(RTSharedTexture, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-	// soften shadow after trace is done, redundant transition is needed to sync the result in GPU
-	// otherwise the writing from compute shader won't work
-	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-
-	// note that this is dispatched with render resolution
+	// dispatch softing pass
 	UHComputeState* State = SoftRTShadowShader.GetComputeState();
 	GraphBuilder.BindComputeState(State);
 	GraphBuilder.BindDescriptorSetCompute(SoftRTShadowShader.GetPipelineLayout(), SoftRTShadowShader.GetDescriptorSet(CurrentFrameRT));
-	GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
+	GraphBuilder.Dispatch((RTShadowExtent.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RTShadowExtent.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
 
 	// finally, transition to shader read only
-	GraphBuilder.ResourceBarrier(RTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	GraphBuilder.ResourceBarrier(RTTranslucentShadow, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(RTDirShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphBuilder.ResourceBarrier(RTPointShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

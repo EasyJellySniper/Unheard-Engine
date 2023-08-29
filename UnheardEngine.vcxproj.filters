@@ -324,6 +324,9 @@
     <ClInclude Include="Editor\Controls\Slider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\LightCullingShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -617,6 +620,9 @@
     <ClCompile Include="Editor\Controls\Slider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\LightCullingShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -655,5 +661,6 @@
     <None Include="Shaders\LightComputeShader.hlsl" />
     <None Include="Shaders\TranslucentPixelShader.hlsl" />
     <None Include="Shaders\RayTracing\SoftRTShadowComputeShader.hlsl" />
+    <None Include="Shaders\LightCullingComputeShader.hlsl" />
   </ItemGroup>
 </Project>

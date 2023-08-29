@@ -34,10 +34,13 @@ struct UHSystemConstants
 	XMFLOAT4X4 UHViewProj_NonJittered;
 	XMFLOAT4X4 UHViewProjInv_NonJittered;
 	XMFLOAT4X4 UHPrevViewProj_NonJittered;
+	XMFLOAT4X4 UHProjInv;
+	XMFLOAT4X4 UHProjInv_NonJittered;
+	XMFLOAT4X4 UHView;
 	XMFLOAT4 UHResolution;
 	XMFLOAT4 UHShadowResolution;
 	XMFLOAT3 UHCameraPos;
-	uint32_t NumDirLights;
+	uint32_t UHNumDirLights;
 
 	XMFLOAT3 UHAmbientSky;
 	float JitterOffsetX;
@@ -49,6 +52,10 @@ struct UHSystemConstants
 
 	float JitterScaleMin;
 	float JitterScaleFactor;
+	uint32_t UHNumPointLights;
+	uint32_t UHLightTileCountX;
+
+	uint32_t UHMaxPointLightPerTile;
 };
 
 struct UHObjectConstants
@@ -60,29 +67,20 @@ struct UHObjectConstants
 	float Padding[15];
 };
 
-struct UHMaterialConstants
-{
-	XMFLOAT4 DiffuseColor;
-	XMFLOAT3 EmissiveColor;
-	float AmbientOcclusion;
-	XMFLOAT3 SpecularColor;
-	float Metallic;
-	float Roughness;
-	float BumpScale;
-	float Cutoff;
-	float EnvCubeMipMapCount;
-	float FresnelFactor;
-	int32_t OpacityTexIndex;
-	int32_t OpacitySamplerIndex;
-	float ReflectionFactor;
-};
-
 struct UHDirectionalLightConstants
 {
-	// assume intensity is multiplied to Color before sending to GPU
+	// intensity is multiplied to Color before sending to GPU
 	XMFLOAT4 Color;
 	XMFLOAT3 Dir;
 	float Padding;
+};
+
+struct UHPointLightConstants
+{
+	// intensity is multiplied to Color before sending to GPU
+	XMFLOAT4 Color;
+	float Radius;
+	XMFLOAT3 Position;
 };
 
 enum UHRenderPassTypes
@@ -91,6 +89,7 @@ enum UHRenderPassTypes
 	BasePass,
 	UpdateTopLevelAS,
 	RayTracingShadow,
+	LightCulling,
 	LightPass,
 	SkyPass,
 	MotionPass,

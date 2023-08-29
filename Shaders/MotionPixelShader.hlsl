@@ -1,4 +1,5 @@
 #include "../Shaders/UHInputs.hlsli"
+#include "../Shaders/UHCommon.hlsli"
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -42,6 +43,6 @@ void MotionObjectPS(MotionVertexOutput Vin
 	VertexNormal *= (bIsFrontFace) ? 1 : -1;
 
 	// a must be 1 to store normal as this is translucent pass
-	OutNormal = float4(VertexNormal * 0.5f + 0.5f, 1);
+	OutNormal = float4(EncodeNormal(VertexNormal), 1);
 #endif
 }

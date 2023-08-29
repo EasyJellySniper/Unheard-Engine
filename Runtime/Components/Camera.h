@@ -24,6 +24,8 @@ public:
 	XMFLOAT4X4 GetPrevViewProjMatrixNonJittered() const;
 	XMFLOAT4X4 GetInvViewProjMatrix() const;
 	XMFLOAT4X4 GetInvViewProjMatrixNonJittered() const;
+	XMFLOAT4X4 GetInvProjMatrix() const;
+	XMFLOAT4X4 GetInvProjMatrixNonJittered() const;
 	XMFLOAT4 GetJitterOffset() const;
 	BoundingFrustum GetBoundingFrustum() const;
 	XMFLOAT3 GetScreenPos(XMFLOAT3 InWorld) const;
@@ -45,6 +47,8 @@ private:
 	XMFLOAT4X4 PrevViewProjMatrix_NonJittered;
 	XMFLOAT4X4 InvViewProjMatrix;
 	XMFLOAT4X4 InvViewProjMatrix_NonJittered;
+	XMFLOAT4X4 InvProjMatrix;
+	XMFLOAT4X4 InvProjMatrix_NonJittered;
 
 	// for temporal effects
 	bool bUseJitterOffset;

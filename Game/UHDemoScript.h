@@ -16,9 +16,14 @@ public:
 private:
 	UHDirectionalLightComponent DefaultDirectionalLight;
 	UHDirectionalLightComponent SecondDirectionalLight;
+	std::vector<UHPointLightComponent> TestPointLights;
+	std::vector<UHPointLightComponent> TestPointLights2;
+
 	UHSkyLightComponent DefaultSkyLight;
 	UHMeshRendererComponent* Geo364Renderer;
+
 	XMFLOAT3 Geo364OriginPos;
 	float TimeCounter;
 	float TimeSign;
+	bool bTestNight;
 };

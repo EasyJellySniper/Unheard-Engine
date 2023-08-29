@@ -1,43 +1,69 @@
-#define UHDIRLIGHT_BIND t4
+#define UHDIRLIGHT_BIND t3
+#define UHPOINTLIGHT_BIND t4
 #include "../UHInputs.hlsli"
 #include "UHRTCommon.hlsli"
 
 RaytracingAccelerationStructure TLAS : register(t1);
-RWTexture2D<float2> Result : register(u2);
-RWTexture2D<float2> TranslucentResult : register(u3);
-Texture2D MipTexture : register(t5);
-Texture2D DepthTexture : register(t6);
-Texture2D TranslucentDepthTexture : register(t7);
-Texture2D VertexNormalTexture : register(t8);
-Texture2D TranslucentVertexNormalTexture : register(t9);
-SamplerState LinearSampler : register(s10);
 
-void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float MipRate, float MipLevel)
+// this pass will store result as a float4 buffer (xy for dir light, zw for point light)
+// in soften pass, it will output to corresponding RT shadow targets
+RWTexture2D<float4> OutShadowResult : register(u2);
+
+ByteAddressBuffer PointLightList : register(t5);
+ByteAddressBuffer PointLightListTrans : register(t6);
+Texture2D MipTexture : register(t7);
+Texture2D DepthTexture : register(t8);
+Texture2D TranslucentDepthTexture : register(t9);
+Texture2D VertexNormalTexture : register(t10);
+Texture2D TranslucentVertexNormalTexture : register(t11);
+SamplerState LinearSampler : register(s12);
+
+// both opaque and translucent shadow are traced in this function
+void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float MipRate, float MipLevel, bool bIsTranslucent)
 {
 	UHBRANCH
-	if (Depth == 0.0f)
+    if (OpaqueDepth == 0.0f && !bIsTranslucent)
 	{
-		// early return if no depth (no object)
+		// early return if no opaque depth (no object)
 		return;
 	}
+	
+    float TranslucentDepth = bIsTranslucent ? TranslucentDepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r : 0.0f;
+
+	UHBRANCH
+    if (OpaqueDepth == TranslucentDepth && bIsTranslucent)
+    {
+		// when opaque and translucent depth are equal, this pixel contains no translucent object, simply share the result from opaque and return
+        return;
+    }
+
+	UHBRANCH
+    if (TranslucentDepth == 0.0f && bIsTranslucent)
+    {
+		// early return if there is no translucent at all
+        return;
+    }
 
 	// reconstruct world position and get world normal
-	float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
+    float Depth = bIsTranslucent ? TranslucentDepth : OpaqueDepth;
+    float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
 
 	// reconstruct normal, simply sample from the texture
-	float3 WorldNormal = VertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz * 2.0f - 1.0f;
+    float3 WorldNormal = bIsTranslucent ? DecodeNormal(TranslucentVertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz)
+		: DecodeNormal(VertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz);
 
+	
+	// ------------------------------------------------------------------------------------------ Directional Light Tracing
+	// give a little gap for preventing self-shadowing, along the vertex normal direction
+	// distant pixel needs higher TMin
+    float Gap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
 	float MaxDist = 0;
-	float Atten = 1;
+	float Atten = 0.0f;
 
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
 		// shoot ray from world pos to light dir
 		UHDirectionalLight DirLight = UHDirLights[Ldx];
-
-		// give a little gap for preventing self-shadowing, along the vertex normal direction
-		// distant pixel needs higher TMin
-		float Gap = lerp(0.01f, 0.5f, saturate(MipRate * RT_MIPRATESCALE));
 
 		RayDesc ShadowRay = (RayDesc)0;
 		ShadowRay.Origin = WorldPos + WorldNormal * Gap;
@@ -51,87 +77,92 @@ void TraceOpaqueShadow(uint2 PixelCoord, float2 ScreenUV, float Depth, float Mip
 		TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
 
 		// store the max hit T to the result, system will perform PCSS later
-		// also output shadow atten (Color.a), with hit alpha blending
+		// also output shadow attenuation, hit alpha and ndotl are considered
+        float NdotL = saturate(dot(-DirLight.Dir, WorldNormal)) * saturate(DirLight.Color.a);
 		if (Payload.IsHit())
 		{
 			MaxDist = max(MaxDist, Payload.HitT);
-			Atten *= lerp(1.0f, DirLight.Color.a, Payload.HitAlpha);
-		}
-	}
+            Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+        }
+		else
+        {
+			// add attenuation by ndotl
+            Atten += NdotL;
+        }
+    }
+    Atten = saturate(Atten);
+	
+	
+	// ------------------------------------------------------------------------------------------ Point Light Tracing
+    uint2 TileCoordinate = PixelCoord.xy * UHResolution.xy * UHShadowResolution.zw;
+    uint TileX = TileCoordinate.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileY = TileCoordinate.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileIndex = TileX + TileY * UHLightTileCountX;
+    uint TileOffset = GetPointLightOffset(TileIndex);
+    uint TileCount = (bIsTranslucent) ? PointLightListTrans.Load(TileOffset) : PointLightList.Load(TileOffset);
+    TileOffset += 4;
+	
+	// need to calculate light attenuation to lerp shadow attenuation 
+    float3 WorldToLight;
+    float LightAtten;
+    float AttenNoise = lerp(-0.01f, 0.01f, CoordinateToHash(TileCoordinate));
+    float PointShadowMaxDist = 0;
+	
+    for (Ldx = 0; Ldx < TileCount; Ldx++)
+    {
+        uint PointLightIdx = (bIsTranslucent) ? PointLightListTrans.Load(TileOffset) : PointLightList.Load(TileOffset);
+        TileOffset += 4;
+		
+        UHPointLight PointLight = UHPointLights[PointLightIdx];
+        WorldToLight = WorldPos - PointLight.Position;
+		
+		// point only needs to be traced by the length of WorldToLight
+        RayDesc ShadowRay = (RayDesc)0;
+        ShadowRay.Origin = WorldPos + WorldNormal * Gap;
+        ShadowRay.Direction = -normalize(WorldToLight);
+        ShadowRay.TMin = Gap;
+        ShadowRay.TMax = length(WorldToLight);
+		
+		// do not trace out-of-range pixel or back face
+        if (ShadowRay.TMax > PointLight.Radius)
+        {
+            continue;
+        }
+		
+		// calc light attenuation for this point light
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius) + AttenNoise;
+        LightAtten *= LightAtten;
+		
+        UHDefaultPayload Payload = (UHDefaultPayload)0;
+        Payload.MipLevel = MipLevel;
+        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+		
+        float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal)) * saturate(PointLight.Color.a);
+        if (Payload.IsHit())
+        {
+            PointShadowMaxDist = max(PointShadowMaxDist, Payload.HitT);
+            Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+        }
+        else
+        {
+			// add attenuation by ndotl
+            Atten += NdotL;
+        }
+    }
+    Atten = saturate(Atten);
 
-	Result[PixelCoord] = float2(MaxDist, Atten);
-}
-
-void TraceTranslucentShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float MipRate, float MipLevel)
-{
-	float TranslucentDepth = TranslucentDepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
-
-	UHBRANCH
-	if (OpaqueDepth == TranslucentDepth)
-	{
-		// when opaque and translucent depth are equal, this pixel contains no translucent object, simply share the result from opaque and return
-		TranslucentResult[PixelCoord] = Result[PixelCoord];
-		return;
-	}
-
-	UHBRANCH
-	if (TranslucentDepth == 0.0f)
-	{
-		// early return if there is no translucent at all
-		return;
-	}
-
-	// reconstruct world position
-	float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, TranslucentDepth);
-
-	// reconstruct normal, simply sample from the texture
-	float3 WorldNormal = TranslucentVertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz * 2.0f - 1.0f;
-
-	float MaxDist = 0;
-	float Atten = 1;
-
-	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
-	{
-		// shoot ray from world pos to light dir
-		UHDirectionalLight DirLight = UHDirLights[Ldx];
-
-		// give a little gap for preventing self-shadowing, along the vertex normal direction
-		// distant pixel needs higher TMin, also needs a higher min value for translucent as normal vector is approximate
-		float Gap = lerp(0.01f, 0.5f, saturate(MipRate * RT_MIPRATESCALE));
-
-		RayDesc ShadowRay = (RayDesc)0;
-		ShadowRay.Origin = WorldPos + WorldNormal * Gap;
-		ShadowRay.Direction = -DirLight.Dir;
-
-		ShadowRay.TMin = Gap;
-		ShadowRay.TMax = float(1 << 20);
-
-		UHDefaultPayload Payload = (UHDefaultPayload)0;
-		Payload.MipLevel = MipLevel;
-		TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
-
-		// store the max hit T to the result, system will perform PCSS later
-		// also output shadow atten (Color.a), with hit alpha blending
-		if (Payload.IsHit())
-		{
-			MaxDist = max(MaxDist, Payload.HitT);
-			Atten *= lerp(1.0f, DirLight.Color.a, Payload.HitAlpha);
-		}
-	}
-
-	TranslucentResult[PixelCoord] = float2(MaxDist, Atten);
+    OutShadowResult[PixelCoord] = float4(MaxDist, Atten, PointShadowMaxDist, Atten);
 }
 
 [shader("raygeneration")]
 void RTShadowRayGen() 
 {
 	uint2 PixelCoord = DispatchRaysIndex().xy;
-	Result[PixelCoord] = 0;
-	TranslucentResult[PixelCoord] = 0;
-
+    OutShadowResult[PixelCoord] = 0;
+	
 	// early return if no lights
 	UHBRANCH
-	if (UHNumDirLights == 0)
+	if (UHNumDirLights == 0 && UHNumPointLights == 0)
 	{
 		return;
 	}
@@ -145,8 +176,8 @@ void RTShadowRayGen()
 	float MipLevel = max(0.5f * log2(MipRate * MipRate), 0);
 
 	// trace for translucent objs after opaque, the second OpaqueDepth isn't wrong since it will be compared in translucent function
-	TraceOpaqueShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel);
-	TraceTranslucentShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel);
+	TraceShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel, false);
+	TraceShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel, true);
 }
 
 [shader("miss")]

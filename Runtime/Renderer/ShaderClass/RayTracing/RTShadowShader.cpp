@@ -6,11 +6,20 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader), nullptr)
 {
+	// system const
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+	// TLAS + RT shadow result (float4, xy for dir light, zw for point light)
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+	// dir light/point light/point light culling list (opaque + translucent)
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+	// related textures
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
@@ -39,8 +48,10 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 
 void UHRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const UHRenderTexture* RTShadowResult
-	, const UHRenderTexture* RTTranslucentShadow
 	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
+	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLights
+	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
+	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightListTrans
 	, const UHRenderTexture* SceneMip
 	, const UHRenderTexture* SceneDepth
 	, const UHRenderTexture* TranslucentDepth
@@ -49,13 +60,18 @@ void UHRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<
 	, const UHSampler* LinearClampedSampler)
 {
 	BindConstant(SysConst, 0);
+
+	// TLAS will be bound on the fly
+
 	BindRWImage(RTShadowResult, 2);
-	BindRWImage(RTTranslucentShadow, 3);
-	BindStorage(DirLights, 4, 0, true);
-	BindImage(SceneMip, 5);
-	BindImage(SceneDepth, 6);
-	BindImage(TranslucentDepth, 7);
-	BindImage(VertexNormal, 8);
-	BindImage(TranslucentVertexNormal, 9);
-	BindSampler(LinearClampedSampler, 10);
+	BindStorage(DirLights, 3, 0, true);
+	BindStorage(PointLights, 4, 0, true);
+	BindStorage(PointLightList.get(), 5, 0, true);
+	BindStorage(PointLightListTrans.get(), 6, 0, true);
+	BindImage(SceneMip, 7);
+	BindImage(SceneDepth, 8);
+	BindImage(TranslucentDepth, 9);
+	BindImage(VertexNormal, 10);
+	BindImage(TranslucentVertexNormal, 11);
+	BindSampler(LinearClampedSampler, 12);
 }

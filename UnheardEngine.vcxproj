@@ -299,6 +299,7 @@
     <ClInclude Include="Editor\Classes\ShaderImporter.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\BasePassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\LightCullingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
@@ -394,6 +395,7 @@
     <ClCompile Include="Runtime\Classes\Shader.cpp" />
     <ClCompile Include="Runtime\Components\Transform.cpp" />
     <ClCompile Include="Runtime\Classes\Scene.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\LightCullingShader.cpp" />
     <ClCompile Include="Runtime\Renderer\LightPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\MotionPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\PostProcessRendering.cpp" />
@@ -535,6 +537,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\RayTracing\SoftRTShadowComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\LightCullingComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

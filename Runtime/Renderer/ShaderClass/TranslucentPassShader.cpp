@@ -15,11 +15,14 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// light consts
+	// light consts (dir + point)
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// shadow result
+	// RT dir/point shadow result, point light culling buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	// Bind envcube and sampler
@@ -59,10 +62,14 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 
 void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& LightConst
-	, const UHRenderTexture* RTShadowResult
+	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLightConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst
+	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
+	, const UHRenderTexture* RTDirShadowResult
+	, const UHRenderTexture* RTPointShadowResult
 	, const UHSampler* LinearClamppedSampler
-	, const UHMeshRendererComponent* InRenderer)
+	, const UHMeshRendererComponent* InRenderer
+	, const int32_t RTInstanceCount)
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
@@ -74,21 +81,27 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
 
 	// bind light const
-	BindStorage(LightConst, 6, 0, true);
+	BindStorage(DirLightConst, 6, 0, true);
+	BindStorage(PointLightConst, 7, 0, true);
 
-	BindImage(RTShadowResult, 7);
-	BindSampler(LinearClamppedSampler, 8);
+	if (Gfx->IsRayTracingEnabled() && RTInstanceCount > 0)
+	{
+		BindImage(RTDirShadowResult, 8);
+		BindImage(RTPointShadowResult, 9);
+	}
+	BindStorage(PointLightList.get(), 10, 0, true);
+	BindSampler(LinearClamppedSampler, 11);
 
 	// write textures/samplers when they are available
 	UHTexture* Tex = InRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube);
 	if (Tex)
 	{
-		BindImage(Tex, 9);
+		BindImage(Tex, 12);
 	}
 
 	UHSampler* Sampler = InRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube);
 	if (Sampler)
 	{
-		BindSampler(Sampler, 10);
+		BindSampler(Sampler, 13);
 	}
 }

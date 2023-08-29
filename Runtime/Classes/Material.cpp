@@ -556,7 +556,7 @@ UHSampler* UHMaterial::GetSystemSampler(UHSystemTextureType InType) const
 	return SystemSamplers[InType];
 }
 
-std::vector<std::string> UHMaterial::GetMaterialDefines() const
+std::vector<std::string> UHMaterial::GetMaterialDefines()
 {
 	std::vector<std::string> Defines;
 	if (SystemTextures[UHSystemTextureType::SkyCube] != nullptr)
@@ -573,6 +573,14 @@ std::vector<std::string> UHMaterial::GetMaterialDefines() const
 	{
 		Defines.push_back("WITH_TRANSLUCENT");
 	}
+
+#if WITH_EDITOR
+	// @TODO: separate tangent space setting in editor
+	if (MaterialNode->GetInputs()[Normal]->GetSrcPin())
+	{
+		bIsTangentSpace = true;
+	}
+#endif
 
 	if (bIsTangentSpace)
 	{

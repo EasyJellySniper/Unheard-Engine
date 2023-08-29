@@ -43,6 +43,12 @@ public:
 		NewInfo.range = (bFullRange) ? InBuffer->GetBufferSize() : InBuffer->GetBufferStride();
 		NewInfo.offset = InOffset * InBuffer->GetBufferStride();
 
+		if (NewInfo.buffer == VK_NULL_HANDLE)
+		{
+			NewInfo.offset = 0;
+			NewInfo.range = VK_WHOLE_SIZE;
+		}
+
 		VkWriteDescriptorSet DescriptorWrite{};
 		DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		DescriptorWrite.dstSet = DescriptorSetToWrite;
