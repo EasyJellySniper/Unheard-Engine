@@ -340,22 +340,22 @@ void UHAssetManager::AddTexture2D(UHTexture2D* InTexture2D)
 	}
 }
 
-bool UHAssetManager::IsBumpTexture(std::string InPathName)
+UHTexture2D* UHAssetManager::GetTexture2DByPathEditor(std::string InPathName)
 {
 	if (AssetMgrEditorOnly == nullptr)
 	{
-		return false;
+		return nullptr;
 	}
 
-	for (const UHTexture2D* Tex : AssetMgrEditorOnly->GetTexture2Ds())
+	for (UHTexture2D* Tex : AssetMgrEditorOnly->GetTexture2Ds())
 	{
 		if (Tex->GetSourcePath() == AssetMgrEditorOnly->FindTexturePathName(InPathName))
 		{
-			return Tex->GetTextureSettings().bIsNormal;
+			return Tex;
 		}
 	}
 
-	return false;
+	return nullptr;
 }
 
 // find texture path name by name, used for old asset look-up

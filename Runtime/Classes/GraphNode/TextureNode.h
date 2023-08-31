@@ -19,5 +19,4 @@ public:
 private:
 	int32_t TextureIndexInMaterial;
 	std::string SelectedTexturePathName;
-	bool bIsBumpTexture;
 };

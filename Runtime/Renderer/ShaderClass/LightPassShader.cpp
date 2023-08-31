@@ -12,9 +12,8 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 	// which acts like a "descriptor array"
 	AddLayoutBinding(GNumOfGBuffers, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
-	// scene output + dir/point shadow result + point light list + sampler
+	// scene output + shadow result + point light list + sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
@@ -43,8 +42,7 @@ void UHLightPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer
 	, const UHRenderTexture* SceneResult
 	, const UHSampler* LinearClamppedSampler
 	, const int32_t RTInstanceCount
-	, const UHRenderTexture* RTDirShadowResult
-	, const UHRenderTexture* RTPointShadowResult)
+	, const UHRenderTexture* RTShadowResult)
 {
 	BindConstant(SysConst, 0);
 	BindStorage(DirLightConst, 1, 0, true);
@@ -55,10 +53,9 @@ void UHLightPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer
 
 	if (Gfx->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		BindImage(RTDirShadowResult, 5);
-		BindImage(RTPointShadowResult, 6);
+		BindImage(RTShadowResult, 5);
 	}
 
-	BindStorage(PointLightList.get(), 7, 0, true);
-	BindSampler(LinearClamppedSampler, 8);
+	BindStorage(PointLightList.get(), 6, 0, true);
+	BindSampler(LinearClamppedSampler, 7);
 }

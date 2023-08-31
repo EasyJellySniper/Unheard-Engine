@@ -158,11 +158,71 @@ namespace UHTextureCompressor
 		return OutResult;
 	}
 
+	// evaludate bc3, almost the same algorithem as BC1
+	UHColorBC3 EvaluateBC3(const uint32_t BlockAlphas[16], const uint32_t& Alpha0, const uint32_t& Alpha1, float& OutMinDiff)
+	{
+		float RefAlpha[8];
+		RefAlpha[0] = static_cast<float>(Alpha0);
+		RefAlpha[1] = static_cast<float>(Alpha1);
+		OutMinDiff = 0;
+
+		// interpolate alpha 2 ~ alpha 8 based on the condition, use float for better precision
+		// but still using uint alpha as the condition
+		if (Alpha0 > Alpha1)
+		{
+			for (int32_t Idx = 2; Idx < 8; Idx++)
+			{
+				RefAlpha[Idx] = (RefAlpha[0] * (8 - Idx) + RefAlpha[1] * (Idx - 1)) / 7.0f;
+			}
+		}
+		else
+		{
+			for (int32_t Idx = 2; Idx < 6; Idx++)
+			{
+				RefAlpha[Idx] = (RefAlpha[0] * (6 - Idx) + RefAlpha[1] * (Idx - 1)) / 5.0f;
+			}
+			RefAlpha[6] = 0.0f;
+			RefAlpha[7] = 1.0f;
+		}
+
+		// store alpha_0 and alpha_1
+		UHColorBC3 Result;
+		Result.Alpha0 = static_cast<uint8_t>(Alpha0);
+		Result.Alpha1 = static_cast<uint8_t>(Alpha1);
+
+		// store indices from LSB to MSB
+		int32_t BitShiftStart = 0;
+		uint64_t Indices = 0;
+		for (uint32_t Idx = 0; Idx < 16; Idx++)
+		{
+			float MinDiff = std::numeric_limits<float>::max();
+			uint64_t ClosestIdx = 0;
+			for (uint32_t Jdx = 0; Jdx < 8; Jdx++)
+			{
+				float Diff = std::abs((float)BlockAlphas[Idx] - RefAlpha[Jdx]);
+				if (Diff < MinDiff)
+				{
+					MinDiff = Diff;
+					ClosestIdx = Jdx;
+				}
+			}
+
+			OutMinDiff += MinDiff;
+			Indices |= ClosestIdx << BitShiftStart;
+			BitShiftStart += 3;
+		}
+
+		// copy 48-bit to result
+		memcpy_s(&Result.AlphaIndices[0], sizeof(uint8_t) * 6, &Indices, sizeof(uint8_t) * 6);
+
+		return Result;
+	}
+
 	uint64_t BlockCompressionAlpha(const std::vector<uint32_t>& Alpha8, const uint32_t Width, const uint32_t Height, const int32_t StartY, const int32_t StartX)
 	{
 		uint32_t BlockAlphas[16] = { 0 };
-		uint32_t RefAlpha[8] = { 0 };
-		RefAlpha[1] = 255;
+		uint32_t MaxAlpha = 0;
+		uint32_t MinAlpha = 255;
 		uint32_t AlphaCount = 0;
 
 		// for alpha compression, it has more indices bits than color, min-max method should be good enough
@@ -176,58 +236,37 @@ namespace UHTextureCompressor
 				const int32_t AlphaIdx = Width * NY + NX;
 				const uint32_t& Alpha = Alpha8[AlphaIdx];
 
-				RefAlpha[0] = std::max(RefAlpha[0], Alpha);
-				RefAlpha[1] = std::min(RefAlpha[1], Alpha);
+				MaxAlpha = std::max(MaxAlpha, Alpha);
+				MinAlpha = std::min(MinAlpha, Alpha);
 				BlockAlphas[AlphaCount++] = Alpha;
 			}
 		}
 
-		// interpolate alpha 2 ~ alpha 8 based on the condition
-		if (RefAlpha[0] > RefAlpha[1])
-		{
-			for (int32_t Idx = 2; Idx < 8; Idx++)
-			{
-				RefAlpha[Idx] = (RefAlpha[0] * (8 - Idx) + RefAlpha[1] * (Idx - 1)) / 7;
-			}
-		}
-		else
-		{
-			for (int32_t Idx = 2; Idx < 6; Idx++)
-			{
-				RefAlpha[Idx] = (RefAlpha[0] * (6 - Idx) + RefAlpha[1] * (Idx - 1)) / 5;
-			}
-			RefAlpha[6] = 0;
-			RefAlpha[7] = 1;
-		}
-
-		// store alpha_0 and alpha_1
+		// brute-force method, test all combination of color reference and use the result that has the smallest BC3MinDiff
+		float BC3MinDiff = std::numeric_limits<float>::max();
+		UHColorBC3 FinalResult;
 		UHColorBC3 Result;
-		Result.Alpha0 = static_cast<uint8_t>(RefAlpha[0]);
-		Result.Alpha1 = static_cast<uint8_t>(RefAlpha[1]);
+		float MinDiff;
 
-		// store indices from LSB to MSB
-		int32_t BitShiftStart = 0;
-		uint64_t Indices = 0;
-		for (uint32_t Idx = 0; Idx < 16; Idx++)
+		for (int32_t Idx = 0; Idx < 16; Idx++)
 		{
-			int32_t MinDiff = UINT32_MAX;
-			uint64_t ClosestIdx = 0;
-			for (uint32_t Jdx = 0; Jdx < 8; Jdx++)
+			for (int32_t Jdx = Idx + 1; Idx < 16; Idx++)
 			{
-				int32_t Diff = std::abs((int32_t)BlockAlphas[Idx] - (int32_t)RefAlpha[Jdx]);
-				if (Diff < MinDiff)
+				Result = EvaluateBC3(BlockAlphas, BlockAlphas[Idx], BlockAlphas[Jdx], MinDiff);
+				if (MinDiff < BC3MinDiff)
 				{
-					MinDiff = Diff;
-					ClosestIdx = Jdx;
+					BC3MinDiff = MinDiff;
+					FinalResult = Result;
 				}
 			}
-
-			Indices |= ClosestIdx << BitShiftStart;
-			BitShiftStart += 3;
 		}
 
-		// copy 48-bit to result
-		memcpy_s(&Result.AlphaIndices[0], sizeof(uint8_t) * 6, &Indices, sizeof(uint8_t) * 6);
+		// there is a chance that minimal method doesn't work the best, use min/max method for such case
+		Result = EvaluateBC3(BlockAlphas, MaxAlpha, MinAlpha, MinDiff);
+		if (MinDiff < BC3MinDiff)
+		{
+			FinalResult = Result;
+		}
 
 		uint64_t OutResult;
 		memcpy_s(&OutResult, sizeof(UHColorBC3), &Result, sizeof(UHColorBC3));
@@ -252,7 +291,7 @@ namespace UHTextureCompressor
 		std::vector<uint64_t> Output(OutputSize);
 
 		std::vector<UHColorRGB> RGB888(Width * Height);
-		size_t RawColorStride = 4;
+		const size_t RawColorStride = 4;
 		for (size_t Idx = 0; Idx < RGB888.size(); Idx++)
 		{
 			RGB888[Idx].R = (float)Input[Idx * RawColorStride];
@@ -303,7 +342,7 @@ namespace UHTextureCompressor
 		std::vector<UHColorRGB> RGB888(Width * Height);
 		std::vector<uint32_t> Alpha8(Width * Height);
 
-		size_t RawColorStride = 4;
+		const size_t RawColorStride = 4;
 		for (size_t Idx = 0; Idx < RGB888.size(); Idx++)
 		{
 			RGB888[Idx].R = (float)Input[Idx * RawColorStride];
@@ -337,6 +376,105 @@ namespace UHTextureCompressor
 							{
 								Output[2 * OutputIdx] = BlockCompressionAlpha(Alpha8, Width, Height, (int32_t)Y, (int32_t)X);
 								Output[2 * OutputIdx + 1] = BlockCompressionColor(RGB888, Width, Height, (int32_t)Y, (int32_t)X);
+							}
+						}
+					}
+				});
+		}
+		WaitCompressionThreads();
+
+		return Output;
+	}
+
+	std::vector<uint64_t> CompressBC4(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	{
+		// 8 bytes per 4x4 block, BC4 compression, stores red channel only
+		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
+		std::vector<uint64_t> Output(OutputSize);
+
+		std::vector<uint32_t> Red8(Width * Height);
+		const size_t RawColorStride = 4;
+		for (size_t Idx = 0; Idx < Red8.size(); Idx++)
+		{
+			Red8[Idx] = Input[Idx * RawColorStride];
+		}
+
+		// assign BC tasks to threads, divided based on the height
+		assert(GCompressThreadCount == 4);
+		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
+		{
+			// when height is < 8, use one thread only
+			if (Height <= 8 && Tdx > 0)
+			{
+				break;
+			}
+
+			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &Red8, &Output]()
+				{
+					const uint32_t YProcessCount = Height / GCompressThreadCount;
+					const uint32_t StartY = (Height > 8) ? Tdx * YProcessCount : 0;
+					const uint32_t EndY = (Height > 8) ? StartY + YProcessCount : Height;
+
+					for (uint32_t Y = StartY; Y < EndY; Y += 4)
+					{
+						for (uint32_t X = 0; X < Width; X += 4)
+						{
+							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
+							if (OutputIdx < static_cast<int32_t>(OutputSize))
+							{
+								// BC4 uses the same way as BC3's alpha part to store R
+								Output[OutputIdx] = BlockCompressionAlpha(Red8, Width, Height, (int32_t)Y, (int32_t)X);
+							}
+						}
+					}
+				});
+		}
+		WaitCompressionThreads();
+
+		return Output;
+	}
+
+	std::vector<uint64_t> CompressBC5(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	{
+		// 16 bytes per 4x4 block, BC5 compression, stores red/green channel only
+		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
+		std::vector<uint64_t> Output(OutputSize * 2);
+
+		std::vector<uint32_t> Red8(Width * Height);
+		std::vector<uint32_t> Green8(Width * Height);
+		const size_t RawColorStride = 4;
+		for (size_t Idx = 0; Idx < Red8.size(); Idx++)
+		{
+			Red8[Idx] = Input[Idx * RawColorStride];
+			Green8[Idx] = Input[Idx * RawColorStride + 1];
+		}
+
+		// assign BC tasks to threads, divided based on the height
+		assert(GCompressThreadCount == 4);
+		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
+		{
+			// when height is < 8, use one thread only
+			if (Height <= 8 && Tdx > 0)
+			{
+				break;
+			}
+
+			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &Red8, &Green8, &Output]()
+				{
+					const uint32_t YProcessCount = Height / GCompressThreadCount;
+					const uint32_t StartY = (Height > 8) ? Tdx * YProcessCount : 0;
+					const uint32_t EndY = (Height > 8) ? StartY + YProcessCount : Height;
+
+					for (uint32_t Y = StartY; Y < EndY; Y += 4)
+					{
+						for (uint32_t X = 0; X < Width; X += 4)
+						{
+							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
+							if (OutputIdx < static_cast<int32_t>(OutputSize))
+							{
+								// BC5 uses the same way as BC3's alpha part to store R/G
+								Output[2 * OutputIdx] = BlockCompressionAlpha(Red8, Width, Height, (int32_t)Y, (int32_t)X);
+								Output[2 * OutputIdx + 1] = BlockCompressionAlpha(Green8, Width, Height, (int32_t)Y, (int32_t)X);
 							}
 						}
 					}

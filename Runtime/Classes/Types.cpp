@@ -144,6 +144,11 @@ namespace MathHelpers
         return Result;
     }
 
+    float Lerp(const float& InVal1, const float& InVal2, const float& T)
+    {
+        return InVal1 * (1.0f - T) + InVal2 * T;
+    }
+
     XMFLOAT3 LerpVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2, const float& T)
     {
         XMVECTOR Lerped = XMVectorLerp(XMLoadFloat3(&InVector), XMLoadFloat3(&InVector2), T);

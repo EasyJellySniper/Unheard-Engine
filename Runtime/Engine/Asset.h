@@ -37,7 +37,7 @@ public:
 
 #if WITH_DEBUG
 	void AddTexture2D(UHTexture2D* InTexture2D);
-	static bool IsBumpTexture(std::string InName);
+	static UHTexture2D* GetTexture2DByPathEditor(std::string InName);
 	static std::string FindTexturePathName(std::string InName);
 #endif
 

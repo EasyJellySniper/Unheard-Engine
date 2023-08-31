@@ -19,8 +19,7 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// RT dir/point shadow result, point light culling buffer
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	// RT shadow result, point light culling buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
@@ -65,8 +64,7 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLightConst
 	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst
 	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
-	, const UHRenderTexture* RTDirShadowResult
-	, const UHRenderTexture* RTPointShadowResult
+	, const UHRenderTexture* RTShadowResult
 	, const UHSampler* LinearClamppedSampler
 	, const UHMeshRendererComponent* InRenderer
 	, const int32_t RTInstanceCount)
@@ -86,22 +84,21 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 
 	if (Gfx->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		BindImage(RTDirShadowResult, 8);
-		BindImage(RTPointShadowResult, 9);
+		BindImage(RTShadowResult, 8);
 	}
-	BindStorage(PointLightList.get(), 10, 0, true);
-	BindSampler(LinearClamppedSampler, 11);
+	BindStorage(PointLightList.get(), 9, 0, true);
+	BindSampler(LinearClamppedSampler, 10);
 
 	// write textures/samplers when they are available
 	UHTexture* Tex = InRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube);
 	if (Tex)
 	{
-		BindImage(Tex, 12);
+		BindImage(Tex, 11);
 	}
 
 	UHSampler* Sampler = InRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube);
 	if (Sampler)
 	{
-		BindSampler(Sampler, 13);
+		BindSampler(Sampler, 12);
 	}
 }

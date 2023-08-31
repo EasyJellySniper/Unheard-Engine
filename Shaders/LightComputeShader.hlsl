@@ -6,10 +6,9 @@
 #include "RayTracing/UHRTCommon.hlsli"
 
 RWTexture2D<float4> SceneResult : register(u4);
-Texture2D RTDirShadow : register(t5);
-Texture2D RTPointShadow : register(t6);
-ByteAddressBuffer PointLightList : register(t7);
-SamplerState LinearClampped : register(s8);
+Texture2D RTShadow : register(t5);
+ByteAddressBuffer PointLightList : register(t6);
+SamplerState LinearClampped : register(s7);
 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
@@ -45,9 +44,9 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	float3 Result = 0;
 
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
-	float DirShadowMask = 1.0f;
+	float ShadowMask = 1.0f;
 #if WITH_RTSHADOWS
-	DirShadowMask = RTDirShadow.SampleLevel(LinearClampped, UV, 0).r;
+	ShadowMask = RTShadow.SampleLevel(LinearClampped, UV, 0).r;
 #endif
 
 
@@ -56,7 +55,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     LightInfo.Specular = Specular;
     LightInfo.Normal = Normal;
     LightInfo.WorldPos = WorldPos;
-    LightInfo.ShadowMask = DirShadowMask;
+    LightInfo.ShadowMask = ShadowMask;
 	
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
@@ -77,12 +76,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	
     float3 WorldToLight;
     float LightAtten;
-    float AttenNoise = lerp(-0.01f, 0.01f, CoordinateToHash(DTid.xy));
-    
-    float PointShadowMask = 1.0f;
-#if WITH_RTSHADOWS
-	PointShadowMask = RTPointShadow.SampleLevel(LinearClampped, UV, 0).r;
-#endif
+    float AttenNoise = GetAttenuationNoise(DTid.xy);
     
     UHLOOP
     for (Ldx = 0; Ldx < TileCount; Ldx++)
@@ -96,9 +90,10 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         LightInfo.LightDir = normalize(WorldToLight);
 		
 		// square distance attenuation, apply attenuation noise to reduce color banding
-        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius) + AttenNoise;
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius);
         LightAtten *= LightAtten;
-        LightInfo.ShadowMask = LightAtten * PointShadowMask;
+        LightAtten += AttenNoise;
+        LightInfo.ShadowMask = LightAtten * ShadowMask;
 		
         Result += LightBRDF(LightInfo);
         TileOffset += 4;

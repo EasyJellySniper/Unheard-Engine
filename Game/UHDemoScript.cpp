@@ -1,6 +1,7 @@
 #include "UHDemoScript.h"
 #include "../Runtime/Classes/Scene.h"
 #include "../Runtime/Engine/GameTimer.h"
+#include <cmath>
 
 UHDemoScript DemoScript;
 
@@ -10,6 +11,7 @@ UHDemoScript::UHDemoScript()
 	, TimeCounter(0)
 	, TimeSign(1)
 	, bTestNight(true)
+	, PointLightTimeCounter(0.0f)
 {
 
 }
@@ -43,6 +45,29 @@ void UHDemoScript::OnEngineUpdate(UHGameTimer* InGameTimer)
 		}
 
 		Geo364Renderer->SetPosition(NewPos);
+	}
+
+	// giving point light a little transform so it lits objects like a torch
+	float MaxRadius = 15.0f;
+	for (int32_t Idx = 0; Idx < 27; Idx++)
+	{
+		float NewIntensity = MathHelpers::Lerp(8.0f, 6.0f, PointLightTimeCounter);
+		TestPointLights[Idx].SetIntensity(NewIntensity);
+		TestPointLights2[Idx].SetIntensity(NewIntensity);
+
+		XMFLOAT3 Pos = TestPointLightOrigin[Idx];
+		Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
+		TestPointLights[Idx].SetPosition(Pos);
+
+		Pos = TestPointLightOrigin2[Idx];
+		Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
+		TestPointLights2[Idx].SetPosition(Pos);
+	}
+
+	PointLightTimeCounter += InGameTimer->GetDeltaTime();
+	if (PointLightTimeCounter > 0.35f)
+	{
+		PointLightTimeCounter = 0.0f;
 	}
 }
 
@@ -140,6 +165,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 		float MinColor = 0.2f;
 
 		TestPointLights.resize(27);
+		TestPointLightOrigin.resize(27);
 		for (int32_t Idx = 0; Idx < 3; Idx++)
 		{
 			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
@@ -149,6 +175,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				TestPointLights[LightIndex].SetRadius(10.0f);
 				TestPointLights[LightIndex].SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
 				TestPointLights[LightIndex].SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
+				TestPointLightOrigin[LightIndex] = TestPointLights[LightIndex].GetPosition();
 				InScene->AddPointLight(&TestPointLights[LightIndex]);
 			}
 		}
@@ -157,6 +184,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 		PointLightStartX = -95;
 		PointLightStartZ = -25;
 		TestPointLights2.resize(27);
+		TestPointLightOrigin2.resize(27);
 		for (int32_t Idx = 0; Idx < 3; Idx++)
 		{
 			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
@@ -166,6 +194,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				TestPointLights2[LightIndex].SetRadius(10.0f);
 				TestPointLights2[LightIndex].SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
 				TestPointLights2[LightIndex].SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
+				TestPointLightOrigin2[LightIndex] = TestPointLights2[LightIndex].GetPosition();
 				InScene->AddPointLight(&TestPointLights2[LightIndex]);
 			}
 		}

@@ -3,13 +3,12 @@
 #include "../UHInputs.hlsli"
 #include "UHRTCommon.hlsli"
 
-RWTexture2D<float> RTDirShadow : register(u1);
-RWTexture2D<float> RTPointShadow : register(u2);
-Texture2D InputRTShadow : register(t3);
-Texture2D DepthTexture : register(t4);
-Texture2D TranslucentTexture : register(t5);
-Texture2D MipRateTex : register(t6);
-SamplerState LinearClampped : register(s7);
+RWTexture2D<float> OutRTShadow : register(u1);
+Texture2D InputRTShadow : register(t2);
+Texture2D DepthTexture : register(t3);
+Texture2D TranslucentTexture : register(t4);
+Texture2D MipRateTex : register(t5);
+SamplerState LinearClampped : register(s6);
 
 // hard code to 5x5 for now, for different preset, set different define from C++ side in the future
 #define PCSS_INNERLOOP 2
@@ -18,7 +17,7 @@ SamplerState LinearClampped : register(s7);
 #define PCSS_MAXPENUMBRA 10.0f
 #define PCSS_BLOCKERSCALE 0.02f
 
-void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, float MipRate, float OpaqueDepth, bool bIsTranslucent, bool bIsPointShadow)
+void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, float MipRate, float OpaqueDepth, bool bIsTranslucent)
 {
 	// pre-sample the texture and cache it
     float BaseDepth = (bIsTranslucent) ? TranslucentTexture.SampleLevel(LinearClampped, UV, 0).r : DepthTexture.SampleLevel(LinearClampped, UV, 0).r;
@@ -36,7 +35,7 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
     }
 
 	// after getting distance to blocker, scale it down (or not) as penumbra number
-    float2 BaseShadowData = (bIsPointShadow) ? InputRTShadow.SampleLevel(LinearClampped, UV, 0).ba : InputRTShadow.SampleLevel(LinearClampped, UV, 0).rg;
+    float2 BaseShadowData = InputRTShadow.SampleLevel(LinearClampped, UV, 0).rg;
     float DistToBlocker = BaseShadowData.r;
 	float Penumbra = lerp(PCSS_MINPENUMBRA, PCSS_MAXPENUMBRA, saturate(DistToBlocker * PCSS_BLOCKERSCALE));
 
@@ -63,7 +62,7 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
             }
 			else
             {
-                Atten += (bIsPointShadow) ? InputRTShadow.SampleLevel(LinearClampped, ShadowUV, 0).a : InputRTShadow.SampleLevel(LinearClampped, ShadowUV, 0).g;
+                Atten += InputRTShadow.SampleLevel(LinearClampped, ShadowUV, 0).g;
             }
         }
 	}
@@ -83,8 +82,7 @@ void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
 	}
 	
     uint2 PixelCoord = DTid.xy;
-    RTDirShadow[PixelCoord] = 0;
-    RTPointShadow[PixelCoord] = 0;
+    OutRTShadow[PixelCoord] = 0;
 
 	// early leave if there is no lights
 	UHBRANCH
@@ -97,8 +95,6 @@ void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
 	float MipRate = MipRateTex.SampleLevel(LinearClampped, UV, 0).r;
     float OpaqueDepth = DepthTexture.SampleLevel(LinearClampped, UV, 0).r;
 
-    SoftShadow(RTDirShadow, PixelCoord, UV, MipRate, OpaqueDepth, false, false);
-    SoftShadow(RTDirShadow, PixelCoord, UV, MipRate, OpaqueDepth, true, false);
-    SoftShadow(RTPointShadow, PixelCoord, UV, MipRate, OpaqueDepth, false, true);
-    SoftShadow(RTPointShadow, PixelCoord, UV, MipRate, OpaqueDepth, true, true);
+    SoftShadow(OutRTShadow, PixelCoord, UV, MipRate, OpaqueDepth, false);
+    SoftShadow(OutRTShadow, PixelCoord, UV, MipRate, OpaqueDepth, true);
 }

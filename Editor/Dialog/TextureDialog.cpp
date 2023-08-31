@@ -198,7 +198,6 @@ void UHTextureDialog::ControlApply()
     }
 
     HWND CurrDialog = Dialog;
-    UHStatusDialogScope StatusDialog(Instance, CurrDialog, "Processing...");
 
     std::string RawSource = UHUtilities::ToStringA(FileNameGUI->GetText());
     std::filesystem::path RawSourcePath(RawSource);
@@ -220,6 +219,20 @@ void UHTextureDialog::ControlApply()
     NewSetting.CompressionSetting = (UHTextureCompressionSettings)CompressionGUI->GetSelectedIndex();
     CurrentTexture->SetTextureSettings(NewSetting);
 
+    if ((NewSetting.CompressionSetting == BC4 || NewSetting.CompressionSetting == BC5) && !bIsLinear)
+    {
+        MessageBoxA(CurrDialog, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
+        return;
+    }
+
+    if (bIsNormal && NewSetting.CompressionSetting == BC4)
+    {
+        MessageBoxA(CurrDialog, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
+        return;
+    }
+
+    UHStatusDialogScope StatusDialog(Instance, CurrDialog, "Processing...");
+
     // always recreating texture
     uint32_t W, H;
     std::vector<uint8_t> RawData = TextureImporter.LoadTexture(RawSourcePath.wstring(), W, H);
@@ -228,7 +241,7 @@ void UHTextureDialog::ControlApply()
     CurrentTexture->Recreate();
     Renderer->UpdateTextureDescriptors();
 
-    const bool bIsNormalChanged = bIsNormal != OldSetting.bIsNormal;
+    const bool bIsNormalChanged = bIsNormal != OldSetting.bIsNormal || NewSetting.CompressionSetting != OldSetting.CompressionSetting;
     if (bIsNormalChanged)
     {
         // if normal is changed, all materials are referencing this texture needs a recompile

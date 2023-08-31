@@ -76,8 +76,6 @@ void UHTextureCreationDialog::ControlTextureCreate()
         return;
     }
 
-    UHStatusDialogScope StatusDialog(Instance, CurrDialog, "Creating...");
-
     // remove the project folder
     OutputFolder = std::filesystem::relative(OutputFolder);
 
@@ -85,6 +83,20 @@ void UHTextureCreationDialog::ControlTextureCreate()
     TextureSetting.bIsLinear = !SrgbGUI->IsChecked();
     TextureSetting.bIsNormal = NormalGUI->IsChecked();
     TextureSetting.CompressionSetting = (UHTextureCompressionSettings)CompressionModeGUI->GetSelectedIndex();
+
+    if ((TextureSetting.CompressionSetting == BC4 || TextureSetting.CompressionSetting == BC5) && !TextureSetting.bIsLinear)
+    {
+        MessageBoxA(CurrDialog, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
+        return;
+    }
+
+    if (TextureSetting.bIsNormal && TextureSetting.CompressionSetting == BC4)
+    {
+        MessageBoxA(CurrDialog, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
+        return;
+    }
+
+    UHStatusDialogScope StatusDialog(Instance, CurrDialog, "Creating...");
 
     std::filesystem::path RawSourcePath = std::filesystem::relative(InputSource);
     if (RawSourcePath.string().empty())

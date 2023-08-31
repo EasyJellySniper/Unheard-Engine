@@ -14,6 +14,5 @@ public:
 		, const UHRenderTexture* SceneResult
 		, const UHSampler* LinearClamppedSampler
 		, const int32_t RTInstanceCount
-		, const UHRenderTexture* RTDirShadowResult
-		, const UHRenderTexture* RTPointShadowResult);
+		, const UHRenderTexture* RTShadowResult);
 };

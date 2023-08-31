@@ -336,11 +336,10 @@ private:
 	UHSoftRTShadowShader SoftRTShadowShader;
 	UHRTShadowShader RTShadowShader;
 
-	UHRenderTexture* RTDirShadowResult;
-	UHRenderTexture* RTPointShadowResult;
+	UHRenderTexture* RTShadowResult;
 
 	// shared texture aim for being reused during rendering
-	UHRenderTexture* RTSharedTexture;
+	UHRenderTexture* RTSharedTextureRG16F;
 
 	UHRTVertexTable RTVertexTable;
 	UHRTIndicesTable RTIndicesTable;

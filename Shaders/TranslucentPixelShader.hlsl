@@ -3,12 +3,11 @@
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
 
-Texture2D RTDirShadow : register(t8);
-Texture2D RTPointShadow : register(t9);
-ByteAddressBuffer PointLightListTrans : register(t10);
-SamplerState LinearClamppedSampler : register(s11);
-TextureCube EnvCube : register(t12);
-SamplerState EnvSampler : register(s13);
+Texture2D RTShadow : register(t8);
+ByteAddressBuffer PointLightListTrans : register(t9);
+SamplerState LinearClamppedSampler : register(s10);
+TextureCube EnvCube : register(t11);
+SamplerState EnvSampler : register(s12);
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -73,10 +72,10 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
 	// sample shadows
-	float DirShadowMask = 1.0f;
+	float ShadowMask = 1.0f;
 #if WITH_RTSHADOWS
 	float2 UV = Vin.Position.xy * UHResolution.zw;
-	DirShadowMask = RTDirShadow.Sample(LinearClamppedSampler, UV).r;
+	ShadowMask = RTShadow.Sample(LinearClamppedSampler, UV).r;
 #endif
 
 	// light calculation, be sure to normalize vector before using it
@@ -87,7 +86,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     LightInfo.Specular = float4(Specular, Roughness);
     LightInfo.Normal = normalize(BumpNormal);
     LightInfo.WorldPos = Vin.WorldPos;
-    LightInfo.ShadowMask = DirShadowMask;
+    LightInfo.ShadowMask = ShadowMask;
 	
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
@@ -107,12 +106,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	
     float3 WorldToLight;
     float LightAtten;
-    float AttenNoise = lerp(-0.01f, 0.01f, CoordinateToHash(Vin.Position.xy));
-	
-    float PointShadowMask = 1.0f;
-#if WITH_RTSHADOWS
-	PointShadowMask = RTPointShadow.SampleLevel(LinearClamppedSampler, UV, 0).r;
-#endif
+    float AttenNoise = GetAttenuationNoise(Vin.Position.xy);
     
     for (Ldx = 0; Ldx < TileCount; Ldx++)
     {
@@ -125,9 +119,10 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         LightInfo.LightDir = normalize(WorldToLight);
 		
 		// square distance attenuation
-        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius) + AttenNoise;
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius);
         LightAtten *= LightAtten;
-        LightInfo.ShadowMask = LightAtten * PointShadowMask;
+        LightAtten += AttenNoise;
+        LightInfo.ShadowMask = LightAtten * ShadowMask;
 		
         Result += LightBRDF(LightInfo);
         TileOffset += 4;

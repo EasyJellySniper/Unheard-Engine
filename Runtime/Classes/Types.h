@@ -44,6 +44,7 @@ namespace MathHelpers
 
     float Halton(int32_t Index, int32_t Base);
 
+    float Lerp(const float& InVal1, const float& InVal2, const float& T);
     XMFLOAT3 LerpVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2, const float& T);
 
     float VectorDistanceSqr(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);

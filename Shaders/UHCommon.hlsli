@@ -239,9 +239,23 @@ float3 EncodeNormal(float3 N)
     return N * 0.5f + 0.5f;
 }
 
-float3 DecodeNormal(float3 N)
+float3 DecodeNormal(float3 N, bool bIsBC5 = false)
 {
+    // BC5 stores 2 channels only, so calculating z component by xy
+    if (bIsBC5)
+    {
+        N.xy = N.xy * 2.0f - 1.0f;
+        N.z = sqrt(saturate(1.0f - (N.x * N.x + N.y * N.y)));
+        return normalize(N);
+    }
+
     return normalize(N * 2.0f - 1.0f);
+}
+
+float GetAttenuationNoise(float2 InCoord)
+{
+    float Offset = 0.03f;
+    return lerp(-Offset, Offset, CoordinateToHash(InCoord));
 }
 
 #endif

@@ -330,3 +330,7 @@ The feature is finished, next is to try async compute and doing culling at half 
 
 29-08-2023: Input shadow from another buffer in softing pass, for better quailty. Trying to improve shadow softing today. Finished the improvement. Fixed GUI resizing as well.
 Redone the shadow attenuation calculation.
+
+30-08-2023: Merge ray tracing shadow result buffers. It should only need one RT now.
+
+31-08-2023: Implemented BC4/BC5 compression successfully. Applied BC5 unpack in the shader code as well. Make point light atten noise better.

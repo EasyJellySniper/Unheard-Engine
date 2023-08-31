@@ -46,7 +46,8 @@ std::string UHTexture2DNode::EvalDefinition()
 		}
 
 		// consider if this is a bump texture and insert decode
-		const bool bIsBumpTexture = UHAssetManager::IsBumpTexture(SelectedTexturePathName);
+		const UHTexture2D* Texture = UHAssetManager::GetTexture2DByPathEditor(SelectedTexturePathName);
+		const UHTextureSettings& TextureSettings = Texture->GetTextureSettings();
 
 		// if it's compiling for ray tracing, I need to use the SampleLevel instead of Sample
 		if (bIsCompilingRayTracing)
@@ -58,10 +59,11 @@ std::string UHTexture2DNode::EvalDefinition()
 			std::string Result =
 				"float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].SampleLevel(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ", MipLevel);\n";
 
-			if (bIsBumpTexture)
+			if (TextureSettings.bIsNormal)
 			{
 				// insert decode bump normal code if it's normal map
-				Result += "Result_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz" + ");\n";
+				const std::string IsBC5 = TextureSettings.CompressionSetting == BC5 ? "true" : "false";
+				Result += "\tResult_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz, " + IsBC5 + ");\n";
 			}
 
 			return Result;
@@ -71,10 +73,11 @@ std::string UHTexture2DNode::EvalDefinition()
 		const std::string SamplerIndexCode = GDefaultSamplerName + "_Index";
 		std::string Result = "float4 Result_" + IDString + " = UHTextureTable[" + TextureIndexCode + "].Sample(UHSamplerTable[" + SamplerIndexCode + "], " + UVString + ");\n";
 
-		if (bIsBumpTexture)
+		if (TextureSettings.bIsNormal)
 		{
 			// insert decode bump normal code if it's normal map
-			Result += "Result_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz" + ");\n";
+			const std::string IsBC5 = TextureSettings.CompressionSetting == BC5 ? "true" : "false";
+			Result += "\tResult_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz, " + IsBC5 + ");\n";
 		}
 		return Result;
 	}

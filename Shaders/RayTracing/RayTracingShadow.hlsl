@@ -5,9 +5,9 @@
 
 RaytracingAccelerationStructure TLAS : register(t1);
 
-// this pass will store result as a float4 buffer (xy for dir light, zw for point light)
+// this pass will store result as a float2 buffer (max hit distance, attenuation)
 // in soften pass, it will output to corresponding RT shadow targets
-RWTexture2D<float4> OutShadowResult : register(u2);
+RWTexture2D<float2> OutShadowResult : register(u2);
 
 ByteAddressBuffer PointLightList : register(t5);
 ByteAddressBuffer PointLightListTrans : register(t6);
@@ -105,8 +105,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 	// need to calculate light attenuation to lerp shadow attenuation 
     float3 WorldToLight;
     float LightAtten;
-    float AttenNoise = lerp(-0.01f, 0.01f, CoordinateToHash(TileCoordinate));
-    float PointShadowMaxDist = 0;
+    float AttenNoise = GetAttenuationNoise(TileCoordinate);
 	
     for (Ldx = 0; Ldx < TileCount; Ldx++)
     {
@@ -130,8 +129,9 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         }
 		
 		// calc light attenuation for this point light
-        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius) + AttenNoise;
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius);
         LightAtten *= LightAtten;
+        LightAtten += AttenNoise;
 		
         UHDefaultPayload Payload = (UHDefaultPayload)0;
         Payload.MipLevel = MipLevel;
@@ -140,7 +140,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal)) * saturate(PointLight.Color.a);
         if (Payload.IsHit())
         {
-            PointShadowMaxDist = max(PointShadowMaxDist, Payload.HitT);
+            MaxDist = max(MaxDist, Payload.HitT);
             Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
         }
         else
@@ -151,7 +151,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
     }
     Atten = saturate(Atten);
 
-    OutShadowResult[PixelCoord] = float4(MaxDist, Atten, PointShadowMaxDist, Atten);
+    OutShadowResult[PixelCoord] = float2(MaxDist, Atten);
 }
 
 [shader("raygeneration")]

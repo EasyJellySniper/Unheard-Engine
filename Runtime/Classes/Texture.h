@@ -21,7 +21,9 @@ enum UHTextureCompressionSettings
 {
 	CompressionNone,
 	BC1,
-	BC3
+	BC3,
+	BC4,
+	BC5
 };
 
 struct UHTextureInfo

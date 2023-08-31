@@ -17,7 +17,9 @@ private:
 	UHDirectionalLightComponent DefaultDirectionalLight;
 	UHDirectionalLightComponent SecondDirectionalLight;
 	std::vector<UHPointLightComponent> TestPointLights;
+	std::vector<XMFLOAT3> TestPointLightOrigin;
 	std::vector<UHPointLightComponent> TestPointLights2;
+	std::vector<XMFLOAT3> TestPointLightOrigin2;
 
 	UHSkyLightComponent DefaultSkyLight;
 	UHMeshRendererComponent* Geo364Renderer;
@@ -26,4 +28,5 @@ private:
 	float TimeCounter;
 	float TimeSign;
 	bool bTestNight;
+	float PointLightTimeCounter;
 };

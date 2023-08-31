@@ -106,7 +106,7 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			DebugViewShader.BindConstant(DebugViewData, 0, Idx);
 		}
 
-		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTDirShadowResult };
+		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
 		DebugViewShader.BindImage(Buffers[DebugViewIndex], 1);
 	}
 }

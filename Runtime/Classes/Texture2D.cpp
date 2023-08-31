@@ -98,14 +98,29 @@ void UHTexture2D::Recreate()
 		{
 			std::vector<uint8_t> MipData(TextureData.begin() + MipStartIndex, TextureData.begin() + MipEndIndex);
 			std::vector<uint64_t> CompressedMipData;
-			if (TextureSettings.CompressionSetting == BC1)
+
+			switch (TextureSettings.CompressionSetting)
 			{
+			case BC1:
 				CompressedMipData = UHTextureCompressor::CompressBC1(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
-			}
-			else
-			{
+				break;
+
+			case BC3:
 				CompressedMipData = UHTextureCompressor::CompressBC3(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				break;
+
+			case BC4:
+				CompressedMipData = UHTextureCompressor::CompressBC4(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				break;
+
+			case BC5:
+				CompressedMipData = UHTextureCompressor::CompressBC5(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				break;
+
+			default:
+				break;
 			}
+
 			CompressedData.insert(CompressedData.end(), CompressedMipData.begin(), CompressedMipData.end());
 
 			MipStartIndex = MipEndIndex;
@@ -228,8 +243,8 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphic
 	}
 
 	// calculate byte stride
-	const uint64_t ByteStrides[] = { 1,8,4 };
-	const uint64_t MinMipSize[] = { 1,8,16 };
+	const uint64_t ByteStrides[] = { 1, 8, 4, 8, 4 };
+	const uint64_t MinMipSize[] = { 1, 8, 16, 8, 16 };
 	uint64_t ByteDivider = 1;
 	if (TextureSettings.bIsCompressed)
 	{
@@ -349,13 +364,28 @@ bool UHTexture2D::CreateTextureFromMemory()
 
 	if (TextureSettings.bIsCompressed)
 	{
-		if (TextureSettings.CompressionSetting == BC1)
+		switch (TextureSettings.CompressionSetting)
 		{
+		case BC1:
 			Info.Format = (TextureSettings.bIsLinear) ? VK_FORMAT_BC1_RGB_UNORM_BLOCK : VK_FORMAT_BC1_RGB_SRGB_BLOCK;
-		}
-		else if (TextureSettings.CompressionSetting == BC3)
-		{
+			break;
+
+		case BC3:
 			Info.Format = (TextureSettings.bIsLinear) ? VK_FORMAT_BC3_UNORM_BLOCK : VK_FORMAT_BC3_SRGB_BLOCK;
+			break;
+
+		case BC4:
+			// BC4 only works for linear texture, use [0,1] normalization for now
+			Info.Format = VK_FORMAT_BC4_UNORM_BLOCK;
+			break;
+
+		case BC5:
+			// BC5 only works for linear texture, use [0,1] normalization for now
+			Info.Format = VK_FORMAT_BC5_UNORM_BLOCK;
+			break;
+
+		default:
+			break;
 		}
 	}
 
