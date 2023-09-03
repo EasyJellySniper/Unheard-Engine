@@ -101,14 +101,14 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     uint TileY = uint(Vin.Position.y) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileIndex = TileX + TileY * UHLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
-    uint TileCount = PointLightListTrans.Load(TileOffset);
+    uint PointLightCount = PointLightListTrans.Load(TileOffset);
     TileOffset += 4;
 	
     float3 WorldToLight;
     float LightAtten;
     float AttenNoise = GetAttenuationNoise(Vin.Position.xy);
     
-    for (Ldx = 0; Ldx < TileCount; Ldx++)
+    for (Ldx = 0; Ldx < PointLightCount; Ldx++)
     {
         uint PointLightIdx = PointLightListTrans.Load(TileOffset);
        

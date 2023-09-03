@@ -48,26 +48,29 @@ void UHDemoScript::OnEngineUpdate(UHGameTimer* InGameTimer)
 	}
 
 	// giving point light a little transform so it lits objects like a torch
-	float MaxRadius = 15.0f;
-	for (int32_t Idx = 0; Idx < 27; Idx++)
+	if (bTestNight)
 	{
-		float NewIntensity = MathHelpers::Lerp(8.0f, 6.0f, PointLightTimeCounter);
-		TestPointLights[Idx].SetIntensity(NewIntensity);
-		TestPointLights2[Idx].SetIntensity(NewIntensity);
+		float MaxRadius = 15.0f;
+		for (int32_t Idx = 0; Idx < 27; Idx++)
+		{
+			float NewIntensity = MathHelpers::Lerp(8.0f, 6.0f, PointLightTimeCounter);
+			TestPointLights[Idx].SetIntensity(NewIntensity);
+			TestPointLights2[Idx].SetIntensity(NewIntensity);
 
-		XMFLOAT3 Pos = TestPointLightOrigin[Idx];
-		Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
-		TestPointLights[Idx].SetPosition(Pos);
+			XMFLOAT3 Pos = TestPointLightOrigin[Idx];
+			Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
+			TestPointLights[Idx].SetPosition(Pos);
 
-		Pos = TestPointLightOrigin2[Idx];
-		Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
-		TestPointLights2[Idx].SetPosition(Pos);
-	}
+			Pos = TestPointLightOrigin2[Idx];
+			Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
+			TestPointLights2[Idx].SetPosition(Pos);
+		}
 
-	PointLightTimeCounter += InGameTimer->GetDeltaTime();
-	if (PointLightTimeCounter > 0.35f)
-	{
-		PointLightTimeCounter = 0.0f;
+		PointLightTimeCounter += InGameTimer->GetDeltaTime();
+		if (PointLightTimeCounter > 0.35f)
+		{
+			PointLightTimeCounter = 0.0f;
+		}
 	}
 }
 

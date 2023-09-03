@@ -146,7 +146,7 @@ namespace UHTextureCompressor
 			}
 		}
 
-		// there is a chance that minimal method doesn't work the best, use min/max method for such case
+		// there is a chance that minimal distance method doesn't work the best, use min/max method for such case
 		Result = EvaluateBC1(BlockColors, MaxColor, MinColor, MinDiff);
 		if (MinDiff < BC1MinDiff)
 		{
@@ -261,7 +261,7 @@ namespace UHTextureCompressor
 			}
 		}
 
-		// there is a chance that minimal method doesn't work the best, use min/max method for such case
+		// there is a chance that minimal distance method doesn't work the best, use min/max method for such case
 		Result = EvaluateBC3(BlockAlphas, MaxAlpha, MinAlpha, MinDiff);
 		if (MinDiff < BC3MinDiff)
 		{

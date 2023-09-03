@@ -99,7 +99,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
     uint TileY = TileCoordinate.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileIndex = TileX + TileY * UHLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
-    uint TileCount = (bIsTranslucent) ? PointLightListTrans.Load(TileOffset) : PointLightList.Load(TileOffset);
+    uint PointLightCount = (bIsTranslucent) ? PointLightListTrans.Load(TileOffset) : PointLightList.Load(TileOffset);
     TileOffset += 4;
 	
 	// need to calculate light attenuation to lerp shadow attenuation 
@@ -107,7 +107,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
     float LightAtten;
     float AttenNoise = GetAttenuationNoise(TileCoordinate);
 	
-    for (Ldx = 0; Ldx < TileCount; Ldx++)
+    for (Ldx = 0; Ldx < PointLightCount; Ldx++)
     {
         uint PointLightIdx = (bIsTranslucent) ? PointLightListTrans.Load(TileOffset) : PointLightList.Load(TileOffset);
         TileOffset += 4;
@@ -122,7 +122,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         ShadowRay.TMin = Gap;
         ShadowRay.TMax = length(WorldToLight);
 		
-		// do not trace out-of-range pixel or back face
+		// do not trace out-of-range pixel
         if (ShadowRay.TMax > PointLight.Radius)
         {
             continue;

@@ -71,7 +71,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     uint TileY = DTid.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileIndex = TileX + TileY * UHLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
-    uint TileCount = PointLightList.Load(TileOffset);
+    uint PointLightCount = PointLightList.Load(TileOffset);
     TileOffset += 4;
 	
     float3 WorldToLight;
@@ -79,7 +79,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     float AttenNoise = GetAttenuationNoise(DTid.xy);
     
     UHLOOP
-    for (Ldx = 0; Ldx < TileCount; Ldx++)
+    for (Ldx = 0; Ldx < PointLightCount; Ldx++)
     {
         uint PointLightIdx = PointLightList.Load(TileOffset);
        
