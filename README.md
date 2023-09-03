@@ -5,6 +5,14 @@
  If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
  Recommended to use the full project link, as there are a few test assets. <br>
 
+# 2023-08-31: Adding point lights and texture compression.
+Added high performance point light implementation and texture compression! Preview link: <br>
+https://www.youtube.com/watch?v=ImkG_4LyIUc <br>
+https://www.youtube.com/watch?v=qjNXWT5B1Rw <br>
+<br><br> Implementation Details: <br>
+https://www.gamedev.net/blogs/entry/2276567-unheard-engine-point-lights-and-texture-compression/
+<br><br>
+
 # 2023-07-13: Adding translucent pass, misc optimizations, code refactorings.
 Added translucent pass and dealt with the issue for TAA/raytracing shadow! Preview link: <br>
 https://www.youtube.com/watch?v=repk5GkRDck
