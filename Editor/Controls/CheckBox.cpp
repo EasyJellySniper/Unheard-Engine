@@ -1,6 +1,6 @@
 #include "CheckBox.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <windowsx.h>
 
 UHCheckBox::UHCheckBox()
@@ -13,6 +13,15 @@ UHCheckBox::UHCheckBox(HWND InControl, UHGUIProperty InProperties)
 	: UHGUIControlBase(InControl, InProperties)
 {
 
+}
+
+UHCheckBox::UHCheckBox(const std::string GUIName, UHGUIProperty InProperties)
+{
+	ControlObj = CreateWindowA("BUTTON", GUIName.c_str(), WS_CHILD | BS_AUTOCHECKBOX
+		, InProperties.InitPosX, InProperties.InitPosY, InProperties.InitWidth, InProperties.InitHeight, InProperties.ParentWnd, nullptr, InProperties.Instance, nullptr);
+
+	InternalInit(ControlObj, InProperties);
+	bIsManuallyCreated = true;
 }
 
 UHCheckBox& UHCheckBox::Checked(const bool bInFlag)

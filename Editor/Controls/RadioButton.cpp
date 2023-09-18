@@ -1,6 +1,6 @@
 #include "RadioButton.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <windowsx.h>
 
 UHRadioButton::UHRadioButton(HWND InControl, UHGUIProperty InProperties)

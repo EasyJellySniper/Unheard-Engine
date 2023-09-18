@@ -1,6 +1,6 @@
 #include "Slider.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <CommCtrl.h>
 
 UHSlider::UHSlider(HWND InControl, UHGUIProperty InProperties)

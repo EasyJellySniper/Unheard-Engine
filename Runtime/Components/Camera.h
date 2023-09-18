@@ -31,6 +31,20 @@ public:
 	XMFLOAT3 GetScreenPos(XMFLOAT3 InWorld) const;
 	BoundingBox GetScreenBound(BoundingBox InWorldBound) const;
 
+#if WITH_EDITOR
+	virtual void OnPropertyChange(std::string PropertyName) override;
+	virtual void OnGenerateDetailView(HWND ParentWnd) override;
+
+	UH_BEGIN_REFLECT
+	UH_MEMBER_REFLECT("float", "NearPlane")
+	UH_MEMBER_REFLECT("float", "FovY")
+	UH_MEMBER_REFLECT("float", "CullingDistance")
+	UH_MEMBER_REFLECT("float", "JitterScaleMin")
+	UH_MEMBER_REFLECT("float", "JitterScaleMax")
+	UH_MEMBER_REFLECT("float", "JitterEndDistance")
+	UH_END_REFLECT
+#endif
+
 private:
 	void BuildViewMatrix();
 	void BuildProjectionMatrix();
@@ -56,8 +70,13 @@ private:
 	int32_t Height;
 	XMFLOAT2 JitterOffset;
 	float JitterScaleMin;
+	float JitterScaleMax;
 	float JitterEndDistance;
 
 	BoundingFrustum CameraFrustum;
 	float CullingDistance;
+
+#if WITH_EDITOR
+	UniquePtr<UHDetailView> DetailView;
+#endif
 };

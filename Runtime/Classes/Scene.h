@@ -26,8 +26,10 @@ public:
 	void Release();
 	void Update();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	void ReassignRenderer(UHMeshRendererComponent* InRenderer);
+	void SetCurrentSelectedComponent(UHComponent* InComp);
+	UHComponent* GetCurrentSelectedComponent() const;
 #endif
 
 	size_t GetAllRendererCount() const;
@@ -42,7 +44,7 @@ public:
 	std::vector<UHPointLightComponent*> GetPointLights() const;
 	std::vector<UHMaterial*> GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
-	UHSkyLightComponent* GetSkyLight();
+	UHSkyLightComponent* GetSkyLight() const;
 	UHMeshRendererComponent* GetSkyboxRenderer() const;
 
 	UHMeshRendererComponent* AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial);
@@ -70,4 +72,8 @@ private:
 	std::vector<UHDirectionalLightComponent*> DirectionalLights;
 	std::vector<UHPointLightComponent*> PointLights;
 	UHMeshRendererComponent* SkyboxRenderer;
+
+#if WITH_EDITOR
+	UHComponent* CurrentSelectedComp;
+#endif
 };

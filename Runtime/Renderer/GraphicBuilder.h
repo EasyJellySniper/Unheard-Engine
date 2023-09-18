@@ -71,6 +71,9 @@ public:
 	// bind index buffer
 	void BindIndexBuffer(UHMesh* InMesh);
 
+	// draw
+	void DrawVertex(uint32_t VertexCount);
+
 	// draw index
 	void DrawIndexed(uint32_t IndicesCount);
 
@@ -112,7 +115,7 @@ public:
 	// dispatch call
 	void Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	int32_t DrawCalls;
 #endif
 

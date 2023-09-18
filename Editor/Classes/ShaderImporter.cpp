@@ -1,6 +1,6 @@
 #include "ShaderImporter.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../Runtime/Classes/Utility.h"
 #include <assert.h>
 #include "../Runtime/Classes/AssetPath.h"

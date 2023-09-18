@@ -1,6 +1,6 @@
 #include "PreviewScene.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Runtime/Renderer/GraphicBuilder.h"
 
 UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InGraphic, UHPreviewSceneType InType)

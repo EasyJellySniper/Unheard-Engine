@@ -1,6 +1,6 @@
 #include "MaterialDialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Resource.h"
 #include "../../Runtime/Engine/Asset.h"
 #include "../Classes/EditorUtils.h"

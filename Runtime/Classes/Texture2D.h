@@ -18,7 +18,7 @@ public:
 	bool Import(std::filesystem::path InTexturePath);
 	void SetTextureData(std::vector<uint8_t> InData);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	virtual void Recreate() override;
 	virtual std::vector<uint8_t> ReadbackTextureData() override;
 	void Export(std::filesystem::path InTexturePath);

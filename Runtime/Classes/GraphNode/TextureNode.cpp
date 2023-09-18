@@ -31,7 +31,7 @@ bool UHTexture2DNode::CanEvalHLSL()
 
 std::string UHTexture2DNode::EvalDefinition()
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// Eval local definition for texture sample, so it will only be sampled once only
 	// this also considers the bindless rendering
 	// float4 Result_1234 = UHTextureTable[Node_1234_Index].Sample(Sampler_Index, UV);

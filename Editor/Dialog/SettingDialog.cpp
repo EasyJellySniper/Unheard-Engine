@@ -1,6 +1,6 @@
 #include "SettingDialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Runtime/Engine/Config.h"
 #include "../../Runtime/Engine/Engine.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"

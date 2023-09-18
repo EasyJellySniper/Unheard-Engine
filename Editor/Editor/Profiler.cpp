@@ -38,14 +38,14 @@ float UHProfiler::GetDiff()
 UHProfilerScope::UHProfilerScope(UHProfiler* InProfiler)
 	: Profiler(InProfiler)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	Profiler->Begin();
 #endif
 }
 
 UHProfilerScope::~UHProfilerScope()
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	Profiler->End();
 #endif
 }

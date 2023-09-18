@@ -1,7 +1,7 @@
 #pragma once
 #include "../ShaderClass.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 class UHDebugViewShader : public UHShaderClass
 {
 public:

@@ -1,6 +1,6 @@
 #include "MenuGUI.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 UHMenuGUI::UHMenuGUI()
 	: MenuHandle(nullptr)

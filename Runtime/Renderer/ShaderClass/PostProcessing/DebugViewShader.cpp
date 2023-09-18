@@ -1,6 +1,6 @@
 #include "DebugViewShader.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
 	: UHShaderClass(InGfx, Name, typeid(UHDebugViewShader), nullptr)
 {

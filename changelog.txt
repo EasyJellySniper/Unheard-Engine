@@ -334,3 +334,26 @@ Redone the shadow attenuation calculation.
 30-08-2023: Merge ray tracing shadow result buffers. It should only need one RT now.
 
 31-08-2023: Implemented BC4/BC5 compression successfully. Applied BC5 unpack in the shader code as well. Make point light atten noise better.
+
+08-09-2023: Started adding world editor. The first goal is to display the debug info of components and be able to jump to the object by double clicking.
+
+10-09-2023: Added camera teleport when double-clicking an object in world editor.
+
+11-09-2023: Draw boundary for components successfully. Now it supports box and sphere.
+
+12-09-2023: Started adding detail view editor. Started adding transform detail view.
+
+13-09-2023: Started syncing transform detail view values. Finished transform detail view. Organized build macro as predefined. Now there are only WITH_EDITOR and WITH_RELEASE.
+Started adding detail GUI class as well, simply wrapped annoying GUI code.
+
+14-09-2023: Started adding simple reflection system, it at least let me get member/type in class. By using reflection, detail GUI can be simpler to do.
+Now the detail view implementation is good enough. I can carry on the other details.
+
+16-09-2023: Started adding detail GUI for other components. Applied detail views to all components except the mesh renderer.
+
+17-09-2023: Started adding GUI for mesh component. At least make it choose visibility and referencing meshes/materials for now.
+Added some engine definitions for some types. The next is to solve the syncing issue of detail GUIs.
+Also fixed the light attenuation noise artifact when the point light radius is small.
+Next is to deal with the change of material from a mesh renderer. The shader needs to be reinitialized.
+
+18-09-2023: Fulfilled the material detail view selection behavior.

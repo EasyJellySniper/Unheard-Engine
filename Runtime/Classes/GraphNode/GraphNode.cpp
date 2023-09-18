@@ -1,11 +1,11 @@
 #include "GraphNode.h"
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../../Editor/Classes/GraphNodeGUI.h"
 #endif
 
 UHGraphNode::UHGraphNode(bool bInCanBeDeleted)
 	: Name("")
-#if WITH_DEBUG
+#if WITH_EDITOR
 	, GUICache(nullptr)
 	, bIsCompilingRayTracing(false)
 #endif
@@ -28,7 +28,7 @@ UHGraphNode::~UHGraphNode()
 	}
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHGraphNode::SetGUI(UHGraphNodeGUI* InGUI)
 {
 	GUICache = InGUI;

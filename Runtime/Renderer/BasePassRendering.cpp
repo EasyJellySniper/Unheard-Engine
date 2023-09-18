@@ -21,7 +21,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 	// clear depth with 0 since reversed-z is used
 	if (!bEnableDepthPrePass)
 	{
-		VkClearValue DepthClear;
+		VkClearValue DepthClear{};
 		DepthClear.depthStencil = { 0.0f,0 };
 		ClearValues.push_back(DepthClear);
 	}
@@ -46,7 +46,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 
 		if (bParallelSubmissionRT)
 		{
-#if WITH_DEBUG
+#if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				ThreadDrawCalls[I] = 0;
@@ -65,7 +65,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 				WorkerThreads[I]->WaitTask();
 			}
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				GraphBuilder.DrawCalls += ThreadDrawCalls[I];
@@ -92,7 +92,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 				UHMesh* Mesh = Renderer->GetMesh();
 				int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 				if (BasePassShaders.find(RendererIdx) == BasePassShaders.end())
 				{
 					// unlikely to happen, but printing a message for debug
@@ -186,7 +186,7 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 	}
 
 	GraphBuilder.EndCommandBuffer();
-#if WITH_DEBUG
+#if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
 #endif
 }

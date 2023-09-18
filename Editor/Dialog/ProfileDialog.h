@@ -1,7 +1,7 @@
 #pragma once
 #include "Dialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../Controls/Label.h"
 
 class UHProfiler;

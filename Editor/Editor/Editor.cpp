@@ -1,6 +1,6 @@
 #include "Editor.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 #include "../../resource.h"
 #include "../../Runtime/Engine/Engine.h"
@@ -26,6 +26,8 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     ProfileTimer.Reset();
     SettingDialog = UHSettingDialog(HInstance, HWnd, Config, Engine, DeferredRenderer, Input);
     ProfileDialog = UHProfileDialog(HInstance, HWnd);
+    DetailDialog = UHDetailDialog(HInstance, HWnd);
+    WorldDialog = UHWorldDialog(HInstance, HWnd, DeferredRenderer, &DetailDialog);
     TextureDialog = MakeUnique<UHTextureDialog>(HInstance, HWnd, AssetManager, InGfx, InRenderer);
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
 }
@@ -45,6 +47,18 @@ void UHEditor::OnEditorUpdate()
     MaterialDialog->Update();
 }
 
+void UHEditor::OnEditorMove()
+{
+    WorldDialog.ResetDialogWindow();
+    DetailDialog.ResetDialogWindow();
+}
+
+void UHEditor::OnEditorResize()
+{
+    WorldDialog.ResetDialogWindow();
+    DetailDialog.ResetDialogWindow();
+}
+
 void UHEditor::OnMenuSelection(int32_t WmId)
 {
     SelectDebugViewModeMenu(WmId);
@@ -62,6 +76,10 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         break;
     case ID_WINDOW_TEXTURE:
         TextureDialog->ShowDialog();
+        break;
+    case ID_WINDOW_WORLDEDITOR:
+        WorldDialog.ShowDialog();
+        DetailDialog.ShowDialog();
         break;
     default:
         break;

@@ -1,7 +1,7 @@
 #pragma once
 
 // utility header for geometry
-#if WITH_DEBUG
+#if WITH_EDITOR
 namespace UHGeometryHelper
 {
 	inline UHMesh CreateCubeMesh()

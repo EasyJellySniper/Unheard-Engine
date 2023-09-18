@@ -68,7 +68,7 @@ uint32_t GetMemoryTypeIndex(VkPhysicalDeviceMemoryProperties InProps, VkMemoryPr
 // init graphics
 bool UHGraphic::InitGraphics(HWND Hwnd)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	bUseValidationLayers = ConfigInterface->RenderingSetting().bEnableLayerValidation;
 #else
 	bUseValidationLayers = false;
@@ -195,7 +195,7 @@ void UHGraphic::Release()
 }
 
 // debug only functions
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 // check validation layer support
 bool UHGraphic::CheckValidationLayerSupport()
@@ -285,7 +285,7 @@ bool UHGraphic::CreateInstance()
 	CreateInfo.pApplicationInfo = &AppInfo;
 
 	// set up validation layer if it's debugging
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (bUseValidationLayers && CheckValidationLayerSupport())
 	{
 		CreateInfo.enabledLayerCount = static_cast<uint32_t>(ValidationLayers.size());
@@ -293,7 +293,7 @@ bool UHGraphic::CreateInstance()
 	}
 #endif
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	InstanceExtensions.push_back("VK_EXT_debug_utils");
 #endif
 
@@ -317,7 +317,7 @@ bool UHGraphic::CreateInstance()
 	GLeaveFullScreenCallback = (PFN_vkReleaseFullScreenExclusiveModeEXT)vkGetInstanceProcAddr(VulkanInstance, "vkReleaseFullScreenExclusiveModeEXT");
 	GGetSurfacePresentModes2Callback = (PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT)vkGetInstanceProcAddr(VulkanInstance, "vkGetPhysicalDeviceSurfacePresentModes2EXT");
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	GBeginCmdDebugLabelCallback = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginDebugUtilsLabelEXT");
 	GEndCmdDebugLabelCallback = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndDebugUtilsLabelEXT");
 #endif
@@ -572,7 +572,7 @@ bool UHGraphic::CreateLogicalDevice()
 	}
 
 	// set up validation layer if it's debugging
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (bUseValidationLayers && CheckValidationLayerSupport())
 	{
 		CreateInfo.enabledLayerCount = static_cast<uint32_t>(ValidationLayers.size());
@@ -944,7 +944,7 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 	Temp.SetImage(InImage);
 
 	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, Temp);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		return RTPools[Idx].get();
 	}
@@ -980,7 +980,7 @@ UHTexture2D* UHGraphic::RequestTexture2D(UHTexture2D& LoadedTex)
 {
 	// return cached if there is already one
 	int32_t Idx = UHUtilities::FindIndex<UHTexture2D>(Texture2DPools, LoadedTex);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		return Texture2DPools[Idx].get();
 	}
@@ -1055,7 +1055,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 
 	UHTextureCube Temp(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
 	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, Temp);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		return TextureCubePools[Idx].get();
 	}
@@ -1152,13 +1152,13 @@ uint32_t UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pat
 
 	// early return if it's exist in pool
 	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
-	if (PoolIdx != -1)
+	if (PoolIdx != UHINDEXNONE)
 	{
 		return ShaderPools[PoolIdx]->GetId();
 	}
 
 	// ensure the shader is compiled (debug only)
-#if WITH_DEBUG
+#if WITH_EDITOR
 	AssetManagerInterface->CompileShader(InShaderName, InSource, EntryName, ProfileName, InMacro);
 #endif
 
@@ -1193,7 +1193,7 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OutName + GShaderAssetExtension;
 
 	// if it's a release build, and there is no material shader for it, use a fallback one
-#if WITH_SHIP
+#if WITH_RELEASE
 	if (!std::filesystem::exists(OutputShaderPath))
 	{
 		InShaderName = "FallbackPixelShader";
@@ -1207,14 +1207,14 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 
 	// early return if it's exist in pool and does not need recompile
 	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
-	if (PoolIdx != -1)
+	if (PoolIdx != UHINDEXNONE)
 	{
 		return ShaderPools[PoolIdx]->GetId();
 	}
 
 	// almost the same as common shader flow, but this will go through HLSL translator instead
 	// only compile it when the compile flag or version is matched
-#if WITH_DEBUG
+#if WITH_EDITOR
 	AssetManagerInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InData, InMacro, OutputShaderPath);
 #endif
 
@@ -1233,7 +1233,7 @@ void UHGraphic::RequestReleaseShader(uint32_t InShaderID)
 	if (const UHShader* InShader = SafeGetObjectFromTable<const UHShader>(InShaderID))
 	{
 		int32_t Idx = UHUtilities::FindIndex(ShaderPools, *InShader);
-		if (Idx != -1)
+		if (Idx != UHINDEXNONE)
 		{
 			ShaderPools[Idx]->Release();
 			UHUtilities::RemoveByIndex(ShaderPools, Idx);
@@ -1248,7 +1248,7 @@ UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 
 	// check cached state first
 	int32_t Idx = UHUtilities::FindIndex(StatePools, Temp);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		return StatePools[Idx].get();
 	}
@@ -1273,7 +1273,7 @@ void UHGraphic::RequestReleaseGraphicState(UHGraphicState* InState)
 	}
 
 	int32_t Idx = UHUtilities::FindIndex(StatePools, *InState);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		StatePools[Idx]->Release();
 		UHUtilities::RemoveByIndex(StatePools, Idx);
@@ -1286,7 +1286,7 @@ UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 
 	// check cached state first
 	int32_t Idx = UHUtilities::FindIndex(StatePools, Temp);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		return StatePools[Idx].get();
 	}
@@ -1310,7 +1310,7 @@ UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 
 	// check cached state first
 	int32_t Idx = UHUtilities::FindIndex(StatePools, Temp);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		return StatePools[Idx].get();
 	}
@@ -1333,7 +1333,7 @@ UHSampler* UHGraphic::RequestTextureSampler(UHSamplerInfo InInfo)
 	UHSampler Temp(InInfo);
 
 	int32_t Idx = UHUtilities::FindIndex(SamplerPools, Temp);
-	if (Idx != -1)
+	if (Idx != UHINDEXNONE)
 	{
 		return SamplerPools[Idx].get();
 	}
@@ -1454,7 +1454,7 @@ UHGPUMemory* UHGraphic::GetImageSharedMemory() const
 
 void UHGraphic::BeginCmdDebug(VkCommandBuffer InBuffer, std::string InName)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (ConfigInterface->RenderingSetting().bEnableGPULabeling)
 	{
 		VkDebugUtilsLabelEXT LabelInfo{};
@@ -1468,7 +1468,7 @@ void UHGraphic::BeginCmdDebug(VkCommandBuffer InBuffer, std::string InName)
 
 void UHGraphic::EndCmdDebug(VkCommandBuffer InBuffer)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (ConfigInterface->RenderingSetting().bEnableGPULabeling)
 	{
 		GEndCmdDebugLabelCallback(InBuffer);

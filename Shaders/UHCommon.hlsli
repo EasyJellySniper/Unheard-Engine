@@ -4,6 +4,7 @@
 // UH common HLSL include, mainly for calculating functions
 #define UH_FLOAT_EPSILON 1.175494351e-38F
 #define UH_FLOAT_MAX 3.402823466e+38F
+#define UH_PI 3.141592653589793f
 
 struct UHLightInfo
 {

@@ -8,7 +8,7 @@
 #include "GraphNode/TextureNode.h"
 #include "GraphNode/MathNode.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <assert.h>
 #endif
 
@@ -126,7 +126,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 			int32_t NodeIdx;
 			FileIn.read(reinterpret_cast<char*>(&NodeIdx), sizeof(NodeIdx));
 
-			if (NodeIdx != -1)
+			if (NodeIdx != UHINDEXNONE)
 			{
 				Inputs[Jdx]->ConnectFrom(EditNodes[NodeIdx]->GetOutputs()[0].get());
 			}
@@ -139,7 +139,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 	{
 		int32_t NodeIdx = MaterialInputConnections[Idx];
 
-		if (NodeIdx != -1)
+		if (NodeIdx != UHINDEXNONE)
 		{
 			MaterialInputs[Idx]->ConnectFrom(EditNodes[NodeIdx]->GetOutputs()[0].get());
 		}
@@ -153,14 +153,14 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 // post import callback
 void UHMaterial::PostImport()
 {
-#if WITH_SHIP
+#if WITH_RELEASE
 	// doesn't need these data in release build
 	EditGUIRelativePos.clear();
 	EditNodes.clear();
 	MaterialNode.reset();
 #endif
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// evaluate material constant buffer size for the old assets
 	if (Version < UHMaterialVersion::GoingBindless)
 	{
@@ -171,7 +171,7 @@ void UHMaterial::PostImport()
 	AllocateMaterialBuffer();
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 void UHMaterial::SetCullMode(UHCullMode InCullMode)
 {
@@ -531,6 +531,16 @@ bool UHMaterial::IsSkybox() const
 	return bIsSkybox;
 }
 
+bool UHMaterial::IsOpaque() const
+{
+	return GetBlendMode() < UHBlendMode::TranditionalAlpha;
+}
+
+bool UHMaterial::IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB)
+{
+	return (InA->GetBlendMode() / UHBlendMode::TranditionalAlpha) != (InB->GetBlendMode() / UHBlendMode::TranditionalAlpha);
+}
+
 UHMaterialCompileFlag UHMaterial::GetCompileFlag() const
 {
 	return CompileFlag;
@@ -604,7 +614,7 @@ void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std
 	{
 		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
 		std::string TexName = TexNode->GetSelectedTexturePathName();
-#if WITH_DEBUG
+#if WITH_EDITOR
 		TexName = UHAssetManager::FindTexturePathName(TexName);
 #endif
 		if (!TexName.empty())
@@ -624,7 +634,7 @@ void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std
 
 std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	RegisteredTextureNames.clear();
 	std::unordered_map<uint32_t, bool> TexTable;
 
@@ -655,7 +665,7 @@ bool UHMaterial::operator==(const UHMaterial& InMat)
 		&& InMat.GetMaterialProps() == MaterialProps;
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHMaterial::GenerateDefaultMaterialNodes()
 {
 	// generate default material graph

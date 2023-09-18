@@ -19,7 +19,7 @@ class UHShaderClass : public UHObject
 public:
 	UHShaderClass();
 	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType, UHMaterial* InMat);
-	void Release();
+	void Release(bool bDescriptorOnly = false);
 
 	template <typename T>
 	void BindConstant(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
@@ -61,7 +61,7 @@ public:
 	template <typename T>
 	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false, int32_t FrameIdx = -1)
 	{
-		if (FrameIdx != -1)
+		if (FrameIdx != UHINDEXNONE)
 		{
 			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[FrameIdx]);
 			Helper.WriteStorageBuffer(InBuffer, DstBinding, InOffset, bFullRange);
@@ -110,6 +110,7 @@ public:
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrameRT);
 	void RecreateMaterialState();
+	void SetNewMaterialCache(UHMaterial* InMat);
 
 	uint32_t GetRayGenShader() const;
 	std::vector<uint32_t> GetClosestShaders() const;

@@ -1,6 +1,6 @@
 #include "ParameterNodeGUI.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "EditorUtils.h"
 #include "../../Runtime/Classes/Utility.h"
 

@@ -34,8 +34,9 @@
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 #include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
+#include "ShaderClass/PostProcessing/DebugBoundShader.h"
 #endif
 #include "../../Editor/Editor/Profiler.h"
 
@@ -60,6 +61,7 @@ public:
 	void Release();
 
 	void SetCurrentScene(UHScene* InScene);
+	UHScene* GetCurrentScene() const;
 	void SetSwapChainReset(bool bInFlag);
 	bool IsNeedReset();
 
@@ -72,12 +74,21 @@ public:
 	void ResizeRayTracingBuffers();
 	void UpdateTextureDescriptors();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
+
+
 	void SetDebugViewIndex(int32_t Idx);
 	float GetRenderThreadTime() const;
 	int32_t GetDrawCallCount() const;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
+
+	static UHDeferredShadingRenderer* GetRendererEditorOnly();
 	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup = false);
+	void OnRendererMaterialChanged(UHMeshRendererComponent* InRenderer, UHMaterial* OldMat, UHMaterial* NewMat);
+
+	void ResetRenderer(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup);
+	void RecreateRenderer(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat, bool bIsOpaque);
+	void RecreateRTShaders(UHMaterial* InMat);
 #endif
 
 private:
@@ -158,6 +169,10 @@ private:
 	void DispatchEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHGraphicBuilder& GraphBuilder);
 	uint32_t RenderSceneToSwapChain(UHGraphicBuilder& GraphBuilder);
+
+#if WITH_EDITOR
+	void RenderComponentBounds(UHGraphicBuilder& GraphBuilder, const int32_t PostProcessIdx);
+#endif
 
 
 	/************************************************ parallel task functions ************************************************/
@@ -314,17 +329,23 @@ private:
 	UHTemporalAAShader TemporalAAShader;
 	bool bIsTemporalReset;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// debug view shader
 	UHDebugViewShader DebugViewShader;
 	int32_t DebugViewIndex;
 	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
+
+	// debug bound shader
+	UHDebugBoundShader DebugBoundShader;
+	std::array<UniquePtr<UHRenderBuffer<UHDebugBoundConstant>>, GMaxFrameInFlight> DebugBoundData;
 
 	// profiles
 	float RenderThreadTime;
 	int32_t DrawCalls;
 	std::vector<int32_t> ThreadDrawCalls;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GPUTimes;
+
+	static UHDeferredShadingRenderer* SceneRendererEditorOnly;
 #endif
 	std::array<UHGPUQuery*, UHRenderPassTypes::UHRenderPassMax> GPUTimeQueries;
 

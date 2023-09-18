@@ -2,7 +2,7 @@
 
 uint32_t GFrameNumber = 0;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 bool GEnableGPUTiming = true;
 #endif
 

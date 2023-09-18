@@ -118,8 +118,8 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 
 	/*** cache variables for compare ***/
 	RenderPassInfo = InInfo;
-	bool bHasPixelShader = (RenderPassInfo.PS != -1);
-	bool bHasGeometryShader = (RenderPassInfo.GS != -1);
+	bool bHasPixelShader = (RenderPassInfo.PS != UHINDEXNONE);
+	bool bHasGeometryShader = (RenderPassInfo.GS != UHINDEXNONE);
 
 	// lookup shader in object table
 	const UHShader* VS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.VS);
@@ -173,7 +173,8 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	std::vector<VkDynamicState> DynamicStates = 
 	{
 		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR
+		VK_DYNAMIC_STATE_SCISSOR,
+		VK_DYNAMIC_STATE_LINE_WIDTH
 	};
 
 	VkPipelineDynamicStateCreateInfo DynamicState{};
@@ -191,7 +192,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	/*** Input assembly, always use triangle list in UH engine ***/
 	VkPipelineInputAssemblyStateCreateInfo InputAssembly{};
 	InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	InputAssembly.topology = (RenderPassInfo.bDrawLine) ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	InputAssembly.primitiveRestartEnable = VK_FALSE;
 
 

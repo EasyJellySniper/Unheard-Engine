@@ -362,7 +362,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	return true;
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHMesh::SetImportedTransform(XMFLOAT3 InTranslation, XMFLOAT3 InRotation, XMFLOAT3 InScale)
 {
 	ImportedTranslation = InTranslation;

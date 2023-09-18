@@ -1,7 +1,7 @@
 #pragma once
 #include "Dialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <unordered_map>
 #include "TextureCreationDialog.h"
 #include <shtypes.h>

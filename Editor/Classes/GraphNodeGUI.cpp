@@ -1,6 +1,6 @@
 #include "GraphNodeGUI.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Runtime/Classes/Utility.h"
 #include "EditorUtils.h"
 #include <algorithm>

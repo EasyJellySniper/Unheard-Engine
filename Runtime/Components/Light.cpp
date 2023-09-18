@@ -12,6 +12,7 @@ void UHLightBase::SetLightColor(XMFLOAT3 InLightColor)
 {
 	LightColor = InLightColor;
 	SetRenderDirties(true);
+
 }
 
 void UHLightBase::SetIntensity(float InIntensity)
@@ -22,6 +23,11 @@ void UHLightBase::SetIntensity(float InIntensity)
 
 
 // ************************************** Directional Light ************************************** //
+UHDirectionalLightComponent::UHDirectionalLightComponent()
+{
+	SetName("DirectionalLightComponent" + std::to_string(GetId()));
+}
+
 void UHDirectionalLightComponent::Update()
 {
 	// light update doesn't need to calculate world matrix
@@ -50,12 +56,53 @@ UHDirectionalLightConstants UHDirectionalLightComponent::GetConstants() const
 	return Consts;
 }
 
+#if WITH_EDITOR
+void UHDirectionalLightComponent::OnPropertyChange(std::string PropertyName)
+{
+	UHTransformComponent::OnPropertyChange(PropertyName);
+
+	const UHFloat3DetailGUI* Float3GUI = static_cast<const UHFloat3DetailGUI*>(DetailView->GetGUI(PropertyName));
+	const UHFloatDetailGUI* FloatGUI = static_cast<const UHFloatDetailGUI*>(DetailView->GetGUI(PropertyName));
+
+	if (PropertyName == "LightColor")
+	{
+		LightColor = Float3GUI->GetValue();
+	}
+	else if (PropertyName == "Intensity")
+	{
+		Intensity = FloatGUI->GetValue();
+	}
+}
+
+void UHDirectionalLightComponent::OnGenerateDetailView(HWND ParentWnd)
+{
+	UHTransformComponent::OnGenerateDetailView(ParentWnd);
+
+	DetailView = MakeUnique<UHDetailView>("Directional Light");
+	DetailView->OnGenerateDetailView<UHDirectionalLightComponent>(this, ParentWnd, DetailStartHeight);
+	UH_SYNC_DETAIL_VALUE("LightColor", LightColor)
+	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
+}
+
+void UHDirectionalLightComponent::SetLightColor(XMFLOAT3 InLightColor)
+{
+	UHLightBase::SetLightColor(InLightColor);
+	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
+}
+
+void UHDirectionalLightComponent::SetIntensity(float InIntensity)
+{
+	UHLightBase::SetIntensity(InIntensity);
+	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
+}
+#endif
+
 
 // ************************************** Point Light ************************************** //
 UHPointLightComponent::UHPointLightComponent()
 	: Radius(50.0f)
 {
-
+	SetName("PointLightComponent" + std::to_string(GetId()));
 }
 
 void UHPointLightComponent::Update()
@@ -73,6 +120,12 @@ void UHPointLightComponent::Update()
 void UHPointLightComponent::SetRadius(float InRadius)
 {
 	Radius = InRadius;
+	UH_SYNC_DETAIL_VALUE("Radius", Radius)
+}
+
+float UHPointLightComponent::GetRadius() const
+{
+	return Radius;
 }
 
 UHPointLightConstants UHPointLightComponent::GetConstants() const
@@ -92,3 +145,60 @@ UHPointLightConstants UHPointLightComponent::GetConstants() const
 
 	return Consts;
 }
+
+#if WITH_EDITOR
+UHDebugBoundConstant UHPointLightComponent::GetDebugBoundConst() const
+{
+	UHDebugBoundConstant BoundConst{};
+	BoundConst.BoundType = DebugSphere;
+	BoundConst.Position = GetPosition();
+	BoundConst.Radius = GetRadius();
+	BoundConst.Color = XMFLOAT3(1, 1, 0);
+
+	return BoundConst;
+}
+
+void UHPointLightComponent::OnPropertyChange(std::string PropertyName)
+{
+	UHTransformComponent::OnPropertyChange(PropertyName);
+
+	const UHFloat3DetailGUI* Float3GUI = static_cast<const UHFloat3DetailGUI*>(DetailView->GetGUI(PropertyName));
+	const UHFloatDetailGUI* FloatGUI = static_cast<const UHFloatDetailGUI*>(DetailView->GetGUI(PropertyName));
+
+	if (PropertyName == "LightColor")
+	{
+		LightColor = Float3GUI->GetValue();
+	}
+	else if (PropertyName == "Intensity")
+	{
+		Intensity = FloatGUI->GetValue();
+	}
+	else if (PropertyName == "Radius")
+	{
+		Radius = FloatGUI->GetValue();
+	}
+}
+
+void UHPointLightComponent::OnGenerateDetailView(HWND ParentWnd)
+{
+	UHTransformComponent::OnGenerateDetailView(ParentWnd);
+
+	DetailView = MakeUnique<UHDetailView>("Point Light");
+	DetailView->OnGenerateDetailView<UHPointLightComponent>(this, ParentWnd, DetailStartHeight);
+	UH_SYNC_DETAIL_VALUE("LightColor", LightColor)
+	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
+	UH_SYNC_DETAIL_VALUE("Radius", Radius)
+}
+
+void UHPointLightComponent::SetLightColor(XMFLOAT3 InLightColor)
+{
+	UHLightBase::SetLightColor(InLightColor);
+	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
+}
+
+void UHPointLightComponent::SetIntensity(float InIntensity)
+{
+	UHLightBase::SetIntensity(InIntensity);
+	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
+}
+#endif

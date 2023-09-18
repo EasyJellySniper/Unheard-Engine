@@ -14,7 +14,20 @@ UHTransformComponent::UHTransformComponent()
 	, bTransformChanged(true)
 	, bIsWorldDirty(true)
 {
+	if (!GWorldRightVec.has_value())
+	{
+		GWorldRightVec = XMLoadFloat3(&GWorldRight);
+	}
 
+	if (!GWorldUpVec.has_value())
+	{
+		GWorldUpVec = XMLoadFloat3(&GWorldUp);
+	}
+
+	if (!GWorldForwardVec.has_value())
+	{
+		GWorldForwardVec = XMLoadFloat3(&GWorldForward);
+	}
 }
 
 void UHTransformComponent::Update()
@@ -75,12 +88,14 @@ void UHTransformComponent::Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 	}
 
 	bIsWorldDirty = true;
+	UH_SYNC_DETAIL_VALUE("Position", Position)
 }
 
 void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 {
 	// perform rotation with matrix, and get euler from it instead of using euler directly (prevent gimbal lock!)
 	XMMATRIX OldRot = XMLoadFloat4x4(&RotationMatrix);
+	XMMATRIX NewRot;
 
 	if (InSpace == UHTransformSpace::Local)
 	{
@@ -88,7 +103,7 @@ void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 		const XMMATRIX Rz = XMMatrixRotationAxis(XMLoadFloat3(&Forward), XMConvertToRadians(InDelta.z));
 		const XMMATRIX Rx = XMMatrixRotationAxis(XMLoadFloat3(&Right), XMConvertToRadians(InDelta.x));
 		const XMMATRIX Ry = XMMatrixRotationAxis(XMLoadFloat3(&Up), XMConvertToRadians(InDelta.y));
-		XMMATRIX NewRot = Rz * Rx * Ry;
+		NewRot = Rz * Rx * Ry;
 		
 		// transform vector
 		XMStoreFloat3(&Right, XMVector3TransformNormal(XMLoadFloat3(&Right), NewRot));
@@ -107,7 +122,7 @@ void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 			* XMMatrixRotationAxis(XMLoadFloat3(&GWorldUp), XMConvertToRadians(InDelta.y));
 
 		// transform matrix
-		const XMMATRIX NewRot = OldRot * R;
+		NewRot = OldRot * R;
 		XMStoreFloat4x4(&RotationMatrix, NewRot);
 
 		// transform vectors
@@ -117,18 +132,21 @@ void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 	}
 
 	bIsWorldDirty = true;
+	UH_SYNC_DETAIL_VALUE("Rotation", GetRotationEuler())
 }
 
 void UHTransformComponent::SetScale(XMFLOAT3 InScale)
 {
 	Scale = InScale;
 	bIsWorldDirty = true;
+	UH_SYNC_DETAIL_VALUE("Scale", Scale)
 }
 
 void UHTransformComponent::SetPosition(XMFLOAT3 InPos)
 {
 	Position = InPos;
 	bIsWorldDirty = true;
+	UH_SYNC_DETAIL_VALUE("Position", Position)
 }
 
 void UHTransformComponent::SetRotation(XMFLOAT3 InEulerRot)
@@ -143,6 +161,7 @@ void UHTransformComponent::SetRotation(XMFLOAT3 InEulerRot)
 	XMStoreFloat3(&Forward, XMVector3TransformNormal(XMLoadFloat3(&GWorldForward), XMLoadFloat4x4(&RotationMatrix)));
 
 	bIsWorldDirty = true;
+	UH_SYNC_DETAIL_VALUE("Rotation", GetRotationEuler())
 }
 
 XMFLOAT4X4 UHTransformComponent::GetWorldMatrix() const
@@ -185,6 +204,11 @@ XMFLOAT3 UHTransformComponent::GetPosition() const
 	return Position;
 }
 
+XMFLOAT3 UHTransformComponent::GetScale() const
+{
+	return Scale;
+}
+
 bool UHTransformComponent::IsWorldDirty() const
 {
 	return bIsWorldDirty;
@@ -194,3 +218,45 @@ bool UHTransformComponent::IsTransformChanged() const
 {
 	return bTransformChanged;
 }
+
+#if WITH_EDITOR
+void UHTransformComponent::OnPropertyChange(std::string PropertyName)
+{
+	UHComponent::OnPropertyChange(PropertyName);
+	XMFLOAT3 Vec3Value = DetailView->GetValue<XMFLOAT3>(PropertyName);
+
+	if (PropertyName == "Position")
+	{
+		SetPosition(Vec3Value);
+	}
+	else if (PropertyName == "Rotation")
+	{
+		SetRotation(Vec3Value);
+	}
+	else if (PropertyName == "Scale")
+	{
+		SetScale(Vec3Value);
+	}
+}
+
+void UHTransformComponent::OnGenerateDetailView(HWND ParentWnd)
+{
+	DetailView = MakeUnique<UHDetailView>("Transform");
+
+	DetailStartHeight = 0;
+	DetailView->OnGenerateDetailView<UHTransformComponent>(this, ParentWnd, DetailStartHeight);
+	UH_SYNC_DETAIL_VALUE("Position", Position)
+	UH_SYNC_DETAIL_VALUE("Rotation", GetRotationEuler())
+	UH_SYNC_DETAIL_VALUE("Scale", Scale)
+}
+
+XMFLOAT3 UHTransformComponent::GetRotationEuler()
+{
+	// get euler angle from rotation matrix
+	// this function should be used for editor display and not available in runtime
+	MathHelpers::MatrixToPitchYawRoll(RotationMatrix, RotationEuler.x, RotationEuler.y, RotationEuler.z);
+
+	return RotationEuler;
+}
+
+#endif

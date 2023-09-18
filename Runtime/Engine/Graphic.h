@@ -247,7 +247,7 @@ private:
 	/** ====================================================== Functions ====================================================== **/
 
 	// debug only functions
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// check validation layer support
 	bool CheckValidationLayerSupport();
 #endif
@@ -334,7 +334,7 @@ private:
 	std::vector<const char*> RayTracingExtensions;
 
 	// debug only variables
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// validation layer list
 	const std::vector<const char*> ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
 #endif
@@ -361,7 +361,7 @@ protected:
 	UniquePtr<UHGPUMemory> MeshBufferSharedMemory = nullptr;
 	UniquePtr<UHGPUMemory> ImageSharedMemory = nullptr;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// give access for some classes in debug build
 	friend UHEngine;
 	friend UHPreviewScene;

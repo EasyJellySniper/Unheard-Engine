@@ -27,7 +27,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHGraphicBuilder& GraphBui
 
 		if (bParallelSubmissionRT)
 		{
-#if WITH_DEBUG
+#if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				ThreadDrawCalls[I] = 0;
@@ -46,7 +46,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHGraphicBuilder& GraphBui
 				WorkerThreads[I]->WaitTask();
 			}
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				GraphBuilder.DrawCalls += ThreadDrawCalls[I];
@@ -73,7 +73,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHGraphicBuilder& GraphBui
 				UHMesh* Mesh = Renderer->GetMesh();
 				int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 				if (TranslucentPassShaders.find(RendererIdx) == TranslucentPassShaders.end())
 				{
 					// unlikely to happen, but printing a message for debug
@@ -162,7 +162,7 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 	}
 
 	GraphBuilder.EndCommandBuffer();
-#if WITH_DEBUG
+#if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
 #endif
 }

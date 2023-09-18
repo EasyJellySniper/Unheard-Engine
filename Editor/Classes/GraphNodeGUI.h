@@ -1,8 +1,9 @@
 #pragma once
 #include "../../UnheardEngine.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <vector>
+#include "../../Runtime/Classes/Types.h"
 #include "../../Runtime/Classes/GraphNode/GraphNode.h"
 #include "../Controls/GroupBox.h"
 #include "../Controls/TextBox.h"

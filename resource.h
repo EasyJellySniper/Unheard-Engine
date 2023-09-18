@@ -4,6 +4,7 @@
 //
 #define IDC_MYICON                      2
 #define IDD_SETTING                     9
+#define IDD_WORLDEDITOR                 101
 #define IDD_UNHEARDENGINE_DIALOG        102
 #define IDS_APP_TITLE                   103
 #define IDD_ABOUTBOX                    103
@@ -18,6 +19,8 @@
 #define IDD_TEXTURE                     129
 #define IDD_TEXTURECREATE               130
 #define IDD_STATUS                      131
+#define IDD_PROPPAGE_LARGE              132
+#define IDD_DETAILVIEW                  132
 #define IDC_VSYNC                       1000
 #define IDC_FULLSCREEN                  1001
 #define IDC_CAMERASPEED                 1003
@@ -78,6 +81,9 @@
 #define IDC_HINT_TEXT                   1063
 #define IDC_CULLTEXT                    1064
 #define IDC_BLENDTEXT                   1065
+#define IDC_SCENEOBJ_LIST               1066
+#define IDC_BUTTON1                     1068
+#define IDC_CANCEL                      1068
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773
@@ -93,6 +99,8 @@
 #define ID_WINDOW_TEXTURE               32783
 #define ID_VIEWMODE_RTSHADOW32784       32784
 #define ID_VIEWMODE_RTSHADOW_TRANSLUCENT 32785
+#define ID_WINDOW_WORLDEDITOR           32786
+#define ID_WINDOW_DETAILVIEW            32787
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -101,8 +109,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        132
-#define _APS_NEXT_COMMAND_VALUE         32786
-#define _APS_NEXT_CONTROL_VALUE         1066
+#define _APS_NEXT_COMMAND_VALUE         32788
+#define _APS_NEXT_CONTROL_VALUE         1069
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

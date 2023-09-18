@@ -17,4 +17,8 @@ namespace UHEditorUtil
 	// file dialog
 	std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter);
 	std::wstring FileSelectOutputFolder();
+
+	// text size
+	SIZE GetTextSize(HWND Hwnd, std::string InText);
+	SIZE GetTextSizeW(HWND Hwnd, std::wstring InText);
 }

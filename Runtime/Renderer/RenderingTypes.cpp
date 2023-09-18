@@ -35,6 +35,7 @@ UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDept
 	, GS(-1)
 	, RTCount(InRTCount)
 	, PipelineLayout(InPipelineLayout)
+	, bDrawLine(false)
 {
 
 }

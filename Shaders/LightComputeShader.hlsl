@@ -90,9 +90,8 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         LightInfo.LightDir = normalize(WorldToLight);
 		
 		// square distance attenuation, apply attenuation noise to reduce color banding
-        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius);
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius + AttenNoise);
         LightAtten *= LightAtten;
-        LightAtten += AttenNoise;
         LightInfo.ShadowMask = LightAtten * ShadowMask;
 		
         Result += LightBRDF(LightInfo);

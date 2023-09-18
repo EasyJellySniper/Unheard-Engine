@@ -1,6 +1,6 @@
 #include "MaterialImporter.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Runtime/Classes/AssetPath.h"
 #include "../../Runtime/Classes/Utility.h"
 #include "../../Runtime/Classes/Material.h"

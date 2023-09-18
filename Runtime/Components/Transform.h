@@ -1,10 +1,14 @@
 #pragma once
 #include "Component.h"
 #include "../Classes/Types.h"
+#include <optional>
 
-static XMFLOAT3 GWorldRight = { 1.0f, 0.0f, 0.0f };
-static XMFLOAT3 GWorldUp = { 0.0f, 1.0f, 0.0f };
-static XMFLOAT3 GWorldForward = { 0.0f, 0.0f, 1.0f };
+const XMFLOAT3 GWorldRight = { 1.0f, 0.0f, 0.0f };
+const XMFLOAT3 GWorldUp = { 0.0f, 1.0f, 0.0f };
+const XMFLOAT3 GWorldForward = { 0.0f, 0.0f, 1.0f };
+static std::optional<XMVECTOR> GWorldRightVec;
+static std::optional<XMVECTOR> GWorldUpVec;
+static std::optional<XMVECTOR> GWorldForwardVec;
 
 enum UHTransformSpace
 {
@@ -39,10 +43,23 @@ public:
 	XMFLOAT3 GetUp() const;
 	XMFLOAT3 GetForward() const;
 	XMFLOAT3 GetPosition() const;
+	XMFLOAT3 GetScale() const;
 
 	// is transform changed
 	bool IsWorldDirty() const;
 	bool IsTransformChanged() const;
+
+#if WITH_EDITOR
+	virtual void OnPropertyChange(std::string PropertyName) override;
+	virtual void OnGenerateDetailView(HWND ParentWnd) override;
+	XMFLOAT3 GetRotationEuler();
+
+	UH_BEGIN_REFLECT
+	UH_MEMBER_REFLECT("XMFLOAT3", "Position")
+	UH_MEMBER_REFLECT("XMFLOAT3", "Rotation")
+	UH_MEMBER_REFLECT("XMFLOAT3", "Scale")
+	UH_END_REFLECT
+#endif
 
 protected:
 	XMFLOAT3 Scale;
@@ -69,4 +86,8 @@ private:
 
 	// rotation only matrix
 	XMFLOAT4X4 RotationMatrix;
+
+#if WITH_EDITOR
+	UniquePtr<UHDetailView> DetailView;
+#endif
 };

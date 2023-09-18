@@ -84,7 +84,7 @@ public:
 	void ImportGraphData(std::ifstream& FileIn);
 	void PostImport();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// setting cull mode & blend mode is only available in editor
 	void SetCullMode(UHCullMode InCullMode);
 	void SetBlendMode(UHBlendMode InBlendMode);
@@ -116,6 +116,8 @@ public:
 	UHMaterialVersion GetVersion() const;
 	std::filesystem::path GetPath() const;
 	bool IsSkybox() const;
+	bool IsOpaque() const;
+	static bool IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB);
 
 	UHTexture* GetSystemTex(UHSystemTextureType InType) const;
 	UHSampler* GetSystemSampler(UHSystemTextureType InType) const;
@@ -126,7 +128,7 @@ public:
 
 	bool operator==(const UHMaterial& InMat);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	void GenerateDefaultMaterialNodes();
 	UniquePtr<UHMaterialNode>& GetMaterialNode();
 	std::vector<UniquePtr<UHGraphNode>>& GetEditNodes();

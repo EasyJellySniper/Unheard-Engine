@@ -1,6 +1,6 @@
 #include "FbxImporter.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <fstream>
 #include "../Runtime/Classes/Utility.h"
 #include "../Runtime/Classes/AssetPath.h"

@@ -55,10 +55,21 @@ INT_PTR CALLBACK GDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
             // text box change
             if (GUIControl)
             {
-                for (auto& Callback : GUIControl->OnEditText)
+                if (!GUIControl->IsSetFromCode())
                 {
-                    Callback();
+                    for (auto& Callback : GUIControl->OnEditText)
+                    {
+                        Callback();
+                    }
+
+#if WITH_EDITOR
+                    for (auto& Callback : GUIControl->OnEditProperty)
+                    {
+                        Callback("");
+                    }
+#endif
                 }
+                GUIControl->SetIsFromCode(false);
             }
         }
         else if (HIWORD(wParam) == BN_CLICKED)
@@ -70,6 +81,13 @@ INT_PTR CALLBACK GDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
                 {
                     Callback();
                 }
+
+#if WITH_EDITOR
+                for (auto& Callback : GUIControl->OnEditProperty)
+                {
+                    Callback("");
+                }
+#endif
             }
 
             // it's also possible to hit a menu, send the low word to callback
@@ -90,6 +108,35 @@ INT_PTR CALLBACK GDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
         {
             // combobox selected
             if (GUIControl)
+            {
+                for (auto& Callback : GUIControl->OnSelected)
+                {
+                    Callback();
+                }
+
+#if WITH_EDITOR
+                for (auto& Callback : GUIControl->OnEditProperty)
+                {
+                    Callback("");
+                }
+#endif
+            }
+        }
+        else if (HIWORD(wParam) == LBN_DBLCLK)
+        {
+            // double click on list box
+            if (GUIControl && (HWND)lParam == GUIControl->GetHwnd())
+            {
+                for (auto& Callback : GUIControl->OnDoubleClicked)
+                {
+                    Callback();
+                }
+            }
+        }
+        else if (HIWORD(wParam) == LBN_SELCHANGE)
+        {
+            // select on list box
+            if (GUIControl && (HWND)lParam == GUIControl->GetHwnd())
             {
                 for (auto& Callback : GUIControl->OnSelected)
                 {

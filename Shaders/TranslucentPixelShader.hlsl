@@ -119,9 +119,8 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         LightInfo.LightDir = normalize(WorldToLight);
 		
 		// square distance attenuation
-        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius);
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius + AttenNoise);
         LightAtten *= LightAtten;
-        LightAtten += AttenNoise;
         LightInfo.ShadowMask = LightAtten * ShadowMask;
 		
         Result += LightBRDF(LightInfo);

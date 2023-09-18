@@ -1,6 +1,7 @@
 #pragma once
 #include "../Engine/RenderResource.h"
 #include "../Classes/Utility.h"
+#include "../Classes/Types.h"
 #include "../../UnheardEngine.h"
 #include "RenderBuffer.h"
 

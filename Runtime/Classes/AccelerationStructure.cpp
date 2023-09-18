@@ -256,6 +256,11 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t Curr
 			XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(RendererCache[Idx]->GetWorldMatrix());
 			std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
 
+			// check visibility
+#if WITH_EDITOR
+			InstanceKHRs[Idx].mask = RendererCache[Idx]->IsVisibleInEditor() ? 0xff : 0;
+#endif
+
 			// check material state
 			UHMaterial* Mat = RendererCache[Idx]->GetMaterial();
 			InstanceKHRs[Idx].flags = 0;

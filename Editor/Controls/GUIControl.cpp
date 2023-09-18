@@ -99,6 +99,7 @@ UHGUIControlBase::UHGUIControlBase()
 	, InitRelativeRect(RECT{})
 	, InitParentRect(RECT{})
 	, bIsManuallyCreated(false)
+	, bIsSetFromCode(false)
 {
 
 }
@@ -115,6 +116,7 @@ UHGUIControlBase::~UHGUIControlBase()
 	OnEditText.clear();
 	OnSelected.clear();
 	OnResized.clear();
+	OnDoubleClicked.clear();
 	GControlGUITable.erase(ControlObj);
 
 	if (bIsManuallyCreated)
@@ -232,6 +234,16 @@ std::wstring UHGUIControlBase::GetText() const
 	return Buff;
 }
 
+void UHGUIControlBase::SetIsFromCode(bool bFlag)
+{
+	bIsSetFromCode = bFlag;
+}
+
+bool UHGUIControlBase::IsSetFromCode() const
+{
+	return bIsSetFromCode;
+}
+
 void UHGUIControlBase::InternalInit(HWND InControl, UHGUIProperty InProperties)
 {
 	ControlObj = InControl;
@@ -246,4 +258,5 @@ void UHGUIControlBase::InternalInit(HWND InControl, UHGUIProperty InProperties)
 	MapWindowPoints(HWND_DESKTOP, ParentControl, (LPPOINT)&InitRelativeRect, 2);
 
 	GetClientRect(ParentControl, &InitParentRect);
+	ShowWindow(ControlObj, SW_SHOW);
 }

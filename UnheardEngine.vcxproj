@@ -162,7 +162,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;FBXSDK_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;WITH_EDITOR;FBXSDK_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\VulkanSDK\1.3.224.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -219,7 +219,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Editor\Classes\DetailGUIs\BoolDetailGUI.h" />
+    <ClInclude Include="Editor\Classes\DetailGUIs\DropListDetailGUI.h" />
+    <ClInclude Include="Editor\Classes\DetailGUIs\Float3DetailGUI.h" />
+    <ClInclude Include="Editor\Classes\DetailGUIs\FloatDetailGUI.h" />
+    <ClInclude Include="Editor\Classes\DetailView.h" />
     <ClInclude Include="Editor\Classes\MaterialImporter.h" />
+    <ClInclude Include="Editor\Classes\Reflection.h" />
     <ClInclude Include="Editor\Controls\Button.h" />
     <ClInclude Include="Editor\Controls\CheckBox.h" />
     <ClInclude Include="Editor\Controls\ComboBox.h" />
@@ -230,9 +236,11 @@
     <ClInclude Include="Editor\Controls\RadioButton.h" />
     <ClInclude Include="Editor\Controls\Slider.h" />
     <ClInclude Include="Editor\Controls\TextBox.h" />
+    <ClInclude Include="Editor\Dialog\DetailDialog.h" />
     <ClInclude Include="Editor\Dialog\StatusDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureCreationDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureDialog.h" />
+    <ClInclude Include="Editor\Dialog\WorldDialog.h" />
     <ClInclude Include="Editor\Editor\PreviewScene.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphNode.h" />
     <ClInclude Include="Editor\Classes\GraphNodeGUI.h" />
@@ -260,6 +268,7 @@
     <ClInclude Include="Runtime\Classes\GPUQuery.h" />
     <ClInclude Include="Runtime\Classes\TextureCompressor.h" />
     <ClInclude Include="Runtime\Classes\Thread.h" />
+    <ClInclude Include="Editor\Classes\DetailGUIs\DetailGUIs.h" />
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
     <ClInclude Include="Runtime\Engine\GraphicFunction.h" />
@@ -302,6 +311,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightCullingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
@@ -325,6 +335,11 @@
     <ClInclude Include="UnheardEngine.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Editor\Classes\DetailGUIs\BoolDetailGUI.cpp" />
+    <ClCompile Include="Editor\Classes\DetailGUIs\DropListDetailGUI.cpp" />
+    <ClCompile Include="Editor\Classes\DetailGUIs\Float3DetailGUI.cpp" />
+    <ClCompile Include="Editor\Classes\DetailGUIs\FloatDetailGUI.cpp" />
+    <ClCompile Include="Editor\Classes\DetailView.cpp" />
     <ClCompile Include="Editor\Classes\MaterialImporter.cpp" />
     <ClCompile Include="Editor\Controls\Button.cpp" />
     <ClCompile Include="Editor\Controls\CheckBox.cpp" />
@@ -336,9 +351,11 @@
     <ClCompile Include="Editor\Controls\RadioButton.cpp" />
     <ClCompile Include="Editor\Controls\Slider.cpp" />
     <ClCompile Include="Editor\Controls\TextBox.cpp" />
+    <ClCompile Include="Editor\Dialog\DetailDialog.cpp" />
     <ClCompile Include="Editor\Dialog\StatusDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureCreationDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureDialog.cpp" />
+    <ClCompile Include="Editor\Dialog\WorldDialog.cpp" />
     <ClCompile Include="Editor\Editor\PreviewScene.cpp" />
     <ClCompile Include="Runtime\Classes\GraphNode\GraphNode.cpp" />
     <ClCompile Include="Editor\Classes\GraphNodeGUI.cpp" />
@@ -367,6 +384,7 @@
     <ClCompile Include="Runtime\Classes\Thread.cpp" />
     <ClCompile Include="Runtime\Classes\Types.cpp" />
     <ClCompile Include="Runtime\Classes\Utility.cpp" />
+    <ClCompile Include="Editor\Classes\DetailGUIs\DetailGUIs.cpp" />
     <ClCompile Include="Runtime\Components\GameScript.cpp" />
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
     <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp" />
@@ -411,6 +429,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\DepthPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\MotionPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp" />
@@ -542,6 +561,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\LightCullingComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\DebugBoundShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

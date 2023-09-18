@@ -1,6 +1,6 @@
 #include "Button.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 UHButton::UHButton()
 	: UHGUIControlBase(nullptr, UHGUIProperty())

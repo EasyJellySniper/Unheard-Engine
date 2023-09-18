@@ -1,7 +1,7 @@
 #pragma once
 #include "../../UnheardEngine.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "GraphNodeGUI.h"
 #include "../../Runtime/Classes/GraphNode/ParameterNode.h"
 

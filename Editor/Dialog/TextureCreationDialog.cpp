@@ -1,6 +1,6 @@
 #include "TextureCreationDialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../resource.h"
 #include "../Classes/EditorUtils.h"
 #include "../../Runtime/Classes/Utility.h"

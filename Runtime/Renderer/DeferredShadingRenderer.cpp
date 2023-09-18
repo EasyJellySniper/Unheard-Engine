@@ -5,6 +5,11 @@ void UHDeferredShadingRenderer::SetCurrentScene(UHScene* InScene)
 	CurrentScene = InScene;
 }
 
+UHScene* UHDeferredShadingRenderer::GetCurrentScene() const
+{
+	return CurrentScene;
+}
+
 void UHDeferredShadingRenderer::SetSwapChainReset(bool bInFlag)
 {
 	bIsSwapChainResetGT = bInFlag;
@@ -89,7 +94,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	CurrentFrameGT = (CurrentFrameGT + 1) % GMaxFrameInFlight;
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 {
@@ -475,7 +480,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			// blit scene to swap chain
 			PresentIndex = RenderSceneToSwapChain(SceneRenderBuilder);
 
-		#if WITH_DEBUG
+		#if WITH_EDITOR
 			// get GPU times
 			for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
 			{
@@ -499,7 +504,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			// ****************************** end scene rendering
 		}
 
-	#if WITH_DEBUG
+	#if WITH_EDITOR
 		// profile ends before Present() call, since it contains vsync time
 		RenderThreadTime = RenderThreadProfile.GetDiff() * 1000.0f;
 		DrawCalls = SceneRenderBuilder.DrawCalls;

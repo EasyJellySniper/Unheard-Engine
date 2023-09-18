@@ -22,9 +22,10 @@ UHCameraComponent::UHCameraComponent()
 	, CameraFrustum(BoundingFrustum())
 	, CullingDistance(1000.0f)
 	, JitterScaleMin(0.01f)
+	, JitterScaleMax(0.5f)
 	, JitterEndDistance(500.0f)
 {
-
+	SetName("CameraComponent" + std::to_string(GetId()));
 }
 
 void UHCameraComponent::Update()
@@ -80,6 +81,7 @@ void UHCameraComponent::Update()
 void UHCameraComponent::SetNearPlane(float InNearZ)
 {
 	NearPlane = InNearZ;
+	UH_SYNC_DETAIL_VALUE("NearPlane", NearPlane)
 }
 
 void UHCameraComponent::SetAspect(float InAspect)
@@ -91,6 +93,7 @@ void UHCameraComponent::SetFov(float InFov)
 {
 	// store fov as radian
 	FovY = XMConvertToRadians(InFov);
+	UH_SYNC_DETAIL_VALUE("FovY", XMConvertToDegrees(FovY))
 }
 
 void UHCameraComponent::SetUseJitter(bool bInFlag)
@@ -107,6 +110,7 @@ void UHCameraComponent::SetResolution(int32_t RenderWidth, int32_t RenderHeight)
 void UHCameraComponent::SetCullingDistance(float InDistance)
 {
 	CullingDistance = InDistance;
+	UH_SYNC_DETAIL_VALUE("CullingDistance", CullingDistance)
 }
 
 XMFLOAT4X4 UHCameraComponent::GetViewMatrix() const
@@ -218,6 +222,55 @@ BoundingBox UHCameraComponent::GetScreenBound(BoundingBox InWorldBound) const
 	return Result;
 }
 
+#if WITH_EDITOR
+void UHCameraComponent::OnPropertyChange(std::string PropertyName)
+{
+	UHTransformComponent::OnPropertyChange(PropertyName);
+	float FloatValue = DetailView->GetValue<float>(PropertyName);
+
+	if (PropertyName == "NearPlane")
+	{
+		NearPlane = FloatValue;
+	}
+	else if (PropertyName == "FovY")
+	{
+		FovY = XMConvertToRadians(FloatValue);
+	}
+	else if (PropertyName == "CullingDistance")
+	{
+		CullingDistance = FloatValue;
+	}
+	else if (PropertyName == "JitterScaleMin")
+	{
+		JitterScaleMin = FloatValue;
+	}
+	else if (PropertyName == "JitterScaleMax")
+	{
+		JitterScaleMax = FloatValue;
+	}
+	else if (PropertyName == "JitterEndDistance")
+	{
+		JitterEndDistance = FloatValue;
+	}
+}
+
+void UHCameraComponent::OnGenerateDetailView(HWND ParentWnd)
+{
+	UHTransformComponent::OnGenerateDetailView(ParentWnd);
+
+	DetailView = MakeUnique<UHDetailView>("Camera");
+	DetailView->OnGenerateDetailView<UHCameraComponent>(this, ParentWnd, DetailStartHeight);
+
+	UH_SYNC_DETAIL_VALUE("NearPlane", NearPlane)
+	UH_SYNC_DETAIL_VALUE("FovY", XMConvertToDegrees(FovY))
+	UH_SYNC_DETAIL_VALUE("CullingDistance", CullingDistance)
+	UH_SYNC_DETAIL_VALUE("JitterScaleMin", JitterScaleMin)
+	UH_SYNC_DETAIL_VALUE("JitterScaleMax", JitterScaleMax)
+	UH_SYNC_DETAIL_VALUE("JitterEndDistance", JitterEndDistance)
+}
+
+#endif
+
 void UHCameraComponent::BuildViewMatrix()
 {
 	// flip up vector since Vulkan want +Y down, but UH uses +Y up
@@ -241,8 +294,8 @@ void UHCameraComponent::BuildProjectionMatrix()
 	if (bUseJitterOffset)
 	{
 		const XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
-		JitterOffset.x = Offset.x / Width * 0.5f;
-		JitterOffset.y = Offset.y / Height * 0.5f;
+		JitterOffset.x = Offset.x / Width * JitterScaleMax;
+		JitterOffset.y = Offset.y / Height * JitterScaleMax;
 
 		const XMMATRIX JitterMatrix = XMMatrixTranslation(JitterOffset.x, JitterOffset.y, 0);
 		XMStoreFloat4x4(&ProjectionMatrix, P * JitterMatrix);

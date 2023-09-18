@@ -12,6 +12,9 @@ UHScene::UHScene()
 	, Input(nullptr)
 	, Timer(nullptr)
 	, CurrentSkyLight(nullptr)
+#if WITH_EDITOR
+	, CurrentSelectedComp(nullptr)
+#endif
 {
 
 }
@@ -83,18 +86,18 @@ void UHScene::Update()
 	}
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHScene::ReassignRenderer(UHMeshRendererComponent* InRenderer)
 {
 	// this won't change total number of renderers, but just re-assign between OpaqueRenderers and TranslucentRenderers list
 	int32_t DeleteIdx = UHUtilities::FindIndex(OpaqueRenderers, InRenderer);
-	if (DeleteIdx != -1)
+	if (DeleteIdx != UHINDEXNONE)
 	{
 		UHUtilities::RemoveByIndex(OpaqueRenderers, DeleteIdx);
 	}
 
 	DeleteIdx = UHUtilities::FindIndex(TranslucentRenderers, InRenderer);
-	if (DeleteIdx != -1)
+	if (DeleteIdx != UHINDEXNONE)
 	{
 		UHUtilities::RemoveByIndex(TranslucentRenderers, DeleteIdx);
 	}
@@ -105,7 +108,7 @@ void UHScene::ReassignRenderer(UHMeshRendererComponent* InRenderer)
 		return;
 	}
 
-	if (Mat->GetBlendMode() < UHBlendMode::TranditionalAlpha)
+	if (Mat->IsOpaque())
 	{
 		OpaqueRenderers.push_back(InRenderer);
 	}
@@ -114,6 +117,17 @@ void UHScene::ReassignRenderer(UHMeshRendererComponent* InRenderer)
 		TranslucentRenderers.push_back(InRenderer);
 	}
 }
+
+void UHScene::SetCurrentSelectedComponent(UHComponent* InComp)
+{
+	CurrentSelectedComp = InComp;
+}
+
+UHComponent* UHScene::GetCurrentSelectedComponent() const
+{
+	return CurrentSelectedComp;
+}
+
 #endif
 
 UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial)
@@ -250,7 +264,7 @@ UHCameraComponent* UHScene::GetMainCamera()
 	return &DefaultCamera;
 }
 
-UHSkyLightComponent* UHScene::GetSkyLight()
+UHSkyLightComponent* UHScene::GetSkyLight() const
 {
 	return CurrentSkyLight;
 }

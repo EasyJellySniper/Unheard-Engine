@@ -93,11 +93,13 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 		}
 	}
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (DebugViewIndex > 0)
 	{
 		RenderEffect(&DebugViewShader, GraphBuilder, CurrentPostProcessRTIndex, "Debug View");
 	}
+
+	RenderComponentBounds(GraphBuilder, 1 - CurrentPostProcessRTIndex);
 #endif
 
 	// set post process result idx in the end
@@ -135,3 +137,62 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 
 	return ImageIndex;
 }
+
+#if WITH_EDITOR
+void UHDeferredShadingRenderer::RenderComponentBounds(UHGraphicBuilder& GraphBuilder, const int32_t PostProcessIdx)
+{
+	// render the bound of selected component
+	const UHComponent* Comp = nullptr;
+	if (CurrentScene)
+	{
+		Comp = CurrentScene->GetCurrentSelectedComponent();
+	}
+
+	if (Comp == nullptr)
+	{
+		return;
+	}
+
+	UHDebugBoundConstant BoundConstant = Comp->GetDebugBoundConst();
+	if (BoundConstant.BoundType == DebugNone)
+	{
+		return;
+	}
+
+	DebugBoundData[CurrentFrameRT]->UploadAllData(&BoundConstant);
+	DebugBoundShader.BindConstant(DebugBoundData[CurrentFrameRT], 1, CurrentFrameRT);
+
+	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Draw Component Bounds");
+	GraphBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
+
+	GraphBuilder.SetViewport(RenderResolution);
+	GraphBuilder.SetScissor(RenderResolution);
+
+	// bind state
+	UHGraphicState* State = DebugBoundShader.GetState();
+	GraphBuilder.BindGraphicState(State);
+
+	// bind sets
+	GraphBuilder.BindDescriptorSet(DebugBoundShader.GetPipelineLayout(), DebugBoundShader.GetDescriptorSet(CurrentFrameRT));
+
+	vkCmdSetLineWidth(GraphBuilder.GetCmdList(), 2.0f);
+
+	switch (BoundConstant.BoundType)
+	{
+	case DebugBox:
+		// draw 24 points for bounding box, shader will setup the box points
+		GraphBuilder.DrawVertex(24);
+		break;
+
+	case DebugSphere:
+		GraphBuilder.DrawVertex(360);
+		break;
+
+	default:
+		break;
+	}
+
+	GraphBuilder.EndRenderPass();
+	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+}
+#endif

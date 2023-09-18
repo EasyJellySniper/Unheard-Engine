@@ -27,7 +27,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat,
 
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHTexture::SetTextureSettings(UHTextureSettings InSetting)
 {
 	TextureSettings = InSetting;
@@ -121,7 +121,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 		VkMemoryRequirements MemRequirements{};
 		vkGetImageMemoryRequirements(LogicalDevice, ImageSource, &MemRequirements);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 		if (!InInfo.bIsRT)
 		{
 			VkDeviceImageMemoryRequirements ImageMemoryReqs{};

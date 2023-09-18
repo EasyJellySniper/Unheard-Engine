@@ -89,7 +89,7 @@ public:
 	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}
 	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	virtual void Recreate() {}
 	virtual std::vector<uint8_t> ReadbackTextureData() { return std::vector<uint8_t>(); }
 	void SetTextureSettings(UHTextureSettings InSetting);

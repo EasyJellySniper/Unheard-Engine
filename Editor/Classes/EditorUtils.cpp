@@ -84,4 +84,24 @@ namespace UHEditorUtil
 
         return OutputFolder;
     }
+
+    SIZE GetTextSize(HWND Hwnd, std::string InText)
+    {
+        HDC DC = GetDC(Hwnd);
+        SIZE TextSize;
+        GetTextExtentPoint32A(DC, InText.c_str(), static_cast<int32_t>(InText.length()), &TextSize);
+        ReleaseDC(Hwnd, DC);
+
+        return TextSize;
+    }
+
+    SIZE GetTextSizeW(HWND Hwnd, std::wstring InText)
+    {
+        HDC DC = GetDC(Hwnd);
+        SIZE TextSize;
+        GetTextExtentPoint32(DC, InText.c_str(), static_cast<int32_t>(InText.length()), &TextSize);
+        ReleaseDC(Hwnd, DC);
+
+        return TextSize;
+    }
 }

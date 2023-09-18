@@ -1,7 +1,7 @@
 #pragma once
 #include "GUIControl.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 // text box control
 class UHTextBox : public UHGUIControlBase

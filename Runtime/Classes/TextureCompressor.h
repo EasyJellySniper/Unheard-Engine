@@ -1,7 +1,7 @@
 #pragma once
 #include "../UnheardEngine.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 namespace UHTextureCompressor
 {
 	// helper structure for readability, can be move somewhere else if they're useful

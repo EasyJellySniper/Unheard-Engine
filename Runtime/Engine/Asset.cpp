@@ -5,7 +5,7 @@
 #include "Graphic.h"
 #include "../Classes/AssetPath.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Editor/Classes/GeometryUtility.h"
 #include <chrono>
 UHAssetManager* UHAssetManager::AssetMgrEditorOnly = nullptr;
@@ -13,7 +13,7 @@ UHAssetManager* UHAssetManager::AssetMgrEditorOnly = nullptr;
 
 UHAssetManager::UHAssetManager()
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	UHFbxImporterInterface = MakeUnique<UHFbxImporter>();
 
 	// load shader cache after initialization
@@ -42,7 +42,7 @@ void UHAssetManager::Release()
 		Mesh.reset();
 	}
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// write shader include cache when exitng
 	UHShaderImporterInterface->WriteShaderIncludeCache();
 	UHShaderImporterInterface.reset();
@@ -62,7 +62,7 @@ void UHAssetManager::ImportMeshes()
 {
 	// importing from raw asset first
 	// it won't duplicate the import if mesh is cached
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// @TODO: remove the code below after fbx import editor is done
 	//std::vector<UniquePtr<UHMaterial>> ImportedMat;
 	//UHFbxImporterInterface->ImportRawFbx(ImportedMat);
@@ -95,7 +95,7 @@ void UHAssetManager::ImportMeshes()
 			continue;
 		}
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 		// skip cache if it's from bulit in mesh folder
 		size_t Found = Idx->path().string().find("BuiltIn");
 		if (!UHFbxImporterInterface->IsUHMeshCached(Idx->path())
@@ -125,7 +125,7 @@ void UHAssetManager::ImportMeshes()
 void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
 	, std::vector<std::string> Defines, std::filesystem::path& OutputShaderPath)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	UHMaterial* InMat = InData.MaterialCache;
 	UHMaterialCompileFlag CompileFlag = InMat->GetCompileFlag();
 
@@ -154,7 +154,7 @@ void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::pa
 void UHAssetManager::CompileShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 	, std::vector<std::string> Defines)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	UHShaderImporterInterface->CompileHLSL(InShaderName, InSource, EntryName, ProfileName, Defines);
 #endif
 }
@@ -182,7 +182,7 @@ void UHAssetManager::ImportTextures(UHGraphic* InGfx)
 			// import successfully, request texture 2d from GFX
 			UHTexture2D* NewTex = InGfx->RequestTexture2D(LoadedTex);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 			NewTex->SetRawSourcePath(LoadedTex.GetRawSourcePath());
 #endif
 			UHTexture2Ds.push_back(NewTex);
@@ -230,7 +230,7 @@ void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
 		for (int32_t Jdx = 0; Jdx < UHTexture2Ds.size(); Jdx++)
 		{
 			if (UHTexture2Ds[Jdx]->GetSourcePath() == RegisteredTexture 
-#if WITH_DEBUG
+#if WITH_EDITOR
 				|| UHTexture2Ds[Jdx]->GetSourcePath() == FindTexturePathName(RegisteredTexture)
 #endif
 				)
@@ -331,13 +331,18 @@ UHMesh* UHAssetManager::GetMesh(std::string InName) const
 	return nullptr;
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHAssetManager::AddTexture2D(UHTexture2D* InTexture2D)
 {
 	if (!UHUtilities::FindByElement(UHTexture2Ds, InTexture2D))
 	{
 		UHTexture2Ds.push_back(InTexture2D);
 	}
+}
+
+UHAssetManager* UHAssetManager::GetAssetMgrEditor()
+{
+	return AssetMgrEditorOnly;
 }
 
 UHTexture2D* UHAssetManager::GetTexture2DByPathEditor(std::string InPathName)

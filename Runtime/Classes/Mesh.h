@@ -55,7 +55,7 @@ public:
 
 	bool Import(std::filesystem::path InUHMeshPath);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	void SetImportedTransform(XMFLOAT3 InTranslation, XMFLOAT3 InRotation, XMFLOAT3 InScale);
 	void SetImportedMaterialName(std::string InName);
 	void ApplyUnitScale();

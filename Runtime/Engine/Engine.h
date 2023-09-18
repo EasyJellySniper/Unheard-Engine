@@ -11,7 +11,7 @@
 #include <memory>
 #include <string>
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Editor/Editor/Editor.h"
 #endif
 #include "../../Editor/Editor/Profiler.h"
@@ -65,7 +65,7 @@ public:
 	void BeginFPSLimiter();
 	void EndFPSLimiter();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	UHEditor* GetEditor() const;
 	void BeginProfile();
 	void EndProfile();
@@ -99,7 +99,7 @@ private:
 	// renderer class
 	UniquePtr<UHDeferredShadingRenderer> UHERenderer;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// editor class
 	UniquePtr<UHEditor> UHEEditor;
 	std::wstring WindowCaption;

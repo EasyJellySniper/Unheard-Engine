@@ -1,7 +1,7 @@
 #pragma once
 #include "Dialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <unordered_map>
 #include <memory>
 #include "../Controls/CheckBox.h"
@@ -83,9 +83,6 @@ private:
 	UHEngine* Engine;
 	UHDeferredShadingRenderer* DeferredRenderer;
 	UHRawInput* Input;
-
-	// declare function pointer type for editor control
-	std::unordered_map<int32_t, void(UHSettingDialog::*)()> ControlCallbacks;
 };
 
 #endif

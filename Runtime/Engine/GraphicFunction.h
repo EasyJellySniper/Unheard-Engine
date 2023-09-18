@@ -9,7 +9,7 @@ inline PFN_vkAcquireFullScreenExclusiveModeEXT GEnterFullScreenCallback;
 inline PFN_vkReleaseFullScreenExclusiveModeEXT GLeaveFullScreenCallback;
 inline PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT GGetSurfacePresentModes2Callback;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 inline PFN_vkCmdBeginDebugUtilsLabelEXT GBeginCmdDebugLabelCallback;
 inline PFN_vkCmdEndDebugUtilsLabelEXT GEndCmdDebugLabelCallback;
 #endif

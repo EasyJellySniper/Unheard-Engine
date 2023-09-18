@@ -137,6 +137,8 @@ struct UHRenderPassInfo
 	uint32_t GS;
 	int32_t RTCount;
 	VkPipelineLayout PipelineLayout;
+
+	bool bDrawLine;
 };
 
 // compute pass info for setup compute states
@@ -209,3 +211,33 @@ private:
 	std::array<bool, GMaxFrameInFlight> bIsMotionDirties;
 	int32_t BufferDataIndex;
 };
+
+#if WITH_EDITOR
+enum UHDebugBoundType
+{
+	DebugNone = -1,
+	DebugBox,
+	DebugSphere
+};
+
+struct UHDebugBoundConstant
+{
+	UHDebugBoundConstant()
+		: Position(XMFLOAT3(0, 0, 0))
+		, BoundType(DebugNone)
+		, Extent(XMFLOAT3(0, 0, 0))
+		, Radius(0.0f)
+		, Color(XMFLOAT3(1, 1, 1))
+	{
+
+	}
+
+	XMFLOAT3 Position;
+	UHDebugBoundType BoundType;
+
+	XMFLOAT3 Extent;
+	float Radius;
+
+	XMFLOAT3 Color;
+};
+#endif

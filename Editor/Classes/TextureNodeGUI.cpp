@@ -1,6 +1,6 @@
 #include "TextureNodeGUI.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Runtime/Engine/Asset.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "EditorUtils.h"

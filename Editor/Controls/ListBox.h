@@ -1,7 +1,7 @@
 #pragma once
 #include "GUIControl.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 class UHListBox : public UHGUIControlBase
 {
@@ -13,6 +13,8 @@ public:
 
 	UHListBox& Select(int32_t InIndex);
 	int32_t GetSelectedIndex() const;
+
+	void Reset();
 };
 
 #endif

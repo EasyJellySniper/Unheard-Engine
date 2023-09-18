@@ -31,7 +31,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
@@ -86,7 +86,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             // call the game loop
             if (GUnheardEngine)
             {
-            #if WITH_DEBUG
+            #if WITH_EDITOR
                 // profile does not contain editor update time
                 GUnheardEngine->GetEditor()->OnEditorUpdate();
                 GUnheardEngine->BeginProfile();
@@ -103,7 +103,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 }
 
                 GUnheardEngine->EndFPSLimiter();
-            #if WITH_DEBUG
+            #if WITH_EDITOR
                 GUnheardEngine->EndProfile();
             #endif
             }
@@ -135,7 +135,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_UNHEARDENGINE));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-#if WITH_DEBUG
+#if WITH_EDITOR
     // show default menu when debug only
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_UNHEARDENGINE);
 #endif
@@ -191,7 +191,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
-        #if WITH_DEBUG
+        #if WITH_EDITOR
             GUnheardEngine->GetEditor()->OnMenuSelection(wmId);
         #endif
 
@@ -236,6 +236,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 GUnheardEngine->SetResizeReason(UHEngineResizeReason::FromWndMessage);
             }
         }
+#if WITH_EDITOR
+        if (GUnheardEngine && GUnheardEngine->GetEditor())
+        {
+            GUnheardEngine->GetEditor()->OnEditorResize();
+        }
+#endif
         break;
 
     case WM_INPUT:
@@ -246,6 +252,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 RawInput->ParseInputData(lParam);
             }
         }
+        break;
+
+    case WM_MOVING:
+#if WITH_EDITOR
+        if (GUnheardEngine && GUnheardEngine->GetEditor())
+        {
+            GUnheardEngine->GetEditor()->OnEditorMove();
+        }
+#endif
         break;
 
     default:

@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <vector>
 #include <unordered_map>
+#include <string>
 
 // UH base object define
 class UHObject
@@ -11,14 +12,18 @@ public:
 	virtual ~UHObject();
 
 	void AddReferenceObject(UHObject*);
-	std::vector<UHObject*> GetReferenceObjects() const;
+	void RemoveReferenceObject(UHObject*);
+	void SetName(std::string InName);
 
+	std::vector<UHObject*> GetReferenceObjects() const;
 	uint32_t GetId() const;
+	std::string GetName() const;
 
 	bool operator==(const UHObject& InMat);
 
 private:
 	uint32_t Uid;
+	std::string Name;
 };
 
 // global table for managing object references

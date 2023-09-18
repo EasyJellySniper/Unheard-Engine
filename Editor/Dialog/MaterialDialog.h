@@ -1,7 +1,7 @@
 #pragma once
 #include "Dialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Runtime/Classes/GraphNode/MaterialNode.h"
 #include "../Classes/GraphNodeGUI.h"
 #include "../Classes/MenuGUI.h"

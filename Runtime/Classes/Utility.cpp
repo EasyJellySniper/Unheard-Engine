@@ -26,7 +26,7 @@ namespace UHUtilities
 		}
 
 		// file must've written "string size" or this might fail
-		size_t StringSize;
+		size_t StringSize = 0;
 		FileIn.read(reinterpret_cast<char*>(&StringSize), sizeof(StringSize));
 
 		// create a char array buffer and read to string
@@ -51,7 +51,7 @@ namespace UHUtilities
 
 	void ReadStringVectorData(std::ifstream& FileIn, std::vector<std::string>& OutVector)
 	{
-		size_t VectorSize;
+		size_t VectorSize = 0;
 		FileIn.read(reinterpret_cast<char*>(&VectorSize), sizeof(VectorSize));
 
 		OutVector.resize(VectorSize);

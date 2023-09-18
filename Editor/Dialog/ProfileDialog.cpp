@@ -1,6 +1,6 @@
 #include "ProfileDialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../resource.h"
 #include "../Editor/Profiler.h"
 #include "../../Runtime/Engine/Config.h"

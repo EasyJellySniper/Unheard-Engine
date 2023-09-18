@@ -1,7 +1,7 @@
 #pragma once
 #include "../../UnheardEngine.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <unordered_map>
 #include <memory>
 #include "../../Runtime/Engine/GameTimer.h"
@@ -9,6 +9,8 @@
 #include "../Dialog/SettingDialog.h"
 #include "../Dialog/MaterialDialog.h"
 #include "../Dialog/TextureDialog.h"
+#include "../Dialog/WorldDialog.h"
+#include "../Dialog/DetailDialog.h"
 
 class UHEngine;
 class UHGraphic;
@@ -26,6 +28,8 @@ public:
 	~UHEditor();
 
 	void OnEditorUpdate();
+	void OnEditorMove();
+	void OnEditorResize();
 	void OnMenuSelection(int32_t WmId);
 
 private:
@@ -46,6 +50,8 @@ private:
 	// custom dialogs
 	UHProfileDialog ProfileDialog;
 	UHSettingDialog SettingDialog;
+	UHWorldDialog WorldDialog;
+	UHDetailDialog DetailDialog;
 	UniquePtr<UHTextureDialog> TextureDialog;
 	UniquePtr<UHMaterialDialog> MaterialDialog;
 };

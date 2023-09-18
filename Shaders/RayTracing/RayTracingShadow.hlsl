@@ -129,9 +129,8 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         }
 		
 		// calc light attenuation for this point light
-        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius);
+        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius + AttenNoise);
         LightAtten *= LightAtten;
-        LightAtten += AttenNoise;
 		
         UHDefaultPayload Payload = (UHDefaultPayload)0;
         Payload.MipLevel = MipLevel;

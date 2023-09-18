@@ -74,11 +74,20 @@ public:
 	UHGUIControlBase& SetText(std::string InText);
 	std::wstring GetText() const;
 
+	void SetIsFromCode(bool bFlag);
+	bool IsSetFromCode() const;
+
 	// callback functions
 	std::vector<std::function<void()>> OnClicked;
 	std::vector<std::function<void()>> OnEditText;
 	std::vector<std::function<void()>> OnSelected;
 	std::vector<std::function<void()>> OnResized;
+	std::vector<std::function<void()>> OnDoubleClicked;
+
+#if WITH_EDITOR
+	// if it's editing property
+	std::vector<std::function<void(std::string InPropName)>> OnEditProperty;
+#endif
 
 	UHGUIProperty ControlProperty;
 
@@ -87,6 +96,7 @@ protected:
 	HWND ControlObj;
 	HWND ParentControl;
 	bool bIsManuallyCreated;
+	bool bIsSetFromCode;
 
 private:
 	RECT InitAbsoluteRect;

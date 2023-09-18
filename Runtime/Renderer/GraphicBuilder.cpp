@@ -11,7 +11,7 @@ UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InComma
 	, PrevComputeState(nullptr)
 	, PrevVertexBuffer(VK_NULL_HANDLE)
 	, PrevIndexBufferSource(nullptr)
-#if WITH_DEBUG
+#if WITH_EDITOR
 	, DrawCalls(0)
 #endif
 {
@@ -331,12 +331,21 @@ void UHGraphicBuilder::BindIndexBuffer(UHMesh* InMesh)
 	PrevIndexBufferSource = InMesh;
 }
 
+void UHGraphicBuilder::DrawVertex(uint32_t VertexCount)
+{
+	vkCmdDraw(CmdList, VertexCount, 1, 0, 0);
+
+#if WITH_EDITOR
+	DrawCalls++;
+#endif
+}
+
 // draw indexed
 void UHGraphicBuilder::DrawIndexed(uint32_t IndicesCount)
 {
 	vkCmdDrawIndexed(CmdList, IndicesCount, 1, 0, 0, 0);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	DrawCalls++;
 #endif
 }
@@ -468,7 +477,7 @@ void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D
 	vkCmdBlitImage(CmdList, SrcImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, DstImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 		, 1, &BlitInfo, InFilter);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// vkCmdBlitImage should be a kind of draw call, add to profile 
 	DrawCalls++;
 #endif
@@ -519,7 +528,7 @@ void UHGraphicBuilder::DrawFullScreenQuad()
 	// simply draw 6 vertices, post process shader will setup with SV_VertexID
 	vkCmdDraw(CmdList, 6, 1, 0, 0);
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	DrawCalls++;
 #endif
 }
@@ -557,7 +566,7 @@ void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderReco
 
 void UHGraphicBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	vkCmdResetQueryPool(CmdList, InPool, InQuery, 1);
 	vkCmdWriteTimestamp(CmdList, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, InPool, InQuery);
 #endif

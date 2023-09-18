@@ -1,6 +1,6 @@
 #include "TextureImporter.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../Runtime/Classes/AssetPath.h"
 #include "../../Runtime/Engine/Graphic.h"
 

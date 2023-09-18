@@ -1,7 +1,8 @@
 #include "TextBox.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Runtime/Classes/Utility.h"
+#include <windowsx.h>
 
 UHTextBox::UHTextBox()
 	: UHGUIControlBase(nullptr, UHGUIProperty())
@@ -17,7 +18,7 @@ UHTextBox::UHTextBox(HWND InControl, UHGUIProperty InProperties)
 
 UHTextBox::UHTextBox(std::string InGUIName, UHGUIProperty InProperties)
 {
-	DWORD Style = WS_BORDER | WS_CHILD;
+	DWORD Style = WS_BORDER | WS_CHILD | ES_AUTOHSCROLL;
 	if (InProperties.bClipped)
 	{
 		Style |= WS_CLIPCHILDREN;
@@ -34,11 +35,17 @@ UHTextBox::UHTextBox(std::string InGUIName, UHGUIProperty InProperties)
 template <typename T>
 UHTextBox& UHTextBox::Content(T InValue)
 {
+	bIsSetFromCode = true;
+
 	if constexpr(std::is_same<T, char>::value)
 	{
 		std::string InStrA;
 		InStrA.push_back(InValue);
 		UHGUIControlBase::SetText(UHUtilities::ToStringW(InStrA));
+	}
+	else if constexpr (std::is_same<T, float>::value)
+	{
+		UHGUIControlBase::SetText(UHUtilities::FloatToWString(InValue));
 	}
 	else
 	{

@@ -87,8 +87,14 @@ namespace MathHelpers
     }
 
     // matrix to pitch yaw roll, use for display only!
+    // https://en.wikipedia.org/wiki/Euler_angles#Conversion_to_other_orientation_representations
+    // the Y1Z2X3 case
     void MatrixToPitchYawRoll(XMFLOAT4X4 InMat, float& Pitch, float& Yaw, float& Roll)
     {
+        XMMATRIX M = XMLoadFloat4x4(&InMat);
+        M = XMMatrixTranspose(M);
+        XMStoreFloat4x4(&InMat, M);
+
         if (InMat(0, 0) == 1.0f)
         {
             Yaw = std::atan2f(InMat(0, 2), InMat(2, 3));
@@ -105,9 +111,14 @@ namespace MathHelpers
         else
         {
             Yaw = std::atan2(-InMat(2, 0), InMat(0, 0));
-            Pitch = std::asin(InMat(1, 0));
-            Roll = std::atan2(-InMat(1, 2), InMat(1, 1));
+            Roll = std::asin(InMat(1, 0));
+            Pitch = std::atan2(-InMat(1, 2), InMat(1, 1));
         }
+
+        // to degrees
+        Pitch = XMConvertToDegrees(Pitch);
+        Yaw = XMConvertToDegrees(Yaw);
+        Roll = XMConvertToDegrees(Roll);
     }
 
     XMFLOAT3 MinVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2)

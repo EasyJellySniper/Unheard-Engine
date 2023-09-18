@@ -38,7 +38,7 @@ void UHGPUQuery::CreateQueryPool(uint32_t InQueryCount, VkQueryType QueryType)
 
 void UHGPUQuery::BeginTimeStamp(VkCommandBuffer InBuffer)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (!GEnableGPUTiming)
 	{
 		return;
@@ -54,7 +54,7 @@ void UHGPUQuery::BeginTimeStamp(VkCommandBuffer InBuffer)
 
 void UHGPUQuery::EndTimeStamp(VkCommandBuffer InBuffer)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (!GEnableGPUTiming)
 	{
 		return;
@@ -70,7 +70,7 @@ void UHGPUQuery::EndTimeStamp(VkCommandBuffer InBuffer)
 
 float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (!GEnableGPUTiming)
 	{
 		return 0.0f;
@@ -103,7 +103,7 @@ float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 UHGPUTimeQueryScope::UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery)
 	: Cmd(InCmd), GPUTimeQuery(InQuery)
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (GPUTimeQuery)
 	{
 		GPUTimeQuery->BeginTimeStamp(Cmd);
@@ -113,7 +113,7 @@ UHGPUTimeQueryScope::UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQu
 
 UHGPUTimeQueryScope::~UHGPUTimeQueryScope()
 {
-#if WITH_DEBUG
+#if WITH_EDITOR
 	if (GPUTimeQuery)
 	{
 		GPUTimeQuery->EndTimeStamp(Cmd);

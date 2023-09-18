@@ -1,6 +1,6 @@
 #include "TextureCompressor.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <assert.h>
 #include "Types.h"
 #include <array>

@@ -158,7 +158,7 @@ void UHConfigManager::ApplyWindowStyle(HINSTANCE InInstance, HWND InWindow)
 		SetWindowLongPtr(InWindow, GWL_STYLE, WS_OVERLAPPEDWINDOW);
 		SetWindowPos(InWindow, nullptr, 0, 0, PresentationSettings.WindowWidth, PresentationSettings.WindowHeight, 0);
 
-	#if WITH_DEBUG
+	#if WITH_EDITOR
 		// recover menu and icon with debug mode only
 		HICON Icon = LoadIcon(InInstance, MAKEINTRESOURCE(IDI_UNHEARDENGINE));
 		SendMessage(InWindow, WM_SETICON, ICON_SMALL, (LPARAM)Icon);

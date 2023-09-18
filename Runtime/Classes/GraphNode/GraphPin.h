@@ -1,7 +1,7 @@
 #pragma once
 #include "../../../UnheardEngine.h"
 #include "../../../Runtime/Classes/Object.h"
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../../Editor/Controls/RadioButton.h"
 #endif
 
@@ -26,7 +26,7 @@ public:
     UHGraphPin(std::string InName, UHGraphNode* InNode, UHGraphPinType InType, bool bInNeedInputField = false);
     ~UHGraphPin();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
     void SetPinGUI(UHRadioButton* InGUI);
     UHRadioButton* GetPinGUI() const;
 #endif
@@ -57,7 +57,7 @@ private:
     UHGraphPinType Type;
 
     // pin GUI
-#if WITH_DEBUG
+#if WITH_EDITOR
     UHRadioButton* PinGUI;
 #endif
 

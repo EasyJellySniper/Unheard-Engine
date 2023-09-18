@@ -4,8 +4,12 @@
 UHGameScript::UHGameScript()
 {
 	// add to script table
-	if (UHGameScripts.size() == 0 || UHGameScripts.find(GetId()) == UHGameScripts.end())
+	if (UHGameScripts.find(GetId()) == UHGameScripts.end())
 	{
 		UHGameScripts[GetId()] = this;
 	}
+
+#if WITH_EDITOR
+	bIsEditable = false;
+#endif
 }

@@ -1,6 +1,6 @@
 #include "MathNodeGUI.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "EditorUtils.h"
 std::wstring GOperatorString[] = { L"+",L"-",L"*",L"/" };
 

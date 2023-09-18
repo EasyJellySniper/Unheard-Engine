@@ -1,6 +1,7 @@
 #include "Object.h"
 #include <assert.h>
 #include "Utility.h"
+#include "../../UnheardEngine.h"
 
 UHObject::UHObject()
 {
@@ -9,6 +10,7 @@ UHObject::UHObject()
 
 	assert(GObjectTable.find(GetId()) == GObjectTable.end());
 	GObjectTable[GetId()] = this;
+	Name = ENGINE_NAME_NONE;
 }
 
 UHObject::~UHObject()
@@ -22,6 +24,20 @@ void UHObject::AddReferenceObject(UHObject* InObj)
 	{
 		GObjectReferences[GetId()].push_back(InObj->GetId());
 	}
+}
+
+void UHObject::RemoveReferenceObject(UHObject* InObj)
+{
+	const int32_t RemoveIdx = UHUtilities::FindIndex(GObjectReferences[GetId()], InObj->GetId());
+	if (RemoveIdx != UHINDEXNONE)
+	{
+		UHUtilities::RemoveByIndex(GObjectReferences[GetId()], RemoveIdx);
+	}
+}
+
+void UHObject::SetName(std::string InName)
+{
+	Name = InName;
 }
 
 std::vector<UHObject*> UHObject::GetReferenceObjects() const
@@ -54,6 +70,11 @@ std::vector<UHObject*> UHObject::GetReferenceObjects() const
 uint32_t UHObject::GetId() const
 {
 	return Uid;
+}
+
+std::string UHObject::GetName() const
+{
+	return Name;
 }
 
 bool UHObject::operator==(const UHObject& InObj)

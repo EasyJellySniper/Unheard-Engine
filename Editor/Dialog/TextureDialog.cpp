@@ -1,6 +1,6 @@
 #include "TextureDialog.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 #include "../Classes/EditorUtils.h"
 #include "../../resource.h"
@@ -184,7 +184,7 @@ void UHTextureDialog::UpdatePreviewScene()
         MipLabelGUI->SetText("Mip: " + std::to_string(CurrentMip));
     }
 
-    if (CurrentTextureIndex != -1)
+    if (CurrentTextureIndex != UHINDEXNONE)
     {
         PreviewScene->Render();
     }

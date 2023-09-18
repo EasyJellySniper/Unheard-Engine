@@ -30,7 +30,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 
 		if (bParallelSubmissionRT)
 		{
-#if WITH_DEBUG
+#if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				ThreadDrawCalls[I] = 0;
@@ -49,7 +49,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 				WorkerThreads[I]->WaitTask();
 			}
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				GraphBuilder.DrawCalls += ThreadDrawCalls[I];
@@ -77,7 +77,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 
 				int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 				if (DepthPassShaders.find(RendererIdx) == DepthPassShaders.end())
 				{
 					// unlikely to happen, but printing a message for debug
@@ -166,7 +166,7 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	}
 
 	GraphBuilder.EndCommandBuffer();
-#if WITH_DEBUG
+#if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
 #endif
 }

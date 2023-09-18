@@ -1,7 +1,7 @@
 #pragma once
 #include "GUIControl.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 // combo box control
 class UHComboBox : public UHGUIControlBase

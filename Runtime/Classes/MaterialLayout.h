@@ -68,5 +68,6 @@ enum UHMaterialCompileFlag
 	BindOnly,
 	FullCompileResave,
 	IncludeChanged,
-	StateChangedOnly
+	StateChangedOnly,
+	RendererMaterialChanged
 };

@@ -7,10 +7,20 @@
 #include <limits>
 #include <algorithm>
 #include <vector>
+#include <memory>
 using namespace DirectX;
 
 static float GEpsilon = std::numeric_limits<float>::epsilon();
 static float GWorldMax = static_cast<float>(1 << 20);
+
+template <typename T>
+using UniquePtr = std::unique_ptr<T>;
+
+#define MakeUnique std::make_unique
+#define StdBind std::bind
+#define UHSTRINGA "std::string"
+#define UHSTRINGW "std::wstring"
+#define UHINDEXNONE -1
 
 namespace MathHelpers
 {

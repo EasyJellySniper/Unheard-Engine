@@ -1,7 +1,7 @@
 #pragma once
 #include "../UnheardEngine.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 #include "../Runtime/Classes/Utility.h"
 #include <string>

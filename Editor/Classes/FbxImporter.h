@@ -2,7 +2,7 @@
 #define NOMINMAX
 #include "../UnheardEngine.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <memory>
 #include <fbxsdk.h>
 #include <filesystem>	// for list all files under a directory and subdirectory, C++17 feature

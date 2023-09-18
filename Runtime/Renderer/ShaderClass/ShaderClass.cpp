@@ -37,10 +37,14 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	}
 }
 
-void UHShaderClass::Release()
+void UHShaderClass::Release(bool bDescriptorOnly)
 {
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 	vkDestroyDescriptorPool(LogicalDevice, DescriptorPool, nullptr);
+	if (bDescriptorOnly)
+	{
+		return;
+	}
 
 	// release layout depending on type
 	if (MaterialCache != nullptr)
@@ -217,6 +221,11 @@ void UHShaderClass::RecreateMaterialState()
 		, PipelineLayout);
 
 	CreateMaterialState(MaterialPassInfo);
+}
+
+void UHShaderClass::SetNewMaterialCache(UHMaterial* InMat)
+{
+	MaterialCache = InMat;
 }
 
 uint32_t UHShaderClass::GetRayGenShader() const

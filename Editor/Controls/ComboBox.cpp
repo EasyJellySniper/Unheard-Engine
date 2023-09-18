@@ -1,6 +1,6 @@
 #include "ComboBox.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <windowsx.h>
 #include <CommCtrl.h>
 

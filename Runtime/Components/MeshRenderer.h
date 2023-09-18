@@ -20,10 +20,29 @@ public:
 	void SetVisible(bool bVisible);
 	bool IsVisible() const;
 
+#if WITH_EDITOR
+	virtual UHDebugBoundConstant GetDebugBoundConst() const override;
+	virtual void OnPropertyChange(std::string PropertyName) override;
+	virtual void OnGenerateDetailView(HWND ParentWnd) override;
+
+	bool IsVisibleInEditor() const;
+
+	UH_BEGIN_REFLECT
+	UH_MEMBER_REFLECT("bool", "IsVisible")
+	UH_MEMBER_REFLECT(UHSTRINGA, "Mesh")
+	UH_MEMBER_REFLECT(UHSTRINGA, "Material")
+	UH_END_REFLECT
+#endif
+
 private:
 	UHMesh* MeshCache;
 	UHMaterial* MaterialCache;
 
 	bool bIsVisible;
 	BoundingBox RendererBound;
+
+#if WITH_EDITOR
+	bool bIsVisibleEditor;
+	UniquePtr<UHDetailView> DetailView;
+#endif
 };

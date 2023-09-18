@@ -3,7 +3,7 @@
 #include "../Classes/Material.h"
 #include "../Classes/Texture2D.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include "../../Editor/Classes/FbxImporter.h"
 #include "../../Editor/Classes/ShaderImporter.h"
 #include "../../Editor/Classes/MaterialImporter.h"
@@ -35,8 +35,9 @@ public:
 	UHMaterial* GetMaterial(std::string InName) const;
 	UHMesh* GetMesh(std::string InName) const;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	void AddTexture2D(UHTexture2D* InTexture2D);
+	static UHAssetManager* GetAssetMgrEditor();
 	static UHTexture2D* GetTexture2DByPathEditor(std::string InName);
 	static std::string FindTexturePathName(std::string InName);
 #endif
@@ -48,7 +49,7 @@ private:
 	// cache of loaded meshes
 	std::vector<UHMesh*> UHMeshesCache;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// fbx importer class, only import raw mesh in debug mode
 	UniquePtr<UHFbxImporter> UHFbxImporterInterface;
 

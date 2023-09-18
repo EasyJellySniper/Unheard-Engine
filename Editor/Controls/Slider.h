@@ -1,7 +1,7 @@
 #pragma once
 #include "GUIControl.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 class UHSlider : public UHGUIControlBase
 {

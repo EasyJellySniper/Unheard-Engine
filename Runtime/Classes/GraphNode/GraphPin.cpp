@@ -8,7 +8,7 @@ UHGraphPin::UHGraphPin(std::string InName, UHGraphNode* InNode, UHGraphPinType I
 	, SrcPin(nullptr)
 	, Type(InType)
 	, bNeedInputField(bInNeedInputField)
-#if WITH_DEBUG
+#if WITH_EDITOR
 	, PinGUI(nullptr)
 #endif
 {
@@ -20,7 +20,7 @@ UHGraphPin::~UHGraphPin()
 	DestPins.clear();
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHGraphPin::SetPinGUI(UHRadioButton* InGUI)
 {
 	PinGUI = InGUI;

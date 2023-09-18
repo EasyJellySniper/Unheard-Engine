@@ -1,6 +1,6 @@
 #include "ListBox.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <windowsx.h>
 #include "../../Runtime/Classes/Utility.h"
 
@@ -31,6 +31,11 @@ UHListBox& UHListBox::Select(int32_t InIndex)
 int32_t UHListBox::GetSelectedIndex() const
 {
 	return ListBox_GetCurSel(ControlObj);
+}
+
+void UHListBox::Reset()
+{
+	ListBox_ResetContent(ControlObj);
 }
 
 #endif

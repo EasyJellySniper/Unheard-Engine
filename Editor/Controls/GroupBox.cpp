@@ -1,6 +1,6 @@
 #include "GroupBox.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 UHGroupBox::UHGroupBox(HWND InControl, UHGUIProperty InProperties)
 	: UHGUIControlBase(InControl, InProperties)

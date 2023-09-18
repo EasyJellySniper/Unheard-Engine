@@ -66,7 +66,7 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 	return true;
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 void UHTexture2D::Recreate()
 {
 	GfxCache->WaitGPU();

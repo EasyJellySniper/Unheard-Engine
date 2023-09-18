@@ -4,7 +4,7 @@
 #include "../CoreGlobals.h"
 #include "../Components/GameScript.h"
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 #include <sstream>
 #include <iomanip>
 #endif
@@ -15,7 +15,7 @@ UHEngine::UHEngine()
 	, bIsInitialized(false)
 	, EngineResizeReason(UHEngineResizeReason::NotResizing)
 	, FrameBeginTime(0)
-#if WITH_DEBUG
+#if WITH_EDITOR
 	, UHEEditor(nullptr)
 	, UHEProfiler(nullptr)
 	, WindowCaption(ENGINE_NAMEW)
@@ -111,7 +111,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	}
 #endif
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	// init editor instance
 	UHEEditor = MakeUnique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
 		, UHEAsset.get(), UHEGraphic.get());
@@ -135,7 +135,7 @@ void UHEngine::ReleaseEngine()
 	UHEAsset.reset();
 	UHEConfig.reset();
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 	UHEEditor.reset();
 #endif
 
@@ -211,7 +211,7 @@ void UHEngine::Update()
 	UHERawInput->ResetMouseData();
 	UHERawInput->CacheKeyStates();
 
-	GFrameNumber = (GFrameNumber + 1) & UINT32_MAX;
+	GFrameNumber++;
 }
 
 // engine render loop
@@ -276,7 +276,7 @@ void UHEngine::EndFPSLimiter()
 	}
 }
 
-#if WITH_DEBUG
+#if WITH_EDITOR
 
 UHEditor* UHEngine::GetEditor() const
 {

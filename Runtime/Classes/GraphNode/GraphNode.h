@@ -5,6 +5,7 @@
 #include <fstream>
 #include "GraphPin.h"
 #include "../../../Runtime/Classes/Object.h"
+#include "../../../Runtime/Classes/Types.h"
 
 class UHGraphNodeGUI;
 
@@ -37,7 +38,7 @@ public:
     virtual void OutputData(std::ofstream& FileOut) = 0;
 
     // GUI function for lookup
-#if WITH_DEBUG
+#if WITH_EDITOR
     void SetGUI(UHGraphNodeGUI* InGUI);
     UHGraphNodeGUI* GetGUI() const;
 #endif
@@ -57,7 +58,7 @@ protected:
     bool bCanBeDeleted;
     bool bIsCompilingRayTracing;
 
-#if WITH_DEBUG
+#if WITH_EDITOR
     UHGraphNodeGUI* GUICache;
 #endif
 };
