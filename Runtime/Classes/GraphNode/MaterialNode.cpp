@@ -4,6 +4,7 @@
 #include "TextureNode.h"
 #include "../Material.h"
 #include <unordered_map>
+#include "../../Engine/Asset.h"
 
 UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 	: UHGraphNode(false)
@@ -13,19 +14,54 @@ UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 
 	// declare the input pins for material node
 	Inputs.resize(UHMaterialInputs::MaterialMax);
-	Inputs[UHMaterialInputs::Diffuse] = MakeUnique<UHGraphPin>("Diffuse (RGB)", this, Float3Node);
-	Inputs[UHMaterialInputs::Occlusion] = MakeUnique<UHGraphPin>("Occlusion (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Specular] = MakeUnique<UHGraphPin>("Specular (RGB)", this, Float3Node);
-	Inputs[UHMaterialInputs::Normal] = MakeUnique<UHGraphPin>("Normal (RGB)", this, Float3Node);
-	Inputs[UHMaterialInputs::Opacity] = MakeUnique<UHGraphPin>("Opacity (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Metallic] = MakeUnique<UHGraphPin>("Metallic (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Roughness] = MakeUnique<UHGraphPin>("Roughness (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::FresnelFactor] = MakeUnique<UHGraphPin>("Fresnel Factor (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::ReflectionFactor] = MakeUnique<UHGraphPin>("Reflection Factor (R)", this, FloatNode);
-	Inputs[UHMaterialInputs::Emissive] = MakeUnique<UHGraphPin>("Emissive (RGB)", this, Float3Node);
+	Inputs[UHMaterialInputs::Diffuse] = MakeUnique<UHGraphPin>("Diffuse (RGB)", this, Float3Pin);
+	Inputs[UHMaterialInputs::Occlusion] = MakeUnique<UHGraphPin>("Occlusion (R)", this, FloatPin);
+	Inputs[UHMaterialInputs::Specular] = MakeUnique<UHGraphPin>("Specular (RGB)", this, Float3Pin);
+	Inputs[UHMaterialInputs::Normal] = MakeUnique<UHGraphPin>("Normal (RGB)", this, Float3Pin);
+	Inputs[UHMaterialInputs::Opacity] = MakeUnique<UHGraphPin>("Opacity (R)", this, FloatPin);
+	Inputs[UHMaterialInputs::Metallic] = MakeUnique<UHGraphPin>("Metallic (R)", this, FloatPin);
+	Inputs[UHMaterialInputs::Roughness] = MakeUnique<UHGraphPin>("Roughness (R)", this, FloatPin);
+	Inputs[UHMaterialInputs::FresnelFactor] = MakeUnique<UHGraphPin>("Fresnel Factor (R)", this, FloatPin);
+	Inputs[UHMaterialInputs::ReflectionFactor] = MakeUnique<UHGraphPin>("Reflection Factor (R)", this, FloatPin);
+	Inputs[UHMaterialInputs::Emissive] = MakeUnique<UHGraphPin>("Emissive (RGB)", this, Float3Pin);
 }
 
-void CollectDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing, int32_t& TextureIndexInMaterial
+void CollectTexDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing, int32_t& TextureIndexInMaterial
+	, std::vector<std::string>& OutDefinitions, std::unordered_map<uint32_t, bool>& OutDefTable)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+	InputNode->SetIsCompilingRayTracing(bIsCompilingRayTracing);
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	{
+		// set texture index in material so I can index in ray tracing shader properly
+		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
+		TexNode->SetTextureIndexInMaterial(TextureIndexInMaterial);
+		TextureIndexInMaterial++;
+
+		std::string Def = InputNode->EvalDefinition();
+		if (!Def.empty())
+		{
+			OutDefinitions.push_back(Def);
+		}
+
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CollectTexDefinitions(InputPins.get(), bIsCompilingRayTracing, TextureIndexInMaterial, OutDefinitions, OutDefTable);
+	}
+}
+
+void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing, int32_t& DataIndexInMaterial
 	, std::vector<std::string>& OutDefinitions, std::unordered_map<uint32_t, bool>& OutDefTable)
 {
 	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
@@ -40,26 +76,59 @@ void CollectDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing
 	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end())
 	{
 		// set texture index in material so I can index in ray tracing shader properly
-		if (InputNode->GetType() == Texture2DNode)
+		bool bFound = false;
+		switch (InputNode->GetType())
 		{
-			UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
-			TexNode->SetTextureIndexInMaterial(TextureIndexInMaterial);
-			TextureIndexInMaterial++;
+		case FloatNode:
+		{
+			UHFloatNode* Node = static_cast<UHFloatNode*>(InputNode);
+			Node->SetDataIndexInMaterial(DataIndexInMaterial);
+			DataIndexInMaterial++;
+			bFound = true;
+			break;
+		}
+		case Float2Node:
+		{
+			UHFloat2Node* Node = static_cast<UHFloat2Node*>(InputNode);
+			Node->SetDataIndexInMaterial(DataIndexInMaterial);
+			DataIndexInMaterial += 2;
+			bFound = true;
+			break;
+		}
+		case Float3Node:
+		{
+			UHFloat3Node* Node = static_cast<UHFloat3Node*>(InputNode);
+			Node->SetDataIndexInMaterial(DataIndexInMaterial);
+			DataIndexInMaterial += 3;
+			bFound = true;
+			break;
+		}
+		case Float4Node:
+		{
+			UHFloat4Node* Node = static_cast<UHFloat4Node*>(InputNode);
+			Node->SetDataIndexInMaterial(DataIndexInMaterial);
+			DataIndexInMaterial += 4;
+			bFound = true;
+			break;
+		}
 		}
 
-		std::string Def = InputNode->EvalDefinition();
-		if (!Def.empty())
+		if (bFound)
 		{
-			OutDefinitions.push_back(Def);
-		}
+			std::string Def = InputNode->EvalDefinition();
+			if (!Def.empty())
+			{
+				OutDefinitions.push_back(Def);
+			}
 
-		OutDefTable[InputNode->GetId()] = true;
+			OutDefTable[InputNode->GetId()] = true;
+		}
 	}
 
 	// trace all input pins
 	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
 	{
-		CollectDefinitions(InputPins.get(), bIsCompilingRayTracing, TextureIndexInMaterial, OutDefinitions, OutDefTable);
+		CollectParameterDefinitions(InputPins.get(), bIsCompilingRayTracing, DataIndexInMaterial, OutDefinitions, OutDefTable);
 	}
 }
 
@@ -74,12 +143,22 @@ std::string UHMaterialNode::EvalHLSL()
 	std::vector<std::string> Definitions;
 	std::unordered_map<uint32_t, bool> DefinitionTable;
 
-	// set texture index in material
+	// set texture index data in material
 	int32_t TextureIndexInMaterial = 0;
-
 	for (int32_t Idx = 0; Idx < UHMaterialInputs::MaterialMax; Idx++)
 	{
-		CollectDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, TextureIndexInMaterial, Definitions, DefinitionTable);
+		CollectTexDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, TextureIndexInMaterial, Definitions, DefinitionTable);
+	}
+
+	// set data index in material as well, needs to follow the texture index data, for RT only
+	if (CompileData.bIsHitGroup)
+	{
+		DefinitionTable.clear();
+		int32_t DataIndexInMaterial = (Definitions.size() > 0) ? 2 * TextureIndexInMaterial + 1 : 0;
+		for (int32_t Idx = 0; Idx < UHMaterialInputs::MaterialMax; Idx++)
+		{
+			CollectParameterDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, DataIndexInMaterial, Definitions, DefinitionTable);
+		}
 	}
 
 	// Calculate property based on graph nodes
@@ -220,16 +299,16 @@ UniquePtr<UHGraphNode> AllocateNewGraphNode(UHGraphNodeType InType)
 
 	switch (InType)
 	{
-	case UHGraphNodeType::Float:
+	case UHGraphNodeType::FloatNode:
 		NewNode = MakeUnique<UHFloatNode>();
 		break;
-	case UHGraphNodeType::Float2:
+	case UHGraphNodeType::Float2Node:
 		NewNode = MakeUnique<UHFloat2Node>();
 		break;
-	case UHGraphNodeType::Float3:
+	case UHGraphNodeType::Float3Node:
 		NewNode = MakeUnique<UHFloat3Node>();
 		break;
-	case UHGraphNodeType::Float4:
+	case UHGraphNodeType::Float4Node:
 		NewNode = MakeUnique<UHFloat4Node>();
 		break;
 	case UHGraphNodeType::MathNode:
@@ -246,4 +325,271 @@ UniquePtr<UHGraphNode> AllocateNewGraphNode(UHGraphNodeType InType)
 void UHMaterialNode::SetMaterialCompileData(UHMaterialCompileData InData)
 {
 	CompileData = InData;
+}
+
+void CollectTextureIndexInternal(const UHGraphPin* Pin, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable, size_t& OutSize)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	{
+		Code += "\tint Node_" + std::to_string(InputNode->GetId()) + "_Index;\n";
+		OutSize += sizeof(float);
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CollectTextureIndexInternal(InputPins.get(), Code, OutDefTable, OutSize);
+	}
+}
+
+void UHMaterialNode::CollectTextureIndex(std::string& Code, size_t& OutSize)
+{
+	std::unordered_map<uint32_t, bool> TexTable;
+
+	// simply collect the texture index used in bindless rendering
+	for (const UniquePtr<UHGraphPin>& Input : GetInputs())
+	{
+		CollectTextureIndexInternal(Input.get(), Code, TexTable, OutSize);
+	}
+}
+
+void CollectTextureNameInternal(const UHGraphPin* Pin, std::vector<std::string>& Names, std::unordered_map<uint32_t, bool>& OutDefTable)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	{
+		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
+		std::string TexName = TexNode->GetSelectedTexturePathName();
+#if WITH_EDITOR
+		TexName = UHAssetManager::FindTexturePathName(TexName);
+#endif
+		if (!TexName.empty())
+		{
+			Names.push_back(TexName);
+		}
+
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CollectTextureNameInternal(InputPins.get(), Names, OutDefTable);
+	}
+}
+
+void UHMaterialNode::CollectTextureNames(std::vector<std::string>& Names)
+{
+	Names.clear();
+	std::unordered_map<uint32_t, bool> TexTable;
+
+	for (const UniquePtr<UHGraphPin>& Input : GetInputs())
+	{
+		CollectTextureNameInternal(Input.get(), Names, TexTable);
+	}
+}
+
+void CollectParameterInternal(const UHGraphPin* Pin, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable, size_t& OutSize)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end())
+	{
+		// add parameter code based on type
+		switch (InputNode->GetType())
+		{
+		case FloatNode:
+		{
+			Code += "\tfloat Node_" + std::to_string(InputNode->GetId()) + ";\n";
+			OutSize += sizeof(float);
+			break;
+		}
+		case Float2Node:
+		{
+			Code += "\tfloat2 Node_" + std::to_string(InputNode->GetId()) + ";\n";
+			OutSize += sizeof(float) * 2;
+			break;
+		}
+		case Float3Node:
+		{
+			Code += "\tfloat3 Node_" + std::to_string(InputNode->GetId()) + ";\n";
+			OutSize += sizeof(float) * 3;
+			break;
+		}
+		case Float4Node:
+		{
+			Code += "\tfloat4 Node_" + std::to_string(InputNode->GetId()) + ";\n";
+			OutSize += sizeof(float) * 4;
+			break;
+		}
+		}
+
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CollectParameterInternal(InputPins.get(), Code, OutDefTable, OutSize);
+	}
+}
+
+void UHMaterialNode::CollectMaterialParameter(std::string& Code, size_t& OutSize)
+{
+	std::unordered_map<uint32_t, bool> ParamTable;
+
+	for (const UniquePtr<UHGraphPin>& Input : GetInputs())
+	{
+		CollectParameterInternal(Input.get(), Code, ParamTable, OutSize);
+	}
+}
+
+void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& MaterialData, std::unordered_map<uint32_t, bool>& OutDefTable, size_t& BufferAddress)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end())
+	{
+		// add parameter code based on type
+		switch (InputNode->GetType())
+		{
+		case FloatNode:
+		{
+			float Val = ((UHFloatNode*)InputNode)->GetValue();
+			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float), &Val, sizeof(float));
+			BufferAddress += sizeof(float);
+			break;
+		}
+		case Float2Node:
+		{
+			XMFLOAT2 Val = ((UHFloat2Node*)InputNode)->GetValue();
+			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 2, &Val, sizeof(float) * 2);
+			BufferAddress += sizeof(float) * 2;
+			break;
+		}
+		case Float3Node:
+		{
+			XMFLOAT3 Val = ((UHFloat3Node*)InputNode)->GetValue();
+			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 3, &Val, sizeof(float) * 3);
+			BufferAddress += sizeof(float) * 3;
+			break;
+		}
+		case Float4Node:
+		{
+			XMFLOAT4 Val = ((UHFloat4Node*)InputNode)->GetValue();
+			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 4, &Val, sizeof(float) * 4);
+			BufferAddress += sizeof(float) * 4;
+			break;
+		}
+		}
+
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CopyParameterInternal(InputPins.get(), MaterialData, OutDefTable, BufferAddress);
+	}
+}
+
+void UHMaterialNode::CopyMaterialParameter(std::vector<uint8_t>& MaterialData, size_t& BufferAddress)
+{
+	std::unordered_map<uint32_t, bool> ParamTable;
+	for (const UniquePtr<UHGraphPin>& Input : GetInputs())
+	{
+		CopyParameterInternal(Input.get(), MaterialData, ParamTable, BufferAddress);
+	}
+}
+
+void CopyRTParameterInternal(const UHGraphPin* Pin, UHRTMaterialData& MaterialData, std::unordered_map<uint32_t, bool>& OutDefTable, int32_t& DstIndex)
+{
+	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
+	{
+		return;
+	}
+
+	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
+
+	// prevent redefinition with table
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end())
+	{
+		// add parameter code based on type
+		switch (InputNode->GetType())
+		{
+		case FloatNode:
+		{
+			float Val = ((UHFloatNode*)InputNode)->GetValue();
+			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float), &Val, sizeof(float));
+			DstIndex++;
+			break;
+		}
+		case Float2Node:
+		{
+			XMFLOAT2 Val = ((UHFloat2Node*)InputNode)->GetValue();
+			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 2, &Val, sizeof(float) * 2);
+			DstIndex += 2;
+			break;
+		}
+		case Float3Node:
+		{
+			XMFLOAT3 Val = ((UHFloat3Node*)InputNode)->GetValue();
+			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 3, &Val, sizeof(float) * 3);
+			DstIndex += 3;
+			break;
+		}
+		case Float4Node:
+		{
+			XMFLOAT4 Val = ((UHFloat4Node*)InputNode)->GetValue();
+			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 4, &Val, sizeof(float) * 4);
+			DstIndex += 4;
+			break;
+		}
+		}
+
+		OutDefTable[InputNode->GetId()] = true;
+	}
+
+	// trace all input pins
+	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
+	{
+		CopyRTParameterInternal(InputPins.get(), MaterialData, OutDefTable, DstIndex);
+	}
+}
+
+void UHMaterialNode::CopyRTMaterialParameter(UHRTMaterialData& RTMaterialData, int32_t& DstIndex)
+{
+	std::unordered_map<uint32_t, bool> ParamTable;
+	for (const UniquePtr<UHGraphPin>& Input : GetInputs())
+	{
+		CopyRTParameterInternal(Input.get(), RTMaterialData, ParamTable, DstIndex);
+	}
 }

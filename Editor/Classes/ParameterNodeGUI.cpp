@@ -3,27 +3,36 @@
 #if WITH_EDITOR
 #include "EditorUtils.h"
 #include "../../Runtime/Classes/Utility.h"
+#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 
-UHFloatNodeGUI::UHFloatNodeGUI()
+UHFloatNodeGUI::UHFloatNodeGUI(UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)
+	, Renderer(InRenderer)
+	, MaterialCache(InMat)
 {
 
 }
 
-UHFloat2NodeGUI::UHFloat2NodeGUI()
+UHFloat2NodeGUI::UHFloat2NodeGUI(UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)
+	, Renderer(InRenderer)
+	, MaterialCache(InMat)
 {
 
 }
 
-UHFloat3NodeGUI::UHFloat3NodeGUI()
+UHFloat3NodeGUI::UHFloat3NodeGUI(UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)
+	, Renderer(InRenderer)
+	, MaterialCache(InMat)
 {
 
 }
 
-UHFloat4NodeGUI::UHFloat4NodeGUI()
+UHFloat4NodeGUI::UHFloat4NodeGUI(UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)
+	, Renderer(InRenderer)
+	, MaterialCache(InMat)
 {
 
 }
@@ -58,6 +67,84 @@ void UHFloat4NodeGUI::SetDefaultValueFromGUI()
 	Value.z = InputsTextFields[2]->Parse<float>();
 	Value.w = InputsTextFields[3]->Parse<float>();
 	Node->SetValue(Value);
+}
+
+void UHFloatNodeGUI::Update()
+{
+	// see if the value is changed and update the material shaders
+	// the edit control callback doesn't work when it's a child, so using the update method
+	float Val = Node->GetValue();
+	SetDefaultValueFromGUI();
+
+	if (Val == Node->GetValue())
+	{
+		return;
+	}
+
+	// mark compile flag as bind only if this is connecting to others
+	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
+	{
+		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetRenderDirties(true);
+		Renderer->RefreshMaterialShaders(MaterialCache);
+	}
+}
+
+void UHFloat2NodeGUI::Update()
+{
+	XMFLOAT2 Val = Node->GetValue();
+	SetDefaultValueFromGUI();
+
+	if (MathHelpers::IsVectorEqual(Val, Node->GetValue()))
+	{
+		return;
+	}
+
+	// mark compile flag as bind only if this is connecting to others
+	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
+	{
+		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetRenderDirties(true);
+		Renderer->RefreshMaterialShaders(MaterialCache);
+	}
+}
+
+void UHFloat3NodeGUI::Update()
+{
+	XMFLOAT3 Val = Node->GetValue();
+	SetDefaultValueFromGUI();
+
+	if (MathHelpers::IsVectorEqual(Val, Node->GetValue()))
+	{
+		return;
+	}
+
+	// mark compile flag as bind only if this is connecting to others
+	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
+	{
+		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetRenderDirties(true);
+		Renderer->RefreshMaterialShaders(MaterialCache);
+	}
+}
+
+void UHFloat4NodeGUI::Update()
+{
+	XMFLOAT4 Val = Node->GetValue();
+	SetDefaultValueFromGUI();
+
+	if (MathHelpers::IsVectorEqual(Val, Node->GetValue()))
+	{
+		return;
+	}
+
+	// mark compile flag as bind only if this is connecting to others
+	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
+	{
+		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetRenderDirties(true);
+		Renderer->RefreshMaterialShaders(MaterialCache);
+	}
 }
 
 void UHFloatNodeGUI::PreAddingPins()

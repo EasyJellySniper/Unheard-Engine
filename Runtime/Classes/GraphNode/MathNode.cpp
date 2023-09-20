@@ -7,11 +7,11 @@ UHMathNode::UHMathNode(UHMathNodeOperator DefaultOp)
 	NodeType = MathNode;
 
 	Inputs.resize(2);
-	Inputs[0] = MakeUnique<UHGraphPin>("A", this, AnyNode);
-	Inputs[1] = MakeUnique<UHGraphPin>("B", this, AnyNode);
+	Inputs[0] = MakeUnique<UHGraphPin>("A", this, AnyPin);
+	Inputs[1] = MakeUnique<UHGraphPin>("B", this, AnyPin);
 
 	Outputs.resize(1);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, AnyNode);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, AnyPin);
 
 	CurrentOperator = DefaultOp;
 }
@@ -23,7 +23,7 @@ bool UHMathNode::CanEvalHLSL()
 		return false;
 	}
 
-	return GetOutputPinType() != VoidNode;
+	return GetOutputPinType() != VoidPin;
 }
 
 std::string UHMathNode::EvalHLSL()
@@ -62,14 +62,14 @@ UHGraphPinType UHMathNode::GetOutputPinType() const
 	// return void if it's not possible to tell which type is
 	if (Inputs[0]->GetSrcPin() == nullptr || Inputs[1]->GetSrcPin() == nullptr)
 	{
-		return UHGraphPinType::VoidNode;
+		return UHGraphPinType::VoidPin;
 	}
 
 	UHGraphPinType Input0Type = Inputs[0]->GetSrcPin()->GetType();
 	UHGraphPinType Input1Type = Inputs[1]->GetSrcPin()->GetType();
 
 	// find real type if "any node" is presented
-	if (Input0Type == AnyNode)
+	if (Input0Type == AnyPin)
 	{
 		if (UHMathNode* MathNode = static_cast<UHMathNode*>(Inputs[0]->GetSrcPin()->GetOriginNode()))
 		{
@@ -77,7 +77,7 @@ UHGraphPinType UHMathNode::GetOutputPinType() const
 		}
 	}
 
-	if (Input1Type == AnyNode)
+	if (Input1Type == AnyPin)
 	{
 		if (UHMathNode* MathNode = static_cast<UHMathNode*>(Inputs[1]->GetSrcPin()->GetOriginNode()))
 		{
@@ -89,14 +89,14 @@ UHGraphPinType UHMathNode::GetOutputPinType() const
 	{
 		return Input0Type;
 	}
-	else if (Input0Type == FloatNode || Input1Type == FloatNode)
+	else if (Input0Type == FloatPin || Input1Type == FloatPin)
 	{
 		// bypass the format mismatch if one of them is a float node
 		// Per-Component Math Operations is allowed in HLSL
 		// E.g. float3(1,1,1) * 3 is possible
-		return UHGraphPinType::FloatNode;
+		return UHGraphPinType::FloatPin;
 	}
 
 	// can not evaluate
-	return UHGraphPinType::VoidNode;
+	return UHGraphPinType::VoidPin;
 }

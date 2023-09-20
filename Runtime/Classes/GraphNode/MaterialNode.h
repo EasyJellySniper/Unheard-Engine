@@ -3,6 +3,7 @@
 #include "../MaterialLayout.h"
 
 class UHMaterial;
+struct UHRTMaterialData;
 
 struct UHMaterialCompileData
 {
@@ -29,6 +30,11 @@ public:
 	virtual void OutputData(std::ofstream& FileOut) override {}
 
 	void SetMaterialCompileData(UHMaterialCompileData InData);
+	void CollectTextureIndex(std::string& Code, size_t& OutSize);
+	void CollectTextureNames(std::vector<std::string>& Names);
+	void CollectMaterialParameter(std::string& Code, size_t& OutSize);
+	void CopyMaterialParameter(std::vector<uint8_t>& MaterialData, size_t& BufferAddress);
+	void CopyRTMaterialParameter(UHRTMaterialData& RTMaterialData, int32_t& DstIndex);
 
 private:
 	UHMaterial* MaterialCache;

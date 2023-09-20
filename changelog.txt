@@ -356,4 +356,11 @@ Added some engine definitions for some types. The next is to solve the syncing i
 Also fixed the light attenuation noise artifact when the point light radius is small.
 Next is to deal with the change of material from a mesh renderer. The shader needs to be reinitialized.
 
-18-09-2023: Fulfilled the material detail view selection behavior.
+18-09-2023: Fulfilled the material detail view selection behavior. Refactored the material shader codes in PrepareRenderingShaders(), reuse a few code at least.
+
+19-09-2023: Added constrainted render output. It looks better when resizing window. This won't work in fullscreen mode of course.
+
+20-09-2023: Better named the UHGraphNodeType and UHGraphPinType enum. Organized material parameter collection in MaterialNode class.
+Applied the new data structured for RT material data, this should also be good for compile-free parameters.
+Tried to work on compile-free for parameter changes, but the edit control somehow didn't send the message. So I use the update method, better than nothing.
+Completed the compile-free parameter nodes, but RT material data can be improved.

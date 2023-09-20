@@ -34,7 +34,7 @@ UHRadioButton* UHGraphPin::GetPinGUI() const
 
 bool UHGraphPin::ConnectFrom(UHGraphPin* InSrcPin)
 {
-	bool bHasAnyType = Type == AnyNode || InSrcPin->GetType() == AnyNode;
+	bool bHasAnyType = Type == AnyPin || InSrcPin->GetType() == AnyPin;
 	if (InSrcPin->GetType() != Type && !bHasAnyType)
 	{
 		UHE_LOG("[ERROR] Type mismatch for the pin " + InSrcPin->GetName() + " and " + Name + "\n");

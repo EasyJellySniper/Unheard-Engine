@@ -5,61 +5,61 @@ UHFloatNode::UHFloatNode(float Default)
 	: UHParameterNode<float>(Default)
 {
 	Name = "Float";
-	NodeType = Float;
+	NodeType = FloatNode;
 
 	Inputs.resize(1);
-	Inputs[0] = MakeUnique<UHGraphPin>("X", this, FloatNode, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
 
 	Outputs.resize(1);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, FloatNode);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, FloatPin);
 }
 
 UHFloat2Node::UHFloat2Node(XMFLOAT2 Default)
 	: UHParameterNode<XMFLOAT2>(Default)
 {
 	Name = "Float2";
-	NodeType = Float2;
+	NodeType = Float2Node;
 
 	Inputs.resize(3);
-	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float2Node);
-	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatNode, true);
-	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatNode, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float2Pin);
+	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
+	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
 
 	Outputs.resize(1);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float2Node);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float2Pin);
 }
 
 UHFloat3Node::UHFloat3Node(XMFLOAT3 Default)
 	: UHParameterNode<XMFLOAT3>(Default)
 {
 	Name = "Float3";
-	NodeType = Float3;
+	NodeType = Float3Node;
 
 	Inputs.resize(4);
-	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float3Node);
-	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatNode, true);
-	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatNode, true);
-	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatNode, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float3Pin);
+	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
+	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
+	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin, true);
 
 	Outputs.resize(1);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float3Node);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float3Pin);
 }
 
 UHFloat4Node::UHFloat4Node(XMFLOAT4 Default)
 	: UHParameterNode<XMFLOAT4>(Default)
 {
 	Name = "Float4";
-	NodeType = Float4;
+	NodeType = Float4Node;
 
 	Inputs.resize(5);
-	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float4Node);
-	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatNode, true);
-	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatNode, true);
-	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatNode, true);
-	Inputs[4] = MakeUnique<UHGraphPin>("W", this, FloatNode, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float4Pin);
+	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
+	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
+	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin, true);
+	Inputs[4] = MakeUnique<UHGraphPin>("W", this, FloatPin, true);
 
 	Outputs.resize(1);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float4Node);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float4Pin);
 }
 
 std::string UHFloatNode::EvalDefinition()
@@ -70,8 +70,14 @@ std::string UHFloatNode::EvalDefinition()
 		return "";
 	}
 
-	// E.g. float Node_1234 = 0.0f;
-	return "float Node_" + std::to_string(GetId()) + " = " + UHUtilities::FloatToString(DefaultValue) + "f;\n";
+	// only need the definition for RT, as the parameter defines are in cbuffer for common passes
+	if (!bIsCompilingRayTracing)
+	{
+		return "";
+	}
+
+	// E.g. float Node_1234 = asfloat(MatData.Data[3]);
+	return "float Node_" + std::to_string(GetId()) + " = asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial) +"]);\n";
 }
 
 std::string UHFloat2Node::EvalDefinition()
@@ -82,12 +88,15 @@ std::string UHFloat2Node::EvalDefinition()
 		return "";
 	}
 
-	// consider input node
-	const std::string InputX = (Inputs[1]->GetSrcPin() && Inputs[1]->GetSrcPin()->GetOriginNode()) ? Inputs[1]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.x);
-	const std::string InputY = (Inputs[2]->GetSrcPin() && Inputs[2]->GetSrcPin()->GetOriginNode()) ? Inputs[2]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.y);
+	// only need the definition for RT, as the parameter defines are in cbuffer for common passes
+	if (!bIsCompilingRayTracing)
+	{
+		return "";
+	}
 
-	// E.g. float2 Node_1234 = float2(0.0f, 0.0f);
-	return "float2 Node_" + std::to_string(GetId()) + " = float2(" + InputX + "f, " + InputY + "f);\n";
+	// E.g. float2 Node_1234 = float2(asfloat(MatData.Data[3]), asfloat(MatData.Data[4]));
+	return "float2 Node_" + std::to_string(GetId()) + " = float2(asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial) + "]), "
+		+ "asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial + 1) + "]));\n";
 }
 
 std::string UHFloat3Node::EvalDefinition()
@@ -98,13 +107,15 @@ std::string UHFloat3Node::EvalDefinition()
 		return "";
 	}
 
-	// consider input node
-	const std::string InputX = (Inputs[1]->GetSrcPin() && Inputs[1]->GetSrcPin()->GetOriginNode()) ? Inputs[1]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.x);
-	const std::string InputY = (Inputs[2]->GetSrcPin() && Inputs[2]->GetSrcPin()->GetOriginNode()) ? Inputs[2]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.y);
-	const std::string InputZ = (Inputs[3]->GetSrcPin() && Inputs[3]->GetSrcPin()->GetOriginNode()) ? Inputs[3]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.z);
+	// only need the definition for RT, as the parameter defines are in cbuffer for common passes
+	if (!bIsCompilingRayTracing)
+	{
+		return "";
+	}
 
-	// E.g. float3 Node_1234 = float3(0.0f, 0.0f, 0.0f);
-	return "float3 Node_" + std::to_string(GetId()) + " = float3(" + InputX + "f, " + InputY + "f, " + InputZ + "f);\n";
+	return "float3 Node_" + std::to_string(GetId()) + " = float3(asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial) + "]), "
+		+ "asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial + 1) + "]), "
+		+ "asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial + 2) + "]));\n";
 }
 
 std::string UHFloat4Node::EvalDefinition()
@@ -115,48 +126,50 @@ std::string UHFloat4Node::EvalDefinition()
 		return "";
 	}
 
-	// consider input node
-	const std::string InputX = (Inputs[1]->GetSrcPin() && Inputs[1]->GetSrcPin()->GetOriginNode()) ? Inputs[1]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.x);
-	const std::string InputY = (Inputs[2]->GetSrcPin() && Inputs[2]->GetSrcPin()->GetOriginNode()) ? Inputs[2]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.y);
-	const std::string InputZ = (Inputs[3]->GetSrcPin() && Inputs[3]->GetSrcPin()->GetOriginNode()) ? Inputs[3]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.z);
-	const std::string InputW = (Inputs[4]->GetSrcPin() && Inputs[4]->GetSrcPin()->GetOriginNode()) ? Inputs[4]->GetSrcPin()->GetOriginNode()->EvalHLSL() : UHUtilities::FloatToString(DefaultValue.w);
+	// only need the definition for RT, as the parameter defines are in cbuffer for common passes
+	if (!bIsCompilingRayTracing)
+	{
+		return "";
+	}
 
-	// E.g. float4 Node_1234 = float4(0,0,0,0);
-	return "float4 Node_" + std::to_string(GetId()) + " = float4(" + InputX + "f, " + InputY + "f, " + InputZ + "f, " + InputW + "f);\n";
+	return "float3 Node_" + std::to_string(GetId()) + " = float3(asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial) + "]), "
+		+ "asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial + 1) + "]), "
+		+ "asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial + 2) + "]), "
+		+ "asfloat(MatData.Data[" + std::to_string(DataIndexInMaterial + 3) + "]));\n";
 }
 
 bool UHFloatNode::IsEqual(const UHGraphNode* InNode)
 {
-	if (const UHFloatNode* FloatNode = dynamic_cast<const UHFloatNode*>(InNode))
+	if (const UHFloatNode* FloatPin = dynamic_cast<const UHFloatNode*>(InNode))
 	{
-		return GetValue() == FloatNode->GetValue();
+		return GetValue() == FloatPin->GetValue();
 	}
 	return false;
 }
 
 bool UHFloat2Node::IsEqual(const UHGraphNode* InNode)
 {
-	if (const UHFloat2Node* Float2Node = dynamic_cast<const UHFloat2Node*>(InNode))
+	if (const UHFloat2Node* Float2Pin = dynamic_cast<const UHFloat2Node*>(InNode))
 	{
-		return MathHelpers::IsVectorEqual(GetValue(), Float2Node->GetValue());
+		return MathHelpers::IsVectorEqual(GetValue(), Float2Pin->GetValue());
 	}
 	return false;
 }
 
 bool UHFloat3Node::IsEqual(const UHGraphNode* InNode)
 {
-	if (const UHFloat3Node* Float3Node = dynamic_cast<const UHFloat3Node*>(InNode))
+	if (const UHFloat3Node* Float3Pin = dynamic_cast<const UHFloat3Node*>(InNode))
 	{
-		return MathHelpers::IsVectorEqual(GetValue(), Float3Node->GetValue());
+		return MathHelpers::IsVectorEqual(GetValue(), Float3Pin->GetValue());
 	}
 	return false;
 }
 
 bool UHFloat4Node::IsEqual(const UHGraphNode* InNode)
 {
-	if (const UHFloat4Node* Float4Node = dynamic_cast<const UHFloat4Node*>(InNode))
+	if (const UHFloat4Node* Float4Pin = dynamic_cast<const UHFloat4Node*>(InNode))
 	{
-		return MathHelpers::IsVectorEqual(GetValue(), Float4Node->GetValue());
+		return MathHelpers::IsVectorEqual(GetValue(), Float4Pin->GetValue());
 	}
 	return false;
 }

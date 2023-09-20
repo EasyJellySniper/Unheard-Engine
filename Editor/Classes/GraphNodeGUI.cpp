@@ -66,7 +66,7 @@ INT_PTR CALLBACK NodeInputPinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	return DefSubclassProc(hWnd, message, wParam, lParam);
 }
 
-// combo box callback
+// node combo box callback
 INT_PTR CALLBACK NodeComboBoxProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
 	if (HIWORD(wParam) == CBN_SELCHANGE)

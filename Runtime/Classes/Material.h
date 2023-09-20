@@ -65,12 +65,10 @@ struct UHMaterialProperty
 	float ReflectionFactor;
 };
 
-struct UHMaterialData
+// material data, max available number of scalars are 128 for now, the shader needs to match this number
+struct UHRTMaterialData
 {
-	int32_t TextureIndex;
-	int32_t SamplerIndex;
-	float Cutoff;
-	float Padding;
+	uint32_t Data[128];
 };
 
 // UH Engine's material class, each instance is unique
@@ -106,6 +104,7 @@ public:
 	void SetCompileFlag(UHMaterialCompileFlag InFlag);
 	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
 	void AllocateMaterialBuffer();
+	void AllocateRTMaterialBuffer();
 	void UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex);
 
 	std::string GetName() const;
@@ -124,7 +123,7 @@ public:
 	std::vector<std::string> GetMaterialDefines();
 	std::vector<std::string> GetRegisteredTextureNames();
 	const std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
-	UHRenderBuffer<UHMaterialData>* GetRTMaterialDataGPU() const;
+	UHRenderBuffer<UHRTMaterialData>* GetRTMaterialDataGPU(int32_t CurrFrame) const;
 
 	bool operator==(const UHMaterial& InMat);
 
@@ -171,5 +170,7 @@ private:
 	size_t MaterialBufferSize;
 	std::vector<uint8_t> MaterialConstantsCPU;
 	std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight> MaterialConstantsGPU;
-	UniquePtr<UHRenderBuffer<UHMaterialData>> MaterialRTDataGPU;
+
+	UHRTMaterialData MaterialRTDataCPU;
+	std::array<UniquePtr<UHRenderBuffer<UHRTMaterialData>>, GMaxFrameInFlight> MaterialRTDataGPU;
 };

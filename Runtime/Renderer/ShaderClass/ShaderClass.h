@@ -78,14 +78,25 @@ public:
 
 	// bind multiple storage
 	template <typename T>
-	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding)
+	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding, int32_t FrameIdx = -1)
 	{
-		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		if (FrameIdx != UHINDEXNONE)
 		{
-			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[FrameIdx]);
 			if (InBuffers.size() > 0)
 			{
 				Helper.WriteStorageBuffer(InBuffers, DstBinding);
+			}
+		}
+		else
+		{
+			for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+			{
+				UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+				if (InBuffers.size() > 0)
+				{
+					Helper.WriteStorageBuffer(InBuffers, DstBinding);
+				}
 			}
 		}
 	}

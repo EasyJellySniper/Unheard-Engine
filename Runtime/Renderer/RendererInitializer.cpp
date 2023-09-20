@@ -318,26 +318,13 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	SamplerTable = UHSamplerTable(GraphicInterface, "SamplerTable", static_cast<uint32_t>(GraphicInterface->GetSamplers().size()));
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable.GetDescriptorSetLayout(), SamplerTable.GetDescriptorSetLayout()};
 
-	// depth pass shader, opaque only
-	if (bEnableDepthPrePass)
-	{
-		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
-		{
-			UHMaterial* Mat = Renderer->GetMaterial();
-			if (Mat && DepthPassShaders.find(Renderer->GetBufferDataIndex()) == DepthPassShaders.end())
-			{
-				DepthPassShaders[Renderer->GetBufferDataIndex()] = UHDepthPassShader(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, Mat, BindlessLayouts);
-			}
-		}
-	}
-
-	// base pass shader, opaque only
-	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+	// this loop will create all material shaders
+	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && BasePassShaders.find(Renderer->GetBufferDataIndex()) == BasePassShaders.end())
+		if (Mat && !Mat->IsSkybox())
 		{
-			BasePassShaders[Renderer->GetBufferDataIndex()] = UHBasePassShader(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, bEnableDepthPrePass, BindlessLayouts);
+			RecreateMaterialShaders(Renderer, Mat);
 		}
 	}
 
@@ -350,38 +337,6 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 	// motion pass shader
 	MotionCameraShader = UHMotionCameraPassShader(GraphicInterface, "MotionCameraPassShader", MotionCameraPassObj.RenderPass);
-	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
-	{
-		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat == nullptr || Mat->IsSkybox())
-		{
-			continue;
-		}
-
-		const bool bIsOpaque = Mat->GetBlendMode() <= UHBlendMode::Masked;
-		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
-		if (bIsOpaque && MotionOpaqueShaders.find(RendererIdx) == MotionOpaqueShaders.end())
-		{
-			MotionOpaqueShaders[RendererIdx]
-				= UHMotionObjectPassShader(GraphicInterface, "MotionObjectShader", MotionOpaquePassObj.RenderPass, Mat, bEnableDepthPrePass, BindlessLayouts);
-		}
-		else if (MotionTranslucentShaders.find(RendererIdx) == MotionTranslucentShaders.end())
-		{
-			MotionTranslucentShaders[RendererIdx]
-				= UHMotionObjectPassShader(GraphicInterface, "MotionObjectShader", MotionTranslucentPassObj.RenderPass, Mat, bEnableDepthPrePass, BindlessLayouts);
-		}
-	}
-
-	// translucent pass shader
-	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetTranslucentRenderers())
-	{
-		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && TranslucentPassShaders.find(Renderer->GetBufferDataIndex()) == TranslucentPassShaders.end())
-		{
-			TranslucentPassShaders[Renderer->GetBufferDataIndex()] 
-				= UHTranslucentPassShader(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, Mat, BindlessLayouts);
-		}
-	}
 
 	// post processing shaders
 	TemporalAAShader = UHTemporalAAShader(GraphicInterface, "TemporalAAShader");
@@ -619,14 +574,17 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		IndicesTypeBuffer->UploadAllData(IndexTypes.data());
 		RTIndicesTypeTable.BindStorage(IndicesTypeBuffer.get(), 0, 0, true);
 
-		// collect and bind texture index data
-		std::vector<UHRenderBuffer<UHMaterialData>*> TextureIndexData;
-		const std::vector<UHMaterial*>& AllMaterials = CurrentScene->GetMaterials();
-		for (size_t Idx = 0; Idx < AllMaterials.size(); Idx++)
+		// bind RT material data
+		for (int32_t FrameIdx = 0; FrameIdx < GMaxFrameInFlight; FrameIdx++)
 		{
-			TextureIndexData.push_back(AllMaterials[Idx]->GetRTMaterialDataGPU());
+			std::vector<UHRenderBuffer<UHRTMaterialData>*> RTMaterialData;
+			const std::vector<UHMaterial*>& AllMaterials = CurrentScene->GetMaterials();
+			for (size_t Idx = 0; Idx < AllMaterials.size(); Idx++)
+			{
+				RTMaterialData.push_back(AllMaterials[Idx]->GetRTMaterialDataGPU(FrameIdx));
+			}
+			RTMaterialDataTable.BindStorage(RTMaterialData, 0);
 		}
-		RTMaterialDataTable.BindStorage(TextureIndexData, 0);
 
 		// bind RT shadow parameters
 		RTShadowShader.BindParameters(SystemConstantsGPU, RTSharedTextureRG16F, DirectionalLightBuffer
@@ -1093,7 +1051,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	{
 		if (UHMeshRendererComponent* Renderer = static_cast<UHMeshRendererComponent*>(RendererObj))
 		{
-			ResetRenderer(Renderer, CompileFlag, bIsOpaque, bNeedReassignRendererGroup);
+			ResetMaterialShaders(Renderer, CompileFlag, bIsOpaque, bNeedReassignRendererGroup);
 		}
 	}
 
@@ -1104,7 +1062,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 		{
 			if (UHMeshRendererComponent* Renderer = static_cast<UHMeshRendererComponent*>(RendererObj))
 			{
-				RecreateRenderer(Renderer, Mat, bIsOpaque);
+				RecreateMaterialShaders(Renderer, Mat);
 			}
 		}
 	}
@@ -1160,18 +1118,18 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 		}
 
 		// re-bind the parameter
-		ResetRenderer(InRenderer, BindOnly, NewMat->IsOpaque(), false);
+		ResetMaterialShaders(InRenderer, BindOnly, NewMat->IsOpaque(), false);
 	}
 	else
 	{
 		// state changed (different blendmode), need a recreate
-		ResetRenderer(InRenderer, RendererMaterialChanged, OldMat->IsOpaque(), true);
-		RecreateRenderer(InRenderer, NewMat, NewMat->IsOpaque());
+		ResetMaterialShaders(InRenderer, RendererMaterialChanged, OldMat->IsOpaque(), true);
+		RecreateMaterialShaders(InRenderer, NewMat);
 	}
 	NewMat->AddReferenceObject(InRenderer);
 }
 
-void UHDeferredShadingRenderer::ResetRenderer(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup)
+void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup)
 {
 	const int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const bool bReleaseDescriptorOnly = CompileFlag == RendererMaterialChanged;
@@ -1245,12 +1203,30 @@ void UHDeferredShadingRenderer::ResetRenderer(UHMeshRendererComponent* InMeshRen
 	InMeshRenderer->SetRayTracingDirties(true);
 }
 
-void UHDeferredShadingRenderer::RecreateRenderer(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat, bool bIsOpaque)
+void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat)
+{
+	RTShadowShader.Release();
+	RTDefaultHitGroupShader.UpdateHitShader(GraphicInterface, InMat);
+
+	const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable.GetDescriptorSetLayout()
+		, SamplerTable.GetDescriptorSetLayout()
+		, RTVertexTable.GetDescriptorSetLayout()
+		, RTIndicesTable.GetDescriptorSetLayout()
+		, RTIndicesTypeTable.GetDescriptorSetLayout()
+		, RTMaterialDataTable.GetDescriptorSetLayout() };
+
+	RTShadowShader = UHRTShadowShader(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader.GetClosestShaders(), RTDefaultHitGroupShader.GetAnyHitShaders()
+		, Layouts);
+}
+
+#endif
+
+void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat)
 {
 	int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable.GetDescriptorSetLayout(), SamplerTable.GetDescriptorSetLayout() };
 
-	if (bIsOpaque)
+	if (InMat->IsOpaque())
 	{
 		if (bEnableDepthPrePass)
 		{
@@ -1279,21 +1255,3 @@ void UHDeferredShadingRenderer::RecreateRenderer(UHMeshRendererComponent* InMesh
 
 	InMeshRenderer->SetRayTracingDirties(true);
 }
-
-void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat)
-{
-	RTShadowShader.Release();
-	RTDefaultHitGroupShader.UpdateHitShader(GraphicInterface, InMat);
-
-	const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable.GetDescriptorSetLayout()
-		, SamplerTable.GetDescriptorSetLayout()
-		, RTVertexTable.GetDescriptorSetLayout()
-		, RTIndicesTable.GetDescriptorSetLayout()
-		, RTIndicesTypeTable.GetDescriptorSetLayout()
-		, RTMaterialDataTable.GetDescriptorSetLayout() };
-
-	RTShadowShader = UHRTShadowShader(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader.GetClosestShaders(), RTDefaultHitGroupShader.GetAnyHitShaders()
-		, Layouts);
-}
-
-#endif

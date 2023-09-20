@@ -39,10 +39,10 @@ UHMaterial::~UHMaterial()
 	{
 		UH_SAFE_RELEASE(MaterialConstantsGPU[Idx]);
 		MaterialConstantsGPU[Idx].reset();
-	}
 
-	UH_SAFE_RELEASE(MaterialRTDataGPU);
-	MaterialRTDataGPU.reset();
+		UH_SAFE_RELEASE(MaterialRTDataGPU[Idx]);
+		MaterialRTDataGPU[Idx].reset();
+	}
 }
 
 bool UHMaterial::Import(std::filesystem::path InMatPath)
@@ -154,10 +154,9 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 void UHMaterial::PostImport()
 {
 #if WITH_RELEASE
-	// doesn't need these data in release build
+	// doesn't need edit node data in release build
+	// the material node is still needed for copy parameters
 	EditGUIRelativePos.clear();
-	EditNodes.clear();
-	MaterialNode.reset();
 #endif
 
 #if WITH_EDITOR
@@ -169,6 +168,7 @@ void UHMaterial::PostImport()
 #endif
 
 	AllocateMaterialBuffer();
+	AllocateRTMaterialBuffer();
 }
 
 #if WITH_EDITOR
@@ -323,43 +323,14 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	FileOut.write(reinterpret_cast<const char*>(&DefaultMaterialNodePos), sizeof(DefaultMaterialNodePos));
 }
 
-void CollectTextureIndex(const UHGraphPin* Pin, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable, size_t& OutSize)
-{
-	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
-	{
-		return;
-	}
-
-	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
-
-	// prevent redefinition with table
-	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
-	{
-		Code += "\tint Node_" + std::to_string(InputNode->GetId()) + "_Index;\n";
-		OutSize += sizeof(float);
-		OutDefTable[InputNode->GetId()] = true;
-	}
-
-	// trace all input pins
-	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
-	{
-		CollectTextureIndex(InputPins.get(), Code, OutDefTable, OutSize);
-	}
-}
-
 std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 {
 	OutSize = 0;
 
 	// get texture define code
 	std::string Code;
-	std::unordered_map<uint32_t, bool> TexTable;
-
-	// simply collect the texture index used in bindless rendering
-	for (const UniquePtr<UHGraphPin>& Input : MaterialNode->GetInputs())
-	{
-		CollectTextureIndex(Input.get(), Code, TexTable, OutSize);
-	}
+	MaterialNode->CollectTextureIndex(Code, OutSize);
+	MaterialNode->CollectMaterialParameter(Code, OutSize);
 
 	// @TODO: Differentiate sampler state in the future
 	Code += "\tint " + GDefaultSamplerName + "_Index;\n";
@@ -423,24 +394,7 @@ void UHMaterial::SetRegisteredTextureIndexes(std::vector<int32_t> InData)
 		return;
 	}
 
-	if (RegisteredTextureIndexes.size() != InData.size())
-	{
-		RegisteredTextureIndexes = InData;
-
-		// reallocate texture index gpu if size changed
-		GfxCache->WaitGPU();
-
-		UH_SAFE_RELEASE(MaterialRTDataGPU);
-		MaterialRTDataGPU.reset();
-
-		MaterialRTDataGPU = GfxCache->RequestRenderBuffer<UHMaterialData>();
-		MaterialRTDataGPU->CreateBuffer(RegisteredTextureIndexes.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-	}
-	else if (MaterialRTDataGPU != nullptr)
-	{
-		// update
-		RegisteredTextureIndexes = InData;
-	}
+	RegisteredTextureIndexes = InData;
 }
 
 void UHMaterial::AllocateMaterialBuffer()
@@ -457,6 +411,19 @@ void UHMaterial::AllocateMaterialBuffer()
 	}
 }
 
+void UHMaterial::AllocateRTMaterialBuffer()
+{
+	// allocate RT matrial buffer
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(MaterialRTDataGPU[Idx]);
+		MaterialRTDataGPU[Idx].reset();
+
+		MaterialRTDataGPU[Idx] = GfxCache->RequestRenderBuffer<UHRTMaterialData>();
+		MaterialRTDataGPU[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	}
+}
+
 void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex)
 {
 	if (MaterialBufferSize == 0)
@@ -469,17 +436,14 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 	size_t Stride = sizeof(float);
 
 	// fill the index of textures
-	std::vector<UHMaterialData> TextureIndexData(RegisteredTextureIndexes.size());
 	for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
 	{
-		// feed the index to UHTextureIndexData
-		TextureIndexData[Idx].TextureIndex = RegisteredTextureIndexes[Idx];
-		TextureIndexData[Idx].SamplerIndex = DefaultSamplerIndex;
-		TextureIndexData[Idx].Cutoff = MaterialProps.Cutoff;
-
 		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &RegisteredTextureIndexes[Idx], Stride);
 		BufferAddress += Stride;
 	}
+
+	// copy material parameters
+	MaterialNode->CopyMaterialParameter(MaterialConstantsCPU, BufferAddress);
 
 	// fill the index of sampler
 	// @TODO: Differentiate samplers
@@ -495,14 +459,32 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 	{
 		float EnvCubeMipMapCount = static_cast<float>(SystemTextures[UHSystemTextureType::SkyCube]->GetMipMapCount());
 		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &EnvCubeMipMapCount, Stride);
-		BufferAddress += Stride;
 	}
 
 	// upload material data
 	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data(), MaterialBufferSize);
-	if (RegisteredTextureIndexes.size() > 0)
+
+	if (GfxCache->IsRayTracingEnabled())
 	{
-		MaterialRTDataGPU->UploadAllData(TextureIndexData.data());
+		// copy the data to RT material data, the order does matter
+		int32_t DstIndex = 0;
+
+		// copy cutoff
+		memset(&MaterialRTDataCPU, 0, sizeof(UHRTMaterialData));
+		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &MaterialProps.Cutoff, Stride);
+
+		// copy texture indexes if necessary
+		for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
+		{
+			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &RegisteredTextureIndexes[Idx], Stride);
+			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &DefaultSamplerIndex, Stride);
+		}
+
+		// copy material parameters
+		MaterialNode->CopyRTMaterialParameter(MaterialRTDataCPU, DstIndex);
+
+		// finally, upload to GPU buffer
+		MaterialRTDataGPU[CurrFrame]->UploadAllData(&MaterialRTDataCPU);
 	}
 }
 
@@ -600,48 +582,10 @@ std::vector<std::string> UHMaterial::GetMaterialDefines()
 	return Defines;
 }
 
-void CollectTexNames(const UHGraphPin* Pin, std::vector<std::string>& Names, std::unordered_map<uint32_t, bool>& OutDefTable)
-{
-	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
-	{
-		return;
-	}
-
-	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
-
-	// prevent redefinition with table
-	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
-	{
-		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
-		std::string TexName = TexNode->GetSelectedTexturePathName();
-#if WITH_EDITOR
-		TexName = UHAssetManager::FindTexturePathName(TexName);
-#endif
-		if (!TexName.empty())
-		{
-			Names.push_back(TexName);
-		}
-
-		OutDefTable[InputNode->GetId()] = true;
-	}
-
-	// trace all input pins
-	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
-	{
-		CollectTexNames(InputPins.get(), Names, OutDefTable);
-	}
-}
-
 std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
 {
 #if WITH_EDITOR
-	RegisteredTextureNames.clear();
-	std::unordered_map<uint32_t, bool> TexTable;
-
-	for (const UniquePtr<UHGraphPin>& Input : MaterialNode->GetInputs())
-	{
-		CollectTexNames(Input.get(), RegisteredTextureNames, TexTable);
-	}
+	MaterialNode->CollectTextureNames(RegisteredTextureNames);
 #endif
 
 	return RegisteredTextureNames;
@@ -652,9 +596,9 @@ const std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& UHMater
 	return MaterialConstantsGPU;
 }
 
-UHRenderBuffer<UHMaterialData>* UHMaterial::GetRTMaterialDataGPU() const
+UHRenderBuffer<UHRTMaterialData>* UHMaterial::GetRTMaterialDataGPU(int32_t CurrFrame) const
 {
-	return MaterialRTDataGPU.get();
+	return MaterialRTDataGPU[CurrFrame].get();
 }
 
 bool UHMaterial::operator==(const UHMaterial& InMat)

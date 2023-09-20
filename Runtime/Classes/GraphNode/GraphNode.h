@@ -12,10 +12,10 @@ class UHGraphNodeGUI;
 enum UHGraphNodeType
 {
     UnknownNode,
-    Float = 100,
-    Float2,
-    Float3,
-    Float4,
+    FloatNode = 100,
+    Float2Node,
+    Float3Node,
+    Float4Node,
     MathNode,
     Texture2DNode
 };

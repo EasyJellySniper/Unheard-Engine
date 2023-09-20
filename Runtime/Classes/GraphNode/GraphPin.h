@@ -7,14 +7,14 @@
 
 enum UHGraphPinType
 {
-    VoidNode,
-    FloatNode,
-    Float2Node,
-    Float3Node,
-    Float4Node,
+    VoidPin,
+    FloatPin,
+    Float2Pin,
+    Float3Pin,
+    Float4Pin,
 
     // any type node will be checked when compilation
-    AnyNode
+    AnyPin
 };
 
 class UHGraphNode;

@@ -428,6 +428,62 @@ void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter I
 	Blit(SrcImage, DstImage, SrcImage->GetExtent(), DstImage->GetExtent(), 0, 0, InFilter);
 }
 
+// blit for custom dst offset
+void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, VkExtent2D DstOffset, VkFilter InFilter)
+{
+	// setup src & dst layer before blit
+	VkImageViewCreateInfo SrcInfo = SrcImage->GetImageViewInfo();
+	VkImageSubresourceLayers SrcLayer{};
+	SrcLayer.aspectMask = SrcInfo.subresourceRange.aspectMask;
+	SrcLayer.baseArrayLayer = SrcInfo.subresourceRange.baseArrayLayer;
+	SrcLayer.layerCount = SrcInfo.subresourceRange.layerCount;
+	SrcLayer.mipLevel = SrcInfo.subresourceRange.baseMipLevel;
+
+	VkImageViewCreateInfo DstInfo = DstImage->GetImageViewInfo();
+	VkImageSubresourceLayers DstLayer{};
+	DstLayer.aspectMask = DstInfo.subresourceRange.aspectMask;
+	DstLayer.baseArrayLayer = DstInfo.subresourceRange.baseArrayLayer;
+	DstLayer.layerCount = DstInfo.subresourceRange.layerCount;
+	DstLayer.mipLevel = DstInfo.subresourceRange.baseMipLevel;
+
+	// image type must be equal
+	if (SrcInfo.viewType != DstInfo.viewType)
+	{
+		UHE_LOG(L"Inconsistent view type when calling Blit!\n");
+		return;
+	}
+
+	VkImageBlit BlitInfo{};
+	BlitInfo.srcSubresource = SrcLayer;
+	BlitInfo.dstSubresource = DstLayer;
+
+	// offset setting
+	if (SrcInfo.viewType == VK_IMAGE_VIEW_TYPE_2D)
+	{
+		BlitInfo.srcOffsets[1].x = SrcExtent.width;
+		BlitInfo.srcOffsets[1].y = SrcExtent.height;
+		BlitInfo.srcOffsets[1].z = 1;
+	}
+
+	if (DstInfo.viewType == VK_IMAGE_VIEW_TYPE_2D)
+	{
+		BlitInfo.dstOffsets[0].x = DstOffset.width;
+		BlitInfo.dstOffsets[0].y = DstOffset.height;
+
+		BlitInfo.dstOffsets[1].x = DstOffset.width + DstExtent.width;
+		BlitInfo.dstOffsets[1].y = DstOffset.height + DstExtent.height;
+		BlitInfo.dstOffsets[1].z = 1;
+	}
+
+	vkCmdBlitImage(CmdList, SrcImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, DstImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+		, 1, &BlitInfo, InFilter);
+
+#if WITH_EDITOR
+	// vkCmdBlitImage should be a kind of draw call, add to profile 
+	DrawCalls++;
+#endif
+}
+
 // blit with custom extent
 void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, uint32_t SrcMip, uint32_t DstMip, VkFilter InFilter)
 {

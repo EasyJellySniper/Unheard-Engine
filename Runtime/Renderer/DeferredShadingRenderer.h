@@ -86,10 +86,10 @@ public:
 	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup = false);
 	void OnRendererMaterialChanged(UHMeshRendererComponent* InRenderer, UHMaterial* OldMat, UHMaterial* NewMat);
 
-	void ResetRenderer(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup);
-	void RecreateRenderer(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat, bool bIsOpaque);
+	void ResetMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup);
 	void RecreateRTShaders(UHMaterial* InMat);
 #endif
+	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
 
 private:
 	/************************************************ functions ************************************************/

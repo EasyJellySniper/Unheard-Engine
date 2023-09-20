@@ -14,15 +14,12 @@ ByteAddressBuffer UHIndicesTable[] : register(t0, space4);
 // 0 for 16-bit index, 1 for 32-bit index, access via InstanceIndex()
 ByteAddressBuffer UHIndicesType : register(t0, space5);
 
-// another 2D index array for matching, since Vulkan doesn't implement local descriptor yet, I need this to fetch data
-// each texture node takes one slot, and the value of Index will be updated in C++ side
-// access via InstanceID() first, then the index calculated by graph system
+// another descriptor array for matching, since Vulkan doesn't implement local descriptor yet, I need this to fetch data
+// access via InstanceID()[0] first, the data will be filled by the systtem on C++ side
+// max number of data member: 128 scalars for now
 struct MaterialData
 {
-	int TextureIndex;
-	int SamplerIndex;
-	float Cutoff;
-	float Padding;
+    uint Data[128];
 };
 StructuredBuffer<MaterialData> UHMaterialDataTable[] : register(t0, space6);
 
@@ -36,7 +33,8 @@ struct Attribute
 // get material input, the simple version that has opacity only
 UHMaterialInputs GetMaterialInputSimple(float2 UV0, float MipLevel, out float Cutoff)
 {
-	Cutoff = UHMaterialDataTable[InstanceID()][0].Cutoff;
+    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
+    Cutoff = asfloat(MatData.Data[0]);
 
 	// material input code will be generated in C++ side
 	//%UHS_INPUT_Simple

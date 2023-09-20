@@ -11,10 +11,10 @@ UHTexture2DNode::UHTexture2DNode(std::string TexName)
 	TextureIndexInMaterial = -1;
 
 	Inputs.resize(1);
-	Inputs[0] = MakeUnique<UHGraphPin>("UV", this, Float2Node);
+	Inputs[0] = MakeUnique<UHGraphPin>("UV", this, Float2Pin);
 
 	Outputs.resize(1);
-	Outputs[0] = MakeUnique<UHGraphPin>("RGB", this, Float3Node);
+	Outputs[0] = MakeUnique<UHGraphPin>("RGB", this, Float3Pin);
 
 	SelectedTexturePathName = TexName;
 }
@@ -52,8 +52,9 @@ std::string UHTexture2DNode::EvalDefinition()
 		// if it's compiling for ray tracing, I need to use the SampleLevel instead of Sample
 		if (bIsCompilingRayTracing)
 		{
-			const std::string TextureIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].TextureIndex";
-			const std::string SamplerIndexCode = "UHMaterialDataTable[InstanceID()][" + std::to_string(TextureIndexInMaterial) + "].SamplerIndex";
+			const int32_t TextureIndexStart = 1;
+			const std::string TextureIndexCode = "MatData.Data[" + std::to_string(2 * TextureIndexInMaterial + TextureIndexStart) + "]";
+			const std::string SamplerIndexCode = "MatData.Data[" + std::to_string(2 * TextureIndexInMaterial + 1 + TextureIndexStart) + "]";
 
 			// the mip level will be calculated in the shader
 			std::string Result =

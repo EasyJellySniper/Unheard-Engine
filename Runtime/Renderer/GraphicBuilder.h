@@ -89,6 +89,7 @@ public:
 
 	// blit image
 	void Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter = VK_FILTER_LINEAR);
+	void Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, VkExtent2D DstOffset, VkFilter InFilter = VK_FILTER_LINEAR);
 	void Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, uint32_t SrcMip = 0, uint32_t DstMip = 0, VkFilter InFilter = VK_FILTER_LINEAR);
 
 	// copy texture

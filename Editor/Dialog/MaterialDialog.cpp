@@ -45,10 +45,10 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , DragRect(RECT())
 {
     // create popup menu for node functions, only do these in construction time
-    ParameterMenu.InsertOption("Float", UHGraphNodeType::Float);
-    ParameterMenu.InsertOption("Float2", UHGraphNodeType::Float2);
-    ParameterMenu.InsertOption("Float3", UHGraphNodeType::Float3);
-    ParameterMenu.InsertOption("Float4", UHGraphNodeType::Float4);
+    ParameterMenu.InsertOption("Float", UHGraphNodeType::FloatNode);
+    ParameterMenu.InsertOption("Float2", UHGraphNodeType::Float2Node);
+    ParameterMenu.InsertOption("Float3", UHGraphNodeType::Float3Node);
+    ParameterMenu.InsertOption("Float4", UHGraphNodeType::Float4Node);
 
     TextureMenu.InsertOption("Texture2D", UHGraphNodeType::Texture2DNode);
 
@@ -296,20 +296,20 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
 
     switch (NodeMenuAction)
     {
-    case UHGraphNodeType::Float:
-        NewGUI = MakeUnique<UHFloatNodeGUI>();
+    case UHGraphNodeType::FloatNode:
+        NewGUI = MakeUnique<UHFloatNodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float";
         break;
-    case UHGraphNodeType::Float2:
-        NewGUI = MakeUnique<UHFloat2NodeGUI>();
+    case UHGraphNodeType::Float2Node:
+        NewGUI = MakeUnique<UHFloat2NodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float2";
         break;
-    case UHGraphNodeType::Float3:
-        NewGUI = MakeUnique<UHFloat3NodeGUI>();
+    case UHGraphNodeType::Float3Node:
+        NewGUI = MakeUnique<UHFloat3NodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float3";
         break;
-    case UHGraphNodeType::Float4:
-        NewGUI = MakeUnique<UHFloat4NodeGUI>();
+    case UHGraphNodeType::Float4Node:
+        NewGUI = MakeUnique<UHFloat4NodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float4";
         break;
     case UHGraphNodeType::MathNode:

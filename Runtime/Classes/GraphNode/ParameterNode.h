@@ -11,6 +11,7 @@ public:
 	UHParameterNode(T InitValue)
 		: UHGraphNode(true)
 		, DefaultValue(InitValue)
+		, DataIndexInMaterial(-1)
 	{
 
 	}
@@ -52,8 +53,14 @@ public:
 		FileOut.write(reinterpret_cast<const char*>(&DefaultValue), sizeof(DefaultValue));
 	}
 
+	void SetDataIndexInMaterial(int32_t InIndex)
+	{
+		DataIndexInMaterial = InIndex;
+	}
+
 protected:
 	T DefaultValue;
+	int32_t DataIndexInMaterial;
 };
 
 class UHFloatNode : public UHParameterNode<float>
