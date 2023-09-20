@@ -25,7 +25,7 @@ class UHMaterialNode : public UHGraphNode
 {
 public:
 	UHMaterialNode(UHMaterial* InMat);
-	virtual std::string EvalHLSL() override;
+	virtual std::string EvalHLSL(const UHGraphPin* CallerPin) override;
 	virtual void InputData(std::ifstream& FileIn) override {}
 	virtual void OutputData(std::ofstream& FileOut) override {}
 

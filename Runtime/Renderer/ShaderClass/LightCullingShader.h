@@ -4,7 +4,6 @@
 class UHLightCullingShader : public UHShaderClass
 {
 public:
-	UHLightCullingShader() {}
 	UHLightCullingShader(UHGraphic* InGfx, std::string Name);
 	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst

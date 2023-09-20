@@ -4,7 +4,6 @@
 class UHRTVertexTable : public UHShaderClass
 {
 public:
-	UHRTVertexTable() {}
 	UHRTVertexTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfMeshes)
 		: UHShaderClass(InGfx, Name, typeid(UHRTVertexTable), nullptr)
 	{
@@ -17,7 +16,6 @@ public:
 class UHRTIndicesTable : public UHShaderClass
 {
 public:
-	UHRTIndicesTable() {}
 	UHRTIndicesTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfMeshes)
 		: UHShaderClass(InGfx, Name, typeid(UHRTIndicesTable), nullptr)
 	{
@@ -30,7 +28,6 @@ public:
 class UHRTIndicesTypeTable : public UHShaderClass
 {
 public:
-	UHRTIndicesTypeTable() {}
 	UHRTIndicesTypeTable(UHGraphic* InGfx, std::string Name)
 		: UHShaderClass(InGfx, Name, typeid(UHRTIndicesTypeTable), nullptr)
 	{

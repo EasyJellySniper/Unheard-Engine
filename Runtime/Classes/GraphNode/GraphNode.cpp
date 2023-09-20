@@ -69,3 +69,18 @@ bool UHGraphNode::CanBeDeleted() const
 {
 	return bCanBeDeleted;
 }
+
+int32_t UHGraphNode::FindOutputPinIndexInternal(const UHGraphPin* InPin)
+{
+	for (int32_t Idx = 0; Idx < Outputs.size(); Idx++)
+	{
+		if (Outputs[Idx].get() == InPin)
+		{
+			return Idx;
+		}
+	}
+
+	// shouldn't touch this line
+	assert(("FindOutputPinIndexInternal error", false));
+	return -1;
+}

@@ -17,7 +17,6 @@ struct UHShaderRecord
 class UHShaderClass : public UHObject
 {
 public:
-	UHShaderClass();
 	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType, UHMaterial* InMat);
 	void Release(bool bDescriptorOnly = false);
 

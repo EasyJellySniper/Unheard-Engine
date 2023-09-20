@@ -5,7 +5,6 @@
 class UHMotionCameraPassShader : public UHShaderClass
 {
 public:
-	UHMotionCameraPassShader() {}
 	UHMotionCameraPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass);
 	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const UHRenderTexture* DepthTexture
@@ -16,7 +15,6 @@ public:
 class UHMotionObjectPassShader : public UHShaderClass
 {
 public:
-	UHMotionObjectPassShader() {}
 	UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
 		, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 

@@ -26,12 +26,13 @@ bool UHMathNode::CanEvalHLSL()
 	return GetOutputPinType() != VoidPin;
 }
 
-std::string UHMathNode::EvalHLSL()
+std::string UHMathNode::EvalHLSL(const UHGraphPin* CallerPin)
 {
 	if (CanEvalHLSL())
 	{
 		std::string Operators[] = { " + "," - "," * "," / " };
-		return "(" +  Inputs[0]->GetSrcPin()->GetOriginNode()->EvalHLSL() + Operators[CurrentOperator] + Inputs[1]->GetSrcPin()->GetOriginNode()->EvalHLSL() + ")";
+		return "(" +  Inputs[0]->GetSrcPin()->GetOriginNode()->EvalHLSL(Inputs[0]->GetSrcPin()) + Operators[CurrentOperator] 
+			+ Inputs[1]->GetSrcPin()->GetOriginNode()->EvalHLSL(Inputs[1]->GetSrcPin()) + ")";
 	}
 
 	return "[ERROR] Type mismatch or input not connected.";

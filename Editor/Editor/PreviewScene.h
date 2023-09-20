@@ -35,7 +35,7 @@ private:
 
 	// shaders
 	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
-	UHDebugViewShader DebugViewShader;
+	UniquePtr<UHDebugViewShader> DebugViewShader;
 	uint32_t CurrentMip;
 
 	uint32_t CurrentFrame;

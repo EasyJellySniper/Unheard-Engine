@@ -1,5 +1,4 @@
 // simple fallback shader
-// @TODO: Support forward as well
 void FallbackPS(out float4 OutColor : SV_Target0
 	, out float4 OutNormal : SV_Target1
 	, out float4 OutMaterial : SV_Target2

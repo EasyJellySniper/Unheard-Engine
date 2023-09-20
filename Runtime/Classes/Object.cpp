@@ -15,6 +15,7 @@ UHObject::UHObject()
 
 UHObject::~UHObject()
 {
+	assert(("Dangling happened, please check the callstack and correct the problematic UObject\n", GObjectTable.find(GetId()) != GObjectTable.end()));
 	GObjectTable.erase(GetId());
 }
 

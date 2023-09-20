@@ -26,7 +26,7 @@ public:
 		return DefaultValue;
 	}
 
-	virtual std::string EvalHLSL() override
+	virtual std::string EvalHLSL(const UHGraphPin* CallerPin) override
 	{
 		// return the node name directly, value should be defined in EvalDefinition()
 		if (CanEvalHLSL())
@@ -34,10 +34,41 @@ public:
 			// eval from an exist input
 			if (Inputs[0]->GetSrcPin() != nullptr && Inputs[0]->GetSrcPin()->GetOriginNode() != nullptr)
 			{
-				return Inputs[0]->GetSrcPin()->GetOriginNode()->EvalHLSL();
+				return Inputs[0]->GetSrcPin()->GetOriginNode()->EvalHLSL(Inputs[0]->GetSrcPin());
 			}
 
-			return "Node_" + std::to_string(GetId());
+			const int32_t ChannelIdx = FindOutputPinIndexInternal(CallerPin);
+			if constexpr (std::is_same<T, float>::value)
+			{
+				// float parameter has only one channel, early return it
+				return "Node_" + std::to_string(GetId());
+			}
+
+			const std::string ThisNode = "Node_" + std::to_string(GetId());
+			const std::string Channels[] = { ".r",".g",".b",".a" };
+			std::string OutputFloat = "float" + std::to_string(Inputs.size() - 1) + "(";
+
+			// set the individual channel if src pin is connect
+			for (int32_t Idx = 1; Idx < Inputs.size(); Idx++)
+			{
+				if (Inputs[Idx]->GetSrcPin() != nullptr && Inputs[Idx]->GetSrcPin()->GetOriginNode() != nullptr)
+				{
+					OutputFloat += Inputs[Idx]->GetSrcPin()->GetOriginNode()->EvalHLSL(Inputs[Idx]->GetSrcPin());
+				}
+				else
+				{
+					OutputFloat += ThisNode + Channels[Idx - 1];
+				}
+
+				if (Idx != (int32_t)Inputs.size() - 1)
+				{
+					OutputFloat += ", ";
+				}
+			}
+
+			OutputFloat += ")" + GOutChannelShared[ChannelIdx];
+			return OutputFloat;
+			return "Node_" + std::to_string(GetId()) + GOutChannelShared[ChannelIdx];
 		}
 
 		return "";

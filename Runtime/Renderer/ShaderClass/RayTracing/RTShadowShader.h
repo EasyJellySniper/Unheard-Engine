@@ -5,8 +5,6 @@
 class UHRTShadowShader : public UHShaderClass
 {
 public:
-	UHRTShadowShader() {}
-
 	// this shader needs hit group
 	UHRTShadowShader(UHGraphic* InGfx, std::string Name
 		, const std::vector<uint32_t>& InClosestHits

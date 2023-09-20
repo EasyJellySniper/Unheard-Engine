@@ -4,7 +4,6 @@
 class UHLightPassShader : public UHShaderClass
 {
 public:
-	UHLightPassShader() {}
 	UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t RTInstanceCount);
 	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLightConst

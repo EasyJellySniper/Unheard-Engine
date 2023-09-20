@@ -8,12 +8,6 @@ std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
 std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> GMaterialStateTable;
 std::unordered_map<uint32_t, UHComputeState*> GComputeStateTable;
 
-UHShaderClass::UHShaderClass()
-	: UHShaderClass(nullptr, "", typeid(UHShaderClass), nullptr)
-{
-
-}
-
 UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_index InType, UHMaterial* InMat)
 	: Gfx(InGfx)
 	, Name(InName)

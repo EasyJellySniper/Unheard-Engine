@@ -18,10 +18,10 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHGraphicBuilder& GraphBuilder)
 		GraphBuilder.SetScissor(RenderResolution);
 
 		// bind state
-		GraphBuilder.BindGraphicState(SkyPassShader.GetState());
+		GraphBuilder.BindGraphicState(SkyPassShader->GetState());
 
 		// bind sets
-		GraphBuilder.BindDescriptorSet(SkyPassShader.GetPipelineLayout(), SkyPassShader.GetDescriptorSet(CurrentFrameRT));
+		GraphBuilder.BindDescriptorSet(SkyPassShader->GetPipelineLayout(), SkyPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw skybox renderer
 		const UHMeshRendererComponent* SkyboxRenderer = CurrentScene->GetSkyboxRenderer();

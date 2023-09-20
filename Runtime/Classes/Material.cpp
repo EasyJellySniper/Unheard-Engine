@@ -346,7 +346,7 @@ std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 std::string UHMaterial::GetMaterialInputCode(UHMaterialCompileData InData)
 {
 	MaterialNode->SetMaterialCompileData(InData);
-	return MaterialNode->EvalHLSL();
+	return MaterialNode->EvalHLSL(nullptr);
 }
 
 #endif

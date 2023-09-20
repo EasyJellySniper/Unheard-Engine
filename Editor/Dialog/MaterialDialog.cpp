@@ -350,6 +350,11 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
         EditNodeGUIs.push_back(std::move(NewGUI));
     }
 
+    // invalidate the newly added edit node rect
+    RECT R;
+    UHEditorUtil::GetWindowSize(EditNodeGUIs.back()->GetHWND(), R, Dialog);
+    InvalidateRect(Dialog, &R, false);
+
     NodeMenuAction = UHNodeMenuAction::NoAction;
 }
 

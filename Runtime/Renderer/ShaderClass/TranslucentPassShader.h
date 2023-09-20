@@ -4,7 +4,6 @@
 class UHTranslucentPassShader : public UHShaderClass
 {
 public:
-	UHTranslucentPassShader() {}
 	UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 
 	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

@@ -363,4 +363,5 @@ Next is to deal with the change of material from a mesh renderer. The shader nee
 20-09-2023: Better named the UHGraphNodeType and UHGraphPinType enum. Organized material parameter collection in MaterialNode class.
 Applied the new data structured for RT material data, this should also be good for compile-free parameters.
 Tried to work on compile-free for parameter changes, but the edit control somehow didn't send the message. So I use the update method, better than nothing.
-Completed the compile-free parameter nodes, but RT material data can be improved.
+Completed the compile-free parameter nodes, but RT material data can be improved. Finished multiple output nodes support as well!
+Another huge change today, I managed to fix some dangling objects issue too.

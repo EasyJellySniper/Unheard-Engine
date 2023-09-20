@@ -7,6 +7,8 @@
 #include "../../../Runtime/Classes/Object.h"
 #include "../../../Runtime/Classes/Types.h"
 
+const std::string GOutChannelShared[] = { ".rgb",".r",".g",".b" };
+
 class UHGraphNodeGUI;
 
 enum UHGraphNodeType
@@ -30,7 +32,7 @@ public:
     // node functions
     virtual bool CanEvalHLSL() { return true; }
     virtual std::string EvalDefinition() { return ""; }
-    virtual std::string EvalHLSL() = 0;
+    virtual std::string EvalHLSL(const UHGraphPin* CallerPin) = 0;
     virtual bool IsEqual(const UHGraphNode* InNode) { return GetId() == InNode->GetId(); }
 
     // data I/O override
@@ -51,6 +53,8 @@ public:
     bool CanBeDeleted() const;
 
 protected:
+    int32_t FindOutputPinIndexInternal(const UHGraphPin* InPin);
+
     std::string Name;
     UHGraphNodeType NodeType;
     std::vector<UniquePtr<UHGraphPin>> Inputs;

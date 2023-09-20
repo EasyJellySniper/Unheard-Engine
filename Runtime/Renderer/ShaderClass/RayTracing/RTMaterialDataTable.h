@@ -4,7 +4,6 @@
 class UHRTMaterialDataTable : public UHShaderClass
 {
 public:
-	UHRTMaterialDataTable() {}
 	UHRTMaterialDataTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfMaterials)
 		: UHShaderClass(InGfx, Name, typeid(UHRTMaterialDataTable), nullptr)
 	{

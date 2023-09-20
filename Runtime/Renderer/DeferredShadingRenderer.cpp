@@ -108,11 +108,11 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 		DebugViewData->UploadAllData(&ViewMipLevel);
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
-			DebugViewShader.BindConstant(DebugViewData, 0, Idx);
+			DebugViewShader->BindConstant(DebugViewData, 0, Idx);
 		}
 
 		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
-		DebugViewShader.BindImage(Buffers[DebugViewIndex], 1);
+		DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
 	}
 }
 

@@ -37,9 +37,12 @@ void UHAssetManager::Release()
 	// release meshes
 	for (auto& Mesh : UHMeshes)
 	{
-		Mesh->ReleaseCPUMeshData();
-		Mesh->Release();
-		Mesh.reset();
+		if (Mesh != nullptr)
+		{
+			Mesh->ReleaseCPUMeshData();
+			Mesh->Release();
+			Mesh.reset();
+		}
 	}
 
 #if WITH_EDITOR

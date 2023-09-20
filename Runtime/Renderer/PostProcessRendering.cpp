@@ -65,8 +65,8 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 	// -------------------------- Tone Mapping --------------------------//
 	{
 		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]);
-		ToneMapShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrameRT);
-		RenderEffect(&ToneMapShader, GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
+		ToneMapShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrameRT);
+		RenderEffect(ToneMapShader.get(), GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
 
 	// -------------------------- Temporal AA --------------------------//
@@ -78,9 +78,9 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 			if (!bIsTemporalReset)
 			{
 				// only render it when it's not resetting
-				TemporalAAShader.BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrameRT, true);
-				TemporalAAShader.BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrameRT);
-				DispatchEffect(&TemporalAAShader, GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA");
+				TemporalAAShader->BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrameRT, true);
+				TemporalAAShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrameRT);
+				DispatchEffect(TemporalAAShader.get(), GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA");
 			}
 
 			// copy to TAA history
@@ -96,7 +96,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 #if WITH_EDITOR
 	if (DebugViewIndex > 0)
 	{
-		RenderEffect(&DebugViewShader, GraphBuilder, CurrentPostProcessRTIndex, "Debug View");
+		RenderEffect(DebugViewShader.get(), GraphBuilder, CurrentPostProcessRTIndex, "Debug View");
 	}
 
 	RenderComponentBounds(GraphBuilder, 1 - CurrentPostProcessRTIndex);
@@ -184,7 +184,7 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHGraphicBuilder& GraphBui
 	}
 
 	DebugBoundData[CurrentFrameRT]->UploadAllData(&BoundConstant);
-	DebugBoundShader.BindConstant(DebugBoundData[CurrentFrameRT], 1, CurrentFrameRT);
+	DebugBoundShader->BindConstant(DebugBoundData[CurrentFrameRT], 1, CurrentFrameRT);
 
 	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Draw Component Bounds");
 	GraphBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
@@ -193,11 +193,11 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHGraphicBuilder& GraphBui
 	GraphBuilder.SetScissor(RenderResolution);
 
 	// bind state
-	UHGraphicState* State = DebugBoundShader.GetState();
+	UHGraphicState* State = DebugBoundShader->GetState();
 	GraphBuilder.BindGraphicState(State);
 
 	// bind sets
-	GraphBuilder.BindDescriptorSet(DebugBoundShader.GetPipelineLayout(), DebugBoundShader.GetDescriptorSet(CurrentFrameRT));
+	GraphBuilder.BindDescriptorSet(DebugBoundShader->GetPipelineLayout(), DebugBoundShader->GetDescriptorSet(CurrentFrameRT));
 
 	vkCmdSetLineWidth(GraphBuilder.GetCmdList(), 2.0f);
 

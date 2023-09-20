@@ -87,7 +87,7 @@ UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InG
 	}
 
 	// init debug view shaders
-	DebugViewShader = UHDebugViewShader(Gfx, "PreviewSceneDebugViewShader", SwapChainRenderPass);
+	DebugViewShader = MakeUnique<UHDebugViewShader>(Gfx, "PreviewSceneDebugViewShader", SwapChainRenderPass);
 	DebugViewData = Gfx->RequestRenderBuffer<uint32_t>();
 	DebugViewData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
@@ -95,14 +95,14 @@ UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InG
 	PointClampedInfo.MaxAnisotropy = 1;
 	PointClampedInfo.MipBias = 0;
 	UHSampler* PointSampler = Gfx->RequestTextureSampler(PointClampedInfo);
-	DebugViewShader.BindSampler(PointSampler, 2);
+	DebugViewShader->BindSampler(PointSampler, 2);
 }
 
 void UHPreviewScene::Release()
 {
 	UH_SAFE_RELEASE(DebugViewData);
 	DebugViewData.reset();
-	DebugViewShader.Release();
+	DebugViewShader->Release();
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 
 	for (size_t Idx = 0; Idx < SwapChainFrameBuffer.size(); Idx++)
@@ -137,9 +137,9 @@ void UHPreviewScene::Render()
 		PreviewBuilder.SetScissor(SwapChainExtent);
 		PreviewBuilder.BindVertexBuffer(VK_NULL_HANDLE);
 
-		UHGraphicState* State = DebugViewShader.GetState();
+		UHGraphicState* State = DebugViewShader->GetState();
 		PreviewBuilder.BindGraphicState(State);
-		PreviewBuilder.BindDescriptorSet(DebugViewShader.GetPipelineLayout(), DebugViewShader.GetDescriptorSet(CurrentFrame));
+		PreviewBuilder.BindDescriptorSet(DebugViewShader->GetPipelineLayout(), DebugViewShader->GetDescriptorSet(CurrentFrame));
 		PreviewBuilder.DrawFullScreenQuad();
 	}
 
@@ -155,7 +155,7 @@ void UHPreviewScene::Render()
 void UHPreviewScene::SetPreviewTexture(UHTexture* InTexture)
 {
 	Gfx->WaitGPU();
-	DebugViewShader.BindImage(InTexture, 1);
+	DebugViewShader->BindImage(InTexture, 1);
 }
 
 void UHPreviewScene::SetPreviewMip(uint32_t InMip)
@@ -165,7 +165,7 @@ void UHPreviewScene::SetPreviewMip(uint32_t InMip)
 	DebugViewData->UploadAllData(&CurrentMip);
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		DebugViewShader.BindConstant(DebugViewData, 0, Idx);
+		DebugViewShader->BindConstant(DebugViewData, 0, Idx);
 	}
 }
 

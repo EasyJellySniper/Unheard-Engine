@@ -940,16 +940,15 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 	, bool bIsShadowRT)
 {
 	// return cached if there is already one
-	UHRenderTexture Temp(InName, InExtent, InFormat, bIsLinear, bIsShadowRT);
-	Temp.SetImage(InImage);
+	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
+	NewRT->SetImage(InImage);
 
-	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, Temp);
+	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, *NewRT.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return RTPools[Idx].get();
 	}
 
-	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
 	NewRT->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewRT->SetImage(InImage);
 
@@ -1053,14 +1052,13 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 		return nullptr;
 	}
 
-	UHTextureCube Temp(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
-	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, Temp);
+	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
+	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, *NewCube.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return TextureCubePools[Idx].get();
 	}
 
-	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
 	NewCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewCube->SetGfxCache(this);
 
@@ -1244,16 +1242,15 @@ void UHGraphic::RequestReleaseShader(uint32_t InShaderID)
 // request a Graphic State object and return
 UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 {
-	UHGraphicState Temp(InInfo);
+	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>(InInfo);
 
 	// check cached state first
-	int32_t Idx = UHUtilities::FindIndex(StatePools, Temp);
+	int32_t Idx = UHUtilities::FindIndex(StatePools, *NewState.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return StatePools[Idx].get();
 	}
 
-	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>();
 	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	
 	if (!NewState->CreateState(InInfo))
@@ -1282,16 +1279,15 @@ void UHGraphic::RequestReleaseGraphicState(UHGraphicState* InState)
 
 UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 {
-	UHGraphicState Temp(InInfo);
+	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>(InInfo);
 
 	// check cached state first
-	int32_t Idx = UHUtilities::FindIndex(StatePools, Temp);
+	int32_t Idx = UHUtilities::FindIndex(StatePools, *NewState.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return StatePools[Idx].get();
 	}
 
-	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>();
 	NewState->SetVulkanInstance(VulkanInstance);
 	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
@@ -1306,16 +1302,15 @@ UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 
 UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 {
-	UHComputeState Temp(InInfo);
+	UniquePtr<UHComputeState> NewState = MakeUnique<UHComputeState>(InInfo);
 
 	// check cached state first
-	int32_t Idx = UHUtilities::FindIndex(StatePools, Temp);
+	int32_t Idx = UHUtilities::FindIndex(StatePools, *NewState.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return StatePools[Idx].get();
 	}
 
-	UniquePtr<UHComputeState> NewState = MakeUnique<UHComputeState>();
 	NewState->SetVulkanInstance(VulkanInstance);
 	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
@@ -1330,16 +1325,15 @@ UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 
 UHSampler* UHGraphic::RequestTextureSampler(UHSamplerInfo InInfo)
 {
-	UHSampler Temp(InInfo);
+	UniquePtr<UHSampler> NewSampler = MakeUnique<UHSampler>(InInfo);
 
-	int32_t Idx = UHUtilities::FindIndex(SamplerPools, Temp);
+	int32_t Idx = UHUtilities::FindIndex(SamplerPools, *NewSampler.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return SamplerPools[Idx].get();
 	}
 
 	// create new one if cache fails
-	UniquePtr<UHSampler> NewSampler = MakeUnique<UHSampler>(InInfo);
 	NewSampler->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 	if (!NewSampler->Create())
@@ -1601,7 +1595,7 @@ bool UHGraphic::CreateSwapChain()
 	vkGetSwapchainImagesKHR(LogicalDevice, SwapChain, &ImageCount, SwapChainImages.data());
 
 	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
-	UHTransitionInfo SwapChainBlitTransition(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	UHTransitionInfo SwapChainBlitTransition(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	SwapChainRenderPass = CreateRenderPass(Format.format, SwapChainBlitTransition);
 
 	// create swap chain RTs

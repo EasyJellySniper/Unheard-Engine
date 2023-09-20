@@ -13,8 +13,11 @@ UHTexture2DNode::UHTexture2DNode(std::string TexName)
 	Inputs.resize(1);
 	Inputs[0] = MakeUnique<UHGraphPin>("UV", this, Float2Pin);
 
-	Outputs.resize(1);
+	Outputs.resize(4);
 	Outputs[0] = MakeUnique<UHGraphPin>("RGB", this, Float3Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("R", this, FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("G", this, FloatPin);
+	Outputs[3] = MakeUnique<UHGraphPin>("B", this, FloatPin);
 
 	SelectedTexturePathName = TexName;
 }
@@ -42,7 +45,7 @@ std::string UHTexture2DNode::EvalDefinition()
 		std::string UVString = GDefaultTextureChannel0Name;
 		if (Inputs[0]->GetSrcPin() && Inputs[0]->GetSrcPin()->GetOriginNode())
 		{
-			UVString = Inputs[0]->GetSrcPin()->GetOriginNode()->EvalHLSL();
+			UVString = Inputs[0]->GetSrcPin()->GetOriginNode()->EvalHLSL(Inputs[0]->GetSrcPin());
 		}
 
 		// consider if this is a bump texture and insert decode
@@ -86,13 +89,13 @@ std::string UHTexture2DNode::EvalDefinition()
 	return "[ERROR] Texture not set.";
 }
 
-std::string UHTexture2DNode::EvalHLSL()
+std::string UHTexture2DNode::EvalHLSL(const UHGraphPin* CallerPin)
 {
 	if (CanEvalHLSL())
 	{
-		// @TODO: Consider channel variants
+		const int32_t ChannelIdx = FindOutputPinIndexInternal(CallerPin);
 		const std::string IDString = std::to_string(GetId());
-		return "Result_" + IDString + ".rgb";
+		return "Result_" + IDString + GOutChannelShared[ChannelIdx];
 	}
 
 	return "[ERROR] Texture not set.";

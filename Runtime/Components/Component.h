@@ -53,7 +53,14 @@ inline std::vector<T*> GetComponents()
 
 	for (auto& ObjectPair : GObjectTable)
 	{
-		if (T* Comp = dynamic_cast<T*>(ObjectPair.second))
+		// check if the object ptr is safe, skip it if it's dangerling
+		if (GObjectTable.find(ObjectPair.second->GetId()) == GObjectTable.end())
+		{
+			continue;
+		}
+
+		UHObject* Obj = GObjectTable[ObjectPair.second->GetId()];
+		if (T* Comp = dynamic_cast<T*>(Obj))
 		{
 			OutComponents.push_back(Comp);
 		}

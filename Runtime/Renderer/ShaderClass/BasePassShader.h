@@ -4,7 +4,6 @@
 class UHBasePassShader : public UHShaderClass
 {
 public:
-	UHBasePassShader() {}
 	UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
 		, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 

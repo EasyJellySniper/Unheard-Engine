@@ -9,7 +9,6 @@ const uint32_t GTextureTableSize = 1024;
 class UHTextureTable : public UHShaderClass
 {
 public:
-	UHTextureTable() {}
 	UHTextureTable(UHGraphic* InGfx, std::string Name)
 		: UHShaderClass(InGfx, Name, typeid(UHTextureTable), nullptr)
 	{
@@ -22,7 +21,6 @@ public:
 class UHSamplerTable : public UHShaderClass
 {
 public:
-	UHSamplerTable() {}
 	UHSamplerTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfSamplers)
 		: UHShaderClass(InGfx, Name, typeid(UHSamplerTable), nullptr)
 	{

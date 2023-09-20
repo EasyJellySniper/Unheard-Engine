@@ -25,8 +25,10 @@ UHFloat2Node::UHFloat2Node(XMFLOAT2 Default)
 	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
 	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
 
-	Outputs.resize(1);
+	Outputs.resize(3);
 	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float2Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin);
 }
 
 UHFloat3Node::UHFloat3Node(XMFLOAT3 Default)
@@ -41,8 +43,11 @@ UHFloat3Node::UHFloat3Node(XMFLOAT3 Default)
 	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
 	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin, true);
 
-	Outputs.resize(1);
+	Outputs.resize(4);
 	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float3Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin);
+	Outputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin);
 }
 
 UHFloat4Node::UHFloat4Node(XMFLOAT4 Default)
@@ -58,8 +63,12 @@ UHFloat4Node::UHFloat4Node(XMFLOAT4 Default)
 	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin, true);
 	Inputs[4] = MakeUnique<UHGraphPin>("W", this, FloatPin, true);
 
-	Outputs.resize(1);
+	Outputs.resize(5);
 	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float4Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin);
+	Outputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin);
+	Outputs[4] = MakeUnique<UHGraphPin>("W", this, FloatPin);
 }
 
 std::string UHFloatNode::EvalDefinition()

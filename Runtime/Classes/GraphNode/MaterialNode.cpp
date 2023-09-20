@@ -132,7 +132,7 @@ void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingR
 	}
 }
 
-std::string UHMaterialNode::EvalHLSL()
+std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 {
 	if (!CanEvalHLSL())
 	{
@@ -184,7 +184,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Opacity
 	if (UHGraphPin* Opacity = Inputs[UHMaterialInputs::Opacity]->GetSrcPin())
 	{
-		Code += "\tInput.Opacity = " + Opacity->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
+		Code += "\tInput.Opacity = " + Opacity->GetOriginNode()->EvalHLSL(Opacity) + ".r" + EndOfLine;
 	}
 	else
 	{
@@ -201,7 +201,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Diffuse
 	if (UHGraphPin* DiffuseSrc = Inputs[UHMaterialInputs::Diffuse]->GetSrcPin())
 	{
-		Code += "\tInput.Diffuse = " + DiffuseSrc->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
+		Code += "\tInput.Diffuse = " + DiffuseSrc->GetOriginNode()->EvalHLSL(DiffuseSrc) + ".rgb" + EndOfLine;
 	}
 	else
 	{
@@ -211,7 +211,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Occlusion
 	if (UHGraphPin* Occlusion = Inputs[UHMaterialInputs::Occlusion]->GetSrcPin())
 	{
-		Code += "\tInput.Occlusion = " + Occlusion->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
+		Code += "\tInput.Occlusion = " + Occlusion->GetOriginNode()->EvalHLSL(Occlusion) + ".r" + EndOfLine;
 	}
 	else
 	{
@@ -221,7 +221,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Specular
 	if (UHGraphPin* Specular = Inputs[UHMaterialInputs::Specular]->GetSrcPin())
 	{
-		Code += "\tInput.Specular = " + Specular->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
+		Code += "\tInput.Specular = " + Specular->GetOriginNode()->EvalHLSL(Specular) + ".rgb" + EndOfLine;
 	}
 	else
 	{
@@ -231,7 +231,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Normal
 	if (UHGraphPin* Normal = Inputs[UHMaterialInputs::Normal]->GetSrcPin())
 	{
-		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
+		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL(Normal) + ".rgb" + EndOfLine;
 	}
 	else
 	{
@@ -241,7 +241,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Metallic
 	if (UHGraphPin* Metallic = Inputs[UHMaterialInputs::Metallic]->GetSrcPin())
 	{
-		Code += "\tInput.Metallic = " + Metallic->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
+		Code += "\tInput.Metallic = " + Metallic->GetOriginNode()->EvalHLSL(Metallic) + ".r" + EndOfLine;
 	}
 	else
 	{
@@ -251,7 +251,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Roughness
 	if (UHGraphPin* Roughness = Inputs[UHMaterialInputs::Roughness]->GetSrcPin())
 	{
-		Code += "\tInput.Roughness = " + Roughness->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
+		Code += "\tInput.Roughness = " + Roughness->GetOriginNode()->EvalHLSL(Roughness) + ".r" + EndOfLine;
 	}
 	else
 	{
@@ -261,7 +261,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// FresnelFactor
 	if (UHGraphPin* FresnelFactor = Inputs[UHMaterialInputs::FresnelFactor]->GetSrcPin())
 	{
-		Code += "\tInput.FresnelFactor = " + FresnelFactor->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
+		Code += "\tInput.FresnelFactor = " + FresnelFactor->GetOriginNode()->EvalHLSL(FresnelFactor) + ".r" + EndOfLine;
 	}
 	else
 	{
@@ -271,7 +271,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// ReflectionFactor
 	if (UHGraphPin* ReflectionFactor = Inputs[UHMaterialInputs::ReflectionFactor]->GetSrcPin())
 	{
-		Code += "\tInput.ReflectionFactor = " + ReflectionFactor->GetOriginNode()->EvalHLSL() + ".r" + EndOfLine;
+		Code += "\tInput.ReflectionFactor = " + ReflectionFactor->GetOriginNode()->EvalHLSL(ReflectionFactor) + ".r" + EndOfLine;
 	}
 	else
 	{
@@ -281,7 +281,7 @@ std::string UHMaterialNode::EvalHLSL()
 	// Emissive
 	if (UHGraphPin* Emissive = Inputs[UHMaterialInputs::Emissive]->GetSrcPin())
 	{
-		Code += "\tInput.Emissive = " + Emissive->GetOriginNode()->EvalHLSL() + ".rgb" + EndOfLine;
+		Code += "\tInput.Emissive = " + Emissive->GetOriginNode()->EvalHLSL(Emissive) + ".rgb" + EndOfLine;
 	}
 	else
 	{
@@ -405,7 +405,39 @@ void UHMaterialNode::CollectTextureNames(std::vector<std::string>& Names)
 	}
 }
 
-void CollectParameterInternal(const UHGraphPin* Pin, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable, size_t& OutSize)
+void ParameterPadding(std::string& Code, size_t& OutSize, int32_t& PaddingNo, const size_t Stride)
+{
+	// this function detect before adding a parameter define, see if it's padding to 16 bytes
+	// that's the cbuffer rule
+	const size_t CurrOffset = OutSize % 16;
+	const size_t AfterSize = CurrOffset + Stride;
+	if (AfterSize > 16)
+	{
+		// need to padding
+		for (size_t Idx = 0; Idx < (16 - CurrOffset) / 4; Idx++)
+		{
+			Code += "float Padding" + std::to_string(PaddingNo) + ";\n";
+			PaddingNo++;
+		}
+		OutSize += 16 - CurrOffset;
+	}
+}
+
+void CopyAddressPadding(size_t& OutAddress, const size_t Stride)
+{
+	// this function detect before copying a parameter, see if it's padding to 16 bytes
+	// that's the cbuffer rule
+	const size_t CurrOffset = OutAddress % 16;
+	const size_t AfterSize = CurrOffset + Stride;
+	if (AfterSize > 16)
+	{
+		// adjust the copy address, need to skip the padding value themselves too
+		OutAddress += (16 - CurrOffset);
+	}
+}
+
+void CollectParameterInternal(const UHGraphPin* Pin, std::string& Code, std::unordered_map<uint32_t, bool>& OutDefTable, size_t& OutSize
+	, int32_t& PaddingNo)
 {
 	if (Pin->GetSrcPin() == nullptr || Pin->GetSrcPin()->GetOriginNode() == nullptr)
 	{
@@ -422,24 +454,28 @@ void CollectParameterInternal(const UHGraphPin* Pin, std::string& Code, std::uno
 		{
 		case FloatNode:
 		{
+			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float));
 			Code += "\tfloat Node_" + std::to_string(InputNode->GetId()) + ";\n";
 			OutSize += sizeof(float);
 			break;
 		}
 		case Float2Node:
 		{
+			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float) * 2);
 			Code += "\tfloat2 Node_" + std::to_string(InputNode->GetId()) + ";\n";
 			OutSize += sizeof(float) * 2;
 			break;
 		}
 		case Float3Node:
 		{
+			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float) * 3);
 			Code += "\tfloat3 Node_" + std::to_string(InputNode->GetId()) + ";\n";
 			OutSize += sizeof(float) * 3;
 			break;
 		}
 		case Float4Node:
 		{
+			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float) * 4);
 			Code += "\tfloat4 Node_" + std::to_string(InputNode->GetId()) + ";\n";
 			OutSize += sizeof(float) * 4;
 			break;
@@ -452,17 +488,18 @@ void CollectParameterInternal(const UHGraphPin* Pin, std::string& Code, std::uno
 	// trace all input pins
 	for (const UniquePtr<UHGraphPin>& InputPins : InputNode->GetInputs())
 	{
-		CollectParameterInternal(InputPins.get(), Code, OutDefTable, OutSize);
+		CollectParameterInternal(InputPins.get(), Code, OutDefTable, OutSize, PaddingNo);
 	}
 }
 
 void UHMaterialNode::CollectMaterialParameter(std::string& Code, size_t& OutSize)
 {
 	std::unordered_map<uint32_t, bool> ParamTable;
+	int32_t PaddingNo = 0;
 
 	for (const UniquePtr<UHGraphPin>& Input : GetInputs())
 	{
-		CollectParameterInternal(Input.get(), Code, ParamTable, OutSize);
+		CollectParameterInternal(Input.get(), Code, ParamTable, OutSize, PaddingNo);
 	}
 }
 
@@ -483,6 +520,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		{
 		case FloatNode:
 		{
+			CopyAddressPadding(BufferAddress, sizeof(float));
 			float Val = ((UHFloatNode*)InputNode)->GetValue();
 			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float), &Val, sizeof(float));
 			BufferAddress += sizeof(float);
@@ -490,6 +528,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		}
 		case Float2Node:
 		{
+			CopyAddressPadding(BufferAddress, sizeof(float) * 2);
 			XMFLOAT2 Val = ((UHFloat2Node*)InputNode)->GetValue();
 			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 2, &Val, sizeof(float) * 2);
 			BufferAddress += sizeof(float) * 2;
@@ -497,6 +536,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		}
 		case Float3Node:
 		{
+			CopyAddressPadding(BufferAddress, sizeof(float) * 3);
 			XMFLOAT3 Val = ((UHFloat3Node*)InputNode)->GetValue();
 			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 3, &Val, sizeof(float) * 3);
 			BufferAddress += sizeof(float) * 3;
@@ -504,6 +544,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		}
 		case Float4Node:
 		{
+			CopyAddressPadding(BufferAddress, sizeof(float) * 4);
 			XMFLOAT4 Val = ((UHFloat4Node*)InputNode)->GetValue();
 			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 4, &Val, sizeof(float) * 4);
 			BufferAddress += sizeof(float) * 4;

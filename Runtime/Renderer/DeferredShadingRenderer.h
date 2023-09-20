@@ -252,14 +252,14 @@ private:
 	int32_t DefaultSamplerIndex;
 
 	// bindless table
-	UHTextureTable TextureTable;
-	UHSamplerTable SamplerTable;
+	UniquePtr<UHTextureTable> TextureTable;
+	UniquePtr<UHSamplerTable> SamplerTable;
 
 
 	/************************************************ Render Pass stuffs ************************************************/
 
 	// -------------------------------------------- Depth Pass -------------------------------------------- //
-	std::unordered_map<int32_t, UHDepthPassShader> DepthPassShaders;
+	std::unordered_map<int32_t, UniquePtr<UHDepthPassShader>> DepthPassShaders;
 	UHRenderPassObject DepthPassObj;
 	bool bEnableDepthPrePass;
 
@@ -285,17 +285,17 @@ private:
 	UHRenderTexture* SceneTranslucentVertexNormal;
 
 	// store different base pass object, the id is renderer data index
-	std::unordered_map<int32_t, UHBasePassShader> BasePassShaders;
+	std::unordered_map<int32_t, UniquePtr<UHBasePassShader>> BasePassShaders;
 	UHRenderPassObject BasePassObj;
 
 	// -------------------------------------------- Light and Light Culling Pass -------------------------------------------- //
 	const uint32_t LightCullingTileSize;
 	const uint32_t MaxPointLightPerTile;
-	UHLightCullingShader LightCullingShader;
-	UHLightPassShader LightPassShader;
+	UniquePtr<UHLightCullingShader> LightCullingShader;
+	UniquePtr<UHLightPassShader> LightPassShader;
 
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
-	UHSkyPassShader SkyPassShader;
+	UniquePtr<UHSkyPassShader> SkyPassShader;
 	UHRenderPassObject SkyboxPassObj;
 
 	// -------------------------------------------- Motion vector Pass -------------------------------------------- //
@@ -303,17 +303,17 @@ private:
 	UHRenderTexture* MotionVectorRT;
 	UHRenderTexture* PrevMotionVectorRT;
 	UHRenderPassObject MotionCameraPassObj;
-	UHMotionCameraPassShader MotionCameraShader;
+	UniquePtr<UHMotionCameraPassShader> MotionCameraShader;
 
 	// store different motion pass object, thd id is buffer data index(per renderer)
 	// the motion shader is separate into opaque and translucent
 	UHRenderPassObject MotionOpaquePassObj;
-	std::unordered_map<int32_t, UHMotionObjectPassShader> MotionOpaqueShaders;
+	std::unordered_map<int32_t, UniquePtr<UHMotionObjectPassShader>> MotionOpaqueShaders;
 	UHRenderPassObject MotionTranslucentPassObj;
-	std::unordered_map<int32_t, UHMotionObjectPassShader> MotionTranslucentShaders;
+	std::unordered_map<int32_t, UniquePtr<UHMotionObjectPassShader>> MotionTranslucentShaders;
 
 	// -------------------------------------------- Translucent Pass -------------------------------------------- //
-	std::unordered_map<int32_t, UHTranslucentPassShader> TranslucentPassShaders;
+	std::unordered_map<int32_t, UniquePtr<UHTranslucentPassShader>> TranslucentPassShaders;
 	UHRenderPassObject TranslucentPassObj;
 
 	// -------------------------------------------- Post processing Pass -------------------------------------------- //
@@ -325,18 +325,18 @@ private:
 	std::array<UHRenderTexture*, NumOfPostProcessRT> PostProcessResults;
 	UHRenderTexture* PreviousSceneResult;
 
-	UHToneMappingShader ToneMapShader;
-	UHTemporalAAShader TemporalAAShader;
+	UniquePtr<UHToneMappingShader> ToneMapShader;
+	UniquePtr<UHTemporalAAShader> TemporalAAShader;
 	bool bIsTemporalReset;
 
 #if WITH_EDITOR
 	// debug view shader
-	UHDebugViewShader DebugViewShader;
+	UniquePtr<UHDebugViewShader> DebugViewShader;
 	int32_t DebugViewIndex;
 	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
 
 	// debug bound shader
-	UHDebugBoundShader DebugBoundShader;
+	UniquePtr<UHDebugBoundShader> DebugBoundShader;
 	std::array<UniquePtr<UHRenderBuffer<UHDebugBoundConstant>>, GMaxFrameInFlight> DebugBoundData;
 
 	// profiles
@@ -353,19 +353,19 @@ private:
 	VkFormat RTShadowFormat;
 	std::array<UniquePtr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
 
-	UHRTDefaultHitGroupShader RTDefaultHitGroupShader;
-	UHSoftRTShadowShader SoftRTShadowShader;
-	UHRTShadowShader RTShadowShader;
+	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;
+	UniquePtr<UHSoftRTShadowShader> SoftRTShadowShader;
+	UniquePtr<UHRTShadowShader> RTShadowShader;
 
 	UHRenderTexture* RTShadowResult;
 
 	// shared texture aim for being reused during rendering
 	UHRenderTexture* RTSharedTextureRG16F;
 
-	UHRTVertexTable RTVertexTable;
-	UHRTIndicesTable RTIndicesTable;
-	UHRTIndicesTypeTable RTIndicesTypeTable;
-	UHRTMaterialDataTable RTMaterialDataTable;
+	UniquePtr<UHRTVertexTable> RTVertexTable;
+	UniquePtr<UHRTIndicesTable> RTIndicesTable;
+	UniquePtr<UHRTIndicesTypeTable> RTIndicesTypeTable;
+	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
 	UniquePtr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
 
 	uint32_t RTInstanceCount;

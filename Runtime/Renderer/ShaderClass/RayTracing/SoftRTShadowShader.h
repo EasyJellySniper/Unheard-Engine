@@ -4,7 +4,6 @@
 class UHSoftRTShadowShader : public UHShaderClass
 {
 public:
-	UHSoftRTShadowShader() {}
 	UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name);
 
 	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst

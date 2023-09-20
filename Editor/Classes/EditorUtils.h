@@ -6,7 +6,6 @@
 #include <shobjidl_core.h>
 
 // all kinds of editor utility
-// @TODO: Implement high-level class for managing all kinds of controls
 namespace UHEditorUtil
 {
 	void SetMenuItemChecked(HWND Hwnd, int32_t MenuItemID, UINT Flag);

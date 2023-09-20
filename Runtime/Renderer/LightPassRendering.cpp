@@ -16,11 +16,11 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHGraphicBuilder& GraphBuil
 		GraphBuilder.ClearUAVBuffer(PointLightListTransBuffer->GetBuffer(), 0);
 
 		// bind state
-		UHComputeState* State = LightCullingShader.GetComputeState();
+		UHComputeState* State = LightCullingShader->GetComputeState();
 		GraphBuilder.BindComputeState(State);
 
 		// bind sets
-		GraphBuilder.BindDescriptorSetCompute(LightCullingShader.GetPipelineLayout(), LightCullingShader.GetDescriptorSet(CurrentFrameRT));
+		GraphBuilder.BindDescriptorSetCompute(LightCullingShader->GetPipelineLayout(), LightCullingShader->GetDescriptorSet(CurrentFrameRT));
 
 		// dispatch light culliong
 		uint32_t TileCountX, TileCountY;
@@ -44,11 +44,11 @@ void UHDeferredShadingRenderer::RenderLightPass(UHGraphicBuilder& GraphBuilder)
 		GraphBuilder.ResourceBarrier(SceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 		// bind state
-		UHComputeState* State = LightPassShader.GetComputeState();
+		UHComputeState* State = LightPassShader->GetComputeState();
 		GraphBuilder.BindComputeState(State);
 
 		// bind sets
-		GraphBuilder.BindDescriptorSetCompute(LightPassShader.GetPipelineLayout(), LightPassShader.GetDescriptorSet(CurrentFrameRT));
+		GraphBuilder.BindDescriptorSetCompute(LightPassShader->GetPipelineLayout(), LightPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// dispatch
 		GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
