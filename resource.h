@@ -82,8 +82,8 @@
 #define IDC_CULLTEXT                    1064
 #define IDC_BLENDTEXT                   1065
 #define IDC_SCENEOBJ_LIST               1066
-#define IDC_BUTTON1                     1068
-#define IDC_CANCEL                      1068
+#define IDC_CHECK1                      1069
+#define IDC_ENABLEHDR                   1069
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773
@@ -110,7 +110,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        132
 #define _APS_NEXT_COMMAND_VALUE         32788
-#define _APS_NEXT_CONTROL_VALUE         1069
+#define _APS_NEXT_CONTROL_VALUE         1070
 #define _APS_NEXT_SYMED_VALUE           110
 #endif
 #endif

@@ -23,3 +23,4 @@ inline PFN_vkCreateRayTracingPipelinesKHR GVkCreateRayTracingPipelinesKHR;
 inline PFN_vkWaitForPresentKHR GVkWaitForPresentKHR;
 inline PFN_vkCmdTraceRaysKHR GVkCmdTraceRaysKHR;
 inline PFN_vkGetRayTracingShaderGroupHandlesKHR GVkGetRayTracingShaderGroupHandlesKHR;
+inline PFN_vkSetHdrMetadataEXT GVkSetHdrMetadataEXT;

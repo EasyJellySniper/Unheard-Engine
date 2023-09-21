@@ -21,10 +21,16 @@ void MotionObjectPS(MotionVertexOutput Vin
 	, out float4 OutVelocity : SV_Target0
 	, out float4 OutNormal : SV_Target1)
 {
-#if (WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS)) || WITH_TRANSLUCENT
+#if (WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS))
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 	clip(MaterialInput.Opacity - GCutoff);
+#endif
+	
+#if WITH_TRANSLUCENT
+	// fetch material input
+	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
+	clip(MaterialInput.Opacity - 0.001f);
 #endif
 
 	// calc current/prev clip pos and return motion

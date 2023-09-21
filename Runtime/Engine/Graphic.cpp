@@ -23,6 +23,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, ConfigInterface(InConfig)
 	, bEnableDepthPrePass(InConfig->RenderingSetting().bEnableDepthPrePass)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
+	, bSupportHDR(false)
 {
 	// extension defines, hard code for now
 	InstanceExtensions = { "VK_KHR_surface"
@@ -660,19 +661,33 @@ UHSwapChainDetails UHGraphic::QuerySwapChainSupport(VkPhysicalDevice InDevice) c
 	return Details;
 }
 
-VkSurfaceFormatKHR ChooseSwapChainFormat(const UHSwapChainDetails& Details)
+VkSurfaceFormatKHR ChooseSwapChainFormat(const UHSwapChainDetails& Details, bool bEnableHDR, bool& bSupportHDR)
 {
+	std::optional<VkSurfaceFormatKHR> HDR10Format;
+	VkSurfaceFormatKHR DesiredFormat{};
+
 	// for now, choose non linear SRGB format
 	// even use R10G10B10A2_UNORM, I need linear to gamma conversion, so just let it be converted by hardware
 	for (const auto& AvailableFormat : Details.Formats2)
 	{
 		if (AvailableFormat.surfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB && AvailableFormat.surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 		{
-			return AvailableFormat.surfaceFormat;
+			DesiredFormat = AvailableFormat.surfaceFormat;
+		}
+		else if (AvailableFormat.surfaceFormat.format == VK_FORMAT_A2B10G10R10_UNORM_PACK32 && AvailableFormat.surfaceFormat.colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT)
+		{
+			HDR10Format = AvailableFormat.surfaceFormat;
+			bSupportHDR = true;
 		}
 	}
 
-	return Details.Formats2[0].surfaceFormat;
+	// return hdr format if it's supported and enabled
+	if (HDR10Format.has_value() && bEnableHDR)
+	{
+		return HDR10Format.value();
+	}
+
+	return DesiredFormat;
 }
 
 VkPresentModeKHR ChooseSwapChainMode(const UHSwapChainDetails& Details, bool bUseVsync)
@@ -1425,6 +1440,11 @@ bool UHGraphic::IsDebugLayerEnabled() const
 	return bUseValidationLayers;
 }
 
+bool UHGraphic::IsHDRSupported() const
+{
+	return bSupportHDR;
+}
+
 std::vector<UHSampler*> UHGraphic::GetSamplers() const
 {
 	std::vector<UHSampler*> Samplers(SamplerPools.size());
@@ -1529,7 +1549,7 @@ bool UHGraphic::CreateSwapChain()
 	// create swap chain officially!
 	UHSwapChainDetails SwapChainSupport = QuerySwapChainSupport(PhysicalDevice);
 
-	VkSurfaceFormatKHR Format = ChooseSwapChainFormat(SwapChainSupport);
+	VkSurfaceFormatKHR Format = ChooseSwapChainFormat(SwapChainSupport, ConfigInterface->RenderingSetting().bEnableHDR, bSupportHDR);
 	VkPresentModeKHR PresentMode = ChooseSwapChainMode(SwapChainSupport, ConfigInterface->PresentationSetting().bVsync);
 	VkExtent2D Extent = ChooseSwapChainExtent(SwapChainSupport, WindowCache);
 
@@ -1605,6 +1625,31 @@ bool UHGraphic::CreateSwapChain()
 	{
 		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, Format.format, false);
 		SwapChainFrameBuffer[Idx] = CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
+	}
+
+	// HDR metadata setting
+	if (bSupportHDR)
+	{
+		VkHdrMetadataEXT HDRMetadata{};
+		HDRMetadata.sType = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
+
+		// follow the HDR10 metadata, Table 49. Color Spaces and Attributes from Vulkan specs
+		HDRMetadata.displayPrimaryRed.x = 0.708f;
+		HDRMetadata.displayPrimaryRed.y = 0.292f;
+		HDRMetadata.displayPrimaryGreen.x = 0.170f;
+		HDRMetadata.displayPrimaryGreen.y = 0.797f;
+		HDRMetadata.displayPrimaryBlue.x = 0.131f;
+		HDRMetadata.displayPrimaryBlue.y = 0.046f;
+		HDRMetadata.whitePoint.x = 0.3127f;
+		HDRMetadata.whitePoint.y = 0.3290f;
+
+		// @TODO: expose MaxOutputNits, MinOutputNits, MaxCLL, MaxFALL for user input
+		HDRMetadata.maxLuminance = 1000.0f;
+		HDRMetadata.minLuminance = 0.001f;
+		HDRMetadata.maxContentLightLevel = 2000.0f;
+		HDRMetadata.maxFrameAverageLightLevel = 500.0f;
+
+		GVkSetHdrMetadataEXT(LogicalDevice, ImageCount, &SwapChain, &HDRMetadata);
 	}
 
 	return true;

@@ -72,6 +72,7 @@ public:
 		, ParallelThreads(0)
 		, RTDirectionalShadowQuality(0)
 		, bEnableAsyncCompute(false)
+		, bEnableHDR(false)
 	{
 
 	}
@@ -88,4 +89,5 @@ public:
 	int32_t ParallelThreads;
 	int32_t RTDirectionalShadowQuality;
 	bool bEnableAsyncCompute;
+	bool bEnableHDR;
 };

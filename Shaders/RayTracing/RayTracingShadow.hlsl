@@ -31,9 +31,9 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
     float TranslucentDepth = bIsTranslucent ? TranslucentDepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r : 0.0f;
 
 	UHBRANCH
-    if (OpaqueDepth == TranslucentDepth && bIsTranslucent)
+    if (abs(OpaqueDepth - TranslucentDepth) < 0.001f && bIsTranslucent)
     {
-		// when opaque and translucent depth are equal, this pixel contains no translucent object, simply share the result from opaque and return
+		// when opaque and translucent depth are close, considering this pixel contains no translucent object, simply share the result from opaque and return
         return;
     }
 

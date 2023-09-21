@@ -138,6 +138,10 @@ void UHSettingDialog::ShowDialog()
         EnableAsyncComputeGUI->Checked(RenderingSettings.bEnableAsyncCompute);
         EnableAsyncComputeGUI->OnClicked.push_back(StdBind(&UHSettingDialog::ControlAsyncCompute, this));
 
+        EnableHDRGUI = MakeUnique<UHCheckBox>(GetDlgItem(Dialog, IDC_ENABLEHDR));
+        EnableHDRGUI->Checked(RenderingSettings.bEnableHDR);
+        EnableHDRGUI->OnClicked.push_back(StdBind(&UHSettingDialog::ControlHDR, this));
+
         ShowWindow(Dialog, SW_SHOW);
     }
 }
@@ -323,6 +327,13 @@ void UHSettingDialog::ControlAsyncCompute()
 {
     UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
     RenderingSettings.bEnableAsyncCompute = !RenderingSettings.bEnableAsyncCompute;
+}
+
+void UHSettingDialog::ControlHDR()
+{
+    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    RenderingSettings.bEnableHDR = !RenderingSettings.bEnableHDR;
+    Engine->SetResizeReason(ToggleHDR);
 }
 
 #endif

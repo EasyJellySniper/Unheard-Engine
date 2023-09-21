@@ -365,3 +365,6 @@ Applied the new data structured for RT material data, this should also be good f
 Tried to work on compile-free for parameter changes, but the edit control somehow didn't send the message. So I use the update method, better than nothing.
 Completed the compile-free parameter nodes, but RT material data can be improved. Finished multiple output nodes support as well!
 Another huge change today, I managed to fix some dangling objects issue too.
+
+21-09-2023: Gave a very low cutoff value in translucent motion pass, so if a tranclusent object has low opacity can still receive the light.
+Fixed a minor bug of swap chain clear value. Started adding HDR support (not tested yet)

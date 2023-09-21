@@ -226,6 +226,9 @@ public:
 	// is debug layer enabled
 	bool IsDebugLayerEnabled() const;
 
+	// is HDR supported
+	bool IsHDRSupported() const;
+
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
 
@@ -345,6 +348,7 @@ private:
 	float GPUTimeStampPeriod;
 	bool bEnableDepthPrePass;
 	bool bEnableRayTracing;
+	bool bSupportHDR;
 
 protected:
 	// system managed pools

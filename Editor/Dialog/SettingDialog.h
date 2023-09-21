@@ -52,6 +52,7 @@ private:
 	UniquePtr<UHTextBox> ParallelThreadCountGUI;
 	UniquePtr<UHComboBox>  RTShadowQualityGUI;
 	UniquePtr<UHCheckBox>  EnableAsyncComputeGUI;
+	UniquePtr<UHCheckBox>  EnableHDRGUI;
 
 	// control functions
 	void ControlVsync();
@@ -78,6 +79,7 @@ private:
 	void ControlParallelThread();
 	void ControlShadowQuality();
 	void ControlAsyncCompute();
+	void ControlHDR();
 
 	UHConfigManager* Config;
 	UHEngine* Engine;

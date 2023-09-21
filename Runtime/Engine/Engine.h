@@ -22,6 +22,7 @@ enum UHEngineResizeReason
 	FromWndMessage,
 	ToggleFullScreen,
 	ToggleVsync,
+	ToggleHDR,
 	NewResolution
 };
 

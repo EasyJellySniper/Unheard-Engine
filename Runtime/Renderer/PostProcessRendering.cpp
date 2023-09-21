@@ -122,7 +122,8 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 		VkExtent2D SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 
 		// this will transition to TRANSDER_DST
-		GraphBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent);
+		VkClearValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
+		GraphBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent, ClearColor);
 		GraphBuilder.EndRenderPass();
 
 		// transfer scene result and blit it, the scene result comes after post processing, it will be SceneResult or PostProcessRT

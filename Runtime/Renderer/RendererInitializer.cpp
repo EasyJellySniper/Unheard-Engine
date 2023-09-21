@@ -53,7 +53,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bIsSwapChainResetRT(false)
 	, ParallelTask(UHParallelTask::None)
 	, LightCullingTileSize(16)
-	, MaxPointLightPerTile(16)
+	, MaxPointLightPerTile(32)
 #if WITH_EDITOR
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
@@ -78,7 +78,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	DiffuseFormat = VK_FORMAT_R8G8B8A8_SRGB;
 	NormalFormat = VK_FORMAT_A2R10G10B10_UNORM_PACK32;
 	SpecularFormat = VK_FORMAT_R8G8B8A8_UNORM;
-	SceneResultFormat = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+	SceneResultFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 	DepthFormat = VK_FORMAT_X8_D24_UNORM_PACK32;
 	HDRFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
 
