@@ -37,7 +37,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_shader_float_controls"
 		, "VK_EXT_robustness2"
 		, "VK_KHR_present_id"
-		, "VK_KHR_present_wait" };
+		, "VK_KHR_present_wait"
+		, "VK_EXT_hdr_metadata" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -332,6 +333,7 @@ bool UHGraphic::CreateInstance()
 	GVkWaitForPresentKHR = (PFN_vkWaitForPresentKHR)vkGetInstanceProcAddr(VulkanInstance, "vkWaitForPresentKHR");
 	GVkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdTraceRaysKHR");
 	GVkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetRayTracingShaderGroupHandlesKHR");
+	GVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetInstanceProcAddr(VulkanInstance, "vkSetHdrMetadataEXT");
 
 	return true;
 }
@@ -1628,7 +1630,7 @@ bool UHGraphic::CreateSwapChain()
 	}
 
 	// HDR metadata setting
-	if (bSupportHDR)
+	if (bSupportHDR && ConfigInterface->RenderingSetting().bEnableHDR)
 	{
 		VkHdrMetadataEXT HDRMetadata{};
 		HDRMetadata.sType = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
@@ -1644,12 +1646,13 @@ bool UHGraphic::CreateSwapChain()
 		HDRMetadata.whitePoint.y = 0.3290f;
 
 		// @TODO: expose MaxOutputNits, MinOutputNits, MaxCLL, MaxFALL for user input
-		HDRMetadata.maxLuminance = 1000.0f;
-		HDRMetadata.minLuminance = 0.001f;
+		const float NitsToLumin = 10000.0f;
+		HDRMetadata.maxLuminance = 1000.0f * NitsToLumin;
+		HDRMetadata.minLuminance = 0.001f * NitsToLumin;
 		HDRMetadata.maxContentLightLevel = 2000.0f;
 		HDRMetadata.maxFrameAverageLightLevel = 500.0f;
 
-		GVkSetHdrMetadataEXT(LogicalDevice, ImageCount, &SwapChain, &HDRMetadata);
+		GVkSetHdrMetadataEXT(LogicalDevice, 1, &SwapChain, &HDRMetadata);
 	}
 
 	return true;

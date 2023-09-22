@@ -247,6 +247,10 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		}
 		PointLightBuffer[CurrentFrameGT]->UploadAllData(PointLightConstantsCPU.data());
 	}
+
+	// upload tone map data
+	uint32_t IsHDR = GraphicInterface->IsHDRSupported() && ConfigInterface->RenderingSetting().bEnableHDR;
+	ToneMapData[CurrentFrameGT]->UploadAllData(&IsHDR);
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
@@ -510,8 +514,8 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		DrawCalls = SceneRenderBuilder.DrawCalls;
 	#endif
 
-		// if vsync isn't enabled, I have to wait the previous presentation manually
-		if (!bVsyncRT && bIsPresentedPreviously && !bIsSwapChainResetRT)
+		// wait until the previous presentation is done
+		if (bIsPresentedPreviously && !bIsSwapChainResetRT)
 		{
 			if (GVkWaitForPresentKHR(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetSwapChain(), FrameNumberRT - 1, 100000000) != VK_SUCCESS)
 			{

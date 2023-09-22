@@ -3,6 +3,11 @@
 Texture2D SceneTexture : register(t0);
 SamplerState SceneSampler : register(s1);
 
+cbuffer ToneMapConstant : register(b2)
+{
+    bool bIsHDR;
+}
+
 // The code in this file was originally written by Stephen Hill (@self_shadow), who deserves all
 // credit for coming up with this fit and implementing it.
 
@@ -32,10 +37,21 @@ float3 RRTAndODTFit(float3 V)
 float4 ToneMapPS(PostProcessVertexOutput Vin) : SV_Target
 {
     float3 Result = SceneTexture.SampleLevel(SceneSampler, Vin.UV, 0).rgb;
-    Result = mul(GAcesInputMat, Result);
-    Result = RRTAndODTFit(Result);
-    Result = mul(GAcesOutputMat, Result);
-    Result = saturate(Result);
+    
+    UHBRANCH
+    if (bIsHDR)
+    {
+        // apply a log10 and gamma conversion
+        Result = log10(Result + 1);
+        Result = pow(Result, 0.454545f);
+    }
+    else
+    {
+        Result = mul(GAcesInputMat, Result);
+        Result = RRTAndODTFit(Result);
+        Result = mul(GAcesOutputMat, Result);
+        Result = saturate(Result);
+    }
 
     return float4(Result, 1.0f);
 }

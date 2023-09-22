@@ -64,6 +64,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	for (size_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		TopLevelAS[Idx] = VK_NULL_HANDLE;
+		ToneMapData[Idx] = nullptr;
 #if WITH_EDITOR
 		DebugBoundData[Idx] = nullptr;
 #endif
@@ -341,6 +342,11 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// post processing shaders
 	TemporalAAShader = MakeUnique<UHTemporalAAShader>(GraphicInterface, "TemporalAAShader");
 	ToneMapShader = MakeUnique<UHToneMappingShader>(GraphicInterface, "ToneMapShader", PostProcessPassObj[0].RenderPass);
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		ToneMapData[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>();
+		ToneMapData[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	}
 
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled())
@@ -520,6 +526,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// when binding post processing input, be sure to bind it alternately, the two RT will keep bliting to each other
 	// the post process RT binding will be in PostProcessRendering.cpp
 	ToneMapShader->BindSampler(LinearClampedSampler, 1);
+	ToneMapShader->BindConstant(ToneMapData, 2);
 
 	TemporalAAShader->BindParameters(SystemConstantsGPU, PreviousSceneResult, MotionVectorRT, PrevMotionVectorRT
 		, LinearClampedSampler);
@@ -658,6 +665,11 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 
 	TextureTable->Release();
 	SamplerTable->Release();
+
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(ToneMapData[Idx]);
+	}
 
 #if WITH_EDITOR
 	DebugViewShader->Release();

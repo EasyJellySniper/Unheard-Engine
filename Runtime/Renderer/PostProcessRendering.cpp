@@ -68,7 +68,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 		ToneMapShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrameRT);
 		RenderEffect(ToneMapShader.get(), GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
-
+	
 	// -------------------------- Temporal AA --------------------------//
 	{
 		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]);

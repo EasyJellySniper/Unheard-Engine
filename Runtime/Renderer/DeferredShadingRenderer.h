@@ -326,6 +326,8 @@ private:
 	UHRenderTexture* PreviousSceneResult;
 
 	UniquePtr<UHToneMappingShader> ToneMapShader;
+	std::array<UniquePtr<UHRenderBuffer<uint32_t>>, GMaxFrameInFlight> ToneMapData;
+
 	UniquePtr<UHTemporalAAShader> TemporalAAShader;
 	bool bIsTemporalReset;
 
