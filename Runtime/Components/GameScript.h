@@ -18,7 +18,7 @@ public:
 	UHGameScript();
 	virtual ~UHGameScript() {}
 	virtual void Update() override {}
-	virtual void OnEngineUpdate(UHGameTimer* InGameTimer) {}
+	virtual void OnEngineUpdate(float DeltaTime) {}
 	virtual void OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx) {}
 
 	// --------------- Add whatever is needed here --------------- //

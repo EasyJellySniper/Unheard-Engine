@@ -13,7 +13,10 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
-	// dir light/point light/point light culling list (opaque + translucent)
+	// dir light/point light/spot light/point light culling list (opaque + translucent)/spot light culling list (O+T)
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -50,8 +53,11 @@ void UHRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<
 	, const UHRenderTexture* RTShadowResult
 	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
 	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLights
+	, const std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight>& SpotLights
 	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
 	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightListTrans
+	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightList
+	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightListTrans
 	, const UHRenderTexture* SceneMip
 	, const UHRenderTexture* SceneDepth
 	, const UHRenderTexture* TranslucentDepth
@@ -66,12 +72,15 @@ void UHRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<
 	BindRWImage(RTShadowResult, 2);
 	BindStorage(DirLights, 3, 0, true);
 	BindStorage(PointLights, 4, 0, true);
-	BindStorage(PointLightList.get(), 5, 0, true);
-	BindStorage(PointLightListTrans.get(), 6, 0, true);
-	BindImage(SceneMip, 7);
-	BindImage(SceneDepth, 8);
-	BindImage(TranslucentDepth, 9);
-	BindImage(VertexNormal, 10);
-	BindImage(TranslucentVertexNormal, 11);
-	BindSampler(LinearClampedSampler, 12);
+	BindStorage(SpotLights, 5, 0, true);
+	BindStorage(PointLightList.get(), 6, 0, true);
+	BindStorage(PointLightListTrans.get(), 7, 0, true);
+	BindStorage(SpotLightList.get(), 8, 0, true);
+	BindStorage(SpotLightListTrans.get(), 9, 0, true);
+	BindImage(SceneMip, 10);
+	BindImage(SceneDepth, 11);
+	BindImage(TranslucentDepth, 12);
+	BindImage(VertexNormal, 13);
+	BindImage(TranslucentVertexNormal, 14);
+	BindSampler(LinearClampedSampler, 15);
 }

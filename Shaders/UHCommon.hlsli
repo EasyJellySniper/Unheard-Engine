@@ -167,6 +167,11 @@ uint GetPointLightOffset(uint InIndex)
     return InIndex * (UHMaxPointLightPerTile * 4 + 4);
 }
 
+uint GetSpotLightOffset(uint InIndex)
+{
+    return InIndex * (UHMaxSpotLightPerTile * 4 + 4);
+}
+
 // box-sphere intersection from Graphics Gems 2 by Jim Arvo
 bool BoxIntersectsSphere(float3 BoxMin, float3 BoxMax, float3 SphereCenter, float SphereRadius)
 {

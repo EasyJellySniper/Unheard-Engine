@@ -162,7 +162,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.UHCameraDir = CurrentCamera->GetForward();
 	SystemConstantsCPU.UHNumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
 	SystemConstantsCPU.UHNumPointLights = static_cast<uint32_t>(CurrentScene->GetPointLightCount());
+	SystemConstantsCPU.UHNumSpotLights = static_cast<uint32_t>(CurrentScene->GetSpotLightCount());
 	SystemConstantsCPU.UHMaxPointLightPerTile = MaxPointLightPerTile;
+	SystemConstantsCPU.UHMaxSpotLightPerTile = MaxSpotLightPerTile;
 
 	uint32_t Dummy;
 	GetLightCullingTileCount(SystemConstantsCPU.UHLightTileCountX, Dummy);
@@ -190,7 +192,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	SystemConstantsGPU[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
-	// update object constants, only update if transform is changed
+	// upload object constants, only update CPU value if transform is changed
 	if (CurrentScene->GetAllRendererCount() > 0)
 	{
 		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
@@ -216,7 +218,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		ObjectConstantsGPU[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
 	}
 
-	// update directional light data
+	// upload directional light data
 	if (CurrentScene->GetDirLightCount() > 0)
 	{
 		const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirLights();
@@ -232,7 +234,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		DirectionalLightBuffer[CurrentFrameGT]->UploadAllData(DirLightConstantsCPU.data());
 	}
 
-	// update point light data
+	// upload point light data
 	if (CurrentScene->GetPointLightCount() > 0)
 	{
 		const std::vector<UHPointLightComponent*>& PointLights = CurrentScene->GetPointLights();
@@ -246,6 +248,22 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			}
 		}
 		PointLightBuffer[CurrentFrameGT]->UploadAllData(PointLightConstantsCPU.data());
+	}
+
+	// upload spot light data
+	if (CurrentScene->GetSpotLightCount() > 0)
+	{
+		const std::vector<UHSpotLightComponent*>& SpotLights = CurrentScene->GetSpotLights();
+		for (size_t Idx = 0; Idx < SpotLights.size(); Idx++)
+		{
+			UHSpotLightComponent* Light = SpotLights[Idx];
+			if (Light->IsRenderDirty(CurrentFrameGT))
+			{
+				SpotLightConstantsCPU[Idx] = Light->GetConstants();
+				Light->SetRenderDirty(false, CurrentFrameGT);
+			}
+		}
+		SpotLightBuffer[CurrentFrameGT]->UploadAllData(SpotLightConstantsCPU.data());
 	}
 
 	// upload tone map data

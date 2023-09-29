@@ -7,6 +7,7 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	// if multiple descriptor count is used here, I can declare things like: Texture2D GBuffers[4]; in the shader
 	// which acts like a "descriptor array"
@@ -15,6 +16,7 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 	// scene output + shadow result + point light list + sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -37,7 +39,9 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 void UHLightPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLightConst
 	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight>& SpotLightConst
 	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
+	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightList
 	, const std::vector<UHTexture*>& GBuffers
 	, const UHRenderTexture* SceneResult
 	, const UHSampler* LinearClamppedSampler
@@ -47,15 +51,16 @@ void UHLightPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer
 	BindConstant(SysConst, 0);
 	BindStorage(DirLightConst, 1, 0, true);
 	BindStorage(PointLightConst, 2, 0, true);
-	BindImage(GBuffers, 3);
-
-	BindImage(SceneResult, 4, -1, true);
+	BindStorage(SpotLightConst, 3, 0, true);
+	BindImage(GBuffers, 4);
+	BindImage(SceneResult, 5, -1, true);
 
 	if (Gfx->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		BindImage(RTShadowResult, 5);
+		BindImage(RTShadowResult, 6);
 	}
 
-	BindStorage(PointLightList.get(), 6, 0, true);
-	BindSampler(LinearClamppedSampler, 7);
+	BindStorage(PointLightList.get(), 7, 0, true);
+	BindStorage(SpotLightList.get(), 8, 0, true);
+	BindSampler(LinearClamppedSampler, 9);
 }

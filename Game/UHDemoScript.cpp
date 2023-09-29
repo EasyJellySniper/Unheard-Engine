@@ -10,16 +10,16 @@ UHDemoScript::UHDemoScript()
 	, Geo364OriginPos(XMFLOAT3())
 	, TimeCounter(0)
 	, TimeSign(1)
-	, bTestNight(true)
+	, TestType(SpotLightNight)
 	, PointLightTimeCounter(0.0f)
 {
 
 }
 
-void UHDemoScript::OnEngineUpdate(UHGameTimer* InGameTimer)
+void UHDemoScript::OnEngineUpdate(float DeltaTime)
 {
-	float LightRotSpd = 5.0f * InGameTimer->GetDeltaTime();
-	if (!bTestNight)
+	float LightRotSpd = 5.0f * DeltaTime;
+	if (TestType == DayTest)
 	{
 		DefaultDirectionalLight.Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
 	}
@@ -32,7 +32,7 @@ void UHDemoScript::OnEngineUpdate(UHGameTimer* InGameTimer)
 		XMFLOAT3 Pos2 = Geo364OriginPos + XMFLOAT3(1, 0, 0);
 		XMFLOAT3 NewPos = MathHelpers::LerpVector(Pos1, Pos2, TimeCounter / MoveTime);
 
-		TimeCounter += InGameTimer->GetDeltaTime() * TimeSign;
+		TimeCounter += DeltaTime * TimeSign;
 		if (TimeCounter >= MoveTime)
 		{
 			TimeCounter = MoveTime;
@@ -48,7 +48,7 @@ void UHDemoScript::OnEngineUpdate(UHGameTimer* InGameTimer)
 	}
 
 	// giving point light a little transform so it lits objects like a torch
-	if (bTestNight)
+	if (TestType == PointLightNight)
 	{
 		float MaxRadius = 15.0f;
 		for (int32_t Idx = 0; Idx < 27; Idx++)
@@ -66,10 +66,24 @@ void UHDemoScript::OnEngineUpdate(UHGameTimer* InGameTimer)
 			TestPointLights2[Idx]->SetPosition(Pos);
 		}
 
-		PointLightTimeCounter += InGameTimer->GetDeltaTime();
+		PointLightTimeCounter += DeltaTime;
 		if (PointLightTimeCounter > 0.35f)
 		{
 			PointLightTimeCounter = 0.0f;
+		}
+	}
+
+	if (TestType == SpotLightNight)
+	{
+		LightRotSpd = 45.0f * DeltaTime;
+		for (UniquePtr<UHSpotLightComponent>& SpotLight : TestSpotLights)
+		{
+			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), World);
+		}
+
+		for (UniquePtr<UHSpotLightComponent>& SpotLight : TestSpotLights2)
+		{
+			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), World);
 		}
 	}
 }
@@ -134,15 +148,15 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	// setup default light
 	DefaultDirectionalLight.SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
-	DefaultDirectionalLight.SetIntensity(bTestNight ? 0.5f : 4.5f);
+	DefaultDirectionalLight.SetIntensity(TestType != DayTest ? 0.5f : 4.5f);
 	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, 250, 0));
 	InScene->AddDirectionalLight(&DefaultDirectionalLight);
 
 	// setup default sky light
 	DefaultSkyLight.SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
 	DefaultSkyLight.SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
-	DefaultSkyLight.SetSkyIntensity(bTestNight ? 0.1f : 1.0f);
-	DefaultSkyLight.SetGroundIntensity(bTestNight ? 0.5f : 1.5f);
+	DefaultSkyLight.SetSkyIntensity(TestType != DayTest ? 0.1f : 1.0f);
+	DefaultSkyLight.SetGroundIntensity(TestType != DayTest ? 0.5f : 1.5f);
 	InScene->SetSkyLight(&DefaultSkyLight);
 
 	// setup default camera
@@ -155,12 +169,12 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	SecondDirectionalLight.SetLightColor(XMFLOAT3(1.0f, 0.55f, 0.0f));
 	SecondDirectionalLight.SetIntensity(2.5f);
 	SecondDirectionalLight.SetRotation(XMFLOAT3(45, -30, 0));
-	if (!bTestNight)
+	if (TestType == DayTest)
 	{
 		InScene->AddDirectionalLight(&SecondDirectionalLight);
 	}
 
-	if (bTestNight)
+	if (TestType == PointLightNight)
 	{
 		// point light test
 		float PointLightStartX = -105;
@@ -201,6 +215,56 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				TestPointLights2[LightIndex]->SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
 				TestPointLightOrigin2[LightIndex] = TestPointLights2[LightIndex]->GetPosition();
 				InScene->AddPointLight(TestPointLights2[LightIndex].get());
+			}
+		}
+	}
+
+	if (TestType == SpotLightNight)
+	{
+		// spot light test
+		float SpotLightStartX = -105;
+		float SpotLightStartZ = -25;
+		float MinColor = 0.2f;
+
+		TestSpotLights.resize(27);
+		for (int32_t Idx = 0; Idx < 3; Idx++)
+		{
+			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
+			{
+				const int32_t LightIndex = Idx * 9 + Jdx;
+				TestSpotLights[LightIndex] = MakeUnique<UHSpotLightComponent>();
+				TestSpotLights[LightIndex]->SetIntensity(8.0f);
+				TestSpotLights[LightIndex]->SetRadius(20.0f);
+				TestSpotLights[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
+				TestSpotLights[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
+				TestSpotLights[LightIndex]->SetPosition(XMFLOAT3(SpotLightStartX + Jdx * 25.0f, 5.0f, SpotLightStartZ + Idx * 25.0f));
+
+				const float RandX = MathHelpers::Lerp(-30.0f, 30.0f, MathHelpers::RandFloat());
+				TestSpotLights[LightIndex]->SetRotation(XMFLOAT3(90.0f + RandX, 0.0f, 0.0f));
+				InScene->AddSpotLight(TestSpotLights[LightIndex].get());
+			}
+		}
+
+		// spot light test - 2nd group
+		SpotLightStartX = -95;
+		SpotLightStartZ = -25;
+
+		TestSpotLights2.resize(27);
+		for (int32_t Idx = 0; Idx < 3; Idx++)
+		{
+			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
+			{
+				const int32_t LightIndex = Idx * 9 + Jdx;
+				TestSpotLights2[LightIndex] = MakeUnique<UHSpotLightComponent>();
+				TestSpotLights2[LightIndex]->SetIntensity(8.0f);
+				TestSpotLights2[LightIndex]->SetRadius(20.0f);
+				TestSpotLights2[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
+				TestSpotLights2[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
+				TestSpotLights2[LightIndex]->SetPosition(XMFLOAT3(SpotLightStartX + Jdx * 25.0f, 5.0f, SpotLightStartZ + Idx * 25.0f));
+
+				const float RandX = MathHelpers::Lerp(-30.0f, 30.0f, MathHelpers::RandFloat());
+				TestSpotLights2[LightIndex]->SetRotation(XMFLOAT3(90.0f + RandX, 0.0f, 0.0f));
+				InScene->AddSpotLight(TestSpotLights2[LightIndex].get());
 			}
 		}
 	}

@@ -240,10 +240,14 @@ private:
 	std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight> DirectionalLightBuffer;
 	std::vector<UHPointLightConstants> PointLightConstantsCPU;
 	std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight> PointLightBuffer;
+	std::vector<UHSpotLightConstants> SpotLightConstantsCPU;
+	std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight> SpotLightBuffer;
 
 	// light culling buffers
 	UniquePtr<UHRenderBuffer<uint32_t>> PointLightListBuffer;
 	UniquePtr<UHRenderBuffer<uint32_t>> PointLightListTransBuffer;
+	UniquePtr<UHRenderBuffer<uint32_t>> SpotLightListBuffer;
+	UniquePtr<UHRenderBuffer<uint32_t>> SpotLightListTransBuffer;
 
 	// shared samplers
 	UHSampler* PointClampedSampler;
@@ -291,6 +295,7 @@ private:
 	// -------------------------------------------- Light and Light Culling Pass -------------------------------------------- //
 	const uint32_t LightCullingTileSize;
 	const uint32_t MaxPointLightPerTile;
+	const uint32_t MaxSpotLightPerTile;
 	UniquePtr<UHLightCullingShader> LightCullingShader;
 	UniquePtr<UHLightPassShader> LightPassShader;
 

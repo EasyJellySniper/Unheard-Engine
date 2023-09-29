@@ -36,12 +36,14 @@ public:
 	size_t GetMaterialCount() const;
 	size_t GetDirLightCount() const;
 	size_t GetPointLightCount() const;
+	size_t GetSpotLightCount() const;
 
 	std::vector<UHMeshRendererComponent*> GetAllRenderers() const;
 	std::vector<UHMeshRendererComponent*> GetOpaqueRenderers() const;
 	std::vector<UHMeshRendererComponent*> GetTranslucentRenderers() const;
 	std::vector<UHDirectionalLightComponent*> GetDirLights() const;
 	std::vector<UHPointLightComponent*> GetPointLights() const;
+	std::vector<UHSpotLightComponent*> GetSpotLights() const;
 	std::vector<UHMaterial*> GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight() const;
@@ -50,6 +52,7 @@ public:
 	UHMeshRendererComponent* AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial);
 	void AddDirectionalLight(UHDirectionalLightComponent* InLight);
 	void AddPointLight(UHPointLightComponent* InLight);
+	void AddSpotLight(UHSpotLightComponent* InLight);
 	void SetSkyLight(UHSkyLightComponent* InSkyLight);
 
 private:
@@ -60,7 +63,7 @@ private:
 	UHGameTimer* Timer;
 
 	// camera define
-	// @TODO: better camera management
+	// @TODO: better component management
 	UHCameraComponent DefaultCamera;
 	UHSkyLightComponent* CurrentSkyLight;
 
@@ -71,6 +74,7 @@ private:
 	std::vector<UHMeshRendererComponent*> TranslucentRenderers;
 	std::vector<UHDirectionalLightComponent*> DirectionalLights;
 	std::vector<UHPointLightComponent*> PointLights;
+	std::vector<UHSpotLightComponent*> SpotLights;
 	UHMeshRendererComponent* SkyboxRenderer;
 
 #if WITH_EDITOR

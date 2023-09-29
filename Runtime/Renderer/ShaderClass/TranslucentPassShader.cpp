@@ -15,12 +15,14 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// light consts (dir + point)
+	// light consts (dir + point + spot)
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// RT shadow result, point light culling buffer
+	// RT shadow result, point & spot light culling buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -63,7 +65,9 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
 	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLightConst
 	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst
+	, const std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight>& SpotLightConst
 	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
+	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightList
 	, const UHRenderTexture* RTShadowResult
 	, const UHSampler* LinearClamppedSampler
 	, const UHMeshRendererComponent* InRenderer
@@ -81,24 +85,26 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 	// bind light const
 	BindStorage(DirLightConst, 6, 0, true);
 	BindStorage(PointLightConst, 7, 0, true);
+	BindStorage(SpotLightConst, 8, 0, true);
 
 	if (Gfx->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		BindImage(RTShadowResult, 8);
+		BindImage(RTShadowResult, 9);
 	}
-	BindStorage(PointLightList.get(), 9, 0, true);
-	BindSampler(LinearClamppedSampler, 10);
+	BindStorage(PointLightList.get(), 10, 0, true);
+	BindStorage(SpotLightList.get(), 11, 0, true);
+	BindSampler(LinearClamppedSampler, 12);
 
 	// write textures/samplers when they are available
 	UHTexture* Tex = InRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube);
 	if (Tex)
 	{
-		BindImage(Tex, 11);
+		BindImage(Tex, 13);
 	}
 
 	UHSampler* Sampler = InRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube);
 	if (Sampler)
 	{
-		BindSampler(Sampler, 12);
+		BindSampler(Sampler, 14);
 	}
 }

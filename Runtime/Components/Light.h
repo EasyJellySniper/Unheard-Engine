@@ -75,3 +75,43 @@ private:
 	UniquePtr<UHDetailView> DetailView;
 #endif
 };
+
+// spot light component, has the radius and angle info, use square attenuation for now
+class UHSpotLightComponent : public UHLightBase
+{
+public:
+	UHSpotLightComponent();
+	virtual void Update() override;
+
+	void SetRadius(float InRadius);
+	float GetRadius() const;
+
+	void SetAngle(float InAngleDegree);
+	float GetAngle() const;
+
+	UHSpotLightConstants GetConstants() const;
+
+#if WITH_EDITOR
+	virtual UHDebugBoundConstant GetDebugBoundConst() const override;
+	virtual void OnPropertyChange(std::string PropertyName) override;
+	virtual void OnGenerateDetailView(HWND ParentWnd) override;
+	virtual void SetLightColor(XMFLOAT3 InLightColor) override;
+	virtual void SetIntensity(float InIntensity) override;
+
+	UH_BEGIN_REFLECT
+		UH_MEMBER_REFLECT("XMFLOAT3", "LightColor")
+		UH_MEMBER_REFLECT("float", "Intensity")
+		UH_MEMBER_REFLECT("float", "Radius")
+		UH_MEMBER_REFLECT("float", "Angle")
+	UH_END_REFLECT
+#endif
+
+private:
+	float Radius;
+	float Angle;
+	float InnerAngle;
+
+#if WITH_EDITOR
+	UniquePtr<UHDetailView> DetailView;
+#endif
+};

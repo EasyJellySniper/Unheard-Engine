@@ -16,6 +16,14 @@ cbuffer DebugBoundConstant : register(b1)
     float Radius;
     
     float3 Color;
+    float Angle;
+    float3 Dir;
+    float Padding;
+
+    float3 Right;
+    float Padding2;
+    
+    float3 Up;
 };
 
 static const float3 GBoundingBox[24] =
@@ -88,12 +96,57 @@ float3 GetBounding(uint Vid, uint InBoundType)
     return float3(cos(T), sin(T), 0.0f);
 }
 
+float3 GetBoundingCone(uint Vid)
+{
+    // actually this is drawing a square pyramid for now
+    
+    UHBRANCH
+    if ((Vid & 1) == 0 && Vid < 8)
+    {
+        return Position;
+    }
+    
+    float CircleRadius = tan(Angle) * Radius;
+    float3 OutPos = Position + Dir * Radius; 
+    float3 PyramidPoints[8] = 
+    { 
+        OutPos + Right * CircleRadius,
+        OutPos + Up * CircleRadius,
+        OutPos + Up * CircleRadius,
+        OutPos - Right * CircleRadius,
+        OutPos - Right * CircleRadius,
+        OutPos - Up * CircleRadius,
+        OutPos - Up * CircleRadius,
+        OutPos + Right * CircleRadius,
+    };
+    
+    UHBRANCH
+    if (Vid == 1)
+    {
+        return PyramidPoints[0];
+    }
+    else if (Vid == 3)
+    {
+        return PyramidPoints[1];
+    }
+    else if (Vid == 5)
+    {
+        return PyramidPoints[4];
+    }
+    else if (Vid == 7)
+    {
+        return PyramidPoints[5];
+    }
+    
+    return PyramidPoints[Vid % 8];
+}
+
 DebugBoundVertexOutput DebugBoundVS(uint Vid : SV_VertexID)
 {
     DebugBoundVertexOutput Vout = (DebugBoundVertexOutput)0;
     
     float3 Ext = (BoundType == 0) ? Extent : Radius * 0.5f;
-    float3 WorldPos = GetBounding(Vid, BoundType) * Ext + Position;
+    float3 WorldPos = (BoundType == 2) ? GetBoundingCone(Vid) : GetBounding(Vid, BoundType) * Ext + Position;
     Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
     
     return Vout;

@@ -159,7 +159,7 @@ void UHEngine::Update()
 	// update scripts
 	for (const auto Script : UHGameScripts)
 	{
-		Script.second->OnEngineUpdate(UHEGameTimer.get());
+		Script.second->OnEngineUpdate(UHEGameTimer->GetDeltaTime());
 	}
 
 	// full screen toggling

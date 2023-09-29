@@ -115,6 +115,7 @@ template void UHDetailView::OnGenerateDetailView<UHCameraComponent>(UHCameraComp
 template void UHDetailView::OnGenerateDetailView<UHSkyLightComponent>(UHSkyLightComponent* InComp, HWND ParentWnd, int32_t& StartHeight);
 template void UHDetailView::OnGenerateDetailView<UHDirectionalLightComponent>(UHDirectionalLightComponent* InComp, HWND ParentWnd, int32_t& StartHeight);
 template void UHDetailView::OnGenerateDetailView<UHPointLightComponent>(UHPointLightComponent* InComp, HWND ParentWnd, int32_t& StartHeight);
+template void UHDetailView::OnGenerateDetailView<UHSpotLightComponent>(UHSpotLightComponent* InComp, HWND ParentWnd, int32_t& StartHeight);
 template void UHDetailView::OnGenerateDetailView<UHMeshRendererComponent>(UHMeshRendererComponent* InComp, HWND ParentWnd, int32_t& StartHeight);
 
 template void UHDetailView::SetValue(std::string PropertyName, float InVal);

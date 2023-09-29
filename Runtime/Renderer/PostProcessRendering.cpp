@@ -210,7 +210,13 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHGraphicBuilder& GraphBui
 		break;
 
 	case DebugSphere:
+		// draw 360 points for bounding sphere, see DebugBoundShader.hlsl that how circles are drawn
 		GraphBuilder.DrawVertex(360);
+		break;
+
+	case DebugCone:
+		// draw 16 points for bounding cone, see DebugBoundShader.hlsl that how a cone is drawn
+		GraphBuilder.DrawVertex(16);
 		break;
 
 	default:

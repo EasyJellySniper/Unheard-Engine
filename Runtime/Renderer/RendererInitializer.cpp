@@ -54,6 +54,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, ParallelTask(UHParallelTask::None)
 	, LightCullingTileSize(16)
 	, MaxPointLightPerTile(32)
+	, MaxSpotLightPerTile(32)
 #if WITH_EDITOR
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
@@ -454,12 +455,13 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	}
 
 	// ------------------------------------------------ Lighting culling descriptor update
-	LightCullingShader->BindParameters(SystemConstantsGPU, PointLightBuffer, PointLightListBuffer, PointLightListTransBuffer, SceneDepth, SceneTranslucentDepth
-		, LinearClampedSampler);
+	LightCullingShader->BindParameters(SystemConstantsGPU, PointLightBuffer, SpotLightBuffer
+		, PointLightListBuffer, PointLightListTransBuffer, SpotLightListBuffer, SpotLightListTransBuffer
+		, SceneDepth, SceneTranslucentDepth, LinearClampedSampler);
 
 	// ------------------------------------------------ Lighting pass descriptor update
 	const std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, SceneMip, SceneVertexNormal };
-	LightPassShader->BindParameters(SystemConstantsGPU, DirectionalLightBuffer, PointLightBuffer, PointLightListBuffer
+	LightPassShader->BindParameters(SystemConstantsGPU, DirectionalLightBuffer, PointLightBuffer, SpotLightBuffer, PointLightListBuffer, SpotLightListTransBuffer
 		, GBuffers, SceneResult, LinearClampedSampler, RTInstanceCount, RTShadowResult);
 
 	// ------------------------------------------------ sky pass descriptor update
@@ -518,7 +520,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 #endif
 
 		TranslucentPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
-			, PointLightBuffer, PointLightListTransBuffer
+			, PointLightBuffer, SpotLightBuffer, PointLightListTransBuffer, SpotLightListTransBuffer
 			, RTShadowResult, LinearClampedSampler, Renderer, RTInstanceCount);
 	}
 
@@ -590,7 +592,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		// bind RT shadow parameters
 		RTShadowShader->BindParameters(SystemConstantsGPU, RTSharedTextureRG16F, DirectionalLightBuffer
-			, PointLightBuffer, PointLightListBuffer, PointLightListTransBuffer
+			, PointLightBuffer, SpotLightBuffer, PointLightListBuffer, PointLightListTransBuffer, SpotLightListBuffer, SpotLightListTransBuffer
 			, SceneMip, SceneDepth, SceneTranslucentDepth, SceneVertexNormal, SceneTranslucentVertexNormal, LinearClampedSampler);
 
 		// bind soft shadow parameters
@@ -780,6 +782,12 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	PointLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
 	PointLightListTransBuffer->CreateBuffer(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+	SpotLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
+	SpotLightListBuffer->CreateBuffer(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+	SpotLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
+	SpotLightListTransBuffer->CreateBuffer(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
 void UHDeferredShadingRenderer::RelaseRenderingBuffers()
@@ -810,6 +818,12 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 
 	UH_SAFE_RELEASE(PointLightListTransBuffer);
 	PointLightListTransBuffer.reset();
+
+	UH_SAFE_RELEASE(SpotLightListBuffer);
+	SpotLightListBuffer.reset();
+
+	UH_SAFE_RELEASE(SpotLightListTransBuffer);
+	SpotLightListTransBuffer.reset();
 }
 
 void UHDeferredShadingRenderer::CreateRenderPasses()
@@ -925,6 +939,10 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		PointLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHPointLightConstants>();
 		PointLightBuffer[Idx]->CreateBuffer(CurrentScene->GetPointLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		PointLightConstantsCPU.resize(CurrentScene->GetPointLightCount());
+
+		SpotLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSpotLightConstants>();
+		SpotLightBuffer[Idx]->CreateBuffer(CurrentScene->GetSpotLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		SpotLightConstantsCPU.resize(CurrentScene->GetSpotLightCount());
 	}
 }
 
@@ -973,6 +991,9 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 
 		UH_SAFE_RELEASE(PointLightBuffer[Idx]);
 		PointLightBuffer[Idx].reset();
+
+		UH_SAFE_RELEASE(SpotLightBuffer[Idx]);
+		SpotLightBuffer[Idx].reset();
 
 		if (GraphicInterface->IsRayTracingEnabled())
 		{
@@ -1173,7 +1194,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 		{
 			MotionTranslucentShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, InMeshRenderer);
 			TranslucentPassShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
-				, PointLightBuffer, PointLightListTransBuffer
+				, PointLightBuffer, SpotLightBuffer, PointLightListTransBuffer, SpotLightListTransBuffer
 				, RTShadowResult, LinearClampedSampler, InMeshRenderer, RTInstanceCount);
 		}
 	}
@@ -1256,7 +1277,7 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 		TranslucentPassShaders[RendererBufferIndex]
 			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 		TranslucentPassShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
-			, PointLightBuffer, PointLightListTransBuffer
+			, PointLightBuffer, SpotLightBuffer, PointLightListTransBuffer, SpotLightListTransBuffer
 			, RTShadowResult, LinearClampedSampler, InMeshRenderer, RTInstanceCount);
 	}
 

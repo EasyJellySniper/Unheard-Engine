@@ -1,18 +1,21 @@
 #define UHPOINTLIGHT_BIND t1
+#define UHSPOTLIGHT_BIND t2
 #include "UHInputs.hlsli"
 #include "UHCommon.hlsli"
 
 // output results, one for opaque objects, another for translucent objects
 // the list will be reset every frame before this shader gets called
-RWByteAddressBuffer OutPointLightList : register(u2);
-RWByteAddressBuffer OutPointLightListTrans : register(u3);
-Texture2D DepthTexture : register(t4);
-Texture2D TransDepthTexture : register(t5);
-SamplerState LinearClampped : register(s6);
+RWByteAddressBuffer OutPointLightList : register(u3);
+RWByteAddressBuffer OutPointLightListTrans : register(u4);
+RWByteAddressBuffer OutSpotLightList : register(u5);
+RWByteAddressBuffer OutSpotLightListTrans : register(u6);
+Texture2D DepthTexture : register(t7);
+Texture2D TransDepthTexture : register(t8);
+SamplerState LinearClampped : register(s9);
 
 groupshared uint GMinDepth;
 groupshared uint GMaxDepth;
-groupshared uint GTilePointLightCount;
+groupshared uint GTileLightCount;
 
 // calc view space frustum
 void CalcFrustumPlanes(uint TileX, uint TileY, float MinZ, float MaxZ, out float4 Plane[6])
@@ -73,6 +76,32 @@ void CalcFrustumPlanes(uint TileX, uint TileY, float MinZ, float MaxZ, out float
     Plane[5].w = MaxZ;
 }
 
+void CalcFrustumCorners(uint TileX, uint TileY, float MinZ, float MaxZ, out float3 Corners[8])
+{
+    // tile position in screen space
+    float X = TileX * UHLIGHTCULLING_TILE;
+    float Y = TileY * UHLIGHTCULLING_TILE;
+    float RX = (TileX + 1) * UHLIGHTCULLING_TILE;
+    float RY = (TileY + 1) * UHLIGHTCULLING_TILE;
+
+	// frustum corners - LB RB LT RT, at the near and far
+    Corners[0] = float3(X, Y, MinZ);
+    Corners[1] = float3(RX, Y, MinZ);
+    Corners[2] = float3(X, RY, MinZ);
+    Corners[3] = float3(RX, RY, MinZ);
+    Corners[4] = float3(X, Y, MaxZ);
+    Corners[5] = float3(RX, Y, MaxZ);
+    Corners[6] = float3(X, RY, MaxZ);
+    Corners[7] = float3(RX, RY, MaxZ);
+    
+    // note that these are world positions
+    UHUNROLL
+    for (int Idx = 0; Idx < 8; Idx++)
+    {
+        Corners[Idx] = ComputeWorldPositionFromDeviceZ(Corners[Idx].xy * UHLIGHTCULLING_UPSCALE, Corners[Idx].z);
+    }
+}
+
 void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
 {
     // init group shared value
@@ -80,7 +109,7 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     {
         GMinDepth = ~0;
         GMaxDepth = 0;
-        GTilePointLightCount = 0;
+        GTileLightCount = 0;
     }
     GroupMemoryBarrierWithGroupSync();
     
@@ -125,7 +154,7 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
         if (bIsOverlapped)
         {
             uint StoreIdx = 0;
-            InterlockedAdd(GTilePointLightCount, 1, StoreIdx);
+            InterlockedAdd(GTileLightCount, 1, StoreIdx);
             
             // discard the result that exceeds the max point light per tile
             if (StoreIdx < UHMaxPointLightPerTile)
@@ -149,11 +178,122 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     {
         if (!bForTranslucent)
         {
-            OutPointLightList.Store(TileOffset, min(GTilePointLightCount, UHMaxPointLightPerTile));
+            OutPointLightList.Store(TileOffset, min(GTileLightCount, UHMaxPointLightPerTile));
         }
         else
         {
-            OutPointLightListTrans.Store(TileOffset, min(GTilePointLightCount, UHMaxPointLightPerTile));
+            OutPointLightListTrans.Store(TileOffset, min(GTileLightCount, UHMaxPointLightPerTile));
+        }
+    }
+}
+
+bool IsTileWithinSpotAngle(const float3 Pos, const float3 Dir, const float Angle, const float3 Corners[8])
+{
+    // as long as ONE corner of a frustum is inside the spotlight range, return true
+    UHUNROLL
+    for (int Idx = 0; Idx < 8; Idx++)
+    {
+        const float3 LightToCorner = normalize(Corners[Idx] - Pos);
+        const float LightCornerAngle = acos(dot(LightToCorner, Dir));
+        
+        // give it a small tolerance when checking the angle
+        // this prevents the artifacts on the edge of the spot light
+        UHBRANCH
+        if (LightCornerAngle <= Angle + 1.0f)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
+{
+    // init group shared value
+    if (GIndex == 0)
+    {
+        GMinDepth = ~0;
+        GMaxDepth = 0;
+        GTileLightCount = 0;
+    }
+    GroupMemoryBarrierWithGroupSync();
+    
+    // find min-max depth
+    if (Depth > 0.0f)
+    {
+        uint DepthUInt = asuint(Depth);
+        InterlockedMin(GMinDepth, DepthUInt);
+        InterlockedMax(GMaxDepth, DepthUInt);
+    }
+    GroupMemoryBarrierWithGroupSync();
+    
+    uint TileIdx = Gid.x + Gid.y * UHLightTileCountX;
+    uint TileOffset = GetSpotLightOffset(TileIdx);
+    
+    // convert depth to float and calculate the bounding box
+    float MinDepth = asfloat(GMinDepth);
+    float MaxDepth = asfloat(GMaxDepth);
+    
+    UHBRANCH
+    if (GMinDepth == ~0 && GMaxDepth == 0)
+    {
+        // no valid depth in this tile, simple return
+        return;
+    }
+    
+    // don't let depth value be 0 as system uses infinite reversed-z on the far plane, 0 can causes wrong world position
+    // also give a small difference if two depth are very close
+    MinDepth = lerp(MinDepth, 0.0001f, MinDepth == 0.0f);
+    MaxDepth = lerp(MaxDepth, 0.0001f, MaxDepth == 0.0f);
+    MaxDepth = lerp(MaxDepth, MinDepth + 0.0001f, (MaxDepth - MinDepth) < UH_FLOAT_EPSILON);
+    
+    float4 TileFrustum[6];
+    CalcFrustumPlanes(Gid.x, Gid.y, MaxDepth, MinDepth, TileFrustum);
+    
+    float3 TileCornersWorld[8];
+    CalcFrustumCorners(Gid.x, Gid.y, MaxDepth, MinDepth, TileCornersWorld);
+    
+    for (uint LightIdx = GIndex; LightIdx < UHNumSpotLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
+    {
+        UHSpotLight SpotLight = UHSpotLights[LightIdx];
+        float3 SpotLightViewPos = WorldToViewPos(SpotLight.Position);
+        
+        bool bIsOverlapped = SphereIntersectsFrustum(float4(SpotLightViewPos, SpotLight.Radius), TileFrustum)
+            && IsTileWithinSpotAngle(SpotLight.Position, SpotLight.Dir, SpotLight.Angle, TileCornersWorld);
+        
+        if (bIsOverlapped)
+        {
+            uint StoreIdx = 0;
+            InterlockedAdd(GTileLightCount, 1, StoreIdx);
+            
+            // discard the result that exceeds the max point light per tile
+            if (StoreIdx < UHMaxSpotLightPerTile)
+            {
+                if (!bForTranslucent)
+                {
+                    OutSpotLightList.Store(TileOffset + 4 + StoreIdx * 4, LightIdx);
+                }
+                else
+                {
+                    OutSpotLightListTrans.Store(TileOffset + 4 + StoreIdx * 4, LightIdx);
+                }
+            }
+        }
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+	// output final result, the first 4 bytes stores the number of point light per tile
+    // then it stores the point light indices that overlapped with this tile
+    if (GIndex == 0)
+    {
+        if (!bForTranslucent)
+        {
+            OutSpotLightList.Store(TileOffset, min(GTileLightCount, UHMaxSpotLightPerTile));
+        }
+        else
+        {
+            OutSpotLightListTrans.Store(TileOffset, min(GTileLightCount, UHMaxSpotLightPerTile));
         }
     }
 }
@@ -181,5 +321,14 @@ void LightCullingCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, ui
     {
         CullPointLight(Gid, GIndex, Depth, false);
         CullPointLight(Gid, GIndex, TransDepth, true);
+    }
+    
+    // cull spot light for both opaque and translucent objects
+    // uses a similar way as culling point light, but just considers the angle as well
+    UHBRANCH
+    if (UHNumSpotLights > 0)
+    {
+        CullSpotLight(Gid, GIndex, Depth, false);
+        CullSpotLight(Gid, GIndex, TransDepth, true);
     }
 }

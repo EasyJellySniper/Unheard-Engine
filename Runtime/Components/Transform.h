@@ -75,6 +75,7 @@ protected:
 
 	// dirty flag
 	bool bIsWorldDirty;
+	bool bIsFirstFrame;
 
 private:
 	// world matrix, also store previous frame's world matrix

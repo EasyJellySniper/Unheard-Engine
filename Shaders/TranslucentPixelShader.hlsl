@@ -1,13 +1,15 @@
 #define UHDIRLIGHT_BIND t6
 #define UHPOINTLIGHT_BIND t7
+#define UHSPOTLIGHT_BIND t8
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
 
-Texture2D RTShadow : register(t8);
-ByteAddressBuffer PointLightListTrans : register(t9);
-SamplerState LinearClamppedSampler : register(s10);
-TextureCube EnvCube : register(t11);
-SamplerState EnvSampler : register(s12);
+Texture2D RTShadow : register(t9);
+ByteAddressBuffer PointLightListTrans : register(t10);
+ByteAddressBuffer SpotLightListTrans : register(t11);
+SamplerState LinearClamppedSampler : register(s12);
+TextureCube EnvCube : register(t13);
+SamplerState EnvSampler : register(s14);
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -95,7 +97,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         Result += LightBRDF(LightInfo);
     }
 	
-	    // ------------------------------------------------------------------------------------------ point lights accumulation
+	// ------------------------------------------------------------------------------------------ point lights accumulation
 	// point lights accumulation, fetch the tile index here, note that the system culls at half resolution
     uint TileX = uint(Vin.Position.x) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileY = uint(Vin.Position.y) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
@@ -104,7 +106,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     uint PointLightCount = PointLightListTrans.Load(TileOffset);
     TileOffset += 4;
 	
-    float3 WorldToLight;
+    float3 LightToWorld;
     float LightAtten;
     float AttenNoise = GetAttenuationNoise(Vin.Position.xy);
     
@@ -115,16 +117,48 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         UHPointLight PointLight = UHPointLights[PointLightIdx];
         LightInfo.LightColor = PointLight.Color.rgb;
 		
-        WorldToLight = Vin.WorldPos - PointLight.Position;
-        LightInfo.LightDir = normalize(WorldToLight);
+        LightToWorld = Vin.WorldPos - PointLight.Position;
+        LightInfo.LightDir = normalize(LightToWorld);
 		
 		// square distance attenuation
-        LightAtten = 1.0f - saturate(length(WorldToLight) / PointLight.Radius + AttenNoise);
+        LightAtten = 1.0f - saturate(length(LightToWorld) / PointLight.Radius + AttenNoise);
         LightAtten *= LightAtten;
         LightInfo.ShadowMask = LightAtten * ShadowMask;
 		
         Result += LightBRDF(LightInfo);
         TileOffset += 4;
+    }
+	
+	// ------------------------------------------------------------------------------------------ spot lights accumulation
+	// similar as the point light but giving it angle attenuation as well
+    TileOffset = GetSpotLightOffset(TileIndex);
+    uint SpotLightCount = SpotLightListTrans.Load(TileOffset);
+    TileOffset += 4;
+    
+    UHLOOP
+    for (Ldx = 0; Ldx < SpotLightCount; Ldx++)
+    {
+        uint SpotLightIdx = SpotLightListTrans.Load(TileOffset);
+        TileOffset += 4;
+        
+        UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
+        LightInfo.LightColor = SpotLight.Color.rgb;
+        LightInfo.LightDir = SpotLight.Dir;
+        LightToWorld = Vin.WorldPos - SpotLight.Position;
+        
+        // squared distance attenuation
+        LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + AttenNoise);
+        LightAtten *= LightAtten;
+        
+        // squared spot angle attenuation
+        float Rho = dot(SpotLight.Dir, normalize(LightToWorld));
+        float SpotFactor = (Rho - cos(SpotLight.Angle)) / (cos(SpotLight.InnerAngle) - cos(SpotLight.Angle));
+        SpotFactor = saturate(SpotFactor);
+        
+        LightAtten *= SpotFactor * SpotFactor;
+        LightInfo.ShadowMask = LightAtten * ShadowMask;
+		
+        Result += LightBRDF(LightInfo);
     }
 
 	// indirect light accumulation

@@ -2,7 +2,7 @@
 
 void UHDeferredShadingRenderer::DispatchLightCulling(UHGraphicBuilder& GraphBuilder)
 {
-	if (CurrentScene == nullptr || CurrentScene->GetPointLightCount() == 0)
+	if (CurrentScene == nullptr || (CurrentScene->GetPointLightCount() == 0 && CurrentScene->GetSpotLightCount() == 0))
 	{
 		return;
 	}
@@ -11,9 +11,11 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHGraphicBuilder& GraphBuil
 	{
 		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightCulling]);
 
-		// clear the point light list buffer
+		// clear the point light/spot light list buffer
 		GraphBuilder.ClearUAVBuffer(PointLightListBuffer->GetBuffer(), 0);
 		GraphBuilder.ClearUAVBuffer(PointLightListTransBuffer->GetBuffer(), 0);
+		GraphBuilder.ClearUAVBuffer(SpotLightListBuffer->GetBuffer(), 0);
+		GraphBuilder.ClearUAVBuffer(SpotLightListTransBuffer->GetBuffer(), 0);
 
 		// bind state
 		UHComputeState* State = LightCullingShader->GetComputeState();
@@ -32,7 +34,7 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHGraphicBuilder& GraphBuil
 
 void UHDeferredShadingRenderer::RenderLightPass(UHGraphicBuilder& GraphBuilder)
 {
-	if (CurrentScene == nullptr || CurrentScene->GetDirLightCount() == 0)
+	if (CurrentScene == nullptr || (CurrentScene->GetDirLightCount() == 0 && CurrentScene->GetPointLightCount() && CurrentScene->GetSpotLightCount()))
 	{
 		return;
 	}

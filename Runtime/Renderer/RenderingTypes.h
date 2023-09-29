@@ -56,6 +56,8 @@ struct UHSystemConstants
 	uint32_t UHLightTileCountX;
 
 	uint32_t UHMaxPointLightPerTile;
+	uint32_t UHNumSpotLights;
+	uint32_t UHMaxSpotLightPerTile;
 };
 
 struct UHObjectConstants
@@ -64,7 +66,9 @@ struct UHObjectConstants
 	XMFLOAT4X4 UHWorldIT;
 	XMFLOAT4X4 UHPrevWorld;
 	uint32_t InstanceIndex;
-	float Padding[15];
+
+	// align to 256 bytes
+	float CPUPadding[15];
 };
 
 struct UHDirectionalLightConstants
@@ -72,7 +76,6 @@ struct UHDirectionalLightConstants
 	// intensity is multiplied to Color before sending to GPU
 	XMFLOAT4 Color;
 	XMFLOAT3 Dir;
-	float Padding;
 };
 
 struct UHPointLightConstants
@@ -81,6 +84,17 @@ struct UHPointLightConstants
 	XMFLOAT4 Color;
 	float Radius;
 	XMFLOAT3 Position;
+};
+
+struct UHSpotLightConstants
+{
+	// intensity is multiplied to Color before sending to GPU
+	XMFLOAT4 Color;
+	XMFLOAT3 Dir;
+	float Radius;
+	float Angle;
+	XMFLOAT3 Position;
+	float InnerAngle;
 };
 
 enum UHRenderPassTypes
@@ -217,21 +231,12 @@ enum UHDebugBoundType
 {
 	DebugNone = -1,
 	DebugBox,
-	DebugSphere
+	DebugSphere,
+	DebugCone
 };
 
 struct UHDebugBoundConstant
 {
-	UHDebugBoundConstant()
-		: Position(XMFLOAT3(0, 0, 0))
-		, BoundType(DebugNone)
-		, Extent(XMFLOAT3(0, 0, 0))
-		, Radius(0.0f)
-		, Color(XMFLOAT3(1, 1, 1))
-	{
-
-	}
-
 	XMFLOAT3 Position;
 	UHDebugBoundType BoundType;
 
@@ -239,5 +244,13 @@ struct UHDebugBoundConstant
 	float Radius;
 
 	XMFLOAT3 Color;
+	float Angle;
+	XMFLOAT3 Dir;
+	float Padding;
+
+	XMFLOAT3 Right;
+	float Padding2;
+
+	XMFLOAT3 Up;
 };
 #endif

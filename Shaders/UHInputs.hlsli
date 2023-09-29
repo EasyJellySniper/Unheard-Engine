@@ -28,6 +28,10 @@
 #define UHPOINTLIGHT_BIND t5
 #endif
 
+#ifndef UHSPOTLIGHT_BIND
+#define UHSPOTLIGHT_BIND t6
+#endif
+
 #define UHBRANCH [branch]
 #define UHFLATTEN [flatten]
 #define UHUNROLL [unroll]
@@ -107,6 +111,8 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     uint UHLightTileCountX;
 	
     uint UHMaxPointLightPerTile;
+    uint UHNumSpotLights;
+    uint UHMaxSpotLightPerTile;
 }
 
 // IT means inverse-transposed
@@ -138,7 +144,6 @@ struct UHDirectionalLight
 	// color.a for intensity, but it's already applied to color
 	float4 Color;
 	float3 Dir;
-	float Padding;
 };
 StructuredBuffer<UHDirectionalLight> UHDirLights : register(UHDIRLIGHT_BIND);
 
@@ -150,6 +155,18 @@ struct UHPointLight
     float3 Position;
 };
 StructuredBuffer<UHPointLight> UHPointLights : register(UHPOINTLIGHT_BIND);
+
+struct UHSpotLight
+{
+	// color.a for intensity, but it's already applied to color
+    float4 Color;
+    float3 Dir;
+    float Radius;
+    float Angle;
+    float3 Position;
+    float InnerAngle;
+};
+StructuredBuffer<UHSpotLight> UHSpotLights : register(UHSPOTLIGHT_BIND);
 
 // 0: Color + AO
 // 1: Normal

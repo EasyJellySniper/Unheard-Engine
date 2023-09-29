@@ -370,3 +370,12 @@ Another huge change today, I managed to fix some dangling objects issue too.
 Fixed a minor bug of swap chain clear value. Started adding HDR support (not tested yet)
 
 22-09-2023: Corrected and finalized the HDR implementation.
+
+25-09-2023: Started implementing spot light component. Extended to tiled-base culling. Started applying spot light to deferred lighting.
+
+28-09-2023: Fixed the first-chance transform error. Added a flag to update the PrevWorldMatrix in case the static meshes miss this info.
+Removed all "Padding" variables in StructuredBuffer, they're not needed in modern GPU.
+Applied spot light calculation to deferred pass. Applied spot light to translucent as well.
+
+29-09-2023: Applied spot light RT shadows too. Runtime spot light is almost done, the next is to expose editor stuffs.
+Fixed the attenuation in RT shadow shader. Finished the spot light editor stuffs.

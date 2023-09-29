@@ -13,6 +13,7 @@ UHTransformComponent::UHTransformComponent()
 	, RotationMatrix(MathHelpers::Identity4x4())
 	, bTransformChanged(true)
 	, bIsWorldDirty(true)
+	, bIsFirstFrame(true)
 {
 	if (!GWorldRightVec.has_value())
 	{
@@ -51,11 +52,12 @@ void UHTransformComponent::Update()
 
 		bIsWorldDirty = false;
 	}
-	else
+	else if (bIsFirstFrame)
 	{
 		// if it's not moving, sync the prev world matrix at least
 		// otherwise the objects that only get updated at the first frame will not have previous world info
 		PrevWorldMatrix = WorldMatrix;
+		bIsFirstFrame = false;
 	}
 }
 
@@ -211,7 +213,7 @@ XMFLOAT3 UHTransformComponent::GetScale() const
 
 bool UHTransformComponent::IsWorldDirty() const
 {
-	return bIsWorldDirty;
+	return bIsWorldDirty || bIsFirstFrame;
 }
 
 bool UHTransformComponent::IsTransformChanged() const
