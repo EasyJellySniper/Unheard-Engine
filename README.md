@@ -1,57 +1,26 @@
 # UnheardEngine
  Squall's custom Vulkan engine. Which is a RENDERING ONLY engine at the moment. <br>
- For those who are interested in graphics programming :) MIT licensed. <br>
+ For those who are interested in graphics programming and learning Vulkan :) MIT licensed. <br>
  Full project download link: https://mega.nz/folder/stgwzQib#ct2EQZm5_w_M53RizRlGHw <br>
  If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
  Recommended to use the full project link, as there are a few test assets. <br>
 
-# 2023-08-31: Adding point lights and texture compression.
-Added high performance point light implementation and texture compression! Preview link: <br>
-https://www.youtube.com/watch?v=ImkG_4LyIUc <br>
-https://www.youtube.com/watch?v=qjNXWT5B1Rw <br>
-<br><br> Implementation Details: <br>
-https://www.gamedev.net/blogs/entry/2276567-unheard-engine-point-lights-and-texture-compression/
-<br><br>
+ <br> Implementation details are wrote in my GameDev blog https://www.gamedev.net/blogs/blog/5158-the-graphic-guy-squall/ <br>
+ <br> Current rendering pipeline:
+ - Depth pre pass (optional)
+ - Deferred based pass
+ - Motion vector pass
+ - Light culling for point/spot lights
+ - Ray tracing shadows, soft RT shadows
+ - Deferred lighting
+ - Skybox pass
+ - Translucent pass
+ - Tone mapping, TAA
+ - HDR support (if enabled and supported)
 
-# 2023-07-13: Adding translucent pass, misc optimizations, code refactorings.
-Added translucent pass and dealt with the issue for TAA/raytracing shadow! Preview link: <br>
-https://www.youtube.com/watch?v=repk5GkRDck
-<br><br> Implementation Details: <br>
-https://www.gamedev.net/blogs/entry/2276363-unheard-engine-adding-translucent-pass-misc-optimizations-and-refactoring/
-<br><br>
+<br> GUIs are simple at the moment and will be replaced by ImGui in the future.
 
-# 2023-04-22: Adding material graph system. <br>
-Added simple graph system for materials. Feature preview: <br>
-https://www.youtube.com/watch?v=0Qi0WXeB2yw
-<br><br> Implementation Details: <br>
-https://www.gamedev.net/blogs/entry/2275925-unheard-engine-build-a-material-graph-system-from-scratch/
-<br><br>
- 
-# 2022-12-09: Preliminary Optimization. <br>
-Brutal test with 13435 draw calls, cost only 2.6 - 3.6 ms with parallel submission! <br>
-- Added profile window, release-editor build mode.
-- Frustum culling.
-- Ray traced occlusion culling. (Experimental)
-- Mesh Optimization.
-- PrePass Z rendering.
-- FPS limiter.
-- Memory optimization.
-- Parallel command buffer recording.
 
-<br> Implementation Details: <br>
-https://www.gamedev.net/blogs/entry/2274699-unheard-engine-preliminary-optimizations/
-<br><br>
- 
-# 2022-11-20: The first version. <br>
-Not many features in the first version, but covers all basic applications. <br>
-- Deferred Rendering Pass (PBR)
-- Ray Tracing Shadow
-- Lighting Pass
-- Skybox Pass
-- Motion Vector Pass
-- Tone mapping
-- Temporal AA
-
-<br> Hopefully this can help all Vulkan learners :) <br>
-<br> Implementation Details: <br>
-https://gamedev.net/blogs/entry/2274455-unheard-engine-2-months-journey-of-vulkan-learning/
+<br> Day test scene: https://www.youtube.com/watch?v=bmW_U1yBwxw <br>
+<br> Night test scene: https://www.youtube.com/watch?v=ewRdUFsdBGg <br>
+<br> HDR test: https://i.imgur.com/1ceJ21f.gif <br>
