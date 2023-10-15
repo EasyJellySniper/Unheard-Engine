@@ -87,24 +87,39 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             if (GUnheardEngine)
             {
             #if WITH_EDITOR
+                ImGui_ImplVulkan_NewFrame();
+                ImGui_ImplWin32_NewFrame();
+                ImGui::NewFrame();
+
                 // profile does not contain editor update time
                 GUnheardEngine->GetEditor()->OnEditorUpdate();
                 GUnheardEngine->BeginProfile();
             #endif
-                GUnheardEngine->BeginFPSLimiter();
 
-                // update despite it's minimized (can be opt out in the future)
+                // update anyway, could consider adding a setting to decide wheter to pause update when it's minimized
+                GUnheardEngine->BeginFPSLimiter();
                 GUnheardEngine->Update();
 
                 // only render when it's not minimized
                 if (!GIsMinimized)
                 {
+#if WITH_EDITOR
+                    ImGui::Render();
+#endif
                     GUnheardEngine->RenderLoop();
                 }
 
                 GUnheardEngine->EndFPSLimiter();
+
             #if WITH_EDITOR
                 GUnheardEngine->EndProfile();
+
+                // assume multi-view is always enabled
+                ImGui_Vulkan_CustomData CustomData{};
+                CustomData.Pipeline = GUnheardEngine->GetGfx()->GetImGuiPipeline();
+
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault(nullptr, &CustomData);
             #endif
             }
         }
@@ -184,8 +199,20 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - post a quit message and return
 //
 //
+
+#if WITH_EDITOR
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+#endif
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+#if WITH_EDITOR
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+    {
+        return true;
+    }
+#endif
+
     switch (message)
     {
     case WM_COMMAND:

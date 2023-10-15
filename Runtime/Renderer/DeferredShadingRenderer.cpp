@@ -440,7 +440,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		}
 
 		// prepare graphic builder
-		UHGraphicBuilder SceneRenderBuilder(GraphicInterface, SceneRenderQueue.CommandBuffers[CurrentFrameRT]);
+		UHRenderBuilder SceneRenderBuilder(GraphicInterface, SceneRenderQueue.CommandBuffers[CurrentFrameRT]);
 		uint32_t PresentIndex;
 		{
 			UHProfilerScope Profiler(&RenderThreadProfile);
@@ -462,7 +462,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				// the golden rule of utilizing async compute queue:
 				// (1) Must be compute/raytracing shader..ofc
 				// (2) Must not access to the same resource at the same time
-				UHGraphicBuilder AsyncComputeBuilder(GraphicInterface, AsyncComputeQueue.CommandBuffers[CurrentFrameRT], true);
+				UHRenderBuilder AsyncComputeBuilder(GraphicInterface, AsyncComputeQueue.CommandBuffers[CurrentFrameRT], true);
 				AsyncComputeBuilder.WaitFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
 				AsyncComputeBuilder.ResetFence(AsyncComputeQueue.Fences[CurrentFrameRT]);
 				AsyncComputeBuilder.BeginCommandBuffer();
@@ -472,7 +472,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 				GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
 				AsyncComputeBuilder.EndCommandBuffer();
-				AsyncComputeBuilder.ExecuteCmd(AsyncComputeQueue.Queue, AsyncComputeQueue.Fences[CurrentFrameRT], VK_NULL_HANDLE, AsyncComputeQueue.FinishedSemaphores[CurrentFrameRT]);
+				AsyncComputeBuilder.ExecuteCmd(AsyncComputeQueue.Queue, AsyncComputeQueue.Fences[CurrentFrameRT], nullptr, AsyncComputeQueue.FinishedSemaphores[CurrentFrameRT]);
 				// ****************************** end async compute queue
 			}
 

@@ -1,56 +1,56 @@
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
+void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 {
 	if (CurrentScene == nullptr)
 	{
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Motion Pass");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Motion Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::MotionPass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::MotionPass]);
 
 		// copy result to history velocity before rendering a new one
-		GraphBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		GraphBuilder.ResourceBarrier(PrevMotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		GraphBuilder.CopyTexture(MotionVectorRT, PrevMotionVectorRT);
-		GraphBuilder.ResourceBarrier(PrevMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		GraphBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		RenderBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		RenderBuilder.ResourceBarrier(PrevMotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		RenderBuilder.CopyTexture(MotionVectorRT, PrevMotionVectorRT);
+		RenderBuilder.ResourceBarrier(PrevMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-		GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		VkClearValue Clear = { 0,0,0,0 };
-		GraphBuilder.BeginRenderPass(MotionCameraPassObj.RenderPass, MotionCameraPassObj.FrameBuffer, RenderResolution, Clear);
+		RenderBuilder.BeginRenderPass(MotionCameraPassObj.RenderPass, MotionCameraPassObj.FrameBuffer, RenderResolution, Clear);
 
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 
 		// bind state
 		UHGraphicState* State = MotionCameraShader->GetState();
-		GraphBuilder.BindGraphicState(State);
+		RenderBuilder.BindGraphicState(State);
 
 		// bind sets
-		GraphBuilder.BindDescriptorSet(MotionCameraShader->GetPipelineLayout(), MotionCameraShader->GetDescriptorSet(CurrentFrameRT));
+		RenderBuilder.BindDescriptorSet(MotionCameraShader->GetPipelineLayout(), MotionCameraShader->GetDescriptorSet(CurrentFrameRT));
 
 		// doesn't need VB/IB for full screen quad
-		GraphBuilder.BindVertexBuffer(VK_NULL_HANDLE);
-		GraphBuilder.DrawFullScreenQuad();
-		GraphBuilder.EndRenderPass();
+		RenderBuilder.BindVertexBuffer(nullptr);
+		RenderBuilder.DrawFullScreenQuad();
+		RenderBuilder.EndRenderPass();
 
 
 		// -------------------- after motion camera pass is done, draw per-object motions, opaque first then the translucent -------------------- //
 		// opaque motion will only render the dynamic objects (motion is dirty), static objects are already calculated in camera motion
 		{
-			GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 			// begin for secondary cmd
 			if (bParallelSubmissionRT)
 			{
-				GraphBuilder.BeginRenderPass(MotionOpaquePassObj.RenderPass, MotionOpaquePassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+				RenderBuilder.BeginRenderPass(MotionOpaquePassObj.RenderPass, MotionOpaquePassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 			}
 			else
 			{
-				GraphBuilder.BeginRenderPass(MotionOpaquePassObj.RenderPass, MotionOpaquePassObj.FrameBuffer, RenderResolution);
+				RenderBuilder.BeginRenderPass(MotionOpaquePassObj.RenderPass, MotionOpaquePassObj.FrameBuffer, RenderResolution);
 			}
 
 			if (bParallelSubmissionRT)
@@ -77,12 +77,12 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 #if WITH_EDITOR
 				for (int32_t I = 0; I < NumWorkerThreads; I++)
 				{
-					GraphBuilder.DrawCalls += ThreadDrawCalls[I];
+					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 				}
 #endif
 
 				// execute all recorded batches
-				GraphBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter.WorkerBundles);
+				RenderBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter.WorkerBundles);
 			}
 			else
 			{
@@ -91,7 +91,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 				{
 					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 						, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-					GraphBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+					RenderBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 				}
 
 				for (UHMeshRendererComponent* Renderer : OpaquesToRender)
@@ -115,45 +115,45 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 
 					const UHMotionObjectPassShader* MotionShader = MotionOpaqueShaders[RendererIdx].get();
 
-					GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+					GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 						std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 					// bind pipelines
-					GraphBuilder.BindGraphicState(MotionShader->GetState());
-					GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-					GraphBuilder.BindIndexBuffer(Mesh);
-					GraphBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
+					RenderBuilder.BindGraphicState(MotionShader->GetState());
+					RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+					RenderBuilder.BindIndexBuffer(Mesh);
+					RenderBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
 
 					// draw call
-					GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
-					GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+					RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+					GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 					Renderer->SetMotionDirty(false, CurrentFrameRT);
 				}
 			}
 
-			GraphBuilder.EndRenderPass();
+			RenderBuilder.EndRenderPass();
 		}
 
 		// translucent motion, however, needs to render all regardless if it's static or dynamic
 		{
 			// copy opaque depth to translucent depth RT
-			GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-			GraphBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			GraphBuilder.CopyTexture(SceneDepth, SceneTranslucentDepth);
-			GraphBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+			RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			RenderBuilder.CopyTexture(SceneDepth, SceneTranslucentDepth);
+			RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 			// clear translucent vertex normal before writing to it
-			GraphBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			GraphBuilder.ClearRenderTexture(SceneTranslucentVertexNormal);
-			GraphBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			RenderBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			RenderBuilder.ClearRenderTexture(SceneTranslucentVertexNormal);
+			RenderBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 			if (bParallelSubmissionRT)
 			{
-				GraphBuilder.BeginRenderPass(MotionTranslucentPassObj.RenderPass, MotionTranslucentPassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj.RenderPass, MotionTranslucentPassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 			}
 			else
 			{
-				GraphBuilder.BeginRenderPass(MotionTranslucentPassObj.RenderPass, MotionTranslucentPassObj.FrameBuffer, RenderResolution);
+				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj.RenderPass, MotionTranslucentPassObj.FrameBuffer, RenderResolution);
 			}
 
 			if (bParallelSubmissionRT)
@@ -180,13 +180,13 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 #if WITH_EDITOR
 				for (int32_t I = 0; I < NumWorkerThreads; I++)
 				{
-					GraphBuilder.DrawCalls += ThreadDrawCalls[I];
+					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 				}
 #endif
 
 				// execute all recorded batches reversely, as translucents are sorted back-to-front
 				std::reverse(MotionTranslucentParallelSubmitter.WorkerBundles.begin(), MotionTranslucentParallelSubmitter.WorkerBundles.end());
-				GraphBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
+				RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
 			}
 			else
 			{
@@ -195,7 +195,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 				{
 					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 						, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-					GraphBuilder.BindDescriptorSet(MotionTranslucentShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+					RenderBuilder.BindDescriptorSet(MotionTranslucentShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 				}
 
 				for (int32_t Idx = static_cast<int32_t>(TranslucentsToRender.size()) - 1; Idx >= 0; Idx--)
@@ -220,33 +220,33 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHGraphicBuilder& GraphBuilder)
 
 					const UHMotionObjectPassShader* MotionShader = MotionTranslucentShaders[RendererIdx].get();
 
-					GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+					GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 						std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 					// bind pipelines
-					GraphBuilder.BindGraphicState(MotionShader->GetState());
-					GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-					GraphBuilder.BindIndexBuffer(Mesh);
-					GraphBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
+					RenderBuilder.BindGraphicState(MotionShader->GetState());
+					RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+					RenderBuilder.BindIndexBuffer(Mesh);
+					RenderBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
 
 					// draw call
-					GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
-					GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+					RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+					GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 				}
 			}
 
-			GraphBuilder.EndRenderPass();
+			RenderBuilder.EndRenderPass();
 
 			// done rendering, transition depth to shader read
-			GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			GraphBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			GraphBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			RenderBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
 
 		// depth/motion vector will be used in shader later, transition them
-		GraphBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
 void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
@@ -262,14 +262,14 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = MotionOpaquePassObj.RenderPass;
 	InheritanceInfo.framebuffer = MotionOpaquePassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, MotionOpaqueParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
-	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
+	UHRenderBuilder RenderBuilder(GraphicInterface, MotionOpaqueParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
 	if (GraphicInterface->IsDebugLayerEnabled())
 	{
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 	}
 
 	// bind texture table, they should only be bound once
@@ -277,7 +277,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	{
 		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 			, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-		GraphBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+		RenderBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
 	for (int32_t I = StartIdx; I < EndIdx; I++)
@@ -294,25 +294,25 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 
 		const UHMotionObjectPassShader* MotionShader = MotionOpaqueShaders[RendererIdx].get();
 
-		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 		// bind pipelines
-		GraphBuilder.BindGraphicState(MotionShader->GetState());
-		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
+		RenderBuilder.BindGraphicState(MotionShader->GetState());
+		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(Mesh);
+		RenderBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
-		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 		Renderer->SetMotionDirty(false, CurrentFrameRT);
 	}
 
-	GraphBuilder.EndCommandBuffer();
+	RenderBuilder.EndCommandBuffer();
 #if WITH_EDITOR
-	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
+	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif
 }
 
@@ -329,14 +329,14 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = MotionTranslucentPassObj.RenderPass;
 	InheritanceInfo.framebuffer = MotionTranslucentPassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, MotionTranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
-	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
+	UHRenderBuilder RenderBuilder(GraphicInterface, MotionTranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
 	if (GraphicInterface->IsDebugLayerEnabled())
 	{
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 	}
 
 	// bind texture table, they should only be bound once
@@ -344,7 +344,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	{
 		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 			, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-		GraphBuilder.BindDescriptorSet(MotionTranslucentShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+		RenderBuilder.BindDescriptorSet(MotionTranslucentShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
 	// draw reversely since translucents are sort back-to-front
@@ -362,22 +362,22 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 
 		const UHMotionObjectPassShader* MotionShader = MotionTranslucentShaders[RendererIdx].get();
 
-		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 		// bind pipelines
-		GraphBuilder.BindGraphicState(MotionShader->GetState());
-		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
+		RenderBuilder.BindGraphicState(MotionShader->GetState());
+		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(Mesh);
+		RenderBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
-		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
-		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	}
 
-	GraphBuilder.EndCommandBuffer();
+	RenderBuilder.EndCommandBuffer();
 #if WITH_EDITOR
-	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
+	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif
 }

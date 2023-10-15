@@ -1,7 +1,7 @@
 #include "DeferredShadingRenderer.h"
 
 // implementation of RenderBasePass(), this pass is a deferred rendering with GBuffers and depth buffer
-void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
+void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 {
 	if (CurrentScene == nullptr)
 	{
@@ -26,22 +26,22 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 		ClearValues.push_back(DepthClear);
 	}
 
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Base Pass");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Base Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
 
 		// setup viewport and scissor
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 
 		// begin render pass based on flag
 		if (bParallelSubmissionRT)
 		{
-			GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+			RenderBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 		}
 		else
 		{
-			GraphBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
+			RenderBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
 		}
 
 		if (bParallelSubmissionRT)
@@ -68,12 +68,12 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 #if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
-				GraphBuilder.DrawCalls += ThreadDrawCalls[I];
+				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 			}
 #endif
 
 			// execute all recorded batches
-			GraphBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
+			RenderBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
 		}
 		else
 		{
@@ -82,7 +82,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 			{
 				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 					, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-				GraphBuilder.BindDescriptorSet(BasePassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+				RenderBuilder.BindDescriptorSet(BasePassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 			}
 
 			// render all opaque renderers from scene
@@ -103,31 +103,31 @@ void UHDeferredShadingRenderer::RenderBasePass(UHGraphicBuilder& GraphBuilder)
 
 				const UHBasePassShader* BaseShader = BasePassShaders[RendererIdx].get();
 
-				GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 				// bind pipelines
-				GraphBuilder.BindGraphicState(BaseShader->GetState());
-				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
+				RenderBuilder.BindGraphicState(BaseShader->GetState());
+				RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+				RenderBuilder.BindIndexBuffer(Mesh);
+				RenderBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
 
 				// draw call
-				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+				RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-				GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+				GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 			}
 		}
 
-		GraphBuilder.EndRenderPass();
+		RenderBuilder.EndRenderPass();
 
 		// transition states of Gbuffer after base pass, they will be used in the shader
 		std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneMip, SceneVertexNormal };
-		GraphBuilder.ResourceBarrier(GBuffers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.ResourceBarrier(GBuffers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		
 		// doesn't need to transition depth as the following motion pass will do it
 	}
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
 // base pass task, called by worker thread
@@ -144,14 +144,14 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = BasePassObj.RenderPass;
 	InheritanceInfo.framebuffer = BasePassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, BaseParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
-	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
+	UHRenderBuilder RenderBuilder(GraphicInterface, BaseParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
 	if (GraphicInterface->IsDebugLayerEnabled())
 	{
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 	}
 
 	// bind texture table, they should only be bound once
@@ -159,7 +159,7 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 	{
 		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 			, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-		GraphBuilder.BindDescriptorSet(BasePassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+		RenderBuilder.BindDescriptorSet(BasePassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
 	for (int32_t I = StartIdx; I < EndIdx; I++)
@@ -171,22 +171,22 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 
 		const UHBasePassShader* BaseShader = BasePassShaders[RendererIdx].get();
 
-		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
-		GraphBuilder.BindGraphicState(BaseShader->GetState());
-		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
+		RenderBuilder.BindGraphicState(BaseShader->GetState());
+		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(Mesh);
+		RenderBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
-		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	}
 
-	GraphBuilder.EndCommandBuffer();
+	RenderBuilder.EndCommandBuffer();
 #if WITH_EDITOR
-	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
+	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif
 }

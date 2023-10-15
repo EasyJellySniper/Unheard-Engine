@@ -7,6 +7,7 @@ UHDialog::UHDialog(HINSTANCE InInstance, HWND InWindow)
 	: Instance(InInstance)
 	, ParentWindow(InWindow)
     , Dialog(nullptr)
+    , bIsOpened(false)
 {
 
 }

@@ -3,12 +3,6 @@
 #if WITH_EDITOR
 #include "../../Editor/Classes/Reflection.h"
 
-UHDetailDialog::UHDetailDialog()
-	: UHDetailDialog(nullptr, nullptr)
-{
-
-}
-
 UHDetailDialog::UHDetailDialog(HINSTANCE InInstance, HWND InWindow)
 	: UHDialog(InInstance, InWindow)
 	, OriginDialogRect(RECT())

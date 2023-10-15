@@ -7,7 +7,7 @@
 #include "../../Runtime/Engine/Asset.h"
 #include "../../Runtime/Classes/Texture2D.h"
 #include "../Editor/PreviewScene.h"
-#include "../../Runtime/Renderer/GraphicBuilder.h"
+#include "../../Runtime/Renderer/RenderBuilder.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "../../Runtime/Classes/AssetPath.h"
 #include <filesystem>
@@ -44,7 +44,7 @@ void UHTextureDialog::Init()
 {
     Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_TEXTURE), ParentWindow, (DLGPROC)GDialogProc);
     RegisterUniqueActiveDialog(IDD_TEXTURE, this);
-    TextureCreationDialog = UHTextureCreationDialog(Instance, Dialog, Gfx, this, &TextureImporter);
+    TextureCreationDialog = MakeUnique<UHTextureCreationDialog>(Instance, Dialog, Gfx, this, &TextureImporter);
 
     // init GUI controls
     const std::vector<UHTexture2D*>& Textures = AssetMgr->GetTexture2Ds();
@@ -140,7 +140,7 @@ void UHTextureDialog::SelectTexture(int32_t TexIndex)
     {
         // upload to gpu if it's not in resident
         VkCommandBuffer UploadCmd = Gfx->BeginOneTimeCmd();
-        UHGraphicBuilder UploadBuilder(Gfx, UploadCmd);
+        UHRenderBuilder UploadBuilder(Gfx, UploadCmd);
         CurrentTexture->UploadToGPU(Gfx, UploadCmd, UploadBuilder);
         Gfx->EndOneTimeCmd(UploadCmd);
     }
@@ -283,7 +283,7 @@ void UHTextureDialog::ControlSaveAll()
 
 void UHTextureDialog::ControlTextureCreate()
 {
-    TextureCreationDialog.ShowDialog();
+    TextureCreationDialog->ShowDialog();
 }
 
 void UHTextureDialog::ControlBrowseRawTexture()

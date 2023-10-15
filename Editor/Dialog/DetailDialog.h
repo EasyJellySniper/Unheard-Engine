@@ -8,7 +8,6 @@
 class UHDetailDialog : public UHDialog
 {
 public:
-	UHDetailDialog();
 	UHDetailDialog(HINSTANCE InInstance, HWND InWindow);
 
 	virtual void ShowDialog() override;

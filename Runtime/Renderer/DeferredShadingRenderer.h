@@ -11,7 +11,7 @@
 #include "../Classes/GPUQuery.h"
 #include "../Classes/Thread.h"
 #include "RenderingTypes.h"
-#include "GraphicBuilder.h"
+#include "RenderBuilder.h"
 #include "ParallelSubmitter.h"
 #include "QueueSubmitter.h"
 #include <memory>
@@ -156,22 +156,22 @@ private:
 
 
 	/************************************************ rendering functions ************************************************/
-	void BuildTopLevelAS(UHGraphicBuilder& GraphBuilder);
-	void RenderDepthPrePass(UHGraphicBuilder& GraphBuilder);
-	void RenderBasePass(UHGraphicBuilder& GraphBuilder);
-	void DispatchLightCulling(UHGraphicBuilder& GraphBuilder);
-	void DispatchRayShadowPass(UHGraphicBuilder& GraphBuilder);
-	void RenderLightPass(UHGraphicBuilder& GraphBuilder);
-	void RenderSkyPass(UHGraphicBuilder& GraphBuilder);
-	void RenderMotionPass(UHGraphicBuilder& GraphBuilder);
-	void RenderTranslucentPass(UHGraphicBuilder& GraphBuilder);
-	void RenderEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName);
-	void DispatchEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName);
-	void RenderPostProcessing(UHGraphicBuilder& GraphBuilder);
-	uint32_t RenderSceneToSwapChain(UHGraphicBuilder& GraphBuilder);
+	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
+	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
+	void RenderBasePass(UHRenderBuilder& RenderBuilder);
+	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
+	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
+	void RenderLightPass(UHRenderBuilder& RenderBuilder);
+	void RenderSkyPass(UHRenderBuilder& RenderBuilder);
+	void RenderMotionPass(UHRenderBuilder& RenderBuilder);
+	void RenderTranslucentPass(UHRenderBuilder& RenderBuilder);
+	void RenderEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
+	void DispatchEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
+	void RenderPostProcessing(UHRenderBuilder& RenderBuilder);
+	uint32_t RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder);
 
 #if WITH_EDITOR
-	void RenderComponentBounds(UHGraphicBuilder& GraphBuilder, const int32_t PostProcessIdx);
+	void RenderComponentBounds(UHRenderBuilder& RenderBuilder, const int32_t PostProcessIdx);
 #endif
 
 

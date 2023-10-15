@@ -48,10 +48,10 @@ private:
 	int32_t ViewModeMenuItem;
 
 	// custom dialogs
-	UHProfileDialog ProfileDialog;
-	UHSettingDialog SettingDialog;
-	UHWorldDialog WorldDialog;
-	UHDetailDialog DetailDialog;
+	UniquePtr<UHProfileDialog> ProfileDialog;
+	UniquePtr<UHSettingDialog> SettingDialog;
+	UniquePtr<UHWorldDialog> WorldDialog;
+	UniquePtr<UHDetailDialog> DetailDialog;
 	UniquePtr<UHTextureDialog> TextureDialog;
 	UniquePtr<UHMaterialDialog> MaterialDialog;
 };

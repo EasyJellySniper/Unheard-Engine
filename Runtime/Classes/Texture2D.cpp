@@ -3,7 +3,7 @@
 #include "../Classes/Utility.h"
 #include "AssetPath.h"
 #include "../Engine/Graphic.h"
-#include "../Renderer/GraphicBuilder.h"
+#include "../Renderer/RenderBuilder.h"
 #include "TextureCompressor.h"
 
 UHTexture2D::UHTexture2D()
@@ -80,7 +80,7 @@ void UHTexture2D::Recreate()
 
 	// upload the 1st slice and generate mip map
 	VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
-	UHGraphicBuilder UploadBuilder(GfxCache, UploadCmd);
+	UHRenderBuilder UploadBuilder(GfxCache, UploadCmd);
 	UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
 	GenerateMipMaps(GfxCache, UploadCmd, UploadBuilder);
 	GfxCache->EndOneTimeCmd(UploadCmd);
@@ -143,7 +143,7 @@ void UHTexture2D::Recreate()
 
 		// upload compressed data
 		VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
-		UHGraphicBuilder UploadBuilder(GfxCache, UploadCmd);
+		UHRenderBuilder UploadBuilder(GfxCache, UploadCmd);
 		UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
 		GfxCache->EndOneTimeCmd(UploadCmd);
 	}
@@ -156,7 +156,7 @@ std::vector<uint8_t> UHTexture2D::ReadbackTextureData()
 	std::vector<UHRenderBuffer<uint8_t>> ReadbackBuffer(MipCount);
 
 	VkCommandBuffer ReadbackCmd = GfxCache->BeginOneTimeCmd();
-	UHGraphicBuilder ReadbackBuilder(GfxCache, ReadbackCmd);
+	UHRenderBuilder ReadbackBuilder(GfxCache, ReadbackCmd);
 
 	// readback per mip slice
 	for (uint32_t MipIdx = 0; MipIdx < MipCount; MipIdx++)
@@ -235,7 +235,7 @@ std::vector<uint8_t>& UHTexture2D::GetTextureData()
 	return TextureData;
 }
 
-void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder)
+void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder)
 {
 	if (bHasUploadedToGPU)
 	{
@@ -280,7 +280,7 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphic
 		VkImage DstImage = GetImage();
 		VkExtent2D Extent = GetExtent();
 
-		if (SrcBuffer == VK_NULL_HANDLE)
+		if (SrcBuffer == nullptr)
 		{
 			continue;
 		}
@@ -300,15 +300,15 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphic
 		Region.imageExtent = { Extent.width >> Mdx, Extent.height >> Mdx, 1 };
 
 		// transition to dst before copy
-		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
 		vkCmdCopyBufferToImage(InCmd, SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
-		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 	}
 
 	bHasUploadedToGPU = true;
 }
 
-void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder)
+void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder)
 {
 	// generate mip maps for this texture, should be called in editor only
 	if (bIsMipMapGenerated)
@@ -323,8 +323,8 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGra
 	for (uint32_t Mdx = 1; Mdx < TexInfo.subresourceRange.levelCount; Mdx++)
 	{
 		// transition mip M-1 to SRC BIT, and M to DST BIT, note mip M is still layout undefined at this point
-		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx - 1);
-		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx - 1);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
 
 		// blit to proper mip slices
 		VkExtent2D SrcExtent;
@@ -333,8 +333,8 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGra
 		SrcExtent.height = MipHeight;
 		DstExtent.width = MipWidth >> 1;
 		DstExtent.height = MipHeight >> 1;
-		InGraphBuilder.Blit(this, this, SrcExtent, DstExtent, Mdx - 1, Mdx);
-		InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
+		InRenderBuilder.Blit(this, this, SrcExtent, DstExtent, Mdx - 1, Mdx);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 
 		// for next mip
 		MipWidth = MipWidth >> 1;
@@ -347,7 +347,7 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGra
 		// the last mip is DST bit, differeniate here
 		if (Mdx != TexInfo.subresourceRange.levelCount - 1)
 		{
-			InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
+			InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 		}
 	}
 

@@ -14,8 +14,8 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, TypeIndexCache(InType)
 	, MaterialCache(InMat)
 	, MaterialPassInfo(UHRenderPassInfo())
-	, PipelineLayout(VK_NULL_HANDLE)
-	, DescriptorPool(VK_NULL_HANDLE)
+	, PipelineLayout(nullptr)
+	, DescriptorPool(nullptr)
 	, ShaderVS(-1)
 	, ShaderPS(-1)
 	, ShaderCS(-1)
@@ -27,7 +27,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		DescriptorSets[Idx] = VK_NULL_HANDLE;
+		DescriptorSets[Idx] = nullptr;
 	}
 }
 

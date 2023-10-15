@@ -7,12 +7,6 @@
 #include "../../Runtime/Components/Transform.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 
-UHWorldDialog::UHWorldDialog()
-	: UHWorldDialog(nullptr, nullptr, nullptr, nullptr)
-{
-
-}
-
 UHWorldDialog::UHWorldDialog(HINSTANCE InInstance, HWND InWindow, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView)
 	: UHDialog(InInstance, InWindow)
 	, OriginDialogRect(RECT())

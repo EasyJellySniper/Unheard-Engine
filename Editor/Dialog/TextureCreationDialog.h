@@ -13,7 +13,6 @@ class UHTextureDialog;
 class UHTextureCreationDialog : public UHDialog
 {
 public:
-	UHTextureCreationDialog();
 	UHTextureCreationDialog(HINSTANCE InInstance, HWND InWindow, UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter);
 
 	virtual void ShowDialog() override;

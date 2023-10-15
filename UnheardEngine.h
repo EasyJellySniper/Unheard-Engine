@@ -37,4 +37,8 @@ inline void UHE_LOG(std::string InString)
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
+#define VK_USE_PLATFORM_WIN32_KHR
+#include "ThirdParty/ImGui/imgui.h"
+#include "ThirdParty/ImGui/imgui_impl_win32.h"
+#include "ThirdParty/ImGui/imgui_impl_vulkan.h"
 #endif

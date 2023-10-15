@@ -1,4 +1,5 @@
 #include "../Shaders/UHInputs.hlsli"
+#include "../Shaders/UHCommon.hlsli"
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);

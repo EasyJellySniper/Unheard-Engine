@@ -1,16 +1,16 @@
 #include "PreviewScene.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Renderer/GraphicBuilder.h"
+#include "../../Runtime/Renderer/RenderBuilder.h"
 
 UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InGraphic, UHPreviewSceneType InType)
 	: TargetWindow(InHwnd)
 	, Gfx(InGraphic)
-	, MainSurface(VK_NULL_HANDLE)
-	, SwapChain(VK_NULL_HANDLE)
-	, SwapChainRenderPass(VK_NULL_HANDLE)
+	, MainSurface(nullptr)
+	, SwapChain(nullptr)
+	, SwapChainRenderPass(nullptr)
 	, SwapChainExtent(VkExtent2D())
-	, SwapChainSemaphore(VK_NULL_HANDLE)
+	, SwapChainSemaphore(nullptr)
 	, PreviewSceneType(InType)
 	, CurrentFrame(0)
 	, CurrentMip(0)
@@ -52,7 +52,7 @@ UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InG
 	CreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	CreateInfo.presentMode = PresentMode;
 	CreateInfo.clipped = VK_TRUE;
-	CreateInfo.oldSwapchain = VK_NULL_HANDLE;
+	CreateInfo.oldSwapchain = nullptr;
 
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 	if (vkCreateSwapchainKHR(LogicalDevice, &CreateInfo, nullptr, &SwapChain) != VK_SUCCESS)
@@ -122,10 +122,10 @@ void UHPreviewScene::Release()
 void UHPreviewScene::Render()
 {
 	VkCommandBuffer PreviewCmd = Gfx->BeginOneTimeCmd();
-	UHGraphicBuilder PreviewBuilder(Gfx, PreviewCmd);
+	UHRenderBuilder PreviewBuilder(Gfx, PreviewCmd);
 
 	uint32_t ImageIndex;
-	vkAcquireNextImageKHR(Gfx->GetLogicalDevice(), SwapChain, UINT64_MAX, SwapChainSemaphore, VK_NULL_HANDLE, &ImageIndex);
+	vkAcquireNextImageKHR(Gfx->GetLogicalDevice(), SwapChain, UINT64_MAX, SwapChainSemaphore, nullptr, &ImageIndex);
 
 	VkClearValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
 	PreviewBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainFrameBuffer[ImageIndex], SwapChainExtent, ClearColor);
@@ -135,7 +135,7 @@ void UHPreviewScene::Render()
 	{
 		PreviewBuilder.SetViewport(SwapChainExtent);
 		PreviewBuilder.SetScissor(SwapChainExtent);
-		PreviewBuilder.BindVertexBuffer(VK_NULL_HANDLE);
+		PreviewBuilder.BindVertexBuffer(nullptr);
 
 		UHGraphicState* State = DebugViewShader->GetState();
 		PreviewBuilder.BindGraphicState(State);
@@ -148,7 +148,7 @@ void UHPreviewScene::Render()
 	PreviewBuilder.ResourceBarrier(SwapChainRT[ImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	Gfx->EndOneTimeCmd(PreviewCmd);
 
-	PreviewBuilder.Present(SwapChain, Gfx->GetGraphicsQueue(), VK_NULL_HANDLE, ImageIndex, -1);
+	PreviewBuilder.Present(SwapChain, Gfx->GetGraphicsQueue(), nullptr, ImageIndex, -1);
 	CurrentFrame = (CurrentFrame + 1) % GMaxFrameInFlight;
 }
 

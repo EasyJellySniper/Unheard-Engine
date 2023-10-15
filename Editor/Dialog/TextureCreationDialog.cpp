@@ -9,14 +9,6 @@
 #include "../../Runtime/Classes/AssetPath.h"
 #include "StatusDialog.h"
 
-UHTextureCreationDialog::UHTextureCreationDialog()
-    : UHDialog(nullptr, nullptr)
-    , TextureDialog(nullptr)
-    , TextureImporter(nullptr)
-{
-
-}
-
 UHTextureCreationDialog::UHTextureCreationDialog(HINSTANCE InInstance, HWND InWindow, UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter)
 	: UHDialog(InInstance, InWindow)
 {

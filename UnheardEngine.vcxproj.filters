@@ -66,7 +66,7 @@
     <ClInclude Include="Runtime\Renderer\DeferredShadingRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\GraphicBuilder.h">
+    <ClInclude Include="Runtime\Renderer\RenderBuilder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Classes\RenderTexture.h">
@@ -357,6 +357,30 @@
     <ClInclude Include="Editor\Classes\DetailGUIs\DropListDetailGUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imstb_rectpack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imstb_textedit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui_impl_vulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\ImGui\imgui_impl_win32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -392,7 +416,7 @@
     <ClCompile Include="Runtime\Renderer\DeferredShadingRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\GraphicBuilder.cpp">
+    <ClCompile Include="Runtime\Renderer\RenderBuilder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Classes\RenderTexture.cpp">
@@ -680,6 +704,27 @@
     <ClCompile Include="Editor\Classes\DetailGUIs\DropListDetailGUI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_tables.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_vulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_win32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -720,5 +765,8 @@
     <None Include="Shaders\RayTracing\SoftRTShadowComputeShader.hlsl" />
     <None Include="Shaders\LightCullingComputeShader.hlsl" />
     <None Include="Shaders\PostProcessing\DebugBoundShader.hlsl" />
+    <None Include="ThirdParty\ImGui\backends\vulkan\generate_spv.sh" />
+    <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.frag" />
+    <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.vert" />
   </ItemGroup>
 </Project>

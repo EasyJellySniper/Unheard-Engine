@@ -181,6 +181,9 @@ public:
 	// get instance
 	VkInstance GetInstance() const;
 
+	// get physical device
+	VkPhysicalDevice GetPhysicalDevice() const;
+
 	// get logical device
 	VkDevice GetLogicalDevice() const;
 
@@ -214,6 +217,9 @@ public:
 	// get shader record size
 	uint32_t GetShaderRecordSize() const;
 
+	// get min image count
+	uint32_t GetMinImageCount() const;
+
 	// get gpu time stamp period
 	float GetGPUTimeStampPeriod() const;
 
@@ -244,6 +250,11 @@ public:
 	VkCommandBuffer BeginOneTimeCmd();
 	void EndOneTimeCmd(VkCommandBuffer InBuffer);
 	VkQueue GetGraphicsQueue() const;
+
+#if WITH_EDITOR
+	bool RecreateImGui();
+	VkPipeline GetImGuiPipeline() const;
+#endif
 
 private:
 
@@ -340,11 +351,14 @@ private:
 #if WITH_EDITOR
 	// validation layer list
 	const std::vector<const char*> ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+	VkDescriptorPool ImGuiDescriptorPool;
+	VkPipeline ImGuiPipeline;
 #endif
 
 	UHAssetManager* AssetManagerInterface;
 	UHConfigManager* ConfigInterface;
 	uint32_t ShaderRecordSize;
+	uint32_t MinImageCount;
 	float GPUTimeStampPeriod;
 	bool bEnableDepthPrePass;
 	bool bEnableRayTracing;

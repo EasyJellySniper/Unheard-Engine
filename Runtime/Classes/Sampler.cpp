@@ -2,7 +2,7 @@
 #include "../../UnheardEngine.h"
 
 UHSampler::UHSampler(UHSamplerInfo InInfo)
-	: TextureSampler(VK_NULL_HANDLE)
+	: TextureSampler(nullptr)
 	, SamplerInfo(InInfo)
 {
 

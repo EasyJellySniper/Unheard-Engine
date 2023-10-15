@@ -78,7 +78,7 @@ private:
 
 	// preview scene
 	UniquePtr<UHPreviewScene> PreviewScene;
-	UHTextureCreationDialog TextureCreationDialog;
+	UniquePtr<UHTextureCreationDialog> TextureCreationDialog;
 
 };
 

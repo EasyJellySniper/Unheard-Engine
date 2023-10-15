@@ -1,61 +1,61 @@
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName)
+void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName)
 {
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Render " + InName);
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Render " + InName);
 
-	GraphBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	GraphBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
+	RenderBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	RenderBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
 
-	GraphBuilder.SetViewport(RenderResolution);
-	GraphBuilder.SetScissor(RenderResolution);
+	RenderBuilder.SetViewport(RenderResolution);
+	RenderBuilder.SetScissor(RenderResolution);
 
 	// bind state
 	UHGraphicState* State = InShader->GetState();
-	GraphBuilder.BindGraphicState(State);
+	RenderBuilder.BindGraphicState(State);
 
 	// bind sets
-	GraphBuilder.BindDescriptorSet(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrameRT));
+	RenderBuilder.BindDescriptorSet(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrameRT));
 
 	// doesn't need VB/IB for full screen quad
-	GraphBuilder.DrawFullScreenQuad();
+	RenderBuilder.DrawFullScreenQuad();
 
-	GraphBuilder.EndRenderPass();
-	GraphBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	RenderBuilder.EndRenderPass();
+	RenderBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	PostProcessIdx = 1 - PostProcessIdx;
 }
 
-void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHGraphicBuilder& GraphBuilder, int32_t& PostProcessIdx, std::string InName)
+void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName)
 {
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Dispatch " + InName);
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch " + InName);
 
-	GraphBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	GraphBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	RenderBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 	// bind compute state
 	UHGraphicState* State = InShader->GetComputeState();
-	GraphBuilder.BindComputeState(State);
+	RenderBuilder.BindComputeState(State);
 
 	// bind sets
-	GraphBuilder.BindDescriptorSetCompute(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrameRT));
+	RenderBuilder.BindDescriptorSetCompute(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrameRT));
 
 	// dispatch compute
-	GraphBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
+	RenderBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
 
-	GraphBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	GraphBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	RenderBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	PostProcessIdx = 1 - PostProcessIdx;
 }
 
-void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuilder)
+void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuilder)
 {
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Postprocessing Passes");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Postprocessing Passes");
 	// post process RT starts from undefined, transition it first
-	GraphBuilder.ResourceBarrier(PostProcessRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	RenderBuilder.ResourceBarrier(PostProcessRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	PostProcessResults[0] = PostProcessRT;
 	PostProcessResults[1] = SceneResult;
 
@@ -64,30 +64,30 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 
 	// -------------------------- Tone Mapping --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]);
 		ToneMapShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrameRT);
-		RenderEffect(ToneMapShader.get(), GraphBuilder, CurrentPostProcessRTIndex, "Tone mapping");
+		RenderEffect(ToneMapShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
 	
 	// -------------------------- Temporal AA --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]);
 		if (ConfigInterface->RenderingSetting().bTemporalAA)
 		{
-			GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			RenderBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			if (!bIsTemporalReset)
 			{
 				// only render it when it's not resetting
 				TemporalAAShader->BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrameRT, true);
 				TemporalAAShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrameRT);
-				DispatchEffect(TemporalAAShader.get(), GraphBuilder, CurrentPostProcessRTIndex, "Temporal AA");
+				DispatchEffect(TemporalAAShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Temporal AA");
 			}
 
 			// copy to TAA history
-			GraphBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-			GraphBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], PreviousSceneResult);
-			GraphBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			RenderBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			RenderBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], PreviousSceneResult);
+			RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 			bIsTemporalReset = false;
 		}
@@ -96,38 +96,37 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHGraphicBuilder& GraphBuil
 #if WITH_EDITOR
 	if (DebugViewIndex > 0)
 	{
-		RenderEffect(DebugViewShader.get(), GraphBuilder, CurrentPostProcessRTIndex, "Debug View");
+		RenderEffect(DebugViewShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Debug View");
 	}
 
-	RenderComponentBounds(GraphBuilder, 1 - CurrentPostProcessRTIndex);
+	RenderComponentBounds(RenderBuilder, 1 - CurrentPostProcessRTIndex);
 #endif
 
 	// set post process result idx in the end
 	PostProcessResultIdx = 1 - CurrentPostProcessRTIndex;
 
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
-uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& GraphBuilder)
+uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder)
 {
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Scene to SwapChain Pass");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Scene to SwapChain Pass");
 
 	uint32_t ImageIndex;
 	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
 
 		VkRenderPass SwapChainRenderPass = GraphicInterface->GetSwapChainRenderPass();
-		VkFramebuffer SwapChainBuffer = GraphBuilder.GetCurrentSwapChainBuffer(SceneRenderQueue.WaitingSemaphores[CurrentFrameRT], ImageIndex);
+		VkFramebuffer SwapChainBuffer = RenderBuilder.GetCurrentSwapChainBuffer(SceneRenderQueue.WaitingSemaphores[CurrentFrameRT], ImageIndex);
 		UHRenderTexture* SwapChainRT = GraphicInterface->GetSwapChainRT(ImageIndex);
 		VkExtent2D SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 
-		// this will transition to TRANSDER_DST
-		VkClearValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
-		GraphBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent, ClearColor);
-		GraphBuilder.EndRenderPass();
+		// manually clear swap chain
+		RenderBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		RenderBuilder.ClearRenderTexture(SwapChainRT);
 
 		// transfer scene result and blit it, the scene result comes after post processing, it will be SceneResult or PostProcessRT
-		GraphBuilder.ResourceBarrier(PostProcessResults[PostProcessResultIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessResultIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
 		// blit with the same aspect ratio as render resolution regardless of the swap chain size
 		VkExtent2D ConstraintedOffset;
@@ -147,24 +146,30 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHGraphicBuilder& Gra
 
 		if (!ConfigInterface->PresentationSetting().bFullScreen)
 		{
-			GraphBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT, PostProcessResults[PostProcessResultIdx]->GetExtent(), ConstraintedExtent, ConstraintedOffset);
+			RenderBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT, PostProcessResults[PostProcessResultIdx]->GetExtent(), ConstraintedExtent, ConstraintedOffset);
 		}
 		else
 		{
-			GraphBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT);
+			RenderBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT);
 		}
 
+#if WITH_EDITOR
+		RenderBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent);
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), RenderBuilder.GetCmdList(), GraphicInterface->GetImGuiPipeline());
+		RenderBuilder.EndRenderPass();
+#endif
+
 		// end blit and transition swapchain to PRESENT_SRC_KHR
-		GraphBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		RenderBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}
 
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 
 	return ImageIndex;
 }
 
 #if WITH_EDITOR
-void UHDeferredShadingRenderer::RenderComponentBounds(UHGraphicBuilder& GraphBuilder, const int32_t PostProcessIdx)
+void UHDeferredShadingRenderer::RenderComponentBounds(UHRenderBuilder& RenderBuilder, const int32_t PostProcessIdx)
 {
 	// render the bound of selected component
 	const UHComponent* Comp = nullptr;
@@ -187,43 +192,43 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHGraphicBuilder& GraphBui
 	DebugBoundData[CurrentFrameRT]->UploadAllData(&BoundConstant);
 	DebugBoundShader->BindConstant(DebugBoundData[CurrentFrameRT], 1, CurrentFrameRT);
 
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Draw Component Bounds");
-	GraphBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Draw Component Bounds");
+	RenderBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
 
-	GraphBuilder.SetViewport(RenderResolution);
-	GraphBuilder.SetScissor(RenderResolution);
+	RenderBuilder.SetViewport(RenderResolution);
+	RenderBuilder.SetScissor(RenderResolution);
 
 	// bind state
 	UHGraphicState* State = DebugBoundShader->GetState();
-	GraphBuilder.BindGraphicState(State);
+	RenderBuilder.BindGraphicState(State);
 
 	// bind sets
-	GraphBuilder.BindDescriptorSet(DebugBoundShader->GetPipelineLayout(), DebugBoundShader->GetDescriptorSet(CurrentFrameRT));
+	RenderBuilder.BindDescriptorSet(DebugBoundShader->GetPipelineLayout(), DebugBoundShader->GetDescriptorSet(CurrentFrameRT));
 
-	vkCmdSetLineWidth(GraphBuilder.GetCmdList(), 2.0f);
+	vkCmdSetLineWidth(RenderBuilder.GetCmdList(), 2.0f);
 
 	switch (BoundConstant.BoundType)
 	{
 	case DebugBox:
 		// draw 24 points for bounding box, shader will setup the box points
-		GraphBuilder.DrawVertex(24);
+		RenderBuilder.DrawVertex(24);
 		break;
 
 	case DebugSphere:
 		// draw 360 points for bounding sphere, see DebugBoundShader.hlsl that how circles are drawn
-		GraphBuilder.DrawVertex(360);
+		RenderBuilder.DrawVertex(360);
 		break;
 
 	case DebugCone:
 		// draw 16 points for bounding cone, see DebugBoundShader.hlsl that how a cone is drawn
-		GraphBuilder.DrawVertex(16);
+		RenderBuilder.DrawVertex(16);
 		break;
 
 	default:
 		break;
 	}
 
-	GraphBuilder.EndRenderPass();
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	RenderBuilder.EndRenderPass();
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 #endif

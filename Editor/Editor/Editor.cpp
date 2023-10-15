@@ -24,10 +24,10 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     , ViewModeMenuItem(ID_VIEWMODE_FULLLIT)
 {
     ProfileTimer.Reset();
-    SettingDialog = UHSettingDialog(HInstance, HWnd, Config, Engine, DeferredRenderer, Input);
-    ProfileDialog = UHProfileDialog(HInstance, HWnd);
-    DetailDialog = UHDetailDialog(HInstance, HWnd);
-    WorldDialog = UHWorldDialog(HInstance, HWnd, DeferredRenderer, &DetailDialog);
+    SettingDialog = MakeUnique<UHSettingDialog>(Config, Engine, DeferredRenderer);
+    ProfileDialog = MakeUnique<UHProfileDialog>();
+    DetailDialog = MakeUnique<UHDetailDialog>(HInstance, HWnd);
+    WorldDialog = MakeUnique<UHWorldDialog>(HInstance, HWnd, DeferredRenderer, DetailDialog.get());
     TextureDialog = MakeUnique<UHTextureDialog>(HInstance, HWnd, AssetManager, InGfx, InRenderer);
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
 }
@@ -41,22 +41,22 @@ UHEditor::~UHEditor()
 void UHEditor::OnEditorUpdate()
 {
     ProfileTimer.Tick();
-    SettingDialog.Update();
-    ProfileDialog.SyncProfileStatistics(Profile, &ProfileTimer, Config);
+    SettingDialog->Update();
+    ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config);
     TextureDialog->Update();
     MaterialDialog->Update();
 }
 
 void UHEditor::OnEditorMove()
 {
-    WorldDialog.ResetDialogWindow();
-    DetailDialog.ResetDialogWindow();
+    WorldDialog->ResetDialogWindow();
+    DetailDialog->ResetDialogWindow();
 }
 
 void UHEditor::OnEditorResize()
 {
-    WorldDialog.ResetDialogWindow();
-    DetailDialog.ResetDialogWindow();
+    WorldDialog->ResetDialogWindow();
+    DetailDialog->ResetDialogWindow();
 }
 
 void UHEditor::OnMenuSelection(int32_t WmId)
@@ -66,10 +66,10 @@ void UHEditor::OnMenuSelection(int32_t WmId)
     switch (WmId)
     {
     case ID_WINDOW_SETTINGS:
-        SettingDialog.ShowDialog();
+        SettingDialog->ShowDialog();
         break;
     case ID_WINDOW_PROFILES:
-        ProfileDialog.ShowDialog();
+        ProfileDialog->ShowDialog();
         break;
     case ID_WINDOW_MATERIAL:
         MaterialDialog->ShowDialog();
@@ -78,8 +78,8 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         TextureDialog->ShowDialog();
         break;
     case ID_WINDOW_WORLDEDITOR:
-        WorldDialog.ShowDialog();
-        DetailDialog.ShowDialog();
+        WorldDialog->ShowDialog();
+        DetailDialog->ShowDialog();
         break;
     default:
         break;

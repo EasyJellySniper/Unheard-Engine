@@ -68,6 +68,8 @@ public:
 
 #if WITH_EDITOR
 	UHEditor* GetEditor() const;
+	UHGraphic* GetGfx() const;
+
 	void BeginProfile();
 	void EndProfile();
 #endif

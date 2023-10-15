@@ -11,7 +11,6 @@ class UHDeferredShadingRenderer;
 class UHWorldDialog : public UHDialog
 {
 public:
-	UHWorldDialog();
 	UHWorldDialog(HINSTANCE InInstance, HWND InWindow, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView);
 
 	virtual void ShowDialog() override;

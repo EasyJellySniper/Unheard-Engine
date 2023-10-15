@@ -1,6 +1,6 @@
-#include "GraphicBuilder.h"
+#include "RenderBuilder.h"
 
-UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder)
+UHRenderBuilder::UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder)
 	: Gfx(InGraphic)
 	, CmdList(InCommandBuffer)
 	, LogicalDevice(InGraphic->GetLogicalDevice())
@@ -9,7 +9,7 @@ UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InComma
 	, PrevScissor(VkExtent2D())
 	, PrevGraphicState(nullptr)
 	, PrevComputeState(nullptr)
-	, PrevVertexBuffer(VK_NULL_HANDLE)
+	, PrevVertexBuffer(nullptr)
 	, PrevIndexBufferSource(nullptr)
 #if WITH_EDITOR
 	, DrawCalls(0)
@@ -35,39 +35,39 @@ UHGraphicBuilder::UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InComma
 	LayoutToStageFlags[VK_IMAGE_LAYOUT_GENERAL] = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 }
 
-VkCommandBuffer UHGraphicBuilder::GetCmdList()
+VkCommandBuffer UHRenderBuilder::GetCmdList()
 {
 	return CmdList;
 }
 
-void UHGraphicBuilder::WaitFence(VkFence InFence)
+void UHRenderBuilder::WaitFence(VkFence InFence)
 {
 	vkWaitForFences(LogicalDevice, 1, &InFence, VK_TRUE, UINT64_MAX);
 }
 
-void UHGraphicBuilder::ResetFence(VkFence InFence)
+void UHRenderBuilder::ResetFence(VkFence InFence)
 {
 	vkResetFences(LogicalDevice, 1, &InFence);
 }
 
-VkFramebuffer UHGraphicBuilder::GetCurrentSwapChainBuffer(VkSemaphore InSemaphore, uint32_t& OutImageIndex) const
+VkFramebuffer UHRenderBuilder::GetCurrentSwapChainBuffer(VkSemaphore InSemaphore, uint32_t& OutImageIndex) const
 {
 	VkSwapchainKHR SwapChain = Gfx->GetSwapChain();
 
 	// get current swap chain index
 	uint32_t ImageIndex;
-	vkAcquireNextImageKHR(LogicalDevice, SwapChain, UINT64_MAX, InSemaphore, VK_NULL_HANDLE, &ImageIndex);
+	vkAcquireNextImageKHR(LogicalDevice, SwapChain, UINT64_MAX, InSemaphore, nullptr, &ImageIndex);
 
 	OutImageIndex = ImageIndex;
 	return Gfx->GetSwapChainBuffer(ImageIndex);
 }
 
-void UHGraphicBuilder::ResetCommandBuffer()
+void UHRenderBuilder::ResetCommandBuffer()
 {
 	vkResetCommandBuffer(CmdList, 0);
 }
 
-void UHGraphicBuilder::BeginCommandBuffer(VkCommandBufferInheritanceInfo* InInfo)
+void UHRenderBuilder::BeginCommandBuffer(VkCommandBufferInheritanceInfo* InInfo)
 {
 	// begin command buffer
 	VkCommandBufferBeginInfo BeginInfo{};
@@ -86,7 +86,7 @@ void UHGraphicBuilder::BeginCommandBuffer(VkCommandBufferInheritanceInfo* InInfo
 	}
 }
 
-void UHGraphicBuilder::EndCommandBuffer()
+void UHRenderBuilder::EndCommandBuffer()
 {
 	if (vkEndCommandBuffer(CmdList) != VK_SUCCESS)
 	{
@@ -95,7 +95,7 @@ void UHGraphicBuilder::EndCommandBuffer()
 }
 
 // begin a pass
-void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, VkClearValue InClearValue
+void UHRenderBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, VkClearValue InClearValue
 	, VkSubpassContents InSubPassContent)
 {
 	std::vector<VkClearValue> ClearValue{ InClearValue };
@@ -103,7 +103,7 @@ void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer 
 }
 
 // begin a pass
-void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue
+void UHRenderBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue
 	, VkSubpassContents InSubPassContent)
 {
 	// begin render pass
@@ -121,7 +121,7 @@ void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer 
 }
 
 // begin a pass (without clearing)
-void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent
+void UHRenderBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent
 	, VkSubpassContents InSubPassContent)
 {
 	std::vector<VkClearValue> ClearValue{};
@@ -129,15 +129,15 @@ void UHGraphicBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer 
 }
 
 // end a pass
-void UHGraphicBuilder::EndRenderPass()
+void UHRenderBuilder::EndRenderPass()
 {
 	vkCmdEndRenderPass(CmdList);
 }
 
-void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore)
+void UHRenderBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore InWaitSemaphore, VkSemaphore InFinishSemaphore)
 {
 	std::vector<VkSemaphore> WaitSemaphores;
-	if (InWaitSemaphore != VK_NULL_HANDLE)
+	if (InWaitSemaphore != nullptr)
 	{
 		WaitSemaphores.push_back(InWaitSemaphore);
 	}
@@ -147,7 +147,7 @@ void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence, VkSemaphore 
 	ExecuteCmd(InQueue, InFence, WaitSemaphores, WaitStages, InFinishSemaphore);
 }
 
-void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
+void UHRenderBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
 	, const std::vector<VkSemaphore>& InWaitSemaphores
 	, const std::vector<VkPipelineStageFlags>& InWaitStageFlags
 	, VkSemaphore InFinishSemaphore)
@@ -168,7 +168,7 @@ void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
 	SubmitInfo.pCommandBuffers = &CmdList;
 
 	// the signal after finish
-	if (InFinishSemaphore != VK_NULL_HANDLE)
+	if (InFinishSemaphore != nullptr)
 	{
 		SubmitInfo.signalSemaphoreCount = 1;
 		SubmitInfo.pSignalSemaphores = &InFinishSemaphore;
@@ -182,13 +182,13 @@ void UHGraphicBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
 	}
 }
 
-bool UHGraphicBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId)
+bool UHRenderBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId)
 {
 	// present to swap chain, after render finish fence is signaled, it will present
 	VkPresentInfoKHR PresentInfo{};
 	PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-	if (InFinishSemaphore != VK_NULL_HANDLE)
+	if (InFinishSemaphore != nullptr)
 	{
 		PresentInfo.waitSemaphoreCount = 1;
 		PresentInfo.pWaitSemaphores = &InFinishSemaphore;
@@ -227,7 +227,7 @@ bool UHGraphicBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSe
 	return true;
 }
 
-void UHGraphicBuilder::BindGraphicState(UHGraphicState* InState)
+void UHRenderBuilder::BindGraphicState(UHGraphicState* InState)
 {
 	// prevent duplicate bind, should be okay with checking pointer only
 	// since each state is guaranteed to be unique during initialization
@@ -240,12 +240,12 @@ void UHGraphicBuilder::BindGraphicState(UHGraphicState* InState)
 	PrevGraphicState = InState;
 }
 
-void UHGraphicBuilder::BindRTState(const UHGraphicState* InState)
+void UHRenderBuilder::BindRTState(const UHGraphicState* InState)
 {
 	vkCmdBindPipeline(CmdList, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, InState->GetRTPipeline());
 }
 
-void UHGraphicBuilder::BindComputeState(UHComputeState* InState)
+void UHRenderBuilder::BindComputeState(UHComputeState* InState)
 {
 	// prevent duplicate bind, should be okay with checking pointer only
 	// since each state is guaranteed to be unique during initialization
@@ -259,7 +259,7 @@ void UHGraphicBuilder::BindComputeState(UHComputeState* InState)
 }
 
 // set viewport
-void UHGraphicBuilder::SetViewport(VkExtent2D InExtent)
+void UHRenderBuilder::SetViewport(VkExtent2D InExtent)
 {
 	// prevent duplicate setup
 	if (PrevViewport.width == InExtent.width && PrevViewport.height == InExtent.height)
@@ -280,7 +280,7 @@ void UHGraphicBuilder::SetViewport(VkExtent2D InExtent)
 }
 
 // set scissor
-void UHGraphicBuilder::SetScissor(VkExtent2D InExtent)
+void UHRenderBuilder::SetScissor(VkExtent2D InExtent)
 {
 	// prevent duplicate setup
 	if (PrevScissor.width == InExtent.width && PrevScissor.height == InExtent.height)
@@ -296,7 +296,7 @@ void UHGraphicBuilder::SetScissor(VkExtent2D InExtent)
 }
 
 // bind VB
-void UHGraphicBuilder::BindVertexBuffer(VkBuffer InBuffer)
+void UHRenderBuilder::BindVertexBuffer(VkBuffer InBuffer)
 {
 	// need to set VB as null if it's really null
 	if (PrevVertexBuffer == InBuffer && InBuffer != nullptr)
@@ -311,7 +311,7 @@ void UHGraphicBuilder::BindVertexBuffer(VkBuffer InBuffer)
 }
 
 // bind IB
-void UHGraphicBuilder::BindIndexBuffer(UHMesh* InMesh)
+void UHRenderBuilder::BindIndexBuffer(UHMesh* InMesh)
 {
 	if (PrevIndexBufferSource == InMesh)
 	{
@@ -331,7 +331,7 @@ void UHGraphicBuilder::BindIndexBuffer(UHMesh* InMesh)
 	PrevIndexBufferSource = InMesh;
 }
 
-void UHGraphicBuilder::DrawVertex(uint32_t VertexCount)
+void UHRenderBuilder::DrawVertex(uint32_t VertexCount)
 {
 	vkCmdDraw(CmdList, VertexCount, 1, 0, 0);
 
@@ -341,7 +341,7 @@ void UHGraphicBuilder::DrawVertex(uint32_t VertexCount)
 }
 
 // draw indexed
-void UHGraphicBuilder::DrawIndexed(uint32_t IndicesCount)
+void UHRenderBuilder::DrawIndexed(uint32_t IndicesCount)
 {
 	vkCmdDrawIndexed(CmdList, IndicesCount, 1, 0, 0, 0);
 
@@ -350,33 +350,33 @@ void UHGraphicBuilder::DrawIndexed(uint32_t IndicesCount)
 #endif
 }
 
-void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet)
+void UHRenderBuilder::BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet)
 {
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InLayout, 0, 1, &InSet, 0, nullptr);
 }
 
-void UHGraphicBuilder::BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets, uint32_t FirstSet)
+void UHRenderBuilder::BindDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets, uint32_t FirstSet)
 {
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_GRAPHICS, InLayout, FirstSet, static_cast<uint32_t>(InSets.size()), InSets.data(), 0, nullptr);
 }
 
-void UHGraphicBuilder::BindDescriptorSetCompute(VkPipelineLayout InLayout, VkDescriptorSet InSet)
+void UHRenderBuilder::BindDescriptorSetCompute(VkPipelineLayout InLayout, VkDescriptorSet InSet)
 {
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_COMPUTE, InLayout, 0, 1, &InSet, 0, nullptr);
 }
 
-void UHGraphicBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets)
+void UHRenderBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, const std::vector<VkDescriptorSet>& InSets)
 {
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, InLayout, 0, static_cast<uint32_t>(InSets.size()), InSets.data(), 0, nullptr);
 }
 
-void UHGraphicBuilder::ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
+void UHRenderBuilder::ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
 {
 	std::vector<UHTexture*> Tex = { InTexture };
 	ResourceBarrier(Tex, OldLayout, NewLayout, BaseMipLevel, BaseArrayLayer);
 }
 
-void UHGraphicBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
+void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
 {
 	if (InTextures.size() == 0)
 	{
@@ -423,13 +423,13 @@ void UHGraphicBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkIma
 		static_cast<uint32_t>(Barriers.size()), Barriers.data());
 }
 
-void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter)
+void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter)
 {
 	Blit(SrcImage, DstImage, SrcImage->GetExtent(), DstImage->GetExtent(), 0, 0, InFilter);
 }
 
 // blit for custom dst offset
-void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, VkExtent2D DstOffset, VkFilter InFilter)
+void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, VkExtent2D DstOffset, VkFilter InFilter)
 {
 	// setup src & dst layer before blit
 	VkImageViewCreateInfo SrcInfo = SrcImage->GetImageViewInfo();
@@ -485,7 +485,7 @@ void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D
 }
 
 // blit with custom extent
-void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, uint32_t SrcMip, uint32_t DstMip, VkFilter InFilter)
+void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, uint32_t SrcMip, uint32_t DstMip, VkFilter InFilter)
 {
 	// setup src & dst layer before blit
 	VkImageViewCreateInfo SrcInfo = SrcImage->GetImageViewInfo();
@@ -539,7 +539,7 @@ void UHGraphicBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D
 #endif
 }
 
-void UHGraphicBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint32_t MipLevel, uint32_t DstArray)
+void UHRenderBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint32_t MipLevel, uint32_t DstArray)
 {
 	// copy should work on the same dimension
 	if (SrcImage->GetExtent().width != DstImage->GetExtent().width || SrcImage->GetExtent().height != DstImage->GetExtent().height)
@@ -579,7 +579,7 @@ void UHGraphicBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uin
 	vkCmdCopyImage(CmdList, SrcImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, DstImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &CopyInfo);
 }
 
-void UHGraphicBuilder::DrawFullScreenQuad()
+void UHRenderBuilder::DrawFullScreenQuad()
 {
 	// simply draw 6 vertices, post process shader will setup with SV_VertexID
 	vkCmdDraw(CmdList, 6, 1, 0, 0);
@@ -598,7 +598,7 @@ VkDeviceAddress GetDeviceAddress(VkDevice InDevice, VkBuffer InBuffer)
 	return vkGetBufferDeviceAddress(InDevice, &AddressInfo);
 }
 
-void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InMissTable
+void UHRenderBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InMissTable
 	, UHRenderBuffer<UHShaderRecord>* InHitGroupTable)
 {
 	VkStridedDeviceAddressRegionKHR RayGenAddress{};
@@ -620,7 +620,7 @@ void UHGraphicBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderReco
 	GVkCmdTraceRaysKHR(CmdList, &RayGenAddress, &MissAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, 1);
 }
 
-void UHGraphicBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
+void UHRenderBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
 {
 #if WITH_EDITOR
 	vkCmdResetQueryPool(CmdList, InPool, InQuery, 1);
@@ -628,7 +628,7 @@ void UHGraphicBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
 #endif
 }
 
-void UHGraphicBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToExecute)
+void UHRenderBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToExecute)
 {
 	if (CmdToExecute.size() == 0)
 	{
@@ -639,19 +639,19 @@ void UHGraphicBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToE
 	vkCmdExecuteCommands(CmdList, static_cast<uint32_t>(CmdToExecute.size()), CmdToExecute.data());
 }
 
-void UHGraphicBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)
+void UHRenderBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)
 {
 	vkCmdFillBuffer(CmdList, InBuffer, 0, VK_WHOLE_SIZE, InValue);
 }
 
-void UHGraphicBuilder::ClearRenderTexture(UHRenderTexture* InTexture)
+void UHRenderBuilder::ClearRenderTexture(UHRenderTexture* InTexture)
 {
 	VkClearColorValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
 	const VkImageSubresourceRange Range = InTexture->GetImageViewInfo().subresourceRange;
 	vkCmdClearColorImage(CmdList, InTexture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &ClearColor, 1, &Range);
 }
 
-void UHGraphicBuilder::Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz)
+void UHRenderBuilder::Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz)
 {
 	vkCmdDispatch(CmdList, Gx, Gy, Gz);
 }

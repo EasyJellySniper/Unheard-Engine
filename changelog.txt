@@ -379,3 +379,12 @@ Applied spot light calculation to deferred pass. Applied spot light to transluce
 
 29-09-2023: Applied spot light RT shadows too. Runtime spot light is almost done, the next is to expose editor stuffs.
 Fixed the attenuation in RT shadow shader. Finished the spot light editor stuffs.
+
+09-10-2023: Rename graph builder as render builder. Start bringing ImGui library. Alternate all "VK_NULL_HANDLE" to nullptr.
+For ImGui, the swapchain behavior is changed. I can now show the demo window, but it will spam vk error if it's outside the window.
+After some modifications, showing ImGui won't trigger error.
+
+10-10-2023: Store the swapchain format/colorspace in ImGui Vulkan init info, so the GUI buffer will be consistent as UHE swap chain.
+Finished setting dialog ImGui porting.
+
+15-10-2023: Finished profile dialog ImGui porting. Stores all dialogs as pointer instead an instance.

@@ -194,7 +194,7 @@ bool CompileShader(std::string CommandLine)
 	ZeroMemory(&ProcInfo, sizeof(ProcInfo));
 
 	// start the program up
-	CreateProcessA("dxc_2022_07_18/bin/x64/dxc.exe",   // the exe path, got from DXC GitHub
+	CreateProcessA("ThirdParty/DirectXShaderCompiler/bin/x64/dxc.exe",   // the exe path, got from DXC GitHub
 		const_cast<char*>(CommandLine.c_str()),        // Command line
 		NULL,           // Process handle not inheritable
 		NULL,           // Thread handle not inheritable

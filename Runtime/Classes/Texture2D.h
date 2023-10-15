@@ -6,7 +6,7 @@
 #include "RenderBuffer.h"
 
 class UHGraphic;
-class UHGraphicBuilder;
+class UHRenderBuilder;
 
 class UHTexture2D : public UHTexture
 {
@@ -26,10 +26,10 @@ public:
 	std::vector<uint8_t>& GetTextureData();
 
 	// upload texture data to GPU
-	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) override;
+	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) override;
 
 	// generate mip maps
-	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) override;
+	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) override;
 
 private:
 	bool CreateTextureFromMemory();

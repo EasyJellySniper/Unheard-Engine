@@ -7,15 +7,15 @@
 #include "../Classes/AssetPath.h"
 
 UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
-	: GraphicsQueue(VK_NULL_HANDLE)
-	, CreationCommandPool(VK_NULL_HANDLE)
-	, LogicalDevice(VK_NULL_HANDLE)
-	, SwapChainRenderPass(VK_NULL_HANDLE)
-	, MainSurface(VK_NULL_HANDLE)
-	, PhysicalDevice(VK_NULL_HANDLE)
+	: GraphicsQueue(nullptr)
+	, CreationCommandPool(nullptr)
+	, LogicalDevice(nullptr)
+	, SwapChainRenderPass(nullptr)
+	, MainSurface(nullptr)
+	, PhysicalDevice(nullptr)
 	, PhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties())
-	, SwapChain(VK_NULL_HANDLE)
-	, VulkanInstance(VK_NULL_HANDLE)
+	, SwapChain(nullptr)
+	, VulkanInstance(nullptr)
 	, WindowCache(nullptr)
 	, bIsFullScreen(false)
 	, bUseValidationLayers(false)
@@ -24,6 +24,10 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bEnableDepthPrePass(InConfig->RenderingSetting().bEnableDepthPrePass)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
 	, bSupportHDR(false)
+#if WITH_EDITOR
+	, ImGuiDescriptorPool(nullptr)
+	, ImGuiPipeline(nullptr)
+#endif
 {
 	// extension defines, hard code for now
 	InstanceExtensions = { "VK_KHR_surface"
@@ -38,7 +42,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_EXT_robustness2"
 		, "VK_KHR_present_id"
 		, "VK_KHR_present_wait"
-		, "VK_EXT_hdr_metadata" };
+		, "VK_EXT_hdr_metadata"
+		, "VK_KHR_dynamic_rendering" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -118,7 +123,7 @@ void UHGraphic::Release()
 	}
 
 	WindowCache = nullptr;
-	GraphicsQueue = VK_NULL_HANDLE;
+	GraphicsQueue = nullptr;
 
 	// release all shaders
 	for (auto& Shader : ShaderPools)
@@ -189,6 +194,17 @@ void UHGraphic::Release()
 	ImageSharedMemory.reset();
 	MeshBufferSharedMemory->Release();
 	MeshBufferSharedMemory.reset();
+
+#if WITH_EDITOR
+	ImGui_ImplVulkan_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+	vkDestroyDescriptorPool(LogicalDevice, ImGuiDescriptorPool, nullptr);
+	if (ImGuiPipeline)
+	{
+		vkDestroyPipeline(LogicalDevice, ImGuiPipeline, nullptr);
+	}
+#endif
 
 	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
 	vkDestroySurfaceKHR(VulkanInstance, MainSurface, nullptr);
@@ -523,9 +539,14 @@ bool UHGraphic::CreateLogicalDevice()
 	Vk12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 	Vk12Features.pNext = &RTFeatures;
 
+	// 1_3 features
+	VkPhysicalDeviceVulkan13Features VK13Features{};
+	VK13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	VK13Features.pNext = &Vk12Features;
+
 	VkPhysicalDeviceRobustness2FeaturesEXT RobustnessFeatures{};
 	RobustnessFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-	RobustnessFeatures.pNext = &Vk12Features;
+	RobustnessFeatures.pNext = &VK13Features;
 
 	VkPhysicalDevicePresentIdFeaturesKHR PresentIdFeatureKHR{};
 	PresentIdFeatureKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
@@ -805,7 +826,7 @@ VkRenderPass UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, VkFo
 // create render pass, multiple formats are possible
 VkRenderPass UHGraphic::CreateRenderPass(std::vector<VkFormat> InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const
 {
-	VkRenderPass NewRenderPass = VK_NULL_HANDLE;
+	VkRenderPass NewRenderPass = nullptr;
 	uint32_t RTCount = static_cast<uint32_t>(InFormat.size());
 	bool bHasDepthAttachment = (InDepthFormat != VK_FORMAT_UNDEFINED);
 
@@ -915,7 +936,7 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(VkImageView InImageView, VkRenderPass
 
 VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent) const
 {
-	VkFramebuffer NewFrameBuffer = VK_NULL_HANDLE;
+	VkFramebuffer NewFrameBuffer = nullptr;
 
 	// create frame buffer
 	VkFramebufferCreateInfo FramebufferInfo{};
@@ -949,7 +970,7 @@ UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 // request render texture, this also sets device info to it
 UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bIsReadWrite, bool bIsShadowRT)
 {
-	return RequestRenderTexture(InName, VK_NULL_HANDLE, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
+	return RequestRenderTexture(InName, nullptr, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
 }
 
 // request render texture, this also sets device info to it
@@ -1367,6 +1388,11 @@ VkInstance UHGraphic::GetInstance() const
 	return VulkanInstance;
 }
 
+VkPhysicalDevice UHGraphic::GetPhysicalDevice() const
+{
+	return PhysicalDevice;
+}
+
 VkDevice UHGraphic::GetLogicalDevice() const
 {
 	return LogicalDevice;
@@ -1420,6 +1446,11 @@ VkPhysicalDeviceMemoryProperties UHGraphic::GetDeviceMemProps() const
 uint32_t UHGraphic::GetShaderRecordSize() const
 {
 	return ShaderRecordSize;
+}
+
+uint32_t UHGraphic::GetMinImageCount() const
+{
+	return MinImageCount;
 }
 
 float UHGraphic::GetGPUTimeStampPeriod() const
@@ -1533,18 +1564,99 @@ void UHGraphic::EndOneTimeCmd(VkCommandBuffer InBuffer)
 	SubmitInfo.commandBufferCount = 1;
 	SubmitInfo.pCommandBuffers = &InBuffer;
 
-	vkQueueSubmit(GraphicsQueue, 1, &SubmitInfo, VK_NULL_HANDLE);
+	vkQueueSubmit(GraphicsQueue, 1, &SubmitInfo, nullptr);
 	vkQueueWaitIdle(GraphicsQueue);
 
 	vkFreeCommandBuffers(LogicalDevice, CreationCommandPool, 1, &InBuffer);
 	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
-	CreationCommandPool = VK_NULL_HANDLE;
+	CreationCommandPool = nullptr;
 }
 
 VkQueue UHGraphic::GetGraphicsQueue() const
 {
 	return GraphicsQueue;
 }
+
+#if WITH_EDITOR
+bool UHGraphic::RecreateImGui()
+{
+	bool bImGuiSucceed = true;
+
+	if (ImGui::GetCurrentContext() != nullptr)
+	{
+		// recreate the pipeline for ImGui use
+		if (ImGuiPipeline)
+		{
+			vkDestroyPipeline(LogicalDevice, ImGuiPipeline, nullptr);
+		}
+		ImGui_ImplVulkan_CreatePipeline(LogicalDevice, nullptr, nullptr, SwapChainRenderPass, VK_SAMPLE_COUNT_1_BIT, &ImGuiPipeline, 0);
+
+		return true;
+	}
+
+	// Create ImGui stuffs after engine is initialized (editor only)
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& ImGuiIO = ImGui::GetIO(); (void)ImGuiIO;
+	ImGuiIO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	ImGuiIO.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	ImGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+	ImGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+	//io.ConfigViewportsNoAutoMerge = true; // optional
+	//io.ConfigViewportsNoTaskBarIcon = true; // optional
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+
+	// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+	ImGuiStyle& style = ImGui::GetStyle();
+	if (ImGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
+
+	// Setup Platform/Renderer backends
+	bImGuiSucceed &= ImGui_ImplWin32_Init(WindowCache);
+
+	ImGui_ImplVulkan_InitInfo InitInfo{};
+	InitInfo.Instance = GetInstance();
+	InitInfo.PhysicalDevice = GetPhysicalDevice();
+	InitInfo.Device = GetLogicalDevice();
+	InitInfo.QueueFamily = GetQueueFamily().GraphicsFamily.value();
+	InitInfo.Queue = GetGraphicsQueue();
+	InitInfo.PipelineCache = nullptr;
+	InitInfo.DescriptorPool = ImGuiDescriptorPool;
+	InitInfo.Subpass = 0;
+	InitInfo.MinImageCount = GetMinImageCount();
+	InitInfo.ImageCount = GetSwapChainCount();
+	InitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	InitInfo.Allocator = nullptr;
+	InitInfo.CheckVkResultFn = nullptr;
+	InitInfo.SwapChainFormat = GetSwapChainFormat();
+	InitInfo.SwapChainColorSpace = bSupportHDR ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+	// init Vulkan ImGui
+	bImGuiSucceed &= ImGui_ImplVulkan_Init(&InitInfo, GetSwapChainRenderPass());
+	if (!bImGuiSucceed)
+	{
+		UHE_LOG("Failed to init ImGui context!\n");
+	}
+
+	// init Vulkan font
+	VkCommandBuffer CmdBuffer = BeginOneTimeCmd();
+	ImGui_ImplVulkan_CreateFontsTexture(CmdBuffer);
+	EndOneTimeCmd(CmdBuffer);
+	ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+	return bImGuiSucceed;
+}
+
+VkPipeline UHGraphic::GetImGuiPipeline() const
+{
+	return ImGuiPipeline;
+}
+#endif
 
 bool UHGraphic::CreateSwapChain()
 {
@@ -1561,6 +1673,7 @@ bool UHGraphic::CreateSwapChain()
 	{
 		ImageCount = SwapChainSupport.Capabilities2.surfaceCapabilities.maxImageCount;
 	}
+	MinImageCount = SwapChainSupport.Capabilities2.surfaceCapabilities.minImageCount;
 
 	// create info for swap chain
 	VkSwapchainCreateInfoKHR CreateInfo{};
@@ -1588,7 +1701,7 @@ bool UHGraphic::CreateSwapChain()
 	CreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	CreateInfo.presentMode = PresentMode;
 	CreateInfo.clipped = VK_TRUE;
-	CreateInfo.oldSwapchain = VK_NULL_HANDLE;
+	CreateInfo.oldSwapchain = nullptr;
 
 	// prepare win32 fullscreen ext
 	VkSurfaceFullScreenExclusiveWin32InfoEXT Win32FullScreenInfo{};
@@ -1617,8 +1730,8 @@ bool UHGraphic::CreateSwapChain()
 	vkGetSwapchainImagesKHR(LogicalDevice, SwapChain, &ImageCount, SwapChainImages.data());
 
 	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
-	UHTransitionInfo SwapChainBlitTransition(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	SwapChainRenderPass = CreateRenderPass(Format.format, SwapChainBlitTransition);
+	UHTransitionInfo SwapChainTransition(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	SwapChainRenderPass = CreateRenderPass(Format.format, SwapChainTransition);
 
 	// create swap chain RTs
 	SwapChainRT.resize(ImageCount);
@@ -1654,6 +1767,28 @@ bool UHGraphic::CreateSwapChain()
 
 		GVkSetHdrMetadataEXT(LogicalDevice, 1, &SwapChain, &HDRMetadata);
 	}
+
+#if WITH_EDITOR
+	// init shared descriptor pool for editor use, hard-code size should suffice now
+	if (ImGuiDescriptorPool == nullptr)
+	{
+		std::vector<VkDescriptorPoolSize> DescriptorPoolSizes(1024);
+		for (size_t Idx = 0; Idx < 1024; Idx++)
+		{
+			DescriptorPoolSizes[Idx].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			DescriptorPoolSizes[Idx].descriptorCount = 1;
+		}
+
+		VkDescriptorPoolCreateInfo PoolInfo = {};
+		PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		PoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		PoolInfo.maxSets = 1;
+		PoolInfo.poolSizeCount = static_cast<uint32_t>(DescriptorPoolSizes.size());
+		PoolInfo.pPoolSizes = DescriptorPoolSizes.data();
+		vkCreateDescriptorPool(LogicalDevice, &PoolInfo, nullptr, &ImGuiDescriptorPool);
+	}
+	RecreateImGui();
+#endif
 
 	return true;
 }

@@ -11,8 +11,8 @@ public:
 	UHDialog(HINSTANCE InInstance, HWND InWindow);
 	virtual ~UHDialog() {}
 
-	virtual void ShowDialog() = 0;
-	virtual void Update() {};
+	virtual void ShowDialog() { bIsOpened = true; }
+	virtual void Update() {}
 
 	HWND GetDialog() const;
 
@@ -28,6 +28,7 @@ protected:
 	HINSTANCE Instance;
 	HWND ParentWindow;
 	HWND Dialog;
+	bool bIsOpened;
 };
 
 // shared global dialog proc

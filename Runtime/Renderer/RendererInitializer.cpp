@@ -64,7 +64,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	// init static array pointers
 	for (size_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		TopLevelAS[Idx] = VK_NULL_HANDLE;
+		TopLevelAS[Idx] = nullptr;
 		ToneMapData[Idx] = nullptr;
 #if WITH_EDITOR
 		DebugBoundData[Idx] = nullptr;
@@ -238,14 +238,14 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
 {
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
-	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
+	UHRenderBuilder RenderBuilder(GraphicInterface, CreationCmd);
 
 	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames())
 	{
 		UHTexture2D* Tex = AssetManagerInterface->GetTexture2D(RegisteredTexture);
 		if (Tex)
 		{
-			Tex->UploadToGPU(GraphicInterface, CreationCmd, GraphBuilder);
+			Tex->UploadToGPU(GraphicInterface, CreationCmd, RenderBuilder);
 		}
 	}
 
@@ -267,7 +267,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	}
 	
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
-	UHGraphicBuilder GraphBuilder(GraphicInterface, CreationCmd);
+	UHRenderBuilder RenderBuilder(GraphicInterface, CreationCmd);
 	// Step2: Build all cubemaps in use
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
@@ -275,7 +275,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		if (Mat && Mat->GetSystemTex(UHSystemTextureType::SkyCube))
 		{
 			UHTextureCube* Cube = static_cast<UHTextureCube*>(Mat->GetSystemTex(UHSystemTextureType::SkyCube));
-			Cube->Build(GraphicInterface, CreationCmd, GraphBuilder);
+			Cube->Build(GraphicInterface, CreationCmd, RenderBuilder);
 		}
 	}
 
@@ -284,7 +284,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		if (SkyRenderer->GetMaterial() && SkyRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube))
 		{
 			UHTextureCube* Cube = static_cast<UHTextureCube*>(SkyRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube));
-			Cube->Build(GraphicInterface, CreationCmd, GraphBuilder);
+			Cube->Build(GraphicInterface, CreationCmd, RenderBuilder);
 		}
 	}
 

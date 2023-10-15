@@ -165,6 +165,7 @@ void UHEngine::Update()
 	// full screen toggling
 	if (UHERawInput->IsKeyHold(VK_MENU) && UHERawInput->IsKeyUp(VK_RETURN))
 	{
+		UHEConfig->ToggleFullScreen();
 		ToggleFullScreen();
 	}
 
@@ -233,7 +234,6 @@ void UHEngine::ResizeEngine()
 
 void UHEngine::ToggleFullScreen()
 {
-	UHEConfig->ToggleFullScreen();
 	UHEConfig->ApplyWindowStyle(UHWindowInstance, UHEngineWindow);
 	UHEGraphic->ToggleFullScreen(UHEConfig->PresentationSetting().bFullScreen);
 }
@@ -281,6 +281,11 @@ void UHEngine::EndFPSLimiter()
 UHEditor* UHEngine::GetEditor() const
 {
 	return UHEEditor.get();
+}
+
+UHGraphic* UHEngine::GetGfx() const
+{
+	return UHEGraphic.get();
 }
 
 void UHEngine::BeginProfile()

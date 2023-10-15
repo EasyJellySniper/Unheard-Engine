@@ -1,5 +1,5 @@
 #include "TextureCube.h"
-#include "../Renderer/GraphicBuilder.h"
+#include "../Renderer/RenderBuilder.h"
 
 UHTextureCube::UHTextureCube()
 	: UHTextureCube("", VkExtent2D(), VK_FORMAT_UNDEFINED)
@@ -15,7 +15,7 @@ UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, VkFormat I
 }
 
 // actually builds cubemap and upload to gpu
-void UHTextureCube::Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder)
+void UHTextureCube::Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder)
 {
 	if (bIsCubeBuilt)
 	{
@@ -26,17 +26,17 @@ void UHTextureCube::Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuil
 	for (int32_t Idx = 0; Idx < 6; Idx++)
 	{
 		// if texture slices isn't built yet, build it
-		Slices[Idx]->UploadToGPU(InGfx, InCmd, InGraphBuilder);
-		Slices[Idx]->GenerateMipMaps(InGfx, InCmd, InGraphBuilder);
+		Slices[Idx]->UploadToGPU(InGfx, InCmd, InRenderBuilder);
+		Slices[Idx]->GenerateMipMaps(InGfx, InCmd, InRenderBuilder);
 
 		// transition and copy, all mip maps need to be copied
 		for (uint32_t Mdx = 0; Mdx < Slices[Idx]->GetMipMapCount(); Mdx++)
 		{
-			InGraphBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx);
-			InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx, Idx);
-			InGraphBuilder.CopyTexture(Slices[Idx], this, Mdx, Idx);
-			InGraphBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx, Idx);
-			InGraphBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
+			InRenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx);
+			InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx, Idx);
+			InRenderBuilder.CopyTexture(Slices[Idx], this, Mdx, Idx);
+			InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx, Idx);
+			InRenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 		}
 	}
 

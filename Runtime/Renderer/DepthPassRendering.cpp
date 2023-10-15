@@ -1,31 +1,31 @@
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilder)
+void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilder)
 {
 	if (CurrentScene == nullptr || !bEnableDepthPrePass)
 	{
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Depth Pre Pass");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Depth Pre Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::DepthPrePass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::DepthPrePass]);
 
 		VkClearValue DepthClearValue;
 		DepthClearValue.depthStencil.depth = 0.0f;
 		DepthClearValue.depthStencil.stencil = 0;
 
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 
 		// begin render pass based on flag
 		if (bParallelSubmissionRT)
 		{
-			GraphBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+			RenderBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 		}
 		else
 		{
-			GraphBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue);
+			RenderBuilder.BeginRenderPass(DepthPassObj.RenderPass, DepthPassObj.FrameBuffer, RenderResolution, DepthClearValue);
 		}
 
 		if (bParallelSubmissionRT)
@@ -52,12 +52,12 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 #if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
-				GraphBuilder.DrawCalls += ThreadDrawCalls[I];
+				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 			}
 #endif
 
 			// execute all recorded batches
-			GraphBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
+			RenderBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
 		}
 		else
 		{
@@ -66,7 +66,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 			{
 				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 					, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-				GraphBuilder.BindDescriptorSet(DepthPassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+				RenderBuilder.BindDescriptorSet(DepthPassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 			}
 
 			// render all opaque renderers from scene
@@ -88,25 +88,25 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHGraphicBuilder& GraphBuilde
 
 				const UHDepthPassShader* DepthShader = DepthPassShaders[RendererIdx].get();
 
-				GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 				// bind pipelines
-				GraphBuilder.BindGraphicState(DepthShader->GetState());
-				GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-				GraphBuilder.BindIndexBuffer(Mesh);
-				GraphBuilder.BindDescriptorSet(DepthShader->GetPipelineLayout(), DepthShader->GetDescriptorSet(CurrentFrameRT));
+				RenderBuilder.BindGraphicState(DepthShader->GetState());
+				RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+				RenderBuilder.BindIndexBuffer(Mesh);
+				RenderBuilder.BindDescriptorSet(DepthShader->GetPipelineLayout(), DepthShader->GetDescriptorSet(CurrentFrameRT));
 
 				// draw call
-				GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+				RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-				GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+				GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 			}
 		}
 
-		GraphBuilder.EndRenderPass();
+		RenderBuilder.EndRenderPass();
 	}
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
 // depth pass task, called by worker thread
@@ -123,14 +123,14 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	InheritanceInfo.renderPass = DepthPassObj.RenderPass;
 	InheritanceInfo.framebuffer = DepthPassObj.FrameBuffer;
 
-	UHGraphicBuilder GraphBuilder(GraphicInterface, DepthParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
-	GraphBuilder.BeginCommandBuffer(&InheritanceInfo);
+	UHRenderBuilder RenderBuilder(GraphicInterface, DepthParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 
 	// silence the false positive error regarding vp and scissor
 	if (GraphicInterface->IsDebugLayerEnabled())
 	{
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 	}
 
 	// bind texture table, they should only be bound once
@@ -138,7 +138,7 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	{
 		std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 			, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-		GraphBuilder.BindDescriptorSet(DepthPassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
+		RenderBuilder.BindDescriptorSet(DepthPassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
 	for (int32_t I = StartIdx; I < EndIdx; I++)
@@ -150,23 +150,23 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 
 		const UHDepthPassShader* DepthShader = DepthPassShaders[RendererIdx].get();
 
-		GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
+		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
 		// bind pipelines
-		GraphBuilder.BindGraphicState(DepthShader->GetState());
-		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.BindDescriptorSet(DepthShader->GetPipelineLayout(), DepthShader->GetDescriptorSet(CurrentFrameRT));
+		RenderBuilder.BindGraphicState(DepthShader->GetState());
+		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(Mesh);
+		RenderBuilder.BindDescriptorSet(DepthShader->GetPipelineLayout(), DepthShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
-		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-		GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	}
 
-	GraphBuilder.EndCommandBuffer();
+	RenderBuilder.EndCommandBuffer();
 #if WITH_EDITOR
-	ThreadDrawCalls[ThreadIdx] += GraphBuilder.DrawCalls;
+	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif
 }

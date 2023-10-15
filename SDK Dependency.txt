@@ -5,6 +5,7 @@ FBX version: 2020.0.1
 Windows SDK Version: 10.0.20348.0
 Platform Toolset: v143
 DXC Compiler: 2022_07_18 release
+ImGui: v1.89.9, the dock branch
 
 Viking Huts is downloaded from CGTrader:
 https://www.cgtrader.com/free-3d-models/exterior/house/viking-hut

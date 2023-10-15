@@ -3,11 +3,11 @@
 #include <unordered_map>
 #include "ShaderClass/ShaderClass.h"
 
-// graphic builder for Unheard Engine
-class UHGraphicBuilder
+// render builder for Unheard Engine
+class UHRenderBuilder
 {
 public:
-	UHGraphicBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder = false);
+	UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder = false);
 
 	VkCommandBuffer GetCmdList();
 

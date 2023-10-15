@@ -287,7 +287,7 @@
     <ClInclude Include="Runtime\Renderer\ParallelSubmitter.h" />
     <ClInclude Include="Runtime\Renderer\QueueSubmitter.h" />
     <ClInclude Include="Runtime\Renderer\RenderingTypes.h" />
-    <ClInclude Include="Runtime\Renderer\GraphicBuilder.h" />
+    <ClInclude Include="Runtime\Renderer\RenderBuilder.h" />
     <ClInclude Include="Runtime\Renderer\DeferredShadingRenderer.h" />
     <ClInclude Include="Runtime\Classes\Utility.h" />
     <ClInclude Include="Runtime\Engine\Config.h" />
@@ -332,6 +332,14 @@
     <ClInclude Include="Runtime\Classes\Texture2D.h" />
     <ClInclude Include="Runtime\Classes\Texture.h" />
     <ClInclude Include="Runtime\Classes\TextureCube.h" />
+    <ClInclude Include="ThirdParty\ImGui\imconfig.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui_impl_vulkan.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="ThirdParty\ImGui\imgui_internal.h" />
+    <ClInclude Include="ThirdParty\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="ThirdParty\ImGui\imstb_textedit.h" />
+    <ClInclude Include="ThirdParty\ImGui\imstb_truetype.h" />
     <ClInclude Include="UnheardEngine.h" />
   </ItemGroup>
   <ItemGroup>
@@ -409,7 +417,7 @@
     <ClCompile Include="Runtime\Engine\Engine.cpp" />
     <ClCompile Include="Runtime\Engine\Input.cpp" />
     <ClCompile Include="Editor\Classes\FbxImporter.cpp" />
-    <ClCompile Include="Runtime\Renderer\GraphicBuilder.cpp" />
+    <ClCompile Include="Runtime\Renderer\RenderBuilder.cpp" />
     <ClCompile Include="Runtime\Classes\Shader.cpp" />
     <ClCompile Include="Runtime\Components\Transform.cpp" />
     <ClCompile Include="Runtime\Classes\Scene.cpp" />
@@ -441,6 +449,13 @@
     <ClCompile Include="Runtime\Renderer\TranslucentRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\SkyPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ShaderClass.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_demo.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_tables.cpp" />
+    <ClCompile Include="ThirdParty\ImGui\imgui_widgets.cpp" />
     <ClCompile Include="UnheardEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -457,6 +472,9 @@
     <None Include="Shaders\UHInputs.hlsli">
       <FileType>Document</FileType>
     </None>
+    <None Include="ThirdParty\ImGui\backends\vulkan\generate_spv.sh" />
+    <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.frag" />
+    <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.vert" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\BasePixelShader.hlsl">

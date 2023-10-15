@@ -1,38 +1,38 @@
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::RenderSkyPass(UHGraphicBuilder& GraphBuilder)
+void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 {
 	if (CurrentScene == nullptr || CurrentScene->GetSkyboxRenderer() == nullptr)
 	{
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(GraphBuilder.GetCmdList(), "Drawing Sky Pass");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Sky Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(GraphBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::SkyPass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::SkyPass]);
 
-		GraphBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-		GraphBuilder.BeginRenderPass(SkyboxPassObj.RenderPass, SkyboxPassObj.FrameBuffer, RenderResolution);
+		RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		RenderBuilder.BeginRenderPass(SkyboxPassObj.RenderPass, SkyboxPassObj.FrameBuffer, RenderResolution);
 
-		GraphBuilder.SetViewport(RenderResolution);
-		GraphBuilder.SetScissor(RenderResolution);
+		RenderBuilder.SetViewport(RenderResolution);
+		RenderBuilder.SetScissor(RenderResolution);
 
 		// bind state
-		GraphBuilder.BindGraphicState(SkyPassShader->GetState());
+		RenderBuilder.BindGraphicState(SkyPassShader->GetState());
 
 		// bind sets
-		GraphBuilder.BindDescriptorSet(SkyPassShader->GetPipelineLayout(), SkyPassShader->GetDescriptorSet(CurrentFrameRT));
+		RenderBuilder.BindDescriptorSet(SkyPassShader->GetPipelineLayout(), SkyPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw skybox renderer
 		const UHMeshRendererComponent* SkyboxRenderer = CurrentScene->GetSkyboxRenderer();
 		const UHMaterial* Mat = SkyboxRenderer->GetMaterial();
 		UHMesh* Mesh = SkyboxRenderer->GetMesh();
 
-		GraphBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		GraphBuilder.BindIndexBuffer(Mesh);
-		GraphBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(Mesh);
+		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
 
-		GraphBuilder.EndRenderPass();
+		RenderBuilder.EndRenderPass();
 	}
-	GraphicInterface->EndCmdDebug(GraphBuilder.GetCmdList());
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

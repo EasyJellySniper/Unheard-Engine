@@ -76,7 +76,7 @@ struct UHTextureSettings
 };
 
 class UHGraphic;
-class UHGraphicBuilder;
+class UHRenderBuilder;
 
 // base texture class for textures. Texture2D, RenderTexture can inherit this
 class UHTexture : public UHRenderResource
@@ -86,8 +86,8 @@ public:
 	UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings);
 	virtual ~UHTexture() {}
 
-	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}
-	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHGraphicBuilder& InGraphBuilder) {}
+	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) {}
+	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) {}
 
 #if WITH_EDITOR
 	virtual void Recreate() {}
