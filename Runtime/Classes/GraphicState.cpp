@@ -265,7 +265,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	PipelineInfo.renderPass = RenderPassInfo.RenderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-	PipelineInfo.basePipelineIndex = -1; // Optional
+	PipelineInfo.basePipelineIndex = UHINDEXNONE; // Optional
 
 	VkResult Result = vkCreateGraphicsPipelines(LogicalDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &PassPipeline);
 	if (Result != VK_SUCCESS)
@@ -433,7 +433,7 @@ bool UHGraphicState::CreateState(UHComputePassInfo InInfo)
 	// optional
 	PipelineInfo.flags = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-	PipelineInfo.basePipelineIndex = -1;
+	PipelineInfo.basePipelineIndex = UHINDEXNONE;
 
 	VkResult Result = vkCreateComputePipelines(LogicalDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &PassPipeline);
 	if (Result != VK_SUCCESS)

@@ -219,11 +219,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Editor\Classes\DetailGUIs\BoolDetailGUI.h" />
-    <ClInclude Include="Editor\Classes\DetailGUIs\DropListDetailGUI.h" />
-    <ClInclude Include="Editor\Classes\DetailGUIs\Float3DetailGUI.h" />
-    <ClInclude Include="Editor\Classes\DetailGUIs\FloatDetailGUI.h" />
-    <ClInclude Include="Editor\Classes\DetailView.h" />
     <ClInclude Include="Editor\Classes\MaterialImporter.h" />
     <ClInclude Include="Editor\Classes\Reflection.h" />
     <ClInclude Include="Editor\Controls\Button.h" />
@@ -268,7 +263,6 @@
     <ClInclude Include="Runtime\Classes\GPUQuery.h" />
     <ClInclude Include="Runtime\Classes\TextureCompressor.h" />
     <ClInclude Include="Runtime\Classes\Thread.h" />
-    <ClInclude Include="Editor\Classes\DetailGUIs\DetailGUIs.h" />
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
     <ClInclude Include="Runtime\Engine\GraphicFunction.h" />
@@ -343,11 +337,6 @@
     <ClInclude Include="UnheardEngine.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Editor\Classes\DetailGUIs\BoolDetailGUI.cpp" />
-    <ClCompile Include="Editor\Classes\DetailGUIs\DropListDetailGUI.cpp" />
-    <ClCompile Include="Editor\Classes\DetailGUIs\Float3DetailGUI.cpp" />
-    <ClCompile Include="Editor\Classes\DetailGUIs\FloatDetailGUI.cpp" />
-    <ClCompile Include="Editor\Classes\DetailView.cpp" />
     <ClCompile Include="Editor\Classes\MaterialImporter.cpp" />
     <ClCompile Include="Editor\Controls\Button.cpp" />
     <ClCompile Include="Editor\Controls\CheckBox.cpp" />
@@ -392,7 +381,6 @@
     <ClCompile Include="Runtime\Classes\Thread.cpp" />
     <ClCompile Include="Runtime\Classes\Types.cpp" />
     <ClCompile Include="Runtime\Classes\Utility.cpp" />
-    <ClCompile Include="Editor\Classes\DetailGUIs\DetailGUIs.cpp" />
     <ClCompile Include="Runtime\Components\GameScript.cpp" />
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
     <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp" />

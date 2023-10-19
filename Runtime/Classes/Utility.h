@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <string>
 #include <sstream>
+#include "Types.h"
 
 // a header for utilities
 namespace UHUtilities
@@ -108,9 +109,9 @@ namespace UHUtilities
 
 	// remove by index
 	template<class T>
-	inline void RemoveByIndex(std::vector<T>& InVector, int32_t InIndex, int32_t InLast = -1)
+	inline void RemoveByIndex(std::vector<T>& InVector, int32_t InIndex, int32_t InLast = UHINDEXNONE)
 	{
-		if (InLast == -1)
+		if (InLast == UHINDEXNONE)
 		{
 			InVector.erase(InVector.begin() + InIndex);
 		}

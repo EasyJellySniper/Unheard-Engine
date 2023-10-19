@@ -3,7 +3,6 @@
 UHComponent::UHComponent()
 #if WITH_EDITOR
 	: bIsEditable(true)
-	, DetailStartHeight(0)
 #endif
 {
 

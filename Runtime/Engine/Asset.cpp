@@ -242,7 +242,7 @@ void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
 				// add to referenced texture list if doesn't exist
 				int32_t TextureIdx = UHUtilities::FindIndex(ReferencedTexture2Ds, UHTexture2Ds[Jdx]);
 
-				if (TextureIdx == -1)
+				if (TextureIdx == UHINDEXNONE)
 				{
 					TextureIdx = static_cast<int32_t>(ReferencedTexture2Ds.size());
 					ReferencedTexture2Ds.push_back(UHTexture2Ds[Jdx]);

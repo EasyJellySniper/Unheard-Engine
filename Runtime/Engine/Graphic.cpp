@@ -1003,7 +1003,7 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 void UHGraphic::RequestReleaseRT(UHRenderTexture* InRT)
 {
 	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, *InRT);
-	if (Idx == -1)
+	if (Idx == UHINDEXNONE)
 	{
 		return;
 	}

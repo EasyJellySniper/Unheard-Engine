@@ -194,7 +194,7 @@ void UHMaterialDialog::Init()
     CreateWorkAreaMemDC((int32_t)(R.right - R.left), (int32_t)(R.bottom - R.top));
 
     // reset material selection
-    CurrentMaterialIndex = -1;
+    CurrentMaterialIndex = UHINDEXNONE;
     CurrentMaterial = nullptr;
 }
 
@@ -699,7 +699,7 @@ void UHMaterialDialog::DrawPinConnectionLine(bool bIsErasing)
 void UHMaterialDialog::ControlRecompileMaterial()
 {
     const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == -1)
+    if (MatIndex == UHINDEXNONE)
     {
         return;
     }
@@ -712,7 +712,7 @@ void UHMaterialDialog::ControlRecompileMaterial()
 void UHMaterialDialog::ControlResaveMaterial()
 {
     const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == -1)
+    if (MatIndex == UHINDEXNONE)
     {
         return;
     }
@@ -731,7 +731,7 @@ void UHMaterialDialog::ControlResaveAllMaterials()
 void UHMaterialDialog::ControlCullMode()
 {
     const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == -1)
+    if (MatIndex == UHINDEXNONE)
     {
         return;
     }
@@ -748,7 +748,7 @@ void UHMaterialDialog::ControlCullMode()
 void UHMaterialDialog::ControlBlendMode()
 {
     const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == -1)
+    if (MatIndex == UHINDEXNONE)
     {
         return;
     }
@@ -774,7 +774,7 @@ void UHMaterialDialog::ControlBlendMode()
 
 void UHMaterialDialog::RecompileMaterial(int32_t MatIndex)
 {
-    if (MatIndex == -1)
+    if (MatIndex == UHINDEXNONE)
     {
         return;
     }
@@ -793,7 +793,7 @@ void UHMaterialDialog::RecompileMaterial(int32_t MatIndex)
 
 void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
 {
-    if (MatIndex == -1)
+    if (MatIndex == UHINDEXNONE)
     {
         return;
     }

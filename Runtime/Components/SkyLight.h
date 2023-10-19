@@ -19,15 +19,7 @@ public:
 	float GetGroundIntensity() const;
 
 #if WITH_EDITOR
-	virtual void OnPropertyChange(std::string PropertyName) override;
-	virtual void OnGenerateDetailView(HWND ParentWnd) override;
-
-	UH_BEGIN_REFLECT
-	UH_MEMBER_REFLECT("XMFLOAT3", "AmbientSky")
-	UH_MEMBER_REFLECT("XMFLOAT3", "AmbientGround")
-	UH_MEMBER_REFLECT("float", "SkyIntensity")
-	UH_MEMBER_REFLECT("float", "GroundIntensity")
-	UH_END_REFLECT
+	virtual void OnGenerateDetailView() override;
 #endif
 
 private:
@@ -36,8 +28,4 @@ private:
 	XMFLOAT3 AmbientGroundColor;
 	float SkyIntensity;
 	float GroundIntensity;
-
-#if WITH_EDITOR
-	UniquePtr<UHDetailView> DetailView;
-#endif
 };

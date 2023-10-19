@@ -337,7 +337,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	MeshBound = BoundingBox(MeshCenter, MeshExtent);
 
 	// find the highest indice in the index buffer
-	HighestIndex = -1;
+	HighestIndex = UHINDEXNONE;
 	for (const int32_t& Index : IndicesData)
 	{
 		HighestIndex = (std::max)(Index, HighestIndex);

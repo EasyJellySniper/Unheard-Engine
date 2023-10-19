@@ -50,15 +50,8 @@ public:
 	bool IsTransformChanged() const;
 
 #if WITH_EDITOR
-	virtual void OnPropertyChange(std::string PropertyName) override;
-	virtual void OnGenerateDetailView(HWND ParentWnd) override;
+	virtual void OnGenerateDetailView() override;
 	XMFLOAT3 GetRotationEuler();
-
-	UH_BEGIN_REFLECT
-	UH_MEMBER_REFLECT("XMFLOAT3", "Position")
-	UH_MEMBER_REFLECT("XMFLOAT3", "Rotation")
-	UH_MEMBER_REFLECT("XMFLOAT3", "Scale")
-	UH_END_REFLECT
 #endif
 
 protected:
@@ -87,8 +80,4 @@ private:
 
 	// rotation only matrix
 	XMFLOAT4X4 RotationMatrix;
-
-#if WITH_EDITOR
-	UniquePtr<UHDetailView> DetailView;
-#endif
 };

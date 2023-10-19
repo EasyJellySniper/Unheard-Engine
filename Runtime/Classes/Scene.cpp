@@ -160,7 +160,7 @@ UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* In
 
 	// collect material as well, assign constant index for both newly added and already added cases
 	int32_t ConstIdx = UHUtilities::FindIndex(Materials, InMaterial);
-	if (ConstIdx == -1)
+	if (ConstIdx == UHINDEXNONE)
 	{
 		InMaterial->SetBufferDataIndex(static_cast<int32_t>(Materials.size()));
 		Materials.push_back(InMaterial);

@@ -90,77 +90,55 @@ UHDebugBoundConstant UHMeshRendererComponent::GetDebugBoundConst() const
 	return BoundConst;
 }
 
-void UHMeshRendererComponent::OnPropertyChange(std::string PropertyName)
+void UHMeshRendererComponent::OnGenerateDetailView()
 {
-	UHTransformComponent::OnPropertyChange(PropertyName);
+	UHTransformComponent::OnGenerateDetailView();
+	ImGui::NewLine();
+	ImGui::Text("------ Mesh Renderer ------");
 
-	const UHBoolDetailGUI* BoolGUI = static_cast<const UHBoolDetailGUI*>(DetailView->GetGUI(PropertyName));
-	const UHDropListDetailGUI* DetailGUI = static_cast<const UHDropListDetailGUI*>(DetailView->GetGUI(PropertyName));
-	const UHAssetManager* AssetMgr = UHAssetManager::GetAssetMgrEditor();
-
-	if (PropertyName == "IsVisible")
-	{
-		bIsVisibleEditor = BoolGUI->GetValue();
-		SetRayTracingDirties(true);
-	}
-	else if (PropertyName == "Mesh")
-	{
-		// switch mesh cache, mark world dirty for updating bounds
-		MeshCache = AssetMgr->GetMesh(UHUtilities::ToStringA(DetailGUI->GetValue()));
-		bIsWorldDirty = true;
-	}
-	else if (PropertyName == "Material")
-	{
-		// remove old reference and add the new one
-		UHMaterial* OldMat = MaterialCache;
-		UHMaterial* NewMat = AssetMgr->GetMaterial(UHUtilities::ToStringA(DetailGUI->GetValue()));
-		MaterialCache = NewMat;
-		UHDeferredShadingRenderer::GetRendererEditorOnly()->OnRendererMaterialChanged(this, OldMat, NewMat);
-
-		// mark dirties
-		SetRenderDirties(true);
-		SetRayTracingDirties(true);
-		SetMotionDirties(true);
-	}
-}
-
-void UHMeshRendererComponent::OnGenerateDetailView(HWND ParentWnd)
-{
-	UHTransformComponent::OnGenerateDetailView(ParentWnd);
-
-	DetailView = MakeUnique<UHDetailView>("Mesh Renderer");
-	DetailView->OnGenerateDetailView<UHMeshRendererComponent>(this, ParentWnd, DetailStartHeight);
+	ImGui::Checkbox("IsVisible", &bIsVisibleEditor);
 
 	// init material and mesh list
-	UHDropListDetailGUI* MeshListGUI = static_cast<UHDropListDetailGUI*>(DetailView->GetGUI("Mesh"));
-	UHDropListDetailGUI* MaterialListGUI = static_cast<UHDropListDetailGUI*>(DetailView->GetGUI("Material"));
 	const UHAssetManager* AssetMgr = UHAssetManager::GetAssetMgrEditor();
 
-	std::vector<std::wstring> MeshList;
-	for (const UHMesh* Mesh : AssetMgr->GetUHMeshes())
+	// mesh list
+	if (MeshCache && ImGui::BeginCombo("Mesh", MeshCache->GetName().c_str()))
 	{
-		MeshList.push_back(UHUtilities::ToStringW(Mesh->GetName()));
+		const std::vector<UHMesh*>& Meshes = AssetMgr->GetUHMeshes();
+		for (size_t Idx = 0; Idx < Meshes.size(); Idx++)
+		{
+			bool bIsSelected = (MeshCache == Meshes[Idx]);
+			if (ImGui::Selectable(Meshes[Idx]->GetName().c_str(), bIsSelected))
+			{
+				MeshCache = Meshes[Idx];
+				bIsWorldDirty = true;
+			}
+		}
+		ImGui::EndCombo();
 	}
 
-	std::vector<std::wstring> MaterialList;
-	for (const UHMaterial* Mat : AssetMgr->GetMaterials())
+	// material list
+	if (MaterialCache && ImGui::BeginCombo("Material", MaterialCache->GetName().c_str()))
 	{
-		MaterialList.push_back(UHUtilities::ToStringW(Mat->GetName()));
-	}
+		const std::vector<UHMaterial*>& Materials = AssetMgr->GetMaterials();
+		for (size_t Idx = 0; Idx < Materials.size(); Idx++)
+		{
+			bool bIsSelected = (MaterialCache == Materials[Idx]);
+			if (ImGui::Selectable(Materials[Idx]->GetName().c_str(), bIsSelected))
+			{
+				UHMaterial* OldMat = MaterialCache;
+				UHMaterial* NewMat = Materials[Idx];
+				MaterialCache = NewMat;
+				UHDeferredShadingRenderer::GetRendererEditorOnly()->OnRendererMaterialChanged(this, OldMat, NewMat);
 
-	MeshListGUI->InitList(MeshList);
-	if (MeshCache)
-	{
-		MeshListGUI->SetValue(UHUtilities::ToStringW(MeshCache->GetName()));
-	}
+				SetRenderDirties(true);
+				SetRayTracingDirties(true);
+				SetMotionDirties(true);
+			}
+		}
 
-	MaterialListGUI->InitList(MaterialList);
-	if (MaterialCache)
-	{
-		MaterialListGUI->SetValue(UHUtilities::ToStringW(MaterialCache->GetName()));
+		ImGui::EndCombo();
 	}
-
-	UH_SYNC_DETAIL_VALUE("IsVisible", bIsVisibleEditor)
 }
 
 bool UHMeshRendererComponent::IsVisibleInEditor() const

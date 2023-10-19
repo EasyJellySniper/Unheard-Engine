@@ -6,15 +6,6 @@
 
 #if WITH_EDITOR
 #include "../../Runtime/Renderer/RenderingTypes.h"
-#include "../../Editor/Classes/DetailView.h"
-#include "../../Editor/Classes/Reflection.h"
-
-#define UH_SYNC_DETAIL_VALUE(InPropName, InVal) \
-if (DetailView) \
-DetailView->SetValue(InPropName, InVal);
-
-#else
-#define UH_SYNC_DETAIL_VALUE(InPropName, InVal)
 #endif
 
 // base component class of UH, each components are unique
@@ -28,16 +19,14 @@ public:
 	virtual void Update() = 0;
 
 #if WITH_EDITOR
-	virtual void OnPropertyChange(std::string PropertyName) {}
 	virtual UHDebugBoundConstant GetDebugBoundConst() const { return UHDebugBoundConstant{}; }
-	virtual void OnGenerateDetailView(HWND ParentWindow) { }
+	virtual void OnGenerateDetailView() { }
 	bool IsEditable() const;
 #endif
 
 protected:
 #if WITH_EDITOR
 	bool bIsEditable;
-	int32_t DetailStartHeight;
 #endif
 };
 

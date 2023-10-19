@@ -8,15 +8,14 @@
 class UHDetailDialog : public UHDialog
 {
 public:
-	UHDetailDialog(HINSTANCE InInstance, HWND InWindow);
-
-	virtual void ShowDialog() override;
+	UHDetailDialog(HWND ParentWnd);
+	virtual void Update() override;
 
 	void ResetDialogWindow();
 	void GenerateDetailView(UHComponent* InComponent);
 
 private:
-	RECT OriginDialogRect;
+	ImVec2 WindowPos;
 	UHComponent* CurrComponent;
 };
 #endif

@@ -32,17 +32,7 @@ public:
 	BoundingBox GetScreenBound(BoundingBox InWorldBound) const;
 
 #if WITH_EDITOR
-	virtual void OnPropertyChange(std::string PropertyName) override;
-	virtual void OnGenerateDetailView(HWND ParentWnd) override;
-
-	UH_BEGIN_REFLECT
-	UH_MEMBER_REFLECT("float", "NearPlane")
-	UH_MEMBER_REFLECT("float", "FovY")
-	UH_MEMBER_REFLECT("float", "CullingDistance")
-	UH_MEMBER_REFLECT("float", "JitterScaleMin")
-	UH_MEMBER_REFLECT("float", "JitterScaleMax")
-	UH_MEMBER_REFLECT("float", "JitterEndDistance")
-	UH_END_REFLECT
+	virtual void OnGenerateDetailView() override;
 #endif
 
 private:
@@ -52,6 +42,9 @@ private:
 	float NearPlane;
 	float Aspect;
 	float FovY;
+#if WITH_EDITOR
+	float FovYDeg;
+#endif
 
 	XMFLOAT4X4 ViewMatrix;
 	XMFLOAT4X4 ProjectionMatrix;
@@ -75,8 +68,4 @@ private:
 
 	BoundingFrustum CameraFrustum;
 	float CullingDistance;
-
-#if WITH_EDITOR
-	UniquePtr<UHDetailView> DetailView;
-#endif
 };

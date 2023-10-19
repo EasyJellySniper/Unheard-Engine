@@ -92,7 +92,7 @@ void UHTextureDialog::Init()
         PreviewScene = MakeUnique<UHPreviewScene>(Instance, TexturePreviewGUI->GetHwnd(), Gfx, TexturePreview);
     }
 
-    CurrentTextureIndex = -1;
+    CurrentTextureIndex = UHINDEXNONE;
     CurrentTexture = nullptr;
 
     ShowWindow(Dialog, SW_SHOW);

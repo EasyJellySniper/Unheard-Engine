@@ -8,7 +8,7 @@ UHTexture2DNode::UHTexture2DNode(std::string TexName)
 {
 	Name = "Texture2D";
 	NodeType = Texture2DNode;
-	TextureIndexInMaterial = -1;
+	TextureIndexInMaterial = UHINDEXNONE;
 
 	Inputs.resize(1);
 	Inputs[0] = MakeUnique<UHGraphPin>("UV", this, Float2Pin);

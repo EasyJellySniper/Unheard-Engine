@@ -24,6 +24,9 @@ UHCameraComponent::UHCameraComponent()
 	, JitterScaleMin(0.01f)
 	, JitterScaleMax(0.5f)
 	, JitterEndDistance(500.0f)
+#if WITH_EDITOR
+	, FovYDeg(60.0f)
+#endif
 {
 	SetName("CameraComponent" + std::to_string(GetId()));
 }
@@ -81,7 +84,6 @@ void UHCameraComponent::Update()
 void UHCameraComponent::SetNearPlane(float InNearZ)
 {
 	NearPlane = InNearZ;
-	UH_SYNC_DETAIL_VALUE("NearPlane", NearPlane)
 }
 
 void UHCameraComponent::SetAspect(float InAspect)
@@ -93,7 +95,9 @@ void UHCameraComponent::SetFov(float InFov)
 {
 	// store fov as radian
 	FovY = XMConvertToRadians(InFov);
-	UH_SYNC_DETAIL_VALUE("FovY", XMConvertToDegrees(FovY))
+#if WITH_EDITOR
+	FovYDeg = InFov;
+#endif
 }
 
 void UHCameraComponent::SetUseJitter(bool bInFlag)
@@ -110,7 +114,6 @@ void UHCameraComponent::SetResolution(int32_t RenderWidth, int32_t RenderHeight)
 void UHCameraComponent::SetCullingDistance(float InDistance)
 {
 	CullingDistance = InDistance;
-	UH_SYNC_DETAIL_VALUE("CullingDistance", CullingDistance)
 }
 
 XMFLOAT4X4 UHCameraComponent::GetViewMatrix() const
@@ -223,50 +226,31 @@ BoundingBox UHCameraComponent::GetScreenBound(BoundingBox InWorldBound) const
 }
 
 #if WITH_EDITOR
-void UHCameraComponent::OnPropertyChange(std::string PropertyName)
+void UHCameraComponent::OnGenerateDetailView()
 {
-	UHTransformComponent::OnPropertyChange(PropertyName);
-	float FloatValue = DetailView->GetValue<float>(PropertyName);
+	UHTransformComponent::OnGenerateDetailView();
 
-	if (PropertyName == "NearPlane")
-	{
-		NearPlane = FloatValue;
-	}
-	else if (PropertyName == "FovY")
-	{
-		FovY = XMConvertToRadians(FloatValue);
-	}
-	else if (PropertyName == "CullingDistance")
-	{
-		CullingDistance = FloatValue;
-	}
-	else if (PropertyName == "JitterScaleMin")
-	{
-		JitterScaleMin = FloatValue;
-	}
-	else if (PropertyName == "JitterScaleMax")
-	{
-		JitterScaleMax = FloatValue;
-	}
-	else if (PropertyName == "JitterEndDistance")
-	{
-		JitterEndDistance = FloatValue;
-	}
-}
+	ImGui::NewLine();
+	ImGui::Text("------ Camera ------");
 
-void UHCameraComponent::OnGenerateDetailView(HWND ParentWnd)
-{
-	UHTransformComponent::OnGenerateDetailView(ParentWnd);
+	if (ImGui::InputFloat("NearPlane", &NearPlane))
+	{
+		SetNearPlane(NearPlane);
+	}
 
-	DetailView = MakeUnique<UHDetailView>("Camera");
-	DetailView->OnGenerateDetailView<UHCameraComponent>(this, ParentWnd, DetailStartHeight);
+	if (ImGui::InputFloat("FovY", &FovYDeg))
+	{
+		SetFov(FovYDeg);
+	}
 
-	UH_SYNC_DETAIL_VALUE("NearPlane", NearPlane)
-	UH_SYNC_DETAIL_VALUE("FovY", XMConvertToDegrees(FovY))
-	UH_SYNC_DETAIL_VALUE("CullingDistance", CullingDistance)
-	UH_SYNC_DETAIL_VALUE("JitterScaleMin", JitterScaleMin)
-	UH_SYNC_DETAIL_VALUE("JitterScaleMax", JitterScaleMax)
-	UH_SYNC_DETAIL_VALUE("JitterEndDistance", JitterEndDistance)
+	if (ImGui::InputFloat("CullingDistance", &CullingDistance))
+	{
+		SetCullingDistance(CullingDistance);
+	}
+
+	ImGui::InputFloat("JitterScaleMin", &JitterScaleMin);
+	ImGui::InputFloat("JitterScaleMax", &JitterScaleMax);
+	ImGui::InputFloat("JitterEndDistance", &JitterEndDistance);
 }
 
 #endif

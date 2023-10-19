@@ -26,8 +26,8 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     ProfileTimer.Reset();
     SettingDialog = MakeUnique<UHSettingDialog>(Config, Engine, DeferredRenderer);
     ProfileDialog = MakeUnique<UHProfileDialog>();
-    DetailDialog = MakeUnique<UHDetailDialog>(HInstance, HWnd);
-    WorldDialog = MakeUnique<UHWorldDialog>(HInstance, HWnd, DeferredRenderer, DetailDialog.get());
+    DetailDialog = MakeUnique<UHDetailDialog>(HWnd);
+    WorldDialog = MakeUnique<UHWorldDialog>(HWnd, DeferredRenderer, DetailDialog.get());
     TextureDialog = MakeUnique<UHTextureDialog>(HInstance, HWnd, AssetManager, InGfx, InRenderer);
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
 }
@@ -45,6 +45,8 @@ void UHEditor::OnEditorUpdate()
     ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config);
     TextureDialog->Update();
     MaterialDialog->Update();
+    DetailDialog->Update();
+    WorldDialog->Update();
 }
 
 void UHEditor::OnEditorMove()
@@ -79,7 +81,6 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         break;
     case ID_WINDOW_WORLDEDITOR:
         WorldDialog->ShowDialog();
-        DetailDialog->ShowDialog();
         break;
     default:
         break;

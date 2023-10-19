@@ -22,16 +22,9 @@ public:
 
 #if WITH_EDITOR
 	virtual UHDebugBoundConstant GetDebugBoundConst() const override;
-	virtual void OnPropertyChange(std::string PropertyName) override;
-	virtual void OnGenerateDetailView(HWND ParentWnd) override;
+	virtual void OnGenerateDetailView() override;
 
 	bool IsVisibleInEditor() const;
-
-	UH_BEGIN_REFLECT
-	UH_MEMBER_REFLECT("bool", "IsVisible")
-	UH_MEMBER_REFLECT(UHSTRINGA, "Mesh")
-	UH_MEMBER_REFLECT(UHSTRINGA, "Material")
-	UH_END_REFLECT
 #endif
 
 private:
@@ -43,6 +36,5 @@ private:
 
 #if WITH_EDITOR
 	bool bIsVisibleEditor;
-	UniquePtr<UHDetailView> DetailView;
 #endif
 };

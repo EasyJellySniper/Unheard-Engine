@@ -3,30 +3,35 @@
 #if WITH_EDITOR
 #include "../../Editor/Classes/Reflection.h"
 
-UHDetailDialog::UHDetailDialog(HINSTANCE InInstance, HWND InWindow)
-	: UHDialog(InInstance, InWindow)
-	, OriginDialogRect(RECT())
+UHDetailDialog::UHDetailDialog(HWND ParentWnd)
+	: UHDialog(nullptr, ParentWnd)
 	, CurrComponent(nullptr)
 {
 
 }
 
-void UHDetailDialog::ShowDialog()
+void UHDetailDialog::Update()
 {
-	if (!IsDialogActive(IDD_DETAILVIEW))
+	if (!bIsOpened)
 	{
-		Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_DETAILVIEW), ParentWindow, (DLGPROC)GDialogProc);
-		RegisterUniqueActiveDialog(IDD_DETAILVIEW, this);
-		GetWindowRect(Dialog, &OriginDialogRect);
-
-		ResetDialogWindow();
-		ShowWindow(Dialog, SW_SHOW);
+		return;
 	}
+
+	const std::string WndName = "Details";
+	ImGui::Begin(WndName.c_str(), nullptr, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::SetWindowPos(WndName.c_str(), WindowPos);
+
+	if (CurrComponent)
+	{
+		CurrComponent->OnGenerateDetailView();
+	}
+
+	ImGui::End();
 }
 
 void UHDetailDialog::ResetDialogWindow()
 {
-	if (!IsDialogActive(IDD_DETAILVIEW))
+	if (!bIsOpened)
 	{
 		return;
 	}
@@ -36,27 +41,14 @@ void UHDetailDialog::ResetDialogWindow()
 	GetClientRect(ParentWindow, &MainWndRect);
 	ClientToScreen(ParentWindow, (POINT*)&MainWndRect.left);
 	ClientToScreen(ParentWindow, (POINT*)&MainWndRect.right);
-
-	const int32_t DialogWidth = OriginDialogRect.right - OriginDialogRect.left;
 	const int32_t DialogHeight = (MainWndRect.bottom - MainWndRect.top) / 2;
-	SetWindowPos(Dialog, nullptr, MainWndRect.right
-		, MainWndRect.top + DialogHeight
-		, DialogWidth
-		, DialogHeight
-		, 0);
-}
 
-BOOL CALLBACK DestroyGUIProc(HWND hwnd, LPARAM lParam)
-{
-	DestroyWindow(hwnd);
-	return TRUE;
+	WindowPos.x = static_cast<float>(MainWndRect.right);
+	WindowPos.y = static_cast<float>(MainWndRect.top + DialogHeight);
 }
 
 void UHDetailDialog::GenerateDetailView(UHComponent* InComponent)
 {
-	// destroy all controls of the previous component
-	EnumChildWindows(Dialog, DestroyGUIProc, 0);
-	InComponent->OnGenerateDetailView(Dialog);
 	CurrComponent = InComponent;
 }
 

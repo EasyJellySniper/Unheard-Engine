@@ -90,7 +90,6 @@ void UHTransformComponent::Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 	}
 
 	bIsWorldDirty = true;
-	UH_SYNC_DETAIL_VALUE("Position", Position)
 }
 
 void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
@@ -134,21 +133,22 @@ void UHTransformComponent::Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 	}
 
 	bIsWorldDirty = true;
-	UH_SYNC_DETAIL_VALUE("Rotation", GetRotationEuler())
+#if WITH_EDITOR
+	// sync euler for editor
+	RotationEuler = GetRotationEuler();
+#endif
 }
 
 void UHTransformComponent::SetScale(XMFLOAT3 InScale)
 {
 	Scale = InScale;
 	bIsWorldDirty = true;
-	UH_SYNC_DETAIL_VALUE("Scale", Scale)
 }
 
 void UHTransformComponent::SetPosition(XMFLOAT3 InPos)
 {
 	Position = InPos;
 	bIsWorldDirty = true;
-	UH_SYNC_DETAIL_VALUE("Position", Position)
 }
 
 void UHTransformComponent::SetRotation(XMFLOAT3 InEulerRot)
@@ -163,7 +163,6 @@ void UHTransformComponent::SetRotation(XMFLOAT3 InEulerRot)
 	XMStoreFloat3(&Forward, XMVector3TransformNormal(XMLoadFloat3(&GWorldForward), XMLoadFloat4x4(&RotationMatrix)));
 
 	bIsWorldDirty = true;
-	UH_SYNC_DETAIL_VALUE("Rotation", GetRotationEuler())
 }
 
 XMFLOAT4X4 UHTransformComponent::GetWorldMatrix() const
@@ -222,34 +221,23 @@ bool UHTransformComponent::IsTransformChanged() const
 }
 
 #if WITH_EDITOR
-void UHTransformComponent::OnPropertyChange(std::string PropertyName)
+void UHTransformComponent::OnGenerateDetailView()
 {
-	UHComponent::OnPropertyChange(PropertyName);
-	XMFLOAT3 Vec3Value = DetailView->GetValue<XMFLOAT3>(PropertyName);
-
-	if (PropertyName == "Position")
+	ImGui::Text("------ Transform ------");
+	if (ImGui::InputFloat3("Position", (float*)&Position))
 	{
-		SetPosition(Vec3Value);
+		SetPosition(Position);
 	}
-	else if (PropertyName == "Rotation")
-	{
-		SetRotation(Vec3Value);
-	}
-	else if (PropertyName == "Scale")
-	{
-		SetScale(Vec3Value);
-	}
-}
 
-void UHTransformComponent::OnGenerateDetailView(HWND ParentWnd)
-{
-	DetailView = MakeUnique<UHDetailView>("Transform");
+	if (ImGui::InputFloat3("Rotation", (float*)&RotationEuler))
+	{
+		SetRotation(RotationEuler);
+	}
 
-	DetailStartHeight = 0;
-	DetailView->OnGenerateDetailView<UHTransformComponent>(this, ParentWnd, DetailStartHeight);
-	UH_SYNC_DETAIL_VALUE("Position", Position)
-	UH_SYNC_DETAIL_VALUE("Rotation", GetRotationEuler())
-	UH_SYNC_DETAIL_VALUE("Scale", Scale)
+	if (ImGui::InputFloat3("Scale", (float*)&Scale))
+	{
+		SetScale(Scale);
+	}
 }
 
 XMFLOAT3 UHTransformComponent::GetRotationEuler()

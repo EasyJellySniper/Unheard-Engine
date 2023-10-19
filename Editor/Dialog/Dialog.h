@@ -13,6 +13,7 @@ public:
 
 	virtual void ShowDialog() { bIsOpened = true; }
 	virtual void Update() {}
+	virtual void Close() { bIsOpened = false; }
 
 	HWND GetDialog() const;
 

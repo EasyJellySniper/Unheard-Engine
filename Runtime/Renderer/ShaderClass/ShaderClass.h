@@ -58,7 +58,7 @@ public:
 
 	// bind single storage
 	template <typename T>
-	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false, int32_t FrameIdx = -1)
+	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false, int32_t FrameIdx = UHINDEXNONE)
 	{
 		if (FrameIdx != UHINDEXNONE)
 		{
@@ -77,7 +77,7 @@ public:
 
 	// bind multiple storage
 	template <typename T>
-	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding, int32_t FrameIdx = -1)
+	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding, int32_t FrameIdx = UHINDEXNONE)
 	{
 		if (FrameIdx != UHINDEXNONE)
 		{
@@ -113,7 +113,7 @@ public:
 		}
 	}
 
-	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT = -1, bool bIsReadWrite = false);
+	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT = UHINDEXNONE, bool bIsReadWrite = false);
 	void BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding);
 	void BindRWImage(const UHTexture* InImage, int32_t DstBinding);
 	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
@@ -139,7 +139,7 @@ public:
 
 protected:
 	// add layout binding
-	void AddLayoutBinding(uint32_t DescriptorCount, VkShaderStageFlags StageFlags, VkDescriptorType DescriptorType, int32_t OverrideBind = -1);
+	void AddLayoutBinding(uint32_t DescriptorCount, VkShaderStageFlags StageFlags, VkDescriptorType DescriptorType, int32_t OverrideBind = UHINDEXNONE);
 
 	// create descriptor, call this after shader class is done adding the layout binding
 	// each shader is default to one layout, but it can use additional layouts

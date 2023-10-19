@@ -57,43 +57,24 @@ UHDirectionalLightConstants UHDirectionalLightComponent::GetConstants() const
 }
 
 #if WITH_EDITOR
-void UHDirectionalLightComponent::OnPropertyChange(std::string PropertyName)
+void UHDirectionalLightComponent::OnGenerateDetailView()
 {
-	UHTransformComponent::OnPropertyChange(PropertyName);
+	UHTransformComponent::OnGenerateDetailView();
+	ImGui::NewLine();
+	ImGui::Text("------ Directional Light ------");
 
-	const UHFloat3DetailGUI* Float3GUI = static_cast<const UHFloat3DetailGUI*>(DetailView->GetGUI(PropertyName));
-	const UHFloatDetailGUI* FloatGUI = static_cast<const UHFloatDetailGUI*>(DetailView->GetGUI(PropertyName));
-
-	if (PropertyName == "LightColor")
-	{
-		LightColor = Float3GUI->GetValue();
-	}
-	else if (PropertyName == "Intensity")
-	{
-		Intensity = FloatGUI->GetValue();
-	}
-}
-
-void UHDirectionalLightComponent::OnGenerateDetailView(HWND ParentWnd)
-{
-	UHTransformComponent::OnGenerateDetailView(ParentWnd);
-
-	DetailView = MakeUnique<UHDetailView>("Directional Light");
-	DetailView->OnGenerateDetailView<UHDirectionalLightComponent>(this, ParentWnd, DetailStartHeight);
-	UH_SYNC_DETAIL_VALUE("LightColor", LightColor)
-	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
+	ImGui::InputFloat3("LightColor", (float*)&LightColor);
+	ImGui::InputFloat("Intensity", &Intensity);
 }
 
 void UHDirectionalLightComponent::SetLightColor(XMFLOAT3 InLightColor)
 {
 	UHLightBase::SetLightColor(InLightColor);
-	UH_SYNC_DETAIL_VALUE("LightColor", InLightColor)
 }
 
 void UHDirectionalLightComponent::SetIntensity(float InIntensity)
 {
 	UHLightBase::SetIntensity(InIntensity);
-	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
 }
 #endif
 
@@ -120,7 +101,6 @@ void UHPointLightComponent::Update()
 void UHPointLightComponent::SetRadius(float InRadius)
 {
 	Radius = InRadius;
-	UH_SYNC_DETAIL_VALUE("Radius", Radius)
 }
 
 float UHPointLightComponent::GetRadius() const
@@ -158,48 +138,25 @@ UHDebugBoundConstant UHPointLightComponent::GetDebugBoundConst() const
 	return BoundConst;
 }
 
-void UHPointLightComponent::OnPropertyChange(std::string PropertyName)
+void UHPointLightComponent::OnGenerateDetailView()
 {
-	UHTransformComponent::OnPropertyChange(PropertyName);
+	UHTransformComponent::OnGenerateDetailView();
+	ImGui::NewLine();
+	ImGui::Text("------ Point Light ------");
 
-	const UHFloat3DetailGUI* Float3GUI = static_cast<const UHFloat3DetailGUI*>(DetailView->GetGUI(PropertyName));
-	const UHFloatDetailGUI* FloatGUI = static_cast<const UHFloatDetailGUI*>(DetailView->GetGUI(PropertyName));
-
-	if (PropertyName == "LightColor")
-	{
-		LightColor = Float3GUI->GetValue();
-	}
-	else if (PropertyName == "Intensity")
-	{
-		Intensity = FloatGUI->GetValue();
-	}
-	else if (PropertyName == "Radius")
-	{
-		Radius = FloatGUI->GetValue();
-	}
-}
-
-void UHPointLightComponent::OnGenerateDetailView(HWND ParentWnd)
-{
-	UHTransformComponent::OnGenerateDetailView(ParentWnd);
-
-	DetailView = MakeUnique<UHDetailView>("Point Light");
-	DetailView->OnGenerateDetailView<UHPointLightComponent>(this, ParentWnd, DetailStartHeight);
-	UH_SYNC_DETAIL_VALUE("LightColor", LightColor)
-	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
-	UH_SYNC_DETAIL_VALUE("Radius", Radius)
+	ImGui::InputFloat3("LightColor", (float*)&LightColor);
+	ImGui::InputFloat("Intensity", &Intensity);
+	ImGui::InputFloat("Radius", &Radius);
 }
 
 void UHPointLightComponent::SetLightColor(XMFLOAT3 InLightColor)
 {
 	UHLightBase::SetLightColor(InLightColor);
-	UH_SYNC_DETAIL_VALUE("LightColor", LightColor)
 }
 
 void UHPointLightComponent::SetIntensity(float InIntensity)
 {
 	UHLightBase::SetIntensity(InIntensity);
-	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
 }
 #endif
 
@@ -228,7 +185,6 @@ void UHSpotLightComponent::Update()
 void UHSpotLightComponent::SetRadius(float InRadius)
 {
 	Radius = InRadius;
-	UH_SYNC_DETAIL_VALUE("Radius", InRadius)
 }
 
 float UHSpotLightComponent::GetRadius() const
@@ -240,7 +196,6 @@ void UHSpotLightComponent::SetAngle(float InAngleDegree)
 {
 	Angle = std::abs(InAngleDegree);
 	InnerAngle = Angle * 0.9f;
-	UH_SYNC_DETAIL_VALUE("Angle", InAngleDegree)
 }
 
 float UHSpotLightComponent::GetAngle() const
@@ -288,53 +243,26 @@ UHDebugBoundConstant UHSpotLightComponent::GetDebugBoundConst() const
 	return BoundConst;
 }
 
-void UHSpotLightComponent::OnPropertyChange(std::string PropertyName)
+void UHSpotLightComponent::OnGenerateDetailView()
 {
-	UHTransformComponent::OnPropertyChange(PropertyName);
+	UHTransformComponent::OnGenerateDetailView();
+	ImGui::NewLine();
+	ImGui::Text("------ Spot Light ------");
 
-	const UHFloat3DetailGUI* Float3GUI = static_cast<const UHFloat3DetailGUI*>(DetailView->GetGUI(PropertyName));
-	const UHFloatDetailGUI* FloatGUI = static_cast<const UHFloatDetailGUI*>(DetailView->GetGUI(PropertyName));
-
-	if (PropertyName == "LightColor")
-	{
-		LightColor = Float3GUI->GetValue();
-	}
-	else if (PropertyName == "Intensity")
-	{
-		Intensity = FloatGUI->GetValue();
-	}
-	else if (PropertyName == "Radius")
-	{
-		Radius = FloatGUI->GetValue();
-	}
-	else if (PropertyName == "Angle")
-	{
-		Angle = FloatGUI->GetValue();
-		InnerAngle = Angle * 0.9f;
-	}
-}
-
-void UHSpotLightComponent::OnGenerateDetailView(HWND ParentWnd)
-{
-	UHTransformComponent::OnGenerateDetailView(ParentWnd);
-
-	DetailView = MakeUnique<UHDetailView>("Spot Light");
-	DetailView->OnGenerateDetailView<UHSpotLightComponent>(this, ParentWnd, DetailStartHeight);
-	UH_SYNC_DETAIL_VALUE("LightColor", LightColor)
-	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
-	UH_SYNC_DETAIL_VALUE("Radius", Radius)
-	UH_SYNC_DETAIL_VALUE("Angle", Angle)
+	ImGui::InputFloat3("LightColor", (float*)&LightColor);
+	ImGui::InputFloat("Intensity", &Intensity);
+	ImGui::InputFloat("Radius", &Radius);
+	ImGui::InputFloat("Angle", &Angle);
+	InnerAngle = Angle * 0.9f;
 }
 
 void UHSpotLightComponent::SetLightColor(XMFLOAT3 InLightColor)
 {
 	UHLightBase::SetLightColor(InLightColor);
-	UH_SYNC_DETAIL_VALUE("LightColor", LightColor)
 }
 
 void UHSpotLightComponent::SetIntensity(float InIntensity)
 {
 	UHLightBase::SetIntensity(InIntensity);
-	UH_SYNC_DETAIL_VALUE("Intensity", Intensity)
 }
 #endif

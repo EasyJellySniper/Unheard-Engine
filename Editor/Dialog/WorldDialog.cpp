@@ -7,53 +7,87 @@
 #include "../../Runtime/Components/Transform.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 
-UHWorldDialog::UHWorldDialog(HINSTANCE InInstance, HWND InWindow, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView)
-	: UHDialog(InInstance, InWindow)
-	, OriginDialogRect(RECT())
+UHWorldDialog::UHWorldDialog(HWND ParentWnd, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView)
+	: UHDialog(nullptr, ParentWnd)
 	, Renderer(InRenderer)
 	, DetailView(InDetailView)
+	, CurrentSelected(UHINDEXNONE)
 {
 
 }
 
 void UHWorldDialog::ShowDialog()
 {
-	if (!IsDialogActive(IDD_WORLDEDITOR))
+	if (bIsOpened)
 	{
-		Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_WORLDEDITOR), ParentWindow, (DLGPROC)GDialogProc);
-		RegisterUniqueActiveDialog(IDD_WORLDEDITOR, this);
-		GetWindowRect(Dialog, &OriginDialogRect);
+		return;
+	}
 
-		// Dialog callbacks
-		OnDestroy.clear();
-		OnDestroy.push_back(StdBind(&UHWorldDialog::OnFinished, this));
+	UHDialog::ShowDialog();
+	CurrentSelected = UHINDEXNONE;
+	ResetDialogWindow();
 
-		// scene list GUI
-		SceneObjectListGUI = MakeUnique<UHListBox>(GetDlgItem(Dialog, IDC_SCENEOBJ_LIST), UHGUIProperty().SetAutoSize(AutoSizeY));
-		SceneObjectListGUI->Reset();
-		SceneObjectListGUI->OnSelected.push_back(StdBind(&UHWorldDialog::ControlSceneObjectSelect, this));
-		SceneObjectListGUI->OnDoubleClicked.push_back(StdBind(&UHWorldDialog::ControlSceneObjectDoubleClick, this));
-		SceneObjects.clear();
-
-		// add components to the GUI list
-		const std::vector<UHComponent*>& Comps = GetComponents<UHComponent>();
-		for (UHComponent* Comp : Comps)
+	SceneObjects.clear();
+	const std::vector<UHComponent*>& Comps = GetComponents<UHComponent>();
+	for (UHComponent* Comp : Comps)
+	{
+		if (Comp->IsEditable())
 		{
-			if (Comp->IsEditable())
+			SceneObjects.push_back(Comp);
+		}
+	}
+
+	if (DetailView)
+	{
+		DetailView->ShowDialog();
+		DetailView->ResetDialogWindow();
+	}
+}
+
+void UHWorldDialog::Update()
+{
+	if (!bIsOpened)
+	{
+		return;
+	}
+
+	const std::string WndName = "World Objects";
+	ImGui::Begin(WndName.c_str(), &bIsOpened, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::SetWindowPos(WndName.c_str(), WindowPos);
+
+	ImVec2 WndSize = ImGui::GetWindowSize();
+	WndSize.x -= 10.0f;
+	WndSize.y -= 50.0f;
+
+	if (ImGui::BeginListBox("##", WndSize))
+	{
+		for (int32_t Idx = 0; Idx < static_cast<int32_t>(SceneObjects.size()); Idx++)
+		{
+			bool bIsSelected = (CurrentSelected == Idx);
+			if (ImGui::Selectable(SceneObjects[Idx]->GetName().c_str(), &bIsSelected, ImGuiSelectableFlags_AllowDoubleClick))
 			{
-				SceneObjectListGUI->AddItem(Comp->GetName());
-				SceneObjects.push_back(Comp);
+				CurrentSelected = Idx;
+				if (ImGui::IsMouseDoubleClicked(0))
+				{
+					ControlSceneObjectDoubleClick();
+				}
 			}
 		}
+		ImGui::EndListBox();
+	}
+	ImGui::End();
 
-		ResetDialogWindow();
-		ShowWindow(Dialog, SW_SHOW);
+	ControlSceneObjectSelect();
+
+	if (!bIsOpened)
+	{
+		OnFinished();
 	}
 }
 
 void UHWorldDialog::ResetDialogWindow()
 {
-	if (!IsDialogActive(IDD_WORLDEDITOR))
+	if (!bIsOpened)
 	{
 		return;
 	}
@@ -64,14 +98,8 @@ void UHWorldDialog::ResetDialogWindow()
 	ClientToScreen(ParentWindow, (POINT*)&MainWndRect.left);
 	ClientToScreen(ParentWindow, (POINT*)&MainWndRect.right);
 
-	const int32_t DialogWidth = OriginDialogRect.right - OriginDialogRect.left;
-	const int32_t DialogHeight = (MainWndRect.bottom - MainWndRect.top) / 2;
-
-	SetWindowPos(Dialog, nullptr, MainWndRect.right
-		, MainWndRect.top
-		, DialogWidth
-		, DialogHeight
-		, 0);
+	WindowPos.x = static_cast<float>(MainWndRect.right);
+	WindowPos.y = static_cast<float>(MainWndRect.top);
 }
 
 void UHWorldDialog::OnFinished()
@@ -83,14 +111,18 @@ void UHWorldDialog::OnFinished()
 
 	if (DetailView != nullptr)
 	{
-		SendMessage(DetailView->GetDialog(), WM_COMMAND, MAKEWPARAM(IDCANCEL, 0), 0);
+		DetailView->Close();
 	}
 }
 
 void UHWorldDialog::ControlSceneObjectSelect()
 {
-	const int32_t SelectedIdx = SceneObjectListGUI->GetSelectedIndex();
-	UHComponent* Comp = SceneObjects[SelectedIdx];
+	if (CurrentSelected == UHINDEXNONE)
+	{
+		return;
+	}
+
+	UHComponent* Comp = SceneObjects[CurrentSelected];
 	if (Comp == nullptr)
 	{
 		return;
@@ -99,6 +131,10 @@ void UHWorldDialog::ControlSceneObjectSelect()
 	// set current selected component to scene
 	if (UHScene* Scene = Renderer->GetCurrentScene())
 	{
+		if (Scene->GetCurrentSelectedComponent() == Comp)
+		{
+			return;
+		}
 		Scene->SetCurrentSelectedComponent(Comp);
 	}
 
@@ -110,8 +146,7 @@ void UHWorldDialog::ControlSceneObjectSelect()
 
 void UHWorldDialog::ControlSceneObjectDoubleClick()
 {
-	const int32_t SelectedIdx = SceneObjectListGUI->GetSelectedIndex();
-	const UHTransformComponent* Comp = dynamic_cast<UHTransformComponent*>(SceneObjects[SelectedIdx]);
+	const UHTransformComponent* Comp = dynamic_cast<UHTransformComponent*>(SceneObjects[CurrentSelected]);
 
 	if (Comp == nullptr)
 	{

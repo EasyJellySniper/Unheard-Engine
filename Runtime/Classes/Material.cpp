@@ -265,7 +265,7 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 
 	auto FindEditNodeIndex = [this](UHGraphPin* InPin)
 	{
-		int32_t NodeIdx = -1;
+		int32_t NodeIdx = UHINDEXNONE;
 
 		if (InPin)
 		{

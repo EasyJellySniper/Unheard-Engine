@@ -3,7 +3,6 @@
 // Used by UnheardEngine.rc
 //
 #define IDC_MYICON                      2
-#define IDD_WORLDEDITOR                 101
 #define IDD_UNHEARDENGINE_DIALOG        102
 #define IDS_APP_TITLE                   103
 #define IDD_ABOUTBOX                    103
@@ -18,7 +17,6 @@
 #define IDD_TEXTURECREATE               130
 #define IDD_STATUS                      131
 #define IDD_PROPPAGE_LARGE              132
-#define IDD_DETAILVIEW                  132
 #define IDC_MATERIAL_LIST               1022
 #define IDC_MATERIAL_GRAPHAREA          1027
 #define IDC_MATERIALCOMPILE             1034
@@ -51,7 +49,6 @@
 #define IDC_HINT_TEXT                   1063
 #define IDC_CULLTEXT                    1064
 #define IDC_BLENDTEXT                   1065
-#define IDC_SCENEOBJ_LIST               1066
 #define ID_VIEWMODE_FULLLIT             32771
 #define ID_VIEWMODE_DIFFUSE             32772
 #define ID_VIEWMODE_NORMAL              32773

@@ -2,7 +2,6 @@
 #include "Dialog.h"
 
 #if WITH_EDITOR
-#include "../Controls/ListBox.h"
 #include "../../Runtime/Components/Component.h"
 #include "DetailDialog.h"
 
@@ -11,9 +10,10 @@ class UHDeferredShadingRenderer;
 class UHWorldDialog : public UHDialog
 {
 public:
-	UHWorldDialog(HINSTANCE InInstance, HWND InWindow, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView);
+	UHWorldDialog(HWND ParentWnd, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView);
 
 	virtual void ShowDialog() override;
+	virtual void Update() override;
 	void ResetDialogWindow();
 
 private:
@@ -21,9 +21,9 @@ private:
 	void ControlSceneObjectSelect();
 	void ControlSceneObjectDoubleClick();
 
-	RECT OriginDialogRect;
-	UniquePtr<UHListBox> SceneObjectListGUI;
+	ImVec2 WindowPos;
 	std::vector<UHComponent*> SceneObjects;
+	int32_t CurrentSelected;
 
 	UHDeferredShadingRenderer* Renderer;
 	UHDetailDialog* DetailView;
