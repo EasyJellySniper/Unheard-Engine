@@ -390,3 +390,4 @@ Finished setting dialog ImGui porting.
 15-10-2023: Finished profile dialog ImGui porting. Stores all dialogs as pointer instead an instance.
 19-10-2023: Finished world dialog ImGui porting. Refactored all -1 to UHINDEXNONE (-1 as well).
 Finished detail dialog ImGui porting.
+20-10-2023: Finished texture dialog ImGui porting.

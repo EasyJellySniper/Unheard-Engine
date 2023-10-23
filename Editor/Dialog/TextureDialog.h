@@ -5,14 +5,6 @@
 #include <unordered_map>
 #include "TextureCreationDialog.h"
 #include <shtypes.h>
-#include "../Controls/Label.h"
-#include "../Controls/ListBox.h"
-#include "../Controls/Button.h"
-#include "../Controls/ComboBox.h"
-#include "../Controls/GroupBox.h"
-#include "../Controls/CheckBox.h"
-#include "../Controls/TextBox.h"
-#include "../Controls/Slider.h"
 
 class UHAssetManager;
 class UHTexture2D;
@@ -27,8 +19,7 @@ const COMDLG_FILTERSPEC GImageFilter = { {L"Image Formats"}, { L"*.jpg;*.jpeg;*.
 class UHTextureDialog : public UHDialog
 {
 public:
-	UHTextureDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAsset, UHGraphic* InGfx, UHDeferredShadingRenderer* InRenderer);
-	~UHTextureDialog();
+	UHTextureDialog(UHAssetManager* InAsset, UHGraphic* InGfx, UHDeferredShadingRenderer* InRenderer);
 
 	virtual void ShowDialog() override;
 	void Init();
@@ -37,28 +28,6 @@ public:
 
 private:
 	void SelectTexture(int32_t TexIndex);
-	void UpdatePreviewScene();
-
-	// GUI controls
-	UniquePtr<UHListBox> TextureListGUI;
-	UniquePtr<UHButton> CreateButtonGUI;
-	UniquePtr<UHButton> SaveButtonGUI;
-	UniquePtr<UHButton> SaveAllButtonGUI;
-	UniquePtr<UHLabel> SizeLabelGUI;
-	UniquePtr<UHLabel> MipLabelGUI;
-	UniquePtr<UHSlider> MipSliderGUI;
-
-	UniquePtr<UHGroupBox> TexturePreviewGUI;
-	UniquePtr<UHComboBox> CompressionGUI;
-	UniquePtr<UHCheckBox> SrgbGUI;
-	UniquePtr<UHCheckBox> NormalGUI;
-	UniquePtr<UHButton> ApplyGUI;
-	UniquePtr<UHTextBox> FileNameGUI;
-	UniquePtr<UHButton> BrowseGUI;
-
-	UniquePtr<UHLabel> CompressionTextGUI;
-	UniquePtr<UHLabel> SourceFileTextGUI;
-	UniquePtr<UHLabel> HintTextGUI;
 
 	// control functions
 	void ControlApply();
@@ -66,7 +35,7 @@ private:
 	void ControlSaveAll();
 	void ControlTextureCreate();
 	void ControlBrowseRawTexture();
-	void ControlTexturePreview();
+	void RefreshImGuiMipLevel();
 
 	UHAssetManager* AssetMgr;
 	UHTextureImporter TextureImporter;
@@ -74,12 +43,11 @@ private:
 	UHDeferredShadingRenderer* Renderer;
 	int32_t CurrentTextureIndex;
 	UHTexture2D* CurrentTexture;
-	uint32_t CurrentMip;
+	int32_t CurrentMip;
+	UHTextureSettings CurrentEditingSettings;
+	VkDescriptorSet CurrentTextureDS;
 
-	// preview scene
-	UniquePtr<UHPreviewScene> PreviewScene;
 	UniquePtr<UHTextureCreationDialog> TextureCreationDialog;
-
 };
 
 #endif

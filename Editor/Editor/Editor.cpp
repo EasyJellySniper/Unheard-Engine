@@ -28,7 +28,7 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     ProfileDialog = MakeUnique<UHProfileDialog>();
     DetailDialog = MakeUnique<UHDetailDialog>(HWnd);
     WorldDialog = MakeUnique<UHWorldDialog>(HWnd, DeferredRenderer, DetailDialog.get());
-    TextureDialog = MakeUnique<UHTextureDialog>(HInstance, HWnd, AssetManager, InGfx, InRenderer);
+    TextureDialog = MakeUnique<UHTextureDialog>(AssetManager, InGfx, InRenderer);
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
 }
 

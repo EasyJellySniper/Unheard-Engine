@@ -6,7 +6,7 @@
 class UHStatusDialogScope : public UHDialog
 {
 public:
-	UHStatusDialogScope(HINSTANCE InInstance, HWND InParentWnd, std::string InMsg);
+	UHStatusDialogScope(std::string InMsg);
 	~UHStatusDialogScope();
 
 	virtual void ShowDialog() {}

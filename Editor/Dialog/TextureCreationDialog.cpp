@@ -9,62 +9,88 @@
 #include "../../Runtime/Classes/AssetPath.h"
 #include "StatusDialog.h"
 
-UHTextureCreationDialog::UHTextureCreationDialog(HINSTANCE InInstance, HWND InWindow, UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter)
-	: UHDialog(InInstance, InWindow)
+UHTextureCreationDialog::UHTextureCreationDialog(HWND InWindow, UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter)
+	: UHDialog(nullptr, nullptr)
+    , CurrentEditingSettings(UHTextureSettings())
 {
     TextureImporter = InTextureImporter;
     TextureDialog = InTextureDialog;
 }
 
-void UHTextureCreationDialog::ShowDialog()
+void UHTextureCreationDialog::Update()
 {
-    if (!IsDialogActive(IDD_TEXTURECREATE))
+    if (!bIsOpened)
     {
-        // init texture creation dialog
-        Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_TEXTURECREATE), ParentWindow, (DLGPROC)GDialogProc);
-        RegisterUniqueActiveDialog(IDD_TEXTURECREATE, this);
-
-        CompressionModeGUI = MakeUnique<UHComboBox>(GetDlgItem(Dialog, IDC_TEXTURE_COMPRESSIONMODE));
-        CompressionModeGUI->Init(L"None", GCompressionModeText);
-
-        SrgbGUI = MakeUnique<UHCheckBox>(GetDlgItem(Dialog, IDC_SRGB));
-        NormalGUI = MakeUnique<UHCheckBox>(GetDlgItem(Dialog, IDC_ISNORMAL));
-
-        CreateTextureGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_CREATETEXTURE));
-        CreateTextureGUI->OnClicked.push_back(StdBind(&UHTextureCreationDialog::ControlTextureCreate, this));
-
-        BrowseInputGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_BROWSE_INPUT));
-        BrowseInputGUI->OnClicked.push_back(StdBind(&UHTextureCreationDialog::ControlBrowserInput, this));
-
-        BrowseOutputGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_BROWSE_OUTPUT));
-        BrowseOutputGUI->OnClicked.push_back(StdBind(&UHTextureCreationDialog::ControlBrowserOutputFolder, this));
-
-        TextureInputGUI = MakeUnique<UHTextBox>(GetDlgItem(Dialog, IDC_TEXTURE_FILE_1));
-        TextureOutputGUI = MakeUnique<UHTextBox>(GetDlgItem(Dialog, IDC_TEXTURE_FILE_OUTPUT));
-
-        ShowWindow(Dialog, SW_SHOW);
+        return;
     }
+
+    ImGui::Begin("Texture Creation", &bIsOpened, ImGuiWindowFlags_HorizontalScrollbar);
+    if (ImGui::BeginTable("Texture Creation", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable))
+    {
+        ImGui::TableNextColumn();
+
+        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[CurrentEditingSettings.CompressionSetting]);
+        if (ImGui::BeginCombo("Compression Mode", CompressionModeTextA.c_str()))
+        {
+            for (size_t Idx = 0; Idx < GCompressionModeText.size(); Idx++)
+            {
+                const bool bIsSelected = (CurrentEditingSettings.CompressionSetting == Idx);
+                std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[Idx]);
+                if (ImGui::Selectable(CompressionModeTextA.c_str(), bIsSelected))
+                {
+                    CurrentEditingSettings.CompressionSetting = static_cast<UHTextureCompressionSettings>(Idx);
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::Checkbox("Is Linear", &CurrentEditingSettings.bIsLinear);
+        ImGui::Checkbox("Is Normal", &CurrentEditingSettings.bIsNormal);
+        if (ImGui::Button("Create"))
+        {
+            ControlTextureCreate();
+        }
+
+        ImGui::TableNextColumn();
+        ImGui::Text("Input File:");
+        ImGui::Text(CurrentSourceFile.c_str());
+        ImGui::SameLine();
+        if (ImGui::Button("Browse"))
+        {
+            ControlBrowserInput();
+        }
+
+        ImGui::Text("Output Path:");
+        ImGui::Text(CurrentOutputPath.c_str());
+        ImGui::SameLine();
+        if (ImGui::Button("Browse Output"))
+        {
+            ControlBrowserOutputFolder();
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
 }
 
 void UHTextureCreationDialog::ControlTextureCreate()
 {
-    HWND CurrDialog = Dialog;
-
-    const std::filesystem::path InputSource = TextureInputGUI->GetText();
-    std::filesystem::path OutputFolder = TextureOutputGUI->GetText();
+    const std::filesystem::path InputSource = CurrentSourceFile;
+    std::filesystem::path OutputFolder = CurrentOutputPath;
     std::filesystem::path TextureAssetPath = GTextureAssetFolder;
     TextureAssetPath = std::filesystem::absolute(TextureAssetPath);
     const bool bIsValidOutputFolder = UHUtilities::StringFind(OutputFolder.string() + "\\", TextureAssetPath.string());
 
     if (!std::filesystem::exists(InputSource))
     {
-        MessageBoxA(CurrDialog, "Invalid input source!", "Texture Creation", MB_OK);
+        MessageBoxA(nullptr, "Invalid input source!", "Texture Creation", MB_OK);
         return;
     }
 
     if (!std::filesystem::exists(OutputFolder) || !bIsValidOutputFolder)
     {
-        MessageBoxA(CurrDialog, "Invalid output folder or it's not under the engine path Assets/Textures!", "Texture Creation", MB_OK);
+        MessageBoxA(nullptr, "Invalid output folder or it's not under the engine path Assets/Textures!", "Texture Creation", MB_OK);
         return;
     }
 
@@ -72,23 +98,23 @@ void UHTextureCreationDialog::ControlTextureCreate()
     OutputFolder = std::filesystem::relative(OutputFolder);
 
     UHTextureSettings TextureSetting;
-    TextureSetting.bIsLinear = !SrgbGUI->IsChecked();
-    TextureSetting.bIsNormal = NormalGUI->IsChecked();
-    TextureSetting.CompressionSetting = (UHTextureCompressionSettings)CompressionModeGUI->GetSelectedIndex();
+    TextureSetting.bIsLinear = CurrentEditingSettings.bIsLinear;
+    TextureSetting.bIsNormal = CurrentEditingSettings.bIsNormal;
+    TextureSetting.CompressionSetting = CurrentEditingSettings.CompressionSetting;
 
     if ((TextureSetting.CompressionSetting == BC4 || TextureSetting.CompressionSetting == BC5) && !TextureSetting.bIsLinear)
     {
-        MessageBoxA(CurrDialog, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
+        MessageBoxA(nullptr, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
         return;
     }
 
     if (TextureSetting.bIsNormal && TextureSetting.CompressionSetting == BC4)
     {
-        MessageBoxA(CurrDialog, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
+        MessageBoxA(nullptr, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
         return;
     }
 
-    UHStatusDialogScope StatusDialog(Instance, CurrDialog, "Creating...");
+    UHStatusDialogScope StatusDialog("Creating...");
 
     std::filesystem::path RawSourcePath = std::filesystem::relative(InputSource);
     if (RawSourcePath.string().empty())
@@ -102,12 +128,12 @@ void UHTextureCreationDialog::ControlTextureCreate()
 
 void UHTextureCreationDialog::ControlBrowserInput()
 {
-    TextureInputGUI->SetText(UHEditorUtil::FileSelectInput(GImageFilter));
+    CurrentSourceFile = UHUtilities::ToStringA(UHEditorUtil::FileSelectInput(GImageFilter));
 }
 
 void UHTextureCreationDialog::ControlBrowserOutputFolder()
 {
-    TextureOutputGUI->SetText(UHEditorUtil::FileSelectOutputFolder());
+    CurrentOutputPath = UHUtilities::ToStringA(UHEditorUtil::FileSelectOutputFolder());
 }
 
 #endif

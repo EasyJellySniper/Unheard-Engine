@@ -14,120 +14,167 @@
 #include "StatusDialog.h"
 
 // texture creation
-UHTextureDialog::UHTextureDialog(HINSTANCE InInstance, HWND InWindow, UHAssetManager* InAssetMgr, UHGraphic* InGfx, UHDeferredShadingRenderer* InRenderer)
-	: UHDialog(InInstance, InWindow)
+UHTextureDialog::UHTextureDialog(UHAssetManager* InAssetMgr, UHGraphic* InGfx, UHDeferredShadingRenderer* InRenderer)
+	: UHDialog(nullptr, nullptr)
 	, AssetMgr(InAssetMgr)
     , Gfx(InGfx)
     , Renderer(InRenderer)
     , CurrentTexture(nullptr)
     , CurrentTextureIndex(-1)
     , CurrentMip(0)
+    , CurrentEditingSettings(UHTextureSettings())
+    , CurrentTextureDS(nullptr)
 {
     TextureImporter = UHTextureImporter(InGfx);
 }
 
-UHTextureDialog::~UHTextureDialog()
-{
-    UH_SAFE_RELEASE(PreviewScene);
-    PreviewScene.reset();
-}
-
 void UHTextureDialog::ShowDialog()
 {
-    if (!IsDialogActive(IDD_TEXTURE))
-    {
-        Init();
-    }
-}
-
-void UHTextureDialog::Init()
-{
-    Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_TEXTURE), ParentWindow, (DLGPROC)GDialogProc);
-    RegisterUniqueActiveDialog(IDD_TEXTURE, this);
-    TextureCreationDialog = MakeUnique<UHTextureCreationDialog>(Instance, Dialog, Gfx, this, &TextureImporter);
-
-    // init GUI controls
-    const std::vector<UHTexture2D*>& Textures = AssetMgr->GetTexture2Ds();
-    TextureListGUI = MakeUnique<UHListBox>(GetDlgItem(Dialog, IDC_TEXTURE_LIST), UHGUIProperty().SetAutoSize(AutoSizeY));
-    for (const UHTexture2D* Tex : Textures)
-    {
-        TextureListGUI->AddItem(Tex->GetSourcePath());
-    }
-
-    CreateButtonGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_TEXTURE_CREATE), UHGUIProperty().SetAutoMove(AutoMoveY));
-    CreateButtonGUI->OnClicked.push_back(StdBind(&UHTextureDialog::ControlTextureCreate, this));
-
-    SaveButtonGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_TEXTURE_SAVE), UHGUIProperty().SetAutoMove(AutoMoveY));
-    SaveButtonGUI->OnClicked.push_back(StdBind(&UHTextureDialog::ControlSave, this));
-
-    SaveAllButtonGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_TEXTURE_SAVEALL), UHGUIProperty().SetAutoMove(AutoMoveY));
-    SaveAllButtonGUI->OnClicked.push_back(StdBind(&UHTextureDialog::ControlSaveAll, this));
-
-    SizeLabelGUI = MakeUnique<UHLabel>(GetDlgItem(Dialog, IDC_TEXTURE_DIMENSION));
-    MipLabelGUI = MakeUnique<UHLabel>(GetDlgItem(Dialog, IDC_MIPTEXT));
-    MipSliderGUI = MakeUnique<UHSlider>(GetDlgItem(Dialog, IDC_MIPLEVEL_SLIDER));
-
-    CompressionGUI = MakeUnique<UHComboBox>(GetDlgItem(Dialog, IDC_TEXTURE_COMPRESSIONMODE), UHGUIProperty().SetAutoMove(AutoMoveX));
-    CompressionGUI->Init(L"None", GCompressionModeText);
-
-    SrgbGUI = MakeUnique<UHCheckBox>(GetDlgItem(Dialog, IDC_SRGB), UHGUIProperty().SetAutoMove(AutoMoveX));
-    NormalGUI = MakeUnique<UHCheckBox>(GetDlgItem(Dialog, IDC_ISNORMAL), UHGUIProperty().SetAutoMove(AutoMoveX));
-
-    ApplyGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_TEXTURE_APPLY), UHGUIProperty().SetAutoMove(AutoMoveX));
-    ApplyGUI->OnClicked.push_back(StdBind(&UHTextureDialog::ControlApply, this));
-
-    FileNameGUI = MakeUnique<UHTextBox>(GetDlgItem(Dialog, IDC_TEXTURE_RAWSOURCEPATH), UHGUIProperty().SetAutoMove(AutoMoveX));
-    BrowseGUI = MakeUnique<UHButton>(GetDlgItem(Dialog, IDC_BROWSE_RAWTEXTURE), UHGUIProperty().SetAutoMove(AutoMoveX));
-    BrowseGUI->OnClicked.push_back(StdBind(&UHTextureDialog::ControlBrowseRawTexture, this));
-
-    CompressionTextGUI = MakeUnique<UHLabel>(GetDlgItem(Dialog, IDC_COMPRESSMODE_TEXT), UHGUIProperty().SetAutoMove(AutoMoveX));
-    SourceFileTextGUI = MakeUnique<UHLabel>(GetDlgItem(Dialog, IDC_SOURCEFILE_TEXT), UHGUIProperty().SetAutoMove(AutoMoveX));
-    HintTextGUI = MakeUnique<UHLabel>(GetDlgItem(Dialog, IDC_HINT_TEXT), UHGUIProperty().SetAutoMove(AutoMoveX));
-
-    // reset the preview scene
-    {
-        TexturePreviewGUI = MakeUnique<UHGroupBox>(GetDlgItem(Dialog, IDC_TEXTUREPREVIEW), UHGUIProperty().SetAutoSize(AutoSizeBoth));
-        TexturePreviewGUI->OnResized.push_back(StdBind(&UHTextureDialog::ControlTexturePreview, this));
-        UH_SAFE_RELEASE(PreviewScene);
-        PreviewScene = MakeUnique<UHPreviewScene>(Instance, TexturePreviewGUI->GetHwnd(), Gfx, TexturePreview);
-    }
-
-    CurrentTextureIndex = UHINDEXNONE;
-    CurrentTexture = nullptr;
-
-    ShowWindow(Dialog, SW_SHOW);
-}
-
-void UHTextureDialog::Update()
-{
-    if (!IsDialogActive(IDD_TEXTURE))
+    if (bIsOpened)
     {
         return;
     }
 
-    // get current selected texture index
-    const int32_t TexIndex = TextureListGUI->GetSelectedIndex();
-    if (TexIndex != CurrentTextureIndex)
+    UHDialog::ShowDialog();
+    Init();
+}
+
+void UHTextureDialog::Init()
+{
+    TextureCreationDialog = MakeUnique<UHTextureCreationDialog>(ParentWindow, Gfx, this, &TextureImporter);
+    CurrentTextureIndex = UHINDEXNONE;
+    CurrentTexture = nullptr;
+}
+
+void UHTextureDialog::Update()
+{
+    if (!bIsOpened)
     {
-        // select texture
-        SelectTexture(TexIndex);
-        CurrentTextureIndex = TexIndex;
+        return;
     }
 
-    UpdatePreviewScene();
+    ImGui::Begin("Texture Editor", &bIsOpened, ImGuiWindowFlags_HorizontalScrollbar);
+    if (ImGui::BeginTable("Texture2Ds", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable))
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text("Select the texture to edit");
+        ImGui::Text("Setting with star(*) mark triggers a shader recompilation");
+
+        const ImVec2 WndSize = ImGui::GetWindowSize();
+
+        if (ImGui::BeginListBox("##", ImVec2(0, WndSize.y * 0.6f)))
+        {
+            const std::vector<UHTexture2D*>& Textures = AssetMgr->GetTexture2Ds();
+            for (int32_t Idx = 0; Idx < static_cast<int32_t>(Textures.size()); Idx++)
+            {
+                bool bIsSelected = (CurrentTextureIndex == Idx);
+                if (ImGui::Selectable(Textures[Idx]->GetSourcePath().c_str(), &bIsSelected))
+                {
+                    SelectTexture(Idx);
+                    CurrentTextureIndex = Idx;
+                }
+            }
+            ImGui::EndListBox();
+        }
+        ImGui::NewLine();
+
+        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[CurrentEditingSettings.CompressionSetting]);
+        if (ImGui::BeginCombo("Compression Mode", CompressionModeTextA.c_str()))
+        {
+            for (size_t Idx = 0; Idx < GCompressionModeText.size(); Idx++)
+            {
+                const bool bIsSelected = (CurrentEditingSettings.CompressionSetting == Idx);
+                std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[Idx]);
+                if (ImGui::Selectable(CompressionModeTextA.c_str(), bIsSelected))
+                {
+                    CurrentEditingSettings.CompressionSetting = static_cast<UHTextureCompressionSettings>(Idx);
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::Checkbox("Is Linear", &CurrentEditingSettings.bIsLinear);
+        ImGui::Checkbox("Is Normal*", &CurrentEditingSettings.bIsNormal);
+        ImGui::NewLine();
+        if (ImGui::Button("Apply"))
+        {
+            ControlApply();
+        }
+
+        ImGui::Text("Source File:");
+        ImGui::SameLine();
+        if (CurrentTexture)
+        {
+            ImGui::Text(CurrentTexture->GetRawSourcePath().c_str());
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("..."))
+        {
+            ControlBrowseRawTexture();
+        }
+
+        if (ImGui::Button("Create"))
+        {
+            ControlTextureCreate();
+        }
+
+        if (ImGui::Button("Save"))
+        {
+            ControlSave();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Save All"))
+        {
+            ControlSaveAll();
+        }
+
+        ImGui::TableNextColumn();
+
+        // size text
+        if (CurrentTexture)
+        {
+            const VkExtent2D TexExtent = CurrentTexture->GetExtent();
+            std::string SizeText = "Dimension: " + std::to_string(TexExtent.width) + " x " + std::to_string(TexExtent.height);
+            SizeText += " (" + std::to_string(CurrentTexture->GetTextureData().size() / 1024) + " KB)";
+            ImGui::Text(SizeText.c_str());
+        }
+
+        // mip slider
+        if (CurrentTexture)
+        {
+            ImGui::SameLine();
+            int32_t MipCount = CurrentTexture->GetMipMapCount();
+            if (ImGui::SliderInt("MipLevel", &CurrentMip, 0, MipCount - 1))
+            {
+                RefreshImGuiMipLevel();
+            }
+        }
+
+        // texture preview
+        if (CurrentTextureDS)
+        {
+            const float ImgSize = WndSize.x * 0.45f;
+            const float AspectRatioHW = (float)CurrentTexture->GetExtent().height / (float)CurrentTexture->GetExtent().width;
+            ImGui::Image(CurrentTextureDS, ImVec2(ImgSize, ImgSize * AspectRatioHW));
+        }
+
+        ImGui::EndTable();
+    }
+    ImGui::End();
+
+    TextureCreationDialog->Update();
 }
 
 void UHTextureDialog::OnCreationFinished(UHTexture* InTexture)
 {
     if (!UHUtilities::FindByElement(AssetMgr->GetTexture2Ds(), dynamic_cast<UHTexture2D*>(InTexture)))
     {
-        TextureListGUI->AddItem(InTexture->GetSourcePath());
         AssetMgr->AddTexture2D(dynamic_cast<UHTexture2D*>(InTexture));
     }
 
     // force selecting the created texture
     const int32_t NewIdx = UHUtilities::FindIndex(AssetMgr->GetTexture2Ds(), static_cast<UHTexture2D*>(InTexture));
-    TextureListGUI->Select(NewIdx);
     SelectTexture(NewIdx);
     CurrentTextureIndex = NewIdx;
     Renderer->UpdateTextureDescriptors();
@@ -145,49 +192,11 @@ void UHTextureDialog::SelectTexture(int32_t TexIndex)
         Gfx->EndOneTimeCmd(UploadCmd);
     }
 
-    // sync the dimension and mip level count to UI
-    std::wstring SizeText;
-    VkExtent2D TexExtent = CurrentTexture->GetExtent();
-    SizeText = L"Dimension: " + std::to_wstring(TexExtent.width) + L" x " + std::to_wstring(TexExtent.height);
-    SizeText += L" (" + std::to_wstring(CurrentTexture->GetTextureData().size() / 1024) + L" KB)";
-    SizeLabelGUI->SetText(SizeText);
-
-    uint32_t MipCount = CurrentTexture->GetMipMapCount();
-    HWND MipSlider = GetDlgItem(Dialog, IDC_MIPLEVEL_SLIDER);
-
     CurrentMip = 0;
-    MipLabelGUI->SetText(L"Mip: " + std::to_wstring(CurrentMip));
-    MipSliderGUI->Range(0, MipCount - 1).SetPos(CurrentMip);
+    CurrentEditingSettings = CurrentTexture->GetTextureSettings();
 
-    // sync the sRGB / is normal flag
-    const UHTextureSettings& Setting = CurrentTexture->GetTextureSettings();
-    SrgbGUI->Checked(!Setting.bIsLinear);
-    NormalGUI->Checked(Setting.bIsNormal);
-
-    // sync compression setting
-    CompressionGUI->Select(GCompressionModeText[Setting.CompressionSetting]);
-
-    // sync raw source path
-    FileNameGUI->SetText(CurrentTexture->GetRawSourcePath());
-
-    PreviewScene->SetPreviewTexture(CurrentTexture);
-    PreviewScene->SetPreviewMip(CurrentMip);
-}
-
-void UHTextureDialog::UpdatePreviewScene()
-{
-    uint32_t DesiredMip = MipSliderGUI->GetPos();
-    if (DesiredMip != CurrentMip)
-    {
-        CurrentMip = DesiredMip;
-        PreviewScene->SetPreviewMip(CurrentMip);
-        MipLabelGUI->SetText("Mip: " + std::to_string(CurrentMip));
-    }
-
-    if (CurrentTextureIndex != UHINDEXNONE)
-    {
-        PreviewScene->Render();
-    }
+    // refresh ImGui texture
+    RefreshImGuiMipLevel();
 }
 
 void UHTextureDialog::ControlApply()
@@ -197,41 +206,39 @@ void UHTextureDialog::ControlApply()
         return;
     }
 
-    HWND CurrDialog = Dialog;
-
-    std::string RawSource = UHUtilities::ToStringA(FileNameGUI->GetText());
+    std::string RawSource = CurrentTexture->GetRawSourcePath();
     std::filesystem::path RawSourcePath(RawSource);
     if (!std::filesystem::exists(RawSourcePath))
     {
-        MessageBoxA(CurrDialog, "Please select a valid image source file and try again.", "Missing source file", MB_OK);
+        MessageBoxA(ParentWindow, "Please select a valid image source file and try again.", "Missing source file", MB_OK);
         return;
     }
     CurrentTexture->SetRawSourcePath(RawSourcePath.string());
 
     // recreate texture if any option is changed
-    const bool bIsLinear = !SrgbGUI->IsChecked();
-    const bool bIsNormal = NormalGUI->IsChecked();
+    const bool bIsLinear = CurrentEditingSettings.bIsLinear;
+    const bool bIsNormal = CurrentEditingSettings.bIsNormal;
     const UHTextureSettings OldSetting = CurrentTexture->GetTextureSettings();
 
     UHTextureSettings NewSetting;
     NewSetting.bIsLinear = bIsLinear;
     NewSetting.bIsNormal = bIsNormal;
-    NewSetting.CompressionSetting = (UHTextureCompressionSettings)CompressionGUI->GetSelectedIndex();
+    NewSetting.CompressionSetting = CurrentEditingSettings.CompressionSetting;
     CurrentTexture->SetTextureSettings(NewSetting);
 
     if ((NewSetting.CompressionSetting == BC4 || NewSetting.CompressionSetting == BC5) && !bIsLinear)
     {
-        MessageBoxA(CurrDialog, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
+        MessageBoxA(ParentWindow, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
         return;
     }
 
     if (bIsNormal && NewSetting.CompressionSetting == BC4)
     {
-        MessageBoxA(CurrDialog, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
+        MessageBoxA(ParentWindow, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
         return;
     }
 
-    UHStatusDialogScope StatusDialog(Instance, CurrDialog, "Processing...");
+    UHStatusDialogScope StatusDialog("Processing...");
 
     // always recreating texture
     uint32_t W, H;
@@ -267,7 +274,7 @@ void UHTextureDialog::ControlSave()
 
     const std::filesystem::path SourcePath = CurrentTexture->GetSourcePath();
     CurrentTexture->Export(GTextureAssetFolder + SourcePath.string());
-    MessageBoxA(Dialog, "Current editing texture is saved.\nIt's also recommended to resave referencing materials.", "Texture Editor", MB_OK);
+    MessageBoxA(ParentWindow, "Current editing texture is saved.\nIt's also recommended to resave referencing materials.", "Texture Editor", MB_OK);
 }
 
 void UHTextureDialog::ControlSaveAll()
@@ -278,7 +285,7 @@ void UHTextureDialog::ControlSaveAll()
         const std::filesystem::path SourcePath = Tex->GetSourcePath();
         Tex->Export(GTextureAssetFolder + SourcePath.string());
     }
-    MessageBoxA(Dialog, "All textures are saved.", "Texture Editor", MB_OK);
+    MessageBoxA(ParentWindow, "All textures are saved.", "Texture Editor", MB_OK);
 }
 
 void UHTextureDialog::ControlTextureCreate()
@@ -300,18 +307,24 @@ void UHTextureDialog::ControlBrowseRawTexture()
         // if the path is not relative to engine folder, just use the absolute path
         RawSourcePath = FilePath;
     }
-
-    FileNameGUI->SetText(RawSourcePath.wstring());
+    CurrentTexture->SetRawSourcePath(RawSourcePath.string());
 }
 
-void UHTextureDialog::ControlTexturePreview()
+void UHTextureDialog::RefreshImGuiMipLevel()
 {
-    // reset preview scene
-    Gfx->WaitGPU();
-    UH_SAFE_RELEASE(PreviewScene);
-    PreviewScene = MakeUnique<UHPreviewScene>(Instance, TexturePreviewGUI->GetHwnd(), Gfx, TexturePreview);
-    PreviewScene->SetPreviewTexture(CurrentTexture);
-    PreviewScene->SetPreviewMip(CurrentMip);
+    UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    PointClampedInfo.MaxAnisotropy = 1;
+    PointClampedInfo.MipBias = static_cast<float>(CurrentMip);
+
+    // though this might generate more sampler variations because of mip bias setting
+    // it's fine to do so in editor
+    const UHSampler* PointSampler = Gfx->RequestTextureSampler(PointClampedInfo);
+    if (CurrentTextureDS != nullptr)
+    {
+        Gfx->WaitGPU();
+        ImGui_ImplVulkan_RemoveTexture(CurrentTextureDS);
+    }
+    CurrentTextureDS = ImGui_ImplVulkan_AddTexture(PointSampler->GetSampler(), CurrentTexture->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 #endif

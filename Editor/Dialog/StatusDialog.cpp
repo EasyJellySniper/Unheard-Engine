@@ -2,11 +2,11 @@
 #include "../Classes/EditorUtils.h"
 #include "../../resource.h"
 
-UHStatusDialogScope::UHStatusDialogScope(HINSTANCE InInstance, HWND InParentWnd, std::string InMsg)
-	: UHDialog(InInstance, InParentWnd)
+UHStatusDialogScope::UHStatusDialogScope(std::string InMsg)
+	: UHDialog(nullptr, nullptr)
 {
 	// doesn't need a callback
-	Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_STATUS), ParentWindow, (DLGPROC)GDialogProc);
+	Dialog = CreateDialog(nullptr, MAKEINTRESOURCE(IDD_STATUS), nullptr, (DLGPROC)GDialogProc);
     ShowWindow(Dialog, SW_SHOW);
 	SetWindowTextA(GetDlgItem(Dialog, IDC_STATUS_TEXT), InMsg.c_str());
 }

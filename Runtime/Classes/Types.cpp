@@ -207,6 +207,23 @@ namespace MathHelpers
 
     template float BicubicInterpolate(const std::vector<float>& InData, const float InWeight1, const float InWeight2);
     template UHColorRGB BicubicInterpolate(const std::vector<UHColorRGB>& InData, const float InWeight1, const float InWeight2);
+
+    // the bithacks trick
+    // https://graphics.stanford.edu/%7Eseander/bithacks.html#RoundUpPowerOf2
+    float RoundUpToClosestPowerOfTwo(float InVal)
+    {
+        uint32_t V = static_cast<uint32_t>(InVal);
+
+        V--;
+        V |= V >> 1;
+        V |= V >> 2;
+        V |= V >> 4;
+        V |= V >> 8;
+        V |= V >> 16;
+        V++;
+
+        return static_cast<float>(V);
+    }
 }
 
 // operator for XMFLOAT3 multipication

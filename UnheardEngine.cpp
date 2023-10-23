@@ -56,7 +56,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     CoInitialize(nullptr);
 
     {
-        UHStatusDialogScope StatusDialog(hInstance, UHEngineWindow, "Loading...");
+        UHStatusDialogScope StatusDialog("Loading...");
         GUnheardEngine = MakeUnique<UHEngine>();
         GUnheardEngine->LoadConfig();
 

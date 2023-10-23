@@ -64,6 +64,8 @@ namespace MathHelpers
 
     template <typename T>
     T BicubicInterpolate(const std::vector<T>& InData, const float InWeight1, const float InWeight2);
+
+    float RoundUpToClosestPowerOfTwo(float InVal);
 }
 
 // operator for XMFLOAT3 multipication

@@ -1772,19 +1772,16 @@ bool UHGraphic::CreateSwapChain()
 	// init shared descriptor pool for editor use, hard-code size should suffice now
 	if (ImGuiDescriptorPool == nullptr)
 	{
-		std::vector<VkDescriptorPoolSize> DescriptorPoolSizes(1024);
-		for (size_t Idx = 0; Idx < 1024; Idx++)
-		{
-			DescriptorPoolSizes[Idx].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			DescriptorPoolSizes[Idx].descriptorCount = 1;
-		}
+		VkDescriptorPoolSize DescriptorPoolSize;
+		DescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		DescriptorPoolSize.descriptorCount = 1;
 
 		VkDescriptorPoolCreateInfo PoolInfo = {};
 		PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		PoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-		PoolInfo.maxSets = 1;
-		PoolInfo.poolSizeCount = static_cast<uint32_t>(DescriptorPoolSizes.size());
-		PoolInfo.pPoolSizes = DescriptorPoolSizes.data();
+		PoolInfo.maxSets = 1024;
+		PoolInfo.poolSizeCount = 1;
+		PoolInfo.pPoolSizes = &DescriptorPoolSize;
 		vkCreateDescriptorPool(LogicalDevice, &PoolInfo, nullptr, &ImGuiDescriptorPool);
 	}
 	RecreateImGui();

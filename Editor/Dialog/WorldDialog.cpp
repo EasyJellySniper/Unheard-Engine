@@ -7,8 +7,8 @@
 #include "../../Runtime/Components/Transform.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 
-UHWorldDialog::UHWorldDialog(HWND ParentWnd, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView)
-	: UHDialog(nullptr, ParentWnd)
+UHWorldDialog::UHWorldDialog(HWND InParentWnd, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView)
+	: UHDialog(nullptr, InParentWnd)
 	, Renderer(InRenderer)
 	, DetailView(InDetailView)
 	, CurrentSelected(UHINDEXNONE)
@@ -59,7 +59,7 @@ void UHWorldDialog::Update()
 	WndSize.x -= 10.0f;
 	WndSize.y -= 50.0f;
 
-	if (ImGui::BeginListBox("##", WndSize))
+	if (ImGui::BeginListBox("ObjectList", WndSize))
 	{
 		for (int32_t Idx = 0; Idx < static_cast<int32_t>(SceneObjects.size()); Idx++)
 		{
