@@ -184,8 +184,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 				}
 #endif
 
-				// execute all recorded batches reversely, as translucents are sorted back-to-front
-				std::reverse(MotionTranslucentParallelSubmitter.WorkerBundles.begin(), MotionTranslucentParallelSubmitter.WorkerBundles.end());
+				// execute all recorded batches
 				RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
 			}
 			else
@@ -321,8 +320,11 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	// simply separate buffer recording into N threads
 	const int32_t MaxCount = static_cast<int32_t>(TranslucentsToRender.size());
 	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
-	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
-	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
+
+	// to collect batch reversely
+	const int32_t ReversedThreadIdx = NumWorkerThreads - ThreadIdx - 1;
+	const int32_t StartIdx = std::min(RendererCount * ReversedThreadIdx, MaxCount);
+	const int32_t EndIdx = (ReversedThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	VkCommandBufferInheritanceInfo InheritanceInfo{};
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -348,6 +350,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	}
 
 	// draw reversely since translucents are sort back-to-front
+	// I want front-to-back order in motion pass for translucents
 	for (int32_t I = EndIdx - 1; I >= StartIdx; I--)
 	{
 		UHMeshRendererComponent* Renderer = TranslucentsToRender[I];

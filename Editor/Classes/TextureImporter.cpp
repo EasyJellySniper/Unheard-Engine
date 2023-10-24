@@ -3,6 +3,8 @@
 #if WITH_EDITOR
 #include "../Runtime/Classes/AssetPath.h"
 #include "../../Runtime/Engine/Graphic.h"
+#include <ImfRgbaFile.h>
+#include <ImfArray.h>
 
 UHTextureImporter::UHTextureImporter()
 	: Gfx(nullptr)
@@ -16,50 +18,74 @@ UHTextureImporter::UHTextureImporter(UHGraphic* InGraphic)
 
 }
 
-std::vector<uint8_t> UHTextureImporter::LoadTexture(std::wstring Filename, uint32_t& Width, uint32_t& Height)
+std::vector<uint8_t> UHTextureImporter::LoadTexture(std::filesystem::path Filename, uint32_t& Width, uint32_t& Height)
 {
-	// the work flow is: creating factory->creating decoder->creating frame->get image info->allocate memory->copy
-	Width = 0;
-	Height = 0;
-
-	ComPtr<IWICImagingFactory> WicFactory;
-	RETURN_IF_FAILED(CoCreateInstance(CLSID_WICImagingFactory2, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&WicFactory)));
-
-	ComPtr<IWICBitmapDecoder> Decoder;
-	RETURN_IF_FAILED(WicFactory->CreateDecoderFromFilename(Filename.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnDemand, Decoder.GetAddressOf()));
-
-	ComPtr<IWICBitmapFrameDecode> Frame;
-	RETURN_IF_FAILED(Decoder->GetFrame(0, Frame.GetAddressOf()));
-
-	RETURN_IF_FAILED(Frame->GetSize(&Width, &Height));
-
-	WICPixelFormatGUID PixelFormat;
-	RETURN_IF_FAILED(Frame->GetPixelFormat(&PixelFormat));
-
-	uint32_t RowPitch = Width * sizeof(uint32_t);
-	uint32_t TextureSize = RowPitch * Height;
-
 	std::vector<uint8_t> Texture;
-	Texture.resize(static_cast<size_t>(TextureSize));
+	std::filesystem::path FilePath = Filename;
+	const bool bIsEXR = FilePath.extension().string() == ".exr";
 
-	if (memcmp(&PixelFormat, &GUID_WICPixelFormat32bppRGBA, sizeof(GUID)) == 0)
+	if (bIsEXR)
 	{
-		// copy data directly if it's WIC format
-		RETURN_IF_FAILED(Frame->CopyPixels(nullptr, RowPitch, TextureSize, reinterpret_cast<BYTE*>(Texture.data())));
+		// Load EXR file
+		Imf::RgbaInputFile File(Filename.string().c_str());
+		Imath::Box2i Dimension = File.dataWindow();
+		Width = Dimension.max.x - Dimension.min.x + 1;
+		Height = Dimension.max.y - Dimension.min.y + 1;
+
+		Imf::Array2D<Imf::Rgba> Pixels(Width, Height);
+		File.setFrameBuffer(&Pixels[0][0], 1, Width);
+		File.readPixels(Dimension.min.y, Dimension.max.y);
+
+		// allocate W * H * sizeof(R16G16B16A16)
+		size_t Size = Width * Height * sizeof(Imf::Rgba);
+		Texture.resize(Size);
+		memcpy_s(&Texture[0], Size, &Pixels[0][0], Size);
 	}
 	else
 	{
-		// for other formats which aren't WIC, try to convert them
-		ComPtr<IWICFormatConverter> FormatConverter;
-		RETURN_IF_FAILED(WicFactory->CreateFormatConverter(FormatConverter.GetAddressOf()));
+		// BMP, JPG, PNG
+		// the work flow is: creating factory->creating decoder->creating frame->get image info->allocate memory->copy
+		Width = 0;
+		Height = 0;
 
-		BOOL CanConvert = FALSE;
-		RETURN_IF_FAILED(FormatConverter->CanConvert(PixelFormat, GUID_WICPixelFormat32bppRGBA, &CanConvert));
+		ComPtr<IWICImagingFactory> WicFactory;
+		RETURN_IF_FAILED(CoCreateInstance(CLSID_WICImagingFactory2, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&WicFactory)));
 
-		RETURN_IF_FAILED(FormatConverter->Initialize(Frame.Get(), GUID_WICPixelFormat32bppRGBA,
-			WICBitmapDitherTypeErrorDiffusion, nullptr, 0, WICBitmapPaletteTypeMedianCut));
+		ComPtr<IWICBitmapDecoder> Decoder;
+		RETURN_IF_FAILED(WicFactory->CreateDecoderFromFilename(Filename.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnDemand, Decoder.GetAddressOf()));
 
-		RETURN_IF_FAILED(FormatConverter->CopyPixels(nullptr, RowPitch, TextureSize, reinterpret_cast<BYTE*>(Texture.data())));
+		ComPtr<IWICBitmapFrameDecode> Frame;
+		RETURN_IF_FAILED(Decoder->GetFrame(0, Frame.GetAddressOf()));
+
+		RETURN_IF_FAILED(Frame->GetSize(&Width, &Height));
+
+		WICPixelFormatGUID PixelFormat;
+		RETURN_IF_FAILED(Frame->GetPixelFormat(&PixelFormat));
+
+		uint32_t RowPitch = Width * sizeof(uint32_t);
+		uint32_t TextureSize = RowPitch * Height;
+
+		Texture.resize(static_cast<size_t>(TextureSize));
+
+		if (memcmp(&PixelFormat, &GUID_WICPixelFormat32bppRGBA, sizeof(GUID)) == 0)
+		{
+			// copy data directly if it's WIC format
+			RETURN_IF_FAILED(Frame->CopyPixels(nullptr, RowPitch, TextureSize, reinterpret_cast<BYTE*>(Texture.data())));
+		}
+		else
+		{
+			// for other formats which aren't WIC, try to convert them
+			ComPtr<IWICFormatConverter> FormatConverter;
+			RETURN_IF_FAILED(WicFactory->CreateFormatConverter(FormatConverter.GetAddressOf()));
+
+			BOOL CanConvert = FALSE;
+			RETURN_IF_FAILED(FormatConverter->CanConvert(PixelFormat, GUID_WICPixelFormat32bppRGBA, &CanConvert));
+
+			RETURN_IF_FAILED(FormatConverter->Initialize(Frame.Get(), GUID_WICPixelFormat32bppRGBA,
+				WICBitmapDitherTypeErrorDiffusion, nullptr, 0, WICBitmapPaletteTypeMedianCut));
+
+			RETURN_IF_FAILED(FormatConverter->CopyPixels(nullptr, RowPitch, TextureSize, reinterpret_cast<BYTE*>(Texture.data())));
+		}
 	}
 
 	return Texture;
@@ -87,6 +113,8 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	Extent.height = Height;
 
 	VkFormat DesiredFormat = InSettings.bIsLinear ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+	DesiredFormat = InSettings.bIsHDR ? VK_FORMAT_R16G16B16A16_SFLOAT : DesiredFormat;
+
 	std::string OutputPathName = OutputFolder.string() + "/" + SourcePath.stem().string();
 	std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", "/");
 	SavedPathName = UHUtilities::StringReplace(SavedPathName, GTextureAssetFolder, "");

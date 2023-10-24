@@ -13,8 +13,8 @@ class UHGraphic;
 class UHDeferredShadingRenderer;
 
 // compression mode text, need to follow the enum order defined in Texture.h
-const std::vector<std::wstring> GCompressionModeText = { L"None", L"BC1 (RGB)", L"BC3 (RGBA)", L"BC4 (R)", L"BC5 (RG)" };
-const COMDLG_FILTERSPEC GImageFilter = { {L"Image Formats"}, { L"*.jpg;*.jpeg;*.png;*.bmp"} };
+const std::vector<std::wstring> GCompressionModeText = { L"None", L"BC1 (RGB)", L"BC3 (RGBA)", L"BC4 (R)", L"BC5 (RG)", L"BC6H (RGB HDR)" };
+const COMDLG_FILTERSPEC GImageFilter = { {L"Image Formats"}, { L"*.jpg;*.jpeg;*.png;*.bmp;*.exr"} };
 
 class UHTextureDialog : public UHDialog
 {
@@ -33,7 +33,6 @@ private:
 	void ControlApply();
 	void ControlSave();
 	void ControlSaveAll();
-	void ControlTextureCreate();
 	void ControlBrowseRawTexture();
 	void RefreshImGuiMipLevel();
 
@@ -48,6 +47,30 @@ private:
 	VkDescriptorSet CurrentTextureDS;
 
 	UniquePtr<UHTextureCreationDialog> TextureCreationDialog;
+	std::vector<VkDescriptorSet> TextureDSToRemove;
 };
+
+inline void ValidateTextureSetting(UHTextureSettings& InSetting)
+{
+	if (InSetting.bIsHDR)
+	{
+		// hdr texture can never be normal mapping for now
+		InSetting.bIsNormal = false;
+
+		// force BC6H compression if it's not uncompressed
+		InSetting.CompressionSetting = (InSetting.CompressionSetting != CompressionNone) ? BC6H : InSetting.CompressionSetting;
+	}
+
+	else if (InSetting.CompressionSetting == BC4 || InSetting.CompressionSetting == BC5)
+	{
+		// force linear if it's BC4 or BC5
+		InSetting.bIsLinear = true;
+	}
+	else if (InSetting.bIsNormal)
+	{
+		// force BC5 compression if it's not uncompressed and a normal map
+		InSetting.CompressionSetting = (InSetting.CompressionSetting != CompressionNone) ? BC5 : InSetting.CompressionSetting;
+	}
+}
 
 #endif

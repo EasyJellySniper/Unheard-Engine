@@ -391,3 +391,10 @@ Finished setting dialog ImGui porting.
 19-10-2023: Finished world dialog ImGui porting. Refactored all -1 to UHINDEXNONE (-1 as well).
 Finished detail dialog ImGui porting.
 20-10-2023: Finished texture dialog ImGui porting.
+
+23-10-2023: Started the EXR texture import implementation. Organized both Vulkan/FBX SDK to the ThirdParty folder too.
+24-10-2023: Added support for EXR images. Let texture editor automatically correct the linear/compression setting consistency.
+Two bugs to solve: 
+(1) Stack overflow in release editor when importing EXR. (Fixed)
+(2) Can't switch after creation. (Fixed)
+Removed unnecessary reverse of motion translucent bundles.

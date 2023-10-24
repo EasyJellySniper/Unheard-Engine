@@ -126,7 +126,11 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 		{
 			VkDeviceImageMemoryRequirements ImageMemoryReqs{};
 			ImageMemoryReqs.sType = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS;
+
+			// always use uncompressed format in the editor when getting memory requirements
+			// so switching between compressed/uncompressed won't be an issue
 			CreateInfo.format = (TextureSettings.bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
+			CreateInfo.format = (TextureSettings.bIsHDR) ? VK_FORMAT_R16G16B16A16_SFLOAT : CreateInfo.format;
 			ImageMemoryReqs.pCreateInfo = &CreateInfo;
 
 			VkMemoryRequirements2 MemoryReqs2{};

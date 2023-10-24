@@ -85,7 +85,7 @@ void UHTexture2D::Recreate()
 	GenerateMipMaps(GfxCache, UploadCmd, UploadBuilder);
 	GfxCache->EndOneTimeCmd(UploadCmd);
 
-	// readback CPU data for storage
+	// readback CPU data for storage, this includes the mip map data
 	TextureData = ReadbackTextureData();
 
 	// since the mip map generation can't be done in block compression, always process compression after raw data is done
@@ -159,9 +159,10 @@ std::vector<uint8_t> UHTexture2D::ReadbackTextureData()
 	UHRenderBuilder ReadbackBuilder(GfxCache, ReadbackCmd);
 
 	// readback per mip slice
+	const uint32_t ByteSize = TextureSettings.bIsHDR ? 8 : 4;
 	for (uint32_t MipIdx = 0; MipIdx < MipCount; MipIdx++)
 	{
-		uint32_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * 4;
+		uint32_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * ByteSize;
 
 		ReadbackBuffer[MipIdx].SetDeviceInfo(GfxCache->GetLogicalDevice(), GfxCache->GetDeviceMemProps());
 		ReadbackBuffer[MipIdx].CreateBuffer(MipSize, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
@@ -253,10 +254,12 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderB
 
 	// copy data to staging buffer first
 	RawStageBuffers.resize(GetMipMapCount());
+	const uint64_t ByteSize = TextureSettings.bIsHDR ? 8 : 4;
 	uint64_t MipStartIndex = 0;
+
 	for (uint32_t MipIdx = 0; MipIdx < GetMipMapCount(); MipIdx++)
 	{
-		uint64_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * 4 / ByteDivider;
+		uint64_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * ByteSize / ByteDivider;
 		if (TextureSettings.bIsCompressed)
 		{
 			MipSize = std::max(MipSize, MinMipSize[TextureSettings.CompressionSetting]);
@@ -387,6 +390,10 @@ bool UHTexture2D::CreateTextureFromMemory()
 		default:
 			break;
 		}
+	}
+	else if (TextureSettings.bIsHDR)
+	{
+		Info.Format = VK_FORMAT_R16G16B16A16_SFLOAT;
 	}
 
 	return Create(Info, GfxCache->GetImageSharedMemory());

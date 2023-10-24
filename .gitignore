@@ -15,7 +15,6 @@
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
 
 # Fortran module files
 *.mod
@@ -25,10 +24,8 @@
 *.lai
 *.la
 *.a
-*.lib
 
 # Executables
-*.exe
 *.out
 *.app
 
@@ -44,3 +41,6 @@ Temp/*
 ThirdParty/ImGui/backends/*
 ThirdParty/ImGui/examples/*
 ThirdParty/ImGui/misc/*
+UnheardEngine_Debug.exe
+UnheardEngine_Release.exe
+UnheardEngine_ReleaseEditor.exe

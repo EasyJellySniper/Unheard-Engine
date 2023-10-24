@@ -23,7 +23,8 @@ enum UHTextureCompressionSettings
 	BC1,
 	BC3,
 	BC4,
-	BC5
+	BC5,
+	BC6H
 };
 
 struct UHTextureInfo
@@ -66,6 +67,7 @@ struct UHTextureSettings
 		, bIsNormal(false)
 		, CompressionSetting(CompressionNone)
 		, bIsCompressed(false)
+		, bIsHDR(false)
 	{
 	}
 
@@ -73,6 +75,7 @@ struct UHTextureSettings
 	bool bIsNormal;
 	UHTextureCompressionSettings CompressionSetting;
 	bool bIsCompressed;
+	bool bIsHDR;
 };
 
 class UHGraphic;

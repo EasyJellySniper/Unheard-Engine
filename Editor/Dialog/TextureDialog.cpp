@@ -41,7 +41,7 @@ void UHTextureDialog::ShowDialog()
 
 void UHTextureDialog::Init()
 {
-    TextureCreationDialog = MakeUnique<UHTextureCreationDialog>(ParentWindow, Gfx, this, &TextureImporter);
+    TextureCreationDialog = MakeUnique<UHTextureCreationDialog>(Gfx, this, &TextureImporter);
     CurrentTextureIndex = UHINDEXNONE;
     CurrentTexture = nullptr;
 }
@@ -51,6 +51,17 @@ void UHTextureDialog::Update()
     if (!bIsOpened)
     {
         return;
+    }
+
+    // check if there is any texture DS to remove
+    if (TextureDSToRemove.size() > 0)
+    {
+        Gfx->WaitGPU();
+        for (VkDescriptorSet DS : TextureDSToRemove)
+        {
+            ImGui_ImplVulkan_RemoveTexture(DS);
+        }
+        TextureDSToRemove.clear();
     }
 
     ImGui::Begin("Texture Editor", &bIsOpened, ImGuiWindowFlags_HorizontalScrollbar);
@@ -113,11 +124,6 @@ void UHTextureDialog::Update()
             ControlBrowseRawTexture();
         }
 
-        if (ImGui::Button("Create"))
-        {
-            ControlTextureCreate();
-        }
-
         if (ImGui::Button("Save"))
         {
             ControlSave();
@@ -161,9 +167,10 @@ void UHTextureDialog::Update()
 
         ImGui::EndTable();
     }
-    ImGui::End();
 
+    ImGui::NewLine();
     TextureCreationDialog->Update();
+    ImGui::End();
 }
 
 void UHTextureDialog::OnCreationFinished(UHTexture* InTexture)
@@ -210,45 +217,29 @@ void UHTextureDialog::ControlApply()
     std::filesystem::path RawSourcePath(RawSource);
     if (!std::filesystem::exists(RawSourcePath))
     {
-        MessageBoxA(ParentWindow, "Please select a valid image source file and try again.", "Missing source file", MB_OK);
+        MessageBoxA(nullptr, "Please select a valid image source file and try again.", "Missing source file", MB_OK);
         return;
     }
     CurrentTexture->SetRawSourcePath(RawSourcePath.string());
 
     // recreate texture if any option is changed
-    const bool bIsLinear = CurrentEditingSettings.bIsLinear;
-    const bool bIsNormal = CurrentEditingSettings.bIsNormal;
     const UHTextureSettings OldSetting = CurrentTexture->GetTextureSettings();
-
-    UHTextureSettings NewSetting;
-    NewSetting.bIsLinear = bIsLinear;
-    NewSetting.bIsNormal = bIsNormal;
-    NewSetting.CompressionSetting = CurrentEditingSettings.CompressionSetting;
+    UHTextureSettings NewSetting = CurrentEditingSettings;
+    NewSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
+    ValidateTextureSetting(NewSetting);
     CurrentTexture->SetTextureSettings(NewSetting);
-
-    if ((NewSetting.CompressionSetting == BC4 || NewSetting.CompressionSetting == BC5) && !bIsLinear)
-    {
-        MessageBoxA(ParentWindow, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
-        return;
-    }
-
-    if (bIsNormal && NewSetting.CompressionSetting == BC4)
-    {
-        MessageBoxA(ParentWindow, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
-        return;
-    }
 
     UHStatusDialogScope StatusDialog("Processing...");
 
     // always recreating texture
     uint32_t W, H;
-    std::vector<uint8_t> RawData = TextureImporter.LoadTexture(RawSourcePath.wstring(), W, H);
+    std::vector<uint8_t> RawData = TextureImporter.LoadTexture(RawSourcePath, W, H);
     CurrentTexture->SetExtent(W, H);
     CurrentTexture->SetTextureData(RawData);
     CurrentTexture->Recreate();
     Renderer->UpdateTextureDescriptors();
 
-    const bool bIsNormalChanged = bIsNormal != OldSetting.bIsNormal || NewSetting.CompressionSetting != OldSetting.CompressionSetting;
+    const bool bIsNormalChanged = NewSetting.bIsNormal != OldSetting.bIsNormal || NewSetting.CompressionSetting != OldSetting.CompressionSetting;
     if (bIsNormalChanged)
     {
         // if normal is changed, all materials are referencing this texture needs a recompile
@@ -274,7 +265,7 @@ void UHTextureDialog::ControlSave()
 
     const std::filesystem::path SourcePath = CurrentTexture->GetSourcePath();
     CurrentTexture->Export(GTextureAssetFolder + SourcePath.string());
-    MessageBoxA(ParentWindow, "Current editing texture is saved.\nIt's also recommended to resave referencing materials.", "Texture Editor", MB_OK);
+    MessageBoxA(nullptr, "Current editing texture is saved.\nIt's also recommended to resave referencing materials.", "Texture Editor", MB_OK);
 }
 
 void UHTextureDialog::ControlSaveAll()
@@ -285,12 +276,7 @@ void UHTextureDialog::ControlSaveAll()
         const std::filesystem::path SourcePath = Tex->GetSourcePath();
         Tex->Export(GTextureAssetFolder + SourcePath.string());
     }
-    MessageBoxA(ParentWindow, "All textures are saved.", "Texture Editor", MB_OK);
-}
-
-void UHTextureDialog::ControlTextureCreate()
-{
-    TextureCreationDialog->ShowDialog();
+    MessageBoxA(nullptr, "All textures are saved.", "Texture Editor", MB_OK);
 }
 
 void UHTextureDialog::ControlBrowseRawTexture()
@@ -321,8 +307,7 @@ void UHTextureDialog::RefreshImGuiMipLevel()
     const UHSampler* PointSampler = Gfx->RequestTextureSampler(PointClampedInfo);
     if (CurrentTextureDS != nullptr)
     {
-        Gfx->WaitGPU();
-        ImGui_ImplVulkan_RemoveTexture(CurrentTextureDS);
+        TextureDSToRemove.push_back(CurrentTextureDS);
     }
     CurrentTextureDS = ImGui_ImplVulkan_AddTexture(PointSampler->GetSampler(), CurrentTexture->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

@@ -9,7 +9,7 @@ class UHTextureDialog;
 class UHTextureCreationDialog : public UHDialog
 {
 public:
-	UHTextureCreationDialog(HWND InWindow, UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter);
+	UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter);
 	virtual void Update() override;
 
 private:

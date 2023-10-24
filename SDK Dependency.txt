@@ -1,14 +1,19 @@
+<<Direct Dependencies>>
 IDE: Visual Studio 2022
 C++ version: C++17
-Vulkan version: 1.3.224.1
-FBX version: 2020.0.1
 Windows SDK Version: 10.0.20348.0
 Platform Toolset: v143
+
+
+<<Dependencies that are integrated in the ThirdParty folder>>
+Vulkan version: 1.3.224.1
+FBX version: 2020.0.1
 DXC Compiler: 2022_07_18 release
 ImGui: v1.89.9, the dock branch
+
 
 Viking Huts is downloaded from CGTrader:
 https://www.cgtrader.com/free-3d-models/exterior/house/viking-hut
 
-Skybox textures from:
-https://opengameart.org/content/sky-box-sunny-day
+Skybox HDRI from:
+https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky

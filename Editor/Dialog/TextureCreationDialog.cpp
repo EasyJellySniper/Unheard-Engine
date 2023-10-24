@@ -9,7 +9,7 @@
 #include "../../Runtime/Classes/AssetPath.h"
 #include "StatusDialog.h"
 
-UHTextureCreationDialog::UHTextureCreationDialog(HWND InWindow, UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter)
+UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter)
 	: UHDialog(nullptr, nullptr)
     , CurrentEditingSettings(UHTextureSettings())
 {
@@ -19,13 +19,9 @@ UHTextureCreationDialog::UHTextureCreationDialog(HWND InWindow, UHGraphic* InGfx
 
 void UHTextureCreationDialog::Update()
 {
-    if (!bIsOpened)
-    {
-        return;
-    }
-
-    ImGui::Begin("Texture Creation", &bIsOpened, ImGuiWindowFlags_HorizontalScrollbar);
-    if (ImGui::BeginTable("Texture Creation", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable))
+    ImGui::BeginChild("Texture Creation", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::Text("Texture Creation>>>>>>>>>>");
+    if (ImGui::BeginTable("Texture Creation", 2, ImGuiTableFlags_Resizable))
     {
         ImGui::TableNextColumn();
 
@@ -71,7 +67,7 @@ void UHTextureCreationDialog::Update()
         ImGui::EndTable();
     }
 
-    ImGui::End();
+    ImGui::EndChild();
 }
 
 void UHTextureCreationDialog::ControlTextureCreate()
@@ -97,23 +93,6 @@ void UHTextureCreationDialog::ControlTextureCreate()
     // remove the project folder
     OutputFolder = std::filesystem::relative(OutputFolder);
 
-    UHTextureSettings TextureSetting;
-    TextureSetting.bIsLinear = CurrentEditingSettings.bIsLinear;
-    TextureSetting.bIsNormal = CurrentEditingSettings.bIsNormal;
-    TextureSetting.CompressionSetting = CurrentEditingSettings.CompressionSetting;
-
-    if ((TextureSetting.CompressionSetting == BC4 || TextureSetting.CompressionSetting == BC5) && !TextureSetting.bIsLinear)
-    {
-        MessageBoxA(nullptr, "BC4/BC5 can only be used with linear texture", "Error", MB_OK);
-        return;
-    }
-
-    if (TextureSetting.bIsNormal && TextureSetting.CompressionSetting == BC4)
-    {
-        MessageBoxA(nullptr, "Normal texture needs at least 2 channels, please choose other compression mode", "Error", MB_OK);
-        return;
-    }
-
     UHStatusDialogScope StatusDialog("Creating...");
 
     std::filesystem::path RawSourcePath = std::filesystem::relative(InputSource);
@@ -121,6 +100,10 @@ void UHTextureCreationDialog::ControlTextureCreate()
     {
         RawSourcePath = InputSource;
     }
+
+    UHTextureSettings TextureSetting = CurrentEditingSettings;
+    TextureSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
+    ValidateTextureSetting(TextureSetting);
 
     UHTexture* NewTex = TextureImporter->ImportRawTexture(RawSourcePath, OutputFolder, TextureSetting);
     TextureDialog->OnCreationFinished(NewTex);
