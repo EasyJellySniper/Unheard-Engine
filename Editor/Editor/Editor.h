@@ -10,7 +10,6 @@
 #include "../Dialog/MaterialDialog.h"
 #include "../Dialog/TextureDialog.h"
 #include "../Dialog/WorldDialog.h"
-#include "../Dialog/DetailDialog.h"
 
 class UHEngine;
 class UHGraphic;
@@ -25,12 +24,12 @@ class UHEditor
 public:
 	UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
 		, UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager, UHGraphic* InGfx);
-	~UHEditor();
 
 	void OnEditorUpdate();
 	void OnEditorMove();
 	void OnEditorResize();
 	void OnMenuSelection(int32_t WmId);
+	void EvaluateEditorDelta(uint32_t& OutW, uint32_t& OutH);
 
 private:
 	void SelectDebugViewModeMenu(int32_t WmId);
@@ -51,7 +50,6 @@ private:
 	UniquePtr<UHProfileDialog> ProfileDialog;
 	UniquePtr<UHSettingDialog> SettingDialog;
 	UniquePtr<UHWorldDialog> WorldDialog;
-	UniquePtr<UHDetailDialog> DetailDialog;
 	UniquePtr<UHTextureDialog> TextureDialog;
 	UniquePtr<UHMaterialDialog> MaterialDialog;
 };

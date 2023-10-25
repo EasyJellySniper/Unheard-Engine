@@ -26,16 +26,12 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     ProfileTimer.Reset();
     SettingDialog = MakeUnique<UHSettingDialog>(Config, Engine, DeferredRenderer);
     ProfileDialog = MakeUnique<UHProfileDialog>();
-    DetailDialog = MakeUnique<UHDetailDialog>(HWnd);
-    WorldDialog = MakeUnique<UHWorldDialog>(HWnd, DeferredRenderer, DetailDialog.get());
+    WorldDialog = MakeUnique<UHWorldDialog>(HWnd, DeferredRenderer);
     TextureDialog = MakeUnique<UHTextureDialog>(AssetManager, InGfx, InRenderer);
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
-}
 
-UHEditor::~UHEditor()
-{
-    MaterialDialog.reset();
-    TextureDialog.reset();
+    // always showing world dialog after initialization
+    WorldDialog->ShowDialog();
 }
 
 void UHEditor::OnEditorUpdate()
@@ -45,20 +41,17 @@ void UHEditor::OnEditorUpdate()
     ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config);
     TextureDialog->Update();
     MaterialDialog->Update();
-    DetailDialog->Update();
     WorldDialog->Update();
 }
 
 void UHEditor::OnEditorMove()
 {
     WorldDialog->ResetDialogWindow();
-    DetailDialog->ResetDialogWindow();
 }
 
 void UHEditor::OnEditorResize()
 {
     WorldDialog->ResetDialogWindow();
-    DetailDialog->ResetDialogWindow();
 }
 
 void UHEditor::OnMenuSelection(int32_t WmId)
@@ -79,12 +72,14 @@ void UHEditor::OnMenuSelection(int32_t WmId)
     case ID_WINDOW_TEXTURE:
         TextureDialog->ShowDialog();
         break;
-    case ID_WINDOW_WORLDEDITOR:
-        WorldDialog->ShowDialog();
-        break;
     default:
         break;
     } 
+}
+
+void UHEditor::EvaluateEditorDelta(uint32_t& OutW, uint32_t& OutH)
+{
+    OutW += static_cast<uint32_t>(WorldDialog->GetWindowSize().x);
 }
 
 void UHEditor::SelectDebugViewModeMenu(int32_t WmId)

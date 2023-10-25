@@ -100,15 +100,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 GUnheardEngine->BeginFPSLimiter();
                 GUnheardEngine->Update();
 
-                // only render when it's not minimized
+#if WITH_EDITOR
+                ImGui::Render();
+#endif
+
+                // only call render loop when it's not minimized
                 if (!GIsMinimized)
                 {
-#if WITH_EDITOR
-                    ImGui::Render();
-#endif
                     GUnheardEngine->RenderLoop();
                 }
-
                 GUnheardEngine->EndFPSLimiter();
 
             #if WITH_EDITOR

@@ -4,12 +4,12 @@
 #include "../CoreGlobals.h"
 
 UHTexture::UHTexture()
-	: UHTexture("", VkExtent2D(), VK_FORMAT_R8G8B8A8_SRGB, UHTextureSettings())
+	: UHTexture("", VkExtent2D(), UH_FORMAT_RGBA8_SRGB, UHTextureSettings())
 {
 
 }
 
-UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings)
+UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings)
 	: Name(InName)
 	, ImageFormat(InFormat)
 	, ImageExtent(InExtent)
@@ -23,6 +23,8 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat,
 	, TextureSettings(InSettings)
 	, MemoryOffset(~0)
 	, TextureVersion(InitialTexture)
+	, MipMapCount(1)
+	, TextureType(Texture2D)
 {
 
 }
@@ -83,7 +85,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 		VkImageCreateInfo CreateInfo{};
 		CreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		CreateInfo.imageType = InInfo.Type;
-		CreateInfo.format = ImageFormat;
+		CreateInfo.format = GetVulkanFormat(ImageFormat);
 		CreateInfo.extent = VkExtent3D{ ImageExtent.width, ImageExtent.height, static_cast<uint32_t>(1) };
 		CreateInfo.mipLevels = MipMapCount;
 		CreateInfo.arrayLayers = 1;
@@ -187,11 +189,11 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 
 bool UHTexture::IsDepthFormat() const
 {
-	return ImageFormat == VK_FORMAT_D16_UNORM
-		|| ImageFormat == VK_FORMAT_D24_UNORM_S8_UINT
-		|| ImageFormat == VK_FORMAT_D32_SFLOAT
-		|| ImageFormat == VK_FORMAT_D32_SFLOAT_S8_UINT
-		|| ImageFormat == VK_FORMAT_X8_D24_UNORM_PACK32;
+	return ImageFormat == UH_FORMAT_D16
+		|| ImageFormat == UH_FORMAT_D24_S8
+		|| ImageFormat == UH_FORMAT_D32F
+		|| ImageFormat == UH_FORMAT_D32F_S8
+		|| ImageFormat == UH_FORMAT_X8_D24;
 }
 
 bool UHTexture::CreateImageView(VkImageViewType InViewType)
@@ -201,7 +203,7 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 	CreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	CreateInfo.image = ImageSource;
 	CreateInfo.viewType = InViewType;
-	CreateInfo.format = ImageFormat;
+	CreateInfo.format = GetVulkanFormat(ImageFormat);
 	CreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 	CreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	CreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -249,7 +251,7 @@ std::string UHTexture::GetRawSourcePath() const
 	return RawSourcePath;
 }
 
-VkFormat UHTexture::GetFormat() const
+UHTextureFormat UHTexture::GetFormat() const
 {
 	return ImageFormat;
 }

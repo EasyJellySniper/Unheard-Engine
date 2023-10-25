@@ -123,9 +123,9 @@ public:
 
 	// create render pass object, allow imageless and both multiple and single creation
 	VkRenderPass CreateRenderPass(UHTransitionInfo InTransitionInfo) const;
-	VkRenderPass CreateRenderPass(VkFormat InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat = VK_FORMAT_UNDEFINED) const;
-	VkRenderPass CreateRenderPass(UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const;
-	VkRenderPass CreateRenderPass(std::vector<VkFormat> InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat = VK_FORMAT_UNDEFINED) const;
+	VkRenderPass CreateRenderPass(UHTextureFormat InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat = UH_FORMAT_NONE) const;
+	VkRenderPass CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const;
+	VkRenderPass CreateRenderPass(std::vector<UHTextureFormat> InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat = UH_FORMAT_NONE) const;
 
 	// create frame buffer, imageless/single/multiple
 	VkFramebuffer CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D InExtent) const;
@@ -136,8 +136,8 @@ public:
 	UHGPUQuery* RequestGPUQuery(uint32_t Count, VkQueryType QueueType);
 
 	// request a managed render texture
-	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bIsReadWrite = false, bool bIsShadowRT = false);
-	UHRenderTexture* RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bIsReadWrite = false
+	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite = false, bool bIsShadowRT = false);
+	UHRenderTexture* RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite = false
 		, bool bIsShadowRT = false);
 	void RequestReleaseRT(UHRenderTexture* InRT);
 

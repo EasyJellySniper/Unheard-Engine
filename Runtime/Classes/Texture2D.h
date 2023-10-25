@@ -12,7 +12,7 @@ class UHTexture2D : public UHTexture
 {
 public:
 	UHTexture2D();
-	UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings);
+	UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings);
 
 	void ReleaseCPUTextureData();
 	bool Import(std::filesystem::path InTexturePath);

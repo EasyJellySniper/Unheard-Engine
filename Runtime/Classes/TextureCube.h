@@ -11,7 +11,7 @@ class UHTextureCube : public UHTexture
 {
 public:
 	UHTextureCube();
-	UHTextureCube(std::string InName, VkExtent2D InExtent, VkFormat InFormat);
+	UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat);
 	void Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder);
 
 private:

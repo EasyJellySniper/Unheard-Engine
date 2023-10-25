@@ -7,22 +7,19 @@
 #include "../../Runtime/Components/Transform.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 
-UHWorldDialog::UHWorldDialog(HWND InParentWnd, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView)
+UHWorldDialog::UHWorldDialog(HWND InParentWnd, UHDeferredShadingRenderer* InRenderer)
 	: UHDialog(nullptr, InParentWnd)
 	, Renderer(InRenderer)
-	, DetailView(InDetailView)
 	, CurrentSelected(UHINDEXNONE)
+	, WindowHeight(0.0f)
+	, CurrComponent(nullptr)
+	, bResetWindow(false)
 {
 
 }
 
 void UHWorldDialog::ShowDialog()
 {
-	if (bIsOpened)
-	{
-		return;
-	}
-
 	UHDialog::ShowDialog();
 	CurrentSelected = UHINDEXNONE;
 	ResetDialogWindow();
@@ -36,30 +33,24 @@ void UHWorldDialog::ShowDialog()
 			SceneObjects.push_back(Comp);
 		}
 	}
-
-	if (DetailView)
-	{
-		DetailView->ShowDialog();
-		DetailView->ResetDialogWindow();
-	}
 }
 
 void UHWorldDialog::Update()
 {
-	if (!bIsOpened)
+	if (bResetWindow && WindowSize.has_value())
 	{
-		return;
+		ImGui::SetNextWindowPos(ImVec2(WindowPos.x - WindowSize.value().x, WindowPos.y));
+		ImGui::SetNextWindowSize(ImVec2(WindowSize.value().x, WindowHeight));
+		bResetWindow = false;
 	}
 
 	const std::string WndName = "World Objects";
-	ImGui::Begin(WndName.c_str(), &bIsOpened, ImGuiWindowFlags_HorizontalScrollbar);
-	ImGui::SetWindowPos(WndName.c_str(), WindowPos);
+	const ImVec2 WndSize = ImGui::GetWindowSize();
 
-	ImVec2 WndSize = ImGui::GetWindowSize();
-	WndSize.x -= 10.0f;
-	WndSize.y -= 50.0f;
-
-	if (ImGui::BeginListBox("ObjectList", WndSize))
+	ImGui::PushStyleColor(ImGuiCol_ResizeGrip, 0);
+	ImGui::Begin(WndName.c_str(), nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+	ImGui::Text(WndName.c_str());
+	if (ImGui::BeginListBox("##", ImVec2(-FLT_MIN, WndSize.y * 0.5f)))
 	{
 		for (int32_t Idx = 0; Idx < static_cast<int32_t>(SceneObjects.size()); Idx++)
 		{
@@ -75,14 +66,18 @@ void UHWorldDialog::Update()
 		}
 		ImGui::EndListBox();
 	}
+
+	// display detail
+	ImGui::NewLine();
+	if (CurrComponent)
+	{
+		CurrComponent->OnGenerateDetailView();
+	}
+	WindowSize = ImGui::GetWindowSize();
 	ImGui::End();
+	ImGui::PopStyleColor();
 
 	ControlSceneObjectSelect();
-
-	if (!bIsOpened)
-	{
-		OnFinished();
-	}
 }
 
 void UHWorldDialog::ResetDialogWindow()
@@ -100,19 +95,13 @@ void UHWorldDialog::ResetDialogWindow()
 
 	WindowPos.x = static_cast<float>(MainWndRect.right);
 	WindowPos.y = static_cast<float>(MainWndRect.top);
+	WindowHeight = static_cast<float>(MainWndRect.bottom - MainWndRect.top);
+	bResetWindow = true;
 }
 
-void UHWorldDialog::OnFinished()
+ImVec2 UHWorldDialog::GetWindowSize() const
 {
-	if (UHScene* Scene = Renderer->GetCurrentScene())
-	{
-		Scene->SetCurrentSelectedComponent(nullptr);
-	}
-
-	if (DetailView != nullptr)
-	{
-		DetailView->Close();
-	}
+	return WindowSize.value();
 }
 
 void UHWorldDialog::ControlSceneObjectSelect()
@@ -136,11 +125,7 @@ void UHWorldDialog::ControlSceneObjectSelect()
 			return;
 		}
 		Scene->SetCurrentSelectedComponent(Comp);
-	}
-
-	if (DetailView != nullptr)
-	{
-		DetailView->GenerateDetailView(Comp);
+		CurrComponent = Comp;
 	}
 }
 

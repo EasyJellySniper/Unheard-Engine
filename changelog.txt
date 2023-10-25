@@ -398,3 +398,7 @@ Two bugs to solve:
 (1) Stack overflow in release editor when importing EXR. (Fixed)
 (2) Can't switch after creation. (Fixed)
 Removed unnecessary reverse of motion translucent bundles.
+
+25-10-2023: Customized texture formats and replaced most VkFormat parameter as UHTextureFormat.
+Merged world and detail GUI and always display it in editor mode. Still need to find a way of hiding resize grip of ImGui window.
+Improved release build render thread efficiency.

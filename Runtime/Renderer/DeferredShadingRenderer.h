@@ -69,15 +69,16 @@ public:
 	void Reset();
 	void Update();
 	void NotifyRenderThread();
+	void WaitPreviousRenderTask();
 
 	// only resize RT buffers
 	void ResizeRayTracingBuffers();
 	void UpdateTextureDescriptors();
 
 #if WITH_EDITOR
-
-
 	void SetDebugViewIndex(int32_t Idx);
+	void SetEditorDelta(uint32_t InWidthDelta, uint32_t InHeightDelta);
+
 	float GetRenderThreadTime() const;
 	int32_t GetDrawCallCount() const;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
@@ -270,13 +271,13 @@ private:
 	// -------------------------------------------- Base Pass -------------------------------------------- //
 
 	// GBuffers
-	VkFormat DiffuseFormat;
-	VkFormat NormalFormat;
-	VkFormat SpecularFormat;
-	VkFormat SceneResultFormat;
-	VkFormat SceneMipFormat;
-	VkFormat DepthFormat;
-	VkFormat HDRFormat;
+	UHTextureFormat DiffuseFormat;
+	UHTextureFormat NormalFormat;
+	UHTextureFormat SpecularFormat;
+	UHTextureFormat SceneResultFormat;
+	UHTextureFormat SceneMipFormat;
+	UHTextureFormat DepthFormat;
+	UHTextureFormat HDRFormat;
 
 	UHRenderTexture* SceneDiffuse;
 	UHRenderTexture* SceneNormal;
@@ -304,7 +305,7 @@ private:
 	UHRenderPassObject SkyboxPassObj;
 
 	// -------------------------------------------- Motion vector Pass -------------------------------------------- //
-	VkFormat MotionFormat;
+	UHTextureFormat MotionFormat;
 	UHRenderTexture* MotionVectorRT;
 	UHRenderTexture* PrevMotionVectorRT;
 	UHRenderPassObject MotionCameraPassObj;
@@ -352,12 +353,16 @@ private:
 	std::vector<int32_t> ThreadDrawCalls;
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GPUTimes;
 
+	// GUI
+	uint32_t EditorWidthDelta;
+	uint32_t EditorHeightDelta;
+
 	static UHDeferredShadingRenderer* SceneRendererEditorOnly;
 #endif
 	std::array<UHGPUQuery*, UHRenderPassTypes::UHRenderPassMax> GPUTimeQueries;
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
-	VkFormat RTShadowFormat;
+	UHTextureFormat RTShadowFormat;
 	std::array<UniquePtr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
 
 	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;

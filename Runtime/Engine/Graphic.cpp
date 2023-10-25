@@ -806,25 +806,25 @@ void UHGraphic::WaitGPU()
 // create render pass, imageless
 VkRenderPass UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo) const
 {
-	std::vector<VkFormat> Format{};
+	std::vector<UHTextureFormat> Format{};
 	return CreateRenderPass(Format, InTransitionInfo);
 }
 
 // create render pass, single format
-VkRenderPass UHGraphic::CreateRenderPass(VkFormat InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const
+VkRenderPass UHGraphic::CreateRenderPass(UHTextureFormat InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const
 {
-	std::vector<VkFormat> Format{ InFormat };
+	std::vector<UHTextureFormat> Format{ InFormat };
 	return CreateRenderPass(Format, InTransitionInfo, InDepthFormat);
 }
 
 // create render pass, depth only
-VkRenderPass UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const
+VkRenderPass UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const
 {
-	return CreateRenderPass(std::vector<VkFormat>(), InTransitionInfo, InDepthFormat);
+	return CreateRenderPass(std::vector<UHTextureFormat>(), InTransitionInfo, InDepthFormat);
 }
 
 // create render pass, multiple formats are possible
-VkRenderPass UHGraphic::CreateRenderPass(std::vector<VkFormat> InFormat, UHTransitionInfo InTransitionInfo, VkFormat InDepthFormat) const
+VkRenderPass UHGraphic::CreateRenderPass(std::vector<UHTextureFormat> InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const
 {
 	VkRenderPass NewRenderPass = nullptr;
 	uint32_t RTCount = static_cast<uint32_t>(InFormat.size());
@@ -842,7 +842,7 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<VkFormat> InFormat, UHTrans
 		{
 			// create color attachment, this part desides how RT is going to be used
 			VkAttachmentDescription ColorAttachment{};
-			ColorAttachment.format = InFormat[Idx];
+			ColorAttachment.format = GetVulkanFormat(InFormat[Idx]);
 			ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			ColorAttachment.loadOp = InTransitionInfo.LoadOp;
 			ColorAttachment.storeOp = InTransitionInfo.StoreOp;
@@ -871,7 +871,7 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<VkFormat> InFormat, UHTrans
 	VkAttachmentReference DepthAttachmentRef{};
 	if (bHasDepthAttachment)
 	{
-		DepthAttachment.format = InDepthFormat;
+		DepthAttachment.format = GetVulkanFormat(InDepthFormat);
 		DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		DepthAttachment.loadOp = InTransitionInfo.DepthLoadOp;
 		DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -968,13 +968,13 @@ UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 }
 
 // request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bIsReadWrite, bool bIsShadowRT)
+UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite, bool bIsShadowRT)
 {
 	return RequestRenderTexture(InName, nullptr, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
 }
 
 // request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bIsReadWrite
+UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite
 	, bool bIsShadowRT)
 {
 	// return cached if there is already one
@@ -1430,7 +1430,7 @@ VkExtent2D UHGraphic::GetSwapChainExtent() const
 
 VkFormat UHGraphic::GetSwapChainFormat() const
 {
-	return SwapChainRT[0]->GetFormat();
+	return GetVulkanFormat(SwapChainRT[0]->GetFormat());
 }
 
 VkRenderPass UHGraphic::GetSwapChainRenderPass() const
@@ -1731,14 +1731,15 @@ bool UHGraphic::CreateSwapChain()
 
 	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
 	UHTransitionInfo SwapChainTransition(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	SwapChainRenderPass = CreateRenderPass(Format.format, SwapChainTransition);
+	UHTextureFormat TargetFormat = bSupportHDR ? UH_FORMAT_ABGR2101010 : UH_FORMAT_BGRA8_SRGB;
+	SwapChainRenderPass = CreateRenderPass(TargetFormat, SwapChainTransition);
 
 	// create swap chain RTs
 	SwapChainRT.resize(ImageCount);
 	SwapChainFrameBuffer.resize(ImageCount);
 	for (size_t Idx = 0; Idx < ImageCount; Idx++)
 	{
-		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, Format.format, false);
+		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, TargetFormat, false);
 		SwapChainFrameBuffer[Idx] = CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
 	}
 

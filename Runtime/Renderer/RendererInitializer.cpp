@@ -59,6 +59,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, DebugViewIndex(0)
 	, RenderThreadTime(0)
 	, DrawCalls(0)
+	, EditorWidthDelta(0)
+	, EditorHeightDelta(0)
 #endif
 {
 	// init static array pointers
@@ -77,21 +79,21 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	}
 
 	// init formats
-	DiffuseFormat = VK_FORMAT_R8G8B8A8_SRGB;
-	NormalFormat = VK_FORMAT_A2R10G10B10_UNORM_PACK32;
-	SpecularFormat = VK_FORMAT_R8G8B8A8_UNORM;
-	SceneResultFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-	DepthFormat = VK_FORMAT_X8_D24_UNORM_PACK32;
-	HDRFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+	DiffuseFormat = UH_FORMAT_RGBA8_SRGB;
+	NormalFormat = UH_FORMAT_ARGB2101010;
+	SpecularFormat = UH_FORMAT_RGBA8_UNORM;
+	SceneResultFormat = UH_FORMAT_ABGR2101010;
+	DepthFormat = UH_FORMAT_X8_D24;
+	HDRFormat = UH_FORMAT_RGBA16F;
 
 	// half precision for motion vector
-	MotionFormat = VK_FORMAT_R16G16_SFLOAT;
+	MotionFormat = UH_FORMAT_RG16F;
 
 	// RT result format, store soften mask
-	RTShadowFormat = VK_FORMAT_R8_UNORM;
+	RTShadowFormat = UH_FORMAT_R8_UNORM;
 
 	// mip rate format
-	SceneMipFormat = VK_FORMAT_R16_SFLOAT;
+	SceneMipFormat = UH_FORMAT_R16F;
 
 	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
 	{
@@ -828,7 +830,7 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 
 void UHDeferredShadingRenderer::CreateRenderPasses()
 {
-	std::vector<VkFormat> GBufferFormats;
+	std::vector<UHTextureFormat> GBufferFormats;
 	GBufferFormats.push_back(DiffuseFormat);
 	GBufferFormats.push_back(NormalFormat);
 	GBufferFormats.push_back(SpecularFormat);
@@ -865,7 +867,7 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, DepthFormat);
 
-	std::vector<VkFormat> TranslucentMotionFormats = { MotionFormat , NormalFormat };
+	std::vector<UHTextureFormat> TranslucentMotionFormats = { MotionFormat , NormalFormat };
 	MotionTranslucentPassObj.RenderPass = GraphicInterface->CreateRenderPass(TranslucentMotionFormats
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, DepthFormat);

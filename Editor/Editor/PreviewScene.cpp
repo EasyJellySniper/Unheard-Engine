@@ -68,14 +68,14 @@ UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InG
 	vkGetSwapchainImagesKHR(LogicalDevice, SwapChain, &CreateInfo.minImageCount, SwapChainImages.data());
 
 	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
-	SwapChainRenderPass = Gfx->CreateRenderPass(Format.format, UHTransitionInfo());
+	SwapChainRenderPass = Gfx->CreateRenderPass(UH_FORMAT_RGBA8_SRGB, UHTransitionInfo());
 
 	// create swap chain RTs
 	SwapChainRT.resize(CreateInfo.minImageCount);
 	SwapChainFrameBuffer.resize(CreateInfo.minImageCount);
 	for (size_t Idx = 0; Idx < CreateInfo.minImageCount; Idx++)
 	{
-		SwapChainRT[Idx] = Gfx->RequestRenderTexture("PreviewSceneSwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, Format.format, false);
+		SwapChainRT[Idx] = Gfx->RequestRenderTexture("PreviewSceneSwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, UH_FORMAT_BGRA8_SRGB, false);
 		SwapChainFrameBuffer[Idx] = Gfx->CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
 	}
 

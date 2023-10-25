@@ -231,7 +231,6 @@
     <ClInclude Include="Editor\Controls\RadioButton.h" />
     <ClInclude Include="Editor\Controls\Slider.h" />
     <ClInclude Include="Editor\Controls\TextBox.h" />
-    <ClInclude Include="Editor\Dialog\DetailDialog.h" />
     <ClInclude Include="Editor\Dialog\StatusDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureCreationDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureDialog.h" />
@@ -262,6 +261,7 @@
     <ClInclude Include="Runtime\Classes\GPUMemory.h" />
     <ClInclude Include="Runtime\Classes\GPUQuery.h" />
     <ClInclude Include="Runtime\Classes\TextureCompressor.h" />
+    <ClInclude Include="Runtime\Classes\TextureFormat.h" />
     <ClInclude Include="Runtime\Classes\Thread.h" />
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
@@ -348,7 +348,6 @@
     <ClCompile Include="Editor\Controls\RadioButton.cpp" />
     <ClCompile Include="Editor\Controls\Slider.cpp" />
     <ClCompile Include="Editor\Controls\TextBox.cpp" />
-    <ClCompile Include="Editor\Dialog\DetailDialog.cpp" />
     <ClCompile Include="Editor\Dialog\StatusDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureCreationDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureDialog.cpp" />
@@ -378,6 +377,7 @@
     <ClCompile Include="Runtime\Classes\GPUQuery.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCompressor.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCube.cpp" />
+    <ClCompile Include="Runtime\Classes\TextureFormat.cpp" />
     <ClCompile Include="Runtime\Classes\Thread.cpp" />
     <ClCompile Include="Runtime\Classes\Types.cpp" />
     <ClCompile Include="Runtime\Classes\Utility.cpp" />

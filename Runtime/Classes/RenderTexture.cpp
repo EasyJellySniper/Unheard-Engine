@@ -2,7 +2,7 @@
 #include "../Classes/Utility.h"
 #include "../../UnheardEngine.h"
 
-UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bReadWrite, bool bShadowRT)
+UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bReadWrite, bool bShadowRT)
 	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
 	, bIsReadWrite(bReadWrite)
 	, bIsShadowRT(bShadowRT)

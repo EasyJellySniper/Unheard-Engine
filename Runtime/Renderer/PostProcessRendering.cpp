@@ -121,6 +121,12 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& Rend
 		UHRenderTexture* SwapChainRT = GraphicInterface->GetSwapChainRT(ImageIndex);
 		VkExtent2D SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 
+	#if WITH_EDITOR
+		// consider editor delta
+		SwapChainExtent.width -= EditorWidthDelta;
+		SwapChainExtent.height -= EditorHeightDelta;
+	#endif
+
 		// manually clear swap chain
 		RenderBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		RenderBuilder.ClearRenderTexture(SwapChainRT);
@@ -154,6 +160,7 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& Rend
 		}
 
 #if WITH_EDITOR
+		SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 		RenderBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent);
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), RenderBuilder.GetCmdList(), GraphicInterface->GetImGuiPipeline());
 		RenderBuilder.EndRenderPass();

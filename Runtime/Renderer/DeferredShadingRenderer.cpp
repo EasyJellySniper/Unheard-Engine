@@ -87,11 +87,19 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	// wake render thread
 	RenderThread->WakeThread();
 
-	// wait render thread done
+#if WITH_EDITOR
+	// only wait RT in editor, shipped build will wait in somewhere else by calling WaitPreviousRenderTask()
 	RenderThread->WaitTask();
+#endif
 
 	// advance frame after rendering is done
 	CurrentFrameGT = (CurrentFrameGT + 1) % GMaxFrameInFlight;
+}
+
+void UHDeferredShadingRenderer::WaitPreviousRenderTask()
+{
+	// wait render thread done
+	RenderThread->WaitTask();
 }
 
 #if WITH_EDITOR
@@ -114,6 +122,12 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
 		DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
 	}
+}
+
+void UHDeferredShadingRenderer::SetEditorDelta(uint32_t InWidthDelta, uint32_t InHeightDelta)
+{
+	EditorWidthDelta = InWidthDelta;
+	EditorHeightDelta = InHeightDelta;
 }
 
 float UHDeferredShadingRenderer::GetRenderThreadTime() const

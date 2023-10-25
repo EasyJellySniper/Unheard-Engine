@@ -112,8 +112,8 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	Extent.width = Width;
 	Extent.height = Height;
 
-	VkFormat DesiredFormat = InSettings.bIsLinear ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
-	DesiredFormat = InSettings.bIsHDR ? VK_FORMAT_R16G16B16A16_SFLOAT : DesiredFormat;
+	UHTextureFormat DesiredFormat = InSettings.bIsLinear ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
+	DesiredFormat = InSettings.bIsHDR ? UH_FORMAT_RGBA16F : DesiredFormat;
 
 	std::string OutputPathName = OutputFolder.string() + "/" + SourcePath.stem().string();
 	std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", "/");

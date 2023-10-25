@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include "../../UnheardEngine.h"
 #include "GPUMemory.h"
+#include "TextureFormat.h"
 
 enum UHTextureVersion
 {
@@ -30,11 +31,11 @@ enum UHTextureCompressionSettings
 struct UHTextureInfo
 {
 	UHTextureInfo()
-		: UHTextureInfo(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_UNDEFINED, VkExtent2D(), VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, false)
+		: UHTextureInfo(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, UH_FORMAT_NONE, VkExtent2D(), VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, false)
 	{
 	}
 
-	UHTextureInfo(VkImageType InType, VkImageViewType InViewType, VkFormat InFormat, VkExtent2D InExtent, VkImageUsageFlags InUsage
+	UHTextureInfo(VkImageType InType, VkImageViewType InViewType, UHTextureFormat InFormat, VkExtent2D InExtent, VkImageUsageFlags InUsage
 		, bool bInIsRT, bool bInUseMipMap)
 		: Type(InType)
 		, ViewType(InViewType)
@@ -51,7 +52,7 @@ struct UHTextureInfo
 
 	VkImageType Type;
 	VkImageViewType ViewType;
-	VkFormat Format;
+	UHTextureFormat Format;
 	VkExtent2D Extent;
 	VkImageUsageFlags Usage;
 	bool bIsRT;
@@ -86,7 +87,7 @@ class UHTexture : public UHRenderResource
 {
 public:
 	UHTexture();
-	UHTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings);
+	UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings);
 	virtual ~UHTexture() {}
 
 	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) {}
@@ -116,7 +117,7 @@ public:
 	std::string GetRawSourcePath() const;
 
 	// get format
-	VkFormat GetFormat() const;
+	UHTextureFormat GetFormat() const;
 
 	// get extent
 	VkExtent2D GetExtent() const;
@@ -147,7 +148,7 @@ protected:
 	std::string SourcePath;
 	std::string RawSourcePath;
 
-	VkFormat ImageFormat;
+	UHTextureFormat ImageFormat;
 	VkExtent2D ImageExtent;
 	VkDeviceMemory ImageMemory;
 	VkImage ImageSource;

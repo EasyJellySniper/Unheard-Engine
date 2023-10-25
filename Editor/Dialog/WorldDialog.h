@@ -3,30 +3,34 @@
 
 #if WITH_EDITOR
 #include "../../Runtime/Components/Component.h"
-#include "DetailDialog.h"
+#include <optional>
 
 class UHDeferredShadingRenderer;
 
 class UHWorldDialog : public UHDialog
 {
 public:
-	UHWorldDialog(HWND ParentWnd, UHDeferredShadingRenderer* InRenderer, UHDetailDialog* InDetailView);
+	UHWorldDialog(HWND ParentWnd, UHDeferredShadingRenderer* InRenderer);
 
 	virtual void ShowDialog() override;
 	virtual void Update() override;
+
 	void ResetDialogWindow();
+	ImVec2 GetWindowSize() const;
 
 private:
-	void OnFinished();
 	void ControlSceneObjectSelect();
 	void ControlSceneObjectDoubleClick();
 
 	ImVec2 WindowPos;
+	std::optional<ImVec2> WindowSize;
+	float WindowHeight;
 	std::vector<UHComponent*> SceneObjects;
 	int32_t CurrentSelected;
+	bool bResetWindow;
 
 	UHDeferredShadingRenderer* Renderer;
-	UHDetailDialog* DetailView;
+	UHComponent* CurrComponent;
 };
 
 #endif

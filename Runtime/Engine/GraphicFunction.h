@@ -1,6 +1,4 @@
 #pragma once
-#define VK_USE_PLATFORM_WIN32_KHR
-#include <vulkan/vulkan.h>
 #include "../../UnheardEngine.h"
 // a header that store graphic API function callback
 

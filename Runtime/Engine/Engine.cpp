@@ -182,6 +182,14 @@ void UHEngine::Update()
 		SetResizeReason(ToggleVsync);
 	}
 
+	// update scene
+	DefaultScene.Update();
+
+	// update renderer, reset if it's need to be reset (device lost..etc)
+#if WITH_RELEASE
+	UHERenderer->WaitPreviousRenderTask();
+#endif
+
 	if (EngineResizeReason != UHEngineResizeReason::NotResizing)
 	{
 		ResizeEngine();
@@ -193,10 +201,6 @@ void UHEngine::Update()
 		UHERenderer->SetSwapChainReset(false);
 	}
 
-	// update scene
-	DefaultScene.Update();
-
-	// update renderer, reset if it's need to be reset (device lost..etc)
 	if (UHERenderer->IsNeedReset())
 	{
 		// GFX needs to be reset also
@@ -206,6 +210,12 @@ void UHEngine::Update()
 		UHERenderer->Reset();
 	}
 
+#if WITH_EDITOR
+	uint32_t DeltaW = 0;
+	uint32_t DeltaH = 0;
+	UHEEditor->EvaluateEditorDelta(DeltaW, DeltaH);
+	UHERenderer->SetEditorDelta(DeltaW, DeltaH);
+#endif
 	UHERenderer->Update();
 
 	// cache input state of this frame

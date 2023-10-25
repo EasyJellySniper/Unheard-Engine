@@ -6,7 +6,7 @@ class UHGraphic;
 class UHRenderTexture : public UHTexture
 {
 public:
-	UHRenderTexture(std::string InName, VkExtent2D InExtent, VkFormat InFormat, bool bIsLinear, bool bReadWrite = false, bool bIsShadowRT = false);
+	UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bReadWrite = false, bool bIsShadowRT = false);
 
 private:
 	// create RT

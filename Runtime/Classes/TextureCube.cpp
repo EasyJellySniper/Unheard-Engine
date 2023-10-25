@@ -2,12 +2,12 @@
 #include "../Renderer/RenderBuilder.h"
 
 UHTextureCube::UHTextureCube()
-	: UHTextureCube("", VkExtent2D(), VK_FORMAT_UNDEFINED)
+	: UHTextureCube("", VkExtent2D(), UH_FORMAT_NONE)
 {
 
 }
 
-UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, VkFormat InFormat)
+UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat)
 	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
 	, bIsCubeBuilt(false)
 {

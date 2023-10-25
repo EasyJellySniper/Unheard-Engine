@@ -12,7 +12,7 @@ UHTexture2D::UHTexture2D()
 
 }
 
-UHTexture2D::UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, VkFormat InFormat, UHTextureSettings InSettings)
+UHTexture2D::UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings)
 	: UHTexture(InName, InExtent, InFormat, InSettings)
 {
 	SourcePath = InSourcePath;
@@ -89,11 +89,12 @@ void UHTexture2D::Recreate()
 	TextureData = ReadbackTextureData();
 
 	// since the mip map generation can't be done in block compression, always process compression after raw data is done
+	const int32_t RawByteSize = GTextureFormatData[UH_FORMAT_RGBA8_UNORM].ByteSize;
 	if (TextureSettings.CompressionSetting != CompressionNone)
 	{
 		std::vector<uint64_t> CompressedData;
 		uint64_t MipStartIndex = 0;
-		uint64_t MipEndIndex = ImageExtent.width * ImageExtent.height * 4;
+		uint64_t MipEndIndex = ImageExtent.width * ImageExtent.height * RawByteSize;
 		for (uint32_t Idx = 0; Idx < GetMipMapCount(); Idx++)
 		{
 			std::vector<uint8_t> MipData(TextureData.begin() + MipStartIndex, TextureData.begin() + MipEndIndex);
@@ -124,13 +125,14 @@ void UHTexture2D::Recreate()
 			CompressedData.insert(CompressedData.end(), CompressedMipData.begin(), CompressedMipData.end());
 
 			MipStartIndex = MipEndIndex;
-			MipEndIndex += (ImageExtent.width >> (Idx + 1)) * (ImageExtent.height >> (Idx + 1)) * 4;
+			MipEndIndex += (ImageExtent.width >> (Idx + 1)) * (ImageExtent.height >> (Idx + 1)) * RawByteSize;
 		}
 
 		// convert to uint8 array
+		const size_t OutputSize = CompressedData.size() * sizeof(uint64_t);
 		TextureData.clear();
-		TextureData.resize(CompressedData.size() * 8);
-		memcpy_s(TextureData.data(), CompressedData.size() * sizeof(uint64_t), CompressedData.data(), CompressedData.size() * sizeof(uint64_t));
+		TextureData.resize(OutputSize);
+		memcpy_s(TextureData.data(), OutputSize, CompressedData.data(), OutputSize);
 		TextureSettings.bIsCompressed = true;
 
 		// repeat the texture creation for compressed texture
@@ -361,7 +363,7 @@ bool UHTexture2D::CreateTextureFromMemory()
 {
 	// texture also needs SRC/DST bits for copying/blit operation
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D
-		, VK_IMAGE_VIEW_TYPE_2D, (TextureSettings.bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB, ImageExtent
+		, VK_IMAGE_VIEW_TYPE_2D, (TextureSettings.bIsLinear) ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB, ImageExtent
 		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, true);
 	Info.ReboundOffset = MemoryOffset;
 
@@ -370,21 +372,21 @@ bool UHTexture2D::CreateTextureFromMemory()
 		switch (TextureSettings.CompressionSetting)
 		{
 		case BC1:
-			Info.Format = (TextureSettings.bIsLinear) ? VK_FORMAT_BC1_RGB_UNORM_BLOCK : VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+			Info.Format = (TextureSettings.bIsLinear) ? UH_FORMAT_BC1_UNORM : UH_FORMAT_BC1_SRGB;
 			break;
 
 		case BC3:
-			Info.Format = (TextureSettings.bIsLinear) ? VK_FORMAT_BC3_UNORM_BLOCK : VK_FORMAT_BC3_SRGB_BLOCK;
+			Info.Format = (TextureSettings.bIsLinear) ? UH_FORMAT_BC3_UNORM : UH_FORMAT_BC3_SRGB;
 			break;
 
 		case BC4:
 			// BC4 only works for linear texture, use [0,1] normalization for now
-			Info.Format = VK_FORMAT_BC4_UNORM_BLOCK;
+			Info.Format = UH_FORMAT_BC4;
 			break;
 
 		case BC5:
 			// BC5 only works for linear texture, use [0,1] normalization for now
-			Info.Format = VK_FORMAT_BC5_UNORM_BLOCK;
+			Info.Format = UH_FORMAT_BC5;
 			break;
 
 		default:
@@ -393,7 +395,7 @@ bool UHTexture2D::CreateTextureFromMemory()
 	}
 	else if (TextureSettings.bIsHDR)
 	{
-		Info.Format = VK_FORMAT_R16G16B16A16_SFLOAT;
+		Info.Format = UH_FORMAT_RGBA16F;
 	}
 
 	return Create(Info, GfxCache->GetImageSharedMemory());
