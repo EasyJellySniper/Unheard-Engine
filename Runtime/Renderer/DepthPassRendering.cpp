@@ -125,13 +125,8 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, DepthParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
-
-	// silence the false positive error regarding vp and scissor
-	if (GraphicInterface->IsDebugLayerEnabled())
-	{
-		RenderBuilder.SetViewport(RenderResolution);
-		RenderBuilder.SetScissor(RenderResolution);
-	}
+	RenderBuilder.SetViewport(RenderResolution);
+	RenderBuilder.SetScissor(RenderResolution);
 
 	// bind texture table, they should only be bound once
 	if (DepthPassShaders.size() > 0)

@@ -549,7 +549,11 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		// wait until the previous presentation is done
 		if (bIsPresentedPreviously && !bIsSwapChainResetRT)
 		{
-			if (GVkWaitForPresentKHR(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetSwapChain(), FrameNumberRT - 1, 100000000) != VK_SUCCESS)
+			if (!GraphicInterface->IsPresentWaitSupported())
+			{
+				SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[1 - CurrentFrameRT]);
+			}
+			else if (GVkWaitForPresentKHR(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetSwapChain(), FrameNumberRT - 1, 100000000) != VK_SUCCESS)
 			{
 				UHE_LOG("Waiting for presentation failed!\n");
 			}

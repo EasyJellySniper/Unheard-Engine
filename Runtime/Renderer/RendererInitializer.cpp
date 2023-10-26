@@ -83,7 +83,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	NormalFormat = UH_FORMAT_ARGB2101010;
 	SpecularFormat = UH_FORMAT_RGBA8_UNORM;
 	SceneResultFormat = UH_FORMAT_ABGR2101010;
-	DepthFormat = UH_FORMAT_X8_D24;
+	DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UH_FORMAT_X8_D24 : UH_FORMAT_D32F;
 	HDRFormat = UH_FORMAT_RGBA16F;
 
 	// half precision for motion vector

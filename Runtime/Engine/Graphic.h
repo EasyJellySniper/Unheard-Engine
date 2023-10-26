@@ -223,17 +223,13 @@ public:
 	// get gpu time stamp period
 	float GetGPUTimeStampPeriod() const;
 
-	// is depth pre pass enabled
 	bool IsDepthPrePassEnabled() const;
-
-	// is ray tracing enabled
 	bool IsRayTracingEnabled() const;
-
-	// is debug layer enabled
 	bool IsDebugLayerEnabled() const;
-
-	// is HDR supported
 	bool IsHDRSupported() const;
+	bool IsPresentWaitSupported() const;
+	bool Is24BitDepthSupported() const;
+	bool IsAMDIntegratedGPU() const;
 
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
@@ -270,7 +266,7 @@ private:
 	bool CreateInstance();
 
 	// create device
-	bool CheckDeviceExtension(VkPhysicalDevice InDevice, const std::vector<const char*>& RequiredExtensions);
+	bool CheckDeviceExtension(VkPhysicalDevice InDevice, std::vector<const char*>& RequiredExtensions);
 	bool CreatePhysicalDevice();
 
 	// create queue family
@@ -363,6 +359,9 @@ private:
 	bool bEnableDepthPrePass;
 	bool bEnableRayTracing;
 	bool bSupportHDR;
+	bool bSupportPresentWait;
+	bool bSupport24BitDepth;
+	bool bIsAMDIntegratedGPU;
 
 protected:
 	// system managed pools

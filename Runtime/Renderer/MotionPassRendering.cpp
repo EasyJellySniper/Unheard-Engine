@@ -263,13 +263,8 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, MotionOpaqueParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
-
-	// silence the false positive error regarding vp and scissor
-	if (GraphicInterface->IsDebugLayerEnabled())
-	{
-		RenderBuilder.SetViewport(RenderResolution);
-		RenderBuilder.SetScissor(RenderResolution);
-	}
+	RenderBuilder.SetViewport(RenderResolution);
+	RenderBuilder.SetScissor(RenderResolution);
 
 	// bind texture table, they should only be bound once
 	if (MotionOpaqueShaders.size() > 0)
@@ -283,7 +278,10 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	{
 		UHMeshRendererComponent* Renderer = OpaquesToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->IsSkybox() || !Renderer->IsMotionDirty(CurrentFrameRT))
+
+		// @TODO: This is a temp solution for motion pass bug on AMD integrated GPU. The camera motion content gets cleared despite it's LOAD_OP_LOAD.
+		// So rendering all opaque motions again here, I'll remove this if I get a real solution.
+		if (Mat->IsSkybox() || (!Renderer->IsMotionDirty(CurrentFrameRT) && !GraphicInterface->IsAMDIntegratedGPU()))
 		{
 			continue;
 		}
@@ -333,13 +331,8 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, MotionTranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
-
-	// silence the false positive error regarding vp and scissor
-	if (GraphicInterface->IsDebugLayerEnabled())
-	{
-		RenderBuilder.SetViewport(RenderResolution);
-		RenderBuilder.SetScissor(RenderResolution);
-	}
+	RenderBuilder.SetViewport(RenderResolution);
+	RenderBuilder.SetScissor(RenderResolution);
 
 	// bind texture table, they should only be bound once
 	if (MotionTranslucentShaders.size() > 0)

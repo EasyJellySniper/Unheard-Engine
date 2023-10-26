@@ -18,6 +18,10 @@ void UHGPUMemory::Release()
 void UHGPUMemory::AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex)
 {
     MemoryBudgetByte = InBudget;
+    if (MemoryBudgetByte > DeviceMemoryProperties.memoryHeaps[MemTypeIndex].size && DeviceMemoryProperties.memoryHeaps[MemTypeIndex].size != 0)
+    {
+        MemoryBudgetByte = DeviceMemoryProperties.memoryHeaps[MemTypeIndex].size;
+    }
 
     VkMemoryAllocateInfo AllocInfo{};
     AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -37,17 +41,22 @@ void UHGPUMemory::AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex)
     }
 }
 
-uint64_t UHGPUMemory::BindMemory(uint64_t InSize, VkBuffer InBuffer)
+uint64_t UHGPUMemory::BindMemory(uint64_t InSize, uint64_t InAlignment, VkBuffer InBuffer)
 {
+    // make the size is always the multiple of alignment
+    if ((InSize % InAlignment) != 0)
+    {
+        const uint64_t Stride = InSize / InAlignment;
+        InSize = InAlignment * (Stride + 1);
+    }
+
     if (CurrentOffset + InSize > MemoryBudgetByte)
     {
-        UHE_LOG(L"Exceed max budget memory for buffers!\n");
         return ~0;
     }
 
     if (vkBindBufferMemory(LogicalDevice, InBuffer, BufferMemory, CurrentOffset) != VK_SUCCESS)
     {
-        UHE_LOG(L"Failed to bind image to GPU!\n");
         return ~0;
     }
 
@@ -58,19 +67,24 @@ uint64_t UHGPUMemory::BindMemory(uint64_t InSize, VkBuffer InBuffer)
     return StartOffset;
 }
 
-uint64_t UHGPUMemory::BindMemory(uint64_t InSize, VkImage InImage, uint64_t ReboundOffset)
+uint64_t UHGPUMemory::BindMemory(uint64_t InSize, uint64_t InAlignment, VkImage InImage, uint64_t ReboundOffset)
 {
     uint64_t StartOffset = (ReboundOffset != UINT64_MAX) ? ReboundOffset : CurrentOffset;
 
+    // make the size is always the multiple of alignment
+    if ((InSize % InAlignment) != 0)
+    {
+        const uint64_t Stride = InSize / InAlignment;
+        InSize = InAlignment * (Stride + 1);
+    }
+
     if (StartOffset + InSize > MemoryBudgetByte)
     {
-        UHE_LOG(L"Exceed max budget memory for images!\n");
         return ~0;
     }
 
     if (vkBindImageMemory(LogicalDevice, InImage, BufferMemory, StartOffset) != VK_SUCCESS)
     {
-        UHE_LOG(L"Failed to bind image to GPU!\n");
         return ~0;
     }
 

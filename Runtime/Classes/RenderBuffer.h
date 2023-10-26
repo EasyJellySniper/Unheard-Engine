@@ -140,7 +140,7 @@ public:
         vkGetBufferMemoryRequirements(LogicalDevice, BufferSource, &MemRequirements);
 
         // bind to shared memory and keep the offset
-        OffsetInSharedMemory = SharedMemory->BindMemory(MemRequirements.size, BufferSource);
+        OffsetInSharedMemory = SharedMemory->BindMemory(MemRequirements.size, MemRequirements.alignment, BufferSource);
         if (OffsetInSharedMemory == ~0)
         {
             UHE_LOG(L"Failed to bind buffer to GPU. Exceed mesh buffer memory budget!\n");

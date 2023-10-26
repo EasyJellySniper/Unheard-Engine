@@ -355,7 +355,8 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 	{
 		VkDescriptorPoolSize PoolSize{};
 		PoolSize.type = LayoutBindings[Idx].descriptorType;
-		PoolSize.descriptorCount = GMaxFrameInFlight;
+		// number of this count needs to be [Count * GMaxFrameInFlight]
+		PoolSize.descriptorCount = LayoutBindings[Idx].descriptorCount * GMaxFrameInFlight;
 		PoolSizes.push_back(PoolSize);
 	}
 
@@ -377,7 +378,8 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 	AllocInfo.descriptorSetCount = GMaxFrameInFlight;
 	AllocInfo.pSetLayouts = SetLayouts.data();
 
-	if (vkAllocateDescriptorSets(LogicalDevice, &AllocInfo, DescriptorSets.data()) != VK_SUCCESS)
+	const VkResult Result = vkAllocateDescriptorSets(LogicalDevice, &AllocInfo, DescriptorSets.data());
+	if (Result != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create descriptor sets for shader: " + UHUtilities::ToStringW(Name) + L"\n");
 	}

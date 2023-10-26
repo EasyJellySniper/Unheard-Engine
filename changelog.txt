@@ -402,3 +402,10 @@ Removed unnecessary reverse of motion translucent bundles.
 25-10-2023: Customized texture formats and replaced most VkFormat parameter as UHTextureFormat.
 Merged world and detail GUI and always display it in editor mode. Still need to find a way of hiding resize grip of ImGui window.
 Improved release build render thread efficiency.
+Started trying the engine on other hardwares. Though it can run on my integrated GPU, but parallel submission is a problem.
+BindDescriptor() might be only called once after BeginPass(), need to try this tomorrow.
+
+26-10-2023: Solved parallel submission issue by SetViewport/ScissorRect in the secondary commands, that's necessary.
+Still an issue there when BeginRenderPass() is called for MotionOpaquePassObj, the RT gets cleared despite it's LOAD_OP_LOAD!
+Looks like it's a first-chance error for AMD integrated GPU, if I skip camera motion draw intentionally, the sky pass result gets cleared...
+Now I simply workaround the issue.

@@ -121,13 +121,8 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, TranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
-
-	// silence the false positive error regarding vp and scissor
-	if (GraphicInterface->IsDebugLayerEnabled())
-	{
-		RenderBuilder.SetViewport(RenderResolution);
-		RenderBuilder.SetScissor(RenderResolution);
-	}
+	RenderBuilder.SetViewport(RenderResolution);
+	RenderBuilder.SetScissor(RenderResolution);
 
 	// bind texture table, they should only be bound once
 	if (TranslucentPassShaders.size() > 0)

@@ -205,7 +205,7 @@ bool UHRenderBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSem
 	PresentIdInfo.swapchainCount = 1;
 	PresentIdInfo.pPresentIds = PresentIds.data();
 
-	if (PresentId != UINT64_MAX)
+	if (PresentId != UINT64_MAX && Gfx->IsPresentWaitSupported())
 	{
 		PresentInfo.pNext = &PresentIdInfo;
 	}

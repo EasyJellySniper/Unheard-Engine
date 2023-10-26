@@ -142,26 +142,25 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			MemRequirements = MemoryReqs2.memoryRequirements;
 		}
 #endif
-		// validate the alignment
-		if ((MemRequirements.size % MemRequirements.alignment) != 0)
-		{
-			// make the size is always the multiple of alignment
-			VkDeviceSize Stride = MemRequirements.size / MemRequirements.alignment;
-			MemRequirements.size = MemRequirements.alignment * (Stride + 1);
-		}
-
 		// bind to shared memory if available, otherwise, creating memory individually
+		bool bExceedSharedMemory = false;
 		if (InSharedMemory)
 		{
 			// cache the memory offset in shared memory, when it's re-creating, bind to the same offset
-			MemoryOffset = InSharedMemory->BindMemory(MemRequirements.size, ImageSource, InInfo.ReboundOffset);
+			MemoryOffset = InSharedMemory->BindMemory(MemRequirements.size, MemRequirements.alignment, ImageSource, InInfo.ReboundOffset);
 			if (MemoryOffset == ~0)
 			{
-				UHE_LOG(L"Failed to bind image to GPU. Exceed image memory budget!\n");
-				return false;
+				bExceedSharedMemory = true;
+				static bool bIsExceedingMsgPrinted = false;
+				if (!bIsExceedingMsgPrinted)
+				{
+					UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
+					bIsExceedingMsgPrinted = true;
+				}
 			}
 		}
-		else
+		
+		if (!InSharedMemory || bExceedSharedMemory)
 		{
 			VkMemoryAllocateInfo AllocInfo{};
 			AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

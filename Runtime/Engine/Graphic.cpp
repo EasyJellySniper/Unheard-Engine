@@ -24,6 +24,9 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bEnableDepthPrePass(InConfig->RenderingSetting().bEnableDepthPrePass)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
 	, bSupportHDR(false)
+	, bSupportPresentWait(true)
+	, bSupport24BitDepth(true)
+	, bIsAMDIntegratedGPU(false)
 #if WITH_EDITOR
 	, ImGuiDescriptorPool(nullptr)
 	, ImGuiPipeline(nullptr)
@@ -354,7 +357,7 @@ bool UHGraphic::CreateInstance()
 	return true;
 }
 
-bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, const std::vector<const char*>& RequiredExtensions)
+bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, std::vector<const char*>& RequiredExtensions)
 {
 	uint32_t ExtensionCount;
 	vkEnumerateDeviceExtensionProperties(InDevice, nullptr, &ExtensionCount, nullptr);
@@ -364,8 +367,8 @@ bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, const std::vecto
 
 	// count every extensions
 	uint32_t InExtensionCount = static_cast<uint32_t>(RequiredExtensions.size());
-	uint32_t Count = 0;
 
+	std::vector<const char*> ValidExtensions;
 	for (uint32_t Idx = 0; Idx < InExtensionCount; Idx++)
 	{
 		bool bSupported = false;
@@ -373,8 +376,8 @@ bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, const std::vecto
 		{
 			if (strcmp(RequiredExtensions[Idx], AvailableExtensions[Jdx].extensionName) == 0)
 			{
-				Count++;
 				bSupported = true;
+				ValidExtensions.push_back(RequiredExtensions[Idx]);
 				break;
 			}
 		}
@@ -390,14 +393,14 @@ bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, const std::vecto
 		}
 	}
 
-	// only return true if required extension is supported
-	if (InExtensionCount == Count)
+	if (RequiredExtensions.size() == ValidExtensions.size())
 	{
 		return true;
 	}
 
-	UHE_LOG(L"Unsupport device extension detected!\n");
-	return false;
+	RequiredExtensions = ValidExtensions;
+	UHE_LOG(L"Unsupport device extension automatically removed.\n");
+	return true;
 }
 
 bool UHGraphic::CreatePhysicalDevice()
@@ -416,6 +419,7 @@ bool UHGraphic::CreatePhysicalDevice()
 	vkEnumeratePhysicalDevices(VulkanInstance, &DeviceCount, Devices.data());
 
 	// choose a suitable device
+	const VkPhysicalDeviceType TestDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	for (uint32_t Idx = 0; Idx < DeviceCount; Idx++)
 	{
 		// use device properties 2
@@ -433,7 +437,14 @@ bool UHGraphic::CreatePhysicalDevice()
 			std::wostringstream Msg;
 			Msg << L"Selected device: " << DeviceProperties.properties.deviceName << std::endl;
 			UHE_LOG(Msg.str());
-			break;
+
+			const std::string DeviceName = DeviceProperties.properties.deviceName;
+			bIsAMDIntegratedGPU = DeviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU && UHUtilities::StringFind(DeviceName, "AMD");
+
+			if (TestDeviceType == DeviceProperties.properties.deviceType)
+			{
+				break;
+			}
 		}
 	}
 
@@ -563,10 +574,20 @@ bool UHGraphic::CreateLogicalDevice()
 	PhyFeatures.pNext = &PresentWaitFeatureKHR;
 
 	vkGetPhysicalDeviceFeatures2(PhysicalDevice, &PhyFeatures);
-	if (!RTFeatures.rayTracingPipeline)
+
+	// feature support check
 	{
-		UHE_LOG(L"Ray tracing pipeline not supported. System won't render ray tracing effects.\n");
-		bEnableRayTracing = false;
+		if (!RTFeatures.rayTracingPipeline)
+		{
+			UHE_LOG(L"Ray tracing pipeline not supported. System won't render ray tracing effects.\n");
+			bEnableRayTracing = false;
+		}
+		bSupportPresentWait = PresentWaitFeatureKHR.presentWait && PresentIdFeatureKHR.presentId;
+
+		// check 24-bit depth format
+		VkFormatProperties FormatProps{};
+		vkGetPhysicalDeviceFormatProperties(PhysicalDevice, VK_FORMAT_X8_D24_UNORM_PACK32, &FormatProps);
+		bSupport24BitDepth = FormatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	}
 
 	// get RT feature props
@@ -1478,6 +1499,21 @@ bool UHGraphic::IsHDRSupported() const
 	return bSupportHDR;
 }
 
+bool UHGraphic::IsPresentWaitSupported() const
+{
+	return bSupportPresentWait;
+}
+
+bool UHGraphic::Is24BitDepthSupported() const
+{
+	return bSupport24BitDepth;
+}
+
+bool UHGraphic::IsAMDIntegratedGPU() const
+{
+	return bIsAMDIntegratedGPU;
+}
+
 std::vector<UHSampler*> UHGraphic::GetSamplers() const
 {
 	std::vector<UHSampler*> Samplers(SamplerPools.size());
@@ -1775,7 +1811,7 @@ bool UHGraphic::CreateSwapChain()
 	{
 		VkDescriptorPoolSize DescriptorPoolSize;
 		DescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		DescriptorPoolSize.descriptorCount = 1;
+		DescriptorPoolSize.descriptorCount = 1024;
 
 		VkDescriptorPoolCreateInfo PoolInfo = {};
 		PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
