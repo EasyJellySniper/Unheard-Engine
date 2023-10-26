@@ -341,6 +341,10 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 	// motion pass shader
 	MotionCameraShader = MakeUnique<UHMotionCameraPassShader>(GraphicInterface, "MotionCameraPassShader", MotionCameraPassObj.RenderPass);
+	if (GraphicInterface->IsAMDIntegratedGPU())
+	{
+		MotionCameraWorkaroundShader = MakeUnique<UHMotionCameraPassShader>(GraphicInterface, "MotionCameraWorkaroundShader", MotionOpaquePassObj.RenderPass);
+	}
 
 	// post processing shaders
 	TemporalAAShader = MakeUnique<UHTemporalAAShader>(GraphicInterface, "TemporalAAShader");
@@ -474,6 +478,10 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	// ------------------------------------------------ motion pass descriptor update
 	MotionCameraShader->BindParameters(SystemConstantsGPU, SceneDepth, PointClampedSampler);
+	if (MotionCameraWorkaroundShader)
+	{
+		MotionCameraWorkaroundShader->BindParameters(SystemConstantsGPU, SceneDepth, PointClampedSampler);
+	}
 
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
@@ -653,6 +661,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	LightPassShader->Release();
 	SkyPassShader->Release();
 	MotionCameraShader->Release();
+	UH_SAFE_RELEASE(MotionCameraWorkaroundShader);
 	TemporalAAShader->Release();
 	ToneMapShader->Release();
 
@@ -767,7 +776,9 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// motion pass framebuffer
 	MotionCameraPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(MotionVectorRT->GetImageView(), MotionCameraPassObj.RenderPass, RenderResolution);
-	Views = { MotionVectorRT->GetImageView(), SceneDepth->GetImageView() };
+
+	// the opaque depth will be copied to translucent depth before motion opaque pass kicks off
+	Views = { MotionVectorRT->GetImageView(), SceneTranslucentDepth->GetImageView() };
 	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionOpaquePassObj.RenderPass, RenderResolution);
 
 	Views = { MotionVectorRT->GetImageView(), SceneTranslucentVertexNormal->GetImageView(), SceneTranslucentDepth->GetImageView() };

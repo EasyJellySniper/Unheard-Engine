@@ -18,7 +18,13 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.ResourceBarrier(PrevMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		RenderBuilder.ResourceBarrier(MotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-		RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		// copy opaque depth to translucent depth RT
+		RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+		RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		RenderBuilder.CopyTexture(SceneDepth, SceneTranslucentDepth);
+		RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
 		VkClearValue Clear = { 0,0,0,0 };
 		RenderBuilder.BeginRenderPass(MotionCameraPassObj.RenderPass, MotionCameraPassObj.FrameBuffer, RenderResolution, Clear);
 
@@ -41,8 +47,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		// -------------------- after motion camera pass is done, draw per-object motions, opaque first then the translucent -------------------- //
 		// opaque motion will only render the dynamic objects (motion is dirty), static objects are already calculated in camera motion
 		{
-			RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
 			// begin for secondary cmd
 			if (bParallelSubmissionRT)
 			{
@@ -136,12 +140,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 		// translucent motion, however, needs to render all regardless if it's static or dynamic
 		{
-			// copy opaque depth to translucent depth RT
-			RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-			RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			RenderBuilder.CopyTexture(SceneDepth, SceneTranslucentDepth);
-			RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
 			// clear translucent vertex normal before writing to it
 			RenderBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			RenderBuilder.ClearRenderTexture(SceneTranslucentVertexNormal);
@@ -237,7 +235,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			RenderBuilder.EndRenderPass();
 
 			// done rendering, transition depth to shader read
-			RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			RenderBuilder.ResourceBarrier(SceneTranslucentDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			RenderBuilder.ResourceBarrier(SceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
@@ -266,6 +263,16 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);
 
+	if (GraphicInterface->IsAMDIntegratedGPU() && ThreadIdx == 0)
+	{
+		// draw camera motion again for a bug on AMD integreated GPUs
+		UHGraphicState* State = MotionCameraWorkaroundShader->GetState();
+		RenderBuilder.BindGraphicState(State);
+		RenderBuilder.BindDescriptorSet(MotionCameraWorkaroundShader->GetPipelineLayout(), MotionCameraWorkaroundShader->GetDescriptorSet(CurrentFrameRT));
+		RenderBuilder.BindVertexBuffer(nullptr);
+		RenderBuilder.DrawFullScreenQuad();
+	}
+
 	// bind texture table, they should only be bound once
 	if (MotionOpaqueShaders.size() > 0)
 	{
@@ -278,10 +285,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	{
 		UHMeshRendererComponent* Renderer = OpaquesToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-
-		// @TODO: This is a temp solution for motion pass bug on AMD integrated GPU. The camera motion content gets cleared despite it's LOAD_OP_LOAD.
-		// So rendering all opaque motions again here, I'll remove this if I get a real solution.
-		if (Mat->IsSkybox() || (!Renderer->IsMotionDirty(CurrentFrameRT) && !GraphicInterface->IsAMDIntegratedGPU()))
+		if (Mat->IsSkybox() || (!Renderer->IsMotionDirty(CurrentFrameRT)))
 		{
 			continue;
 		}
