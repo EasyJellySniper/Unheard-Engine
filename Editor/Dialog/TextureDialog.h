@@ -60,6 +60,11 @@ inline void ValidateTextureSetting(UHTextureSettings& InSetting)
 		// force BC6H compression if it's not uncompressed
 		InSetting.CompressionSetting = (InSetting.CompressionSetting != CompressionNone) ? BC6H : InSetting.CompressionSetting;
 	}
+	else if (InSetting.CompressionSetting == BC6H)
+	{
+		// if it's not a HDR format and still using BC6H, fallback to BC1
+		InSetting.CompressionSetting = BC1;
+	}
 
 	else if (InSetting.CompressionSetting == BC4 || InSetting.CompressionSetting == BC5)
 	{

@@ -170,6 +170,7 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <WholeProgramOptimization>false</WholeProgramOptimization>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -208,6 +209,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\include;$(SolutionDir)ThirdParty\Vulkan\1.3.224.1\Include;$(SolutionDir)ThirdParty\OpenEXR\cmake;$(SolutionDir)ThirdParty\OpenEXR\Iex;$(SolutionDir)ThirdParty\OpenEXR\IlmThread;$(SolutionDir)ThirdParty\OpenEXR\Imath;$(SolutionDir)ThirdParty\OpenEXR\OpenEXR;$(SolutionDir)ThirdParty\OpenEXR\OpenEXRCore;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <StructMemberAlignment>Default</StructMemberAlignment>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

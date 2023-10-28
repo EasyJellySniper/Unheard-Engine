@@ -7,6 +7,8 @@
 #include "Utility.h"
 #include <unordered_map>
 #include <thread>
+#define IMATH_HALF_NO_LOOKUP_TABLE
+#include <ImfRgba.h>
 
 namespace UHTextureCompressor
 {
@@ -15,7 +17,7 @@ namespace UHTextureCompressor
 	const float GOneDivide255 = 0.0039215686274509803921568627451f;
 	// compress raw texture data to block compression, implementation follows the Microsoft document
 	// https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression
-	// input is assumed as RGBA8888 for now
+	// input is assumed as RGBA8888 for non-HDR, and RGBAHalf for HDR
 
 	UHColorBC1 EvaluateBC1(const UHColorRGB BlockColors[16], const UHColorRGB& Color0, const UHColorRGB& Color1, float& OutMinDiff)
 	{
@@ -475,6 +477,322 @@ namespace UHTextureCompressor
 								// BC5 uses the same way as BC3's alpha part to store R/G
 								Output[2 * OutputIdx] = BlockCompressionAlpha(Red8, Width, Height, (int32_t)Y, (int32_t)X);
 								Output[2 * OutputIdx + 1] = BlockCompressionAlpha(Green8, Width, Height, (int32_t)Y, (int32_t)X);
+							}
+						}
+					}
+				});
+		}
+		WaitCompressionThreads();
+
+		return Output;
+	}
+
+	// all quantize below is signed
+	int32_t QuantizeAs10Bit(int32_t InVal)
+	{
+		int32_t S = 0;
+		int32_t Prec = 10;
+		if (InVal < 0)
+		{
+			S = 1;
+			InVal = -InVal;
+		}
+
+		int32_t Q = (InVal << (Prec - 1)) / (0x7bff + 1);
+		if (S)
+		{
+			Q = -Q;
+		}
+
+		return Q;
+	}
+
+	int32_t UnquantizeFrom10Bit(int32_t InVal)
+	{
+		int32_t S = 0;
+		int32_t Prec = 10;
+		if (InVal < 0)
+		{
+			S = 1;
+			InVal = -InVal;
+		}
+
+		int32_t Q;
+		if (InVal == 0)
+		{
+			Q = 0;
+		}
+		else if (InVal >= ((1 << (Prec - 1)) - 1))
+		{
+			Q = 0x7FFF;
+		}
+		else
+		{
+			Q = ((InVal << 15) + 0x4000) >> (Prec - 1);
+		}
+
+		if (S)
+		{
+			Q = -Q;
+		}
+
+		return Q;
+	}
+
+	void GetBC6HPalette(const Imf::Rgba& Color0, const Imf::Rgba& Color1, float PaletteR[16], float PaletteG[16], float PaletteB[16])
+	{
+		const int32_t Weights[] = { 0, 4, 9, 13, 17, 21, 26, 30, 34, 38, 43, 47, 51, 55, 60, 64 };
+
+		// quantize and unquantize for the best consistency
+		const int32_t RefR0 = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)Color0.r.bits()));
+		const int32_t RefG0 = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)Color0.g.bits()));
+		const int32_t RefB0 = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)Color0.b.bits()));
+		const int32_t RefR1 = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)Color1.r.bits()));
+		const int32_t RefG1 = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)Color1.g.bits()));
+		const int32_t RefB1 = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)Color1.b.bits()));
+
+		// interpolate 16 values for comparison
+		for (int32_t Idx = 0; Idx < 16; Idx++)
+		{
+			const int32_t R = (RefR0 * (64 - Weights[Idx]) + RefR1 * Weights[Idx] + 32) >> 6;
+			const int32_t G = (RefG0 * (64 - Weights[Idx]) + RefG1 * Weights[Idx] + 32) >> 6;
+			const int32_t B = (RefB0 * (64 - Weights[Idx]) + RefB1 * Weights[Idx] + 32) >> 6;
+
+			Imf::Rgba Temp;
+			Temp.r = static_cast<uint16_t>(R);
+			Temp.g = static_cast<uint16_t>(G);
+			Temp.b = static_cast<uint16_t>(B);
+			PaletteR[Idx] = Temp.r;
+			PaletteG[Idx] = Temp.g;
+			PaletteB[Idx] = Temp.b;
+		}
+	}
+
+	// BC6H references:
+	// https://learn.microsoft.com/en-us/windows/win32/direct3d11/bc6h-format
+	// https://github.com/microsoft/DirectXTex/blob/main/DirectXTex/BC6HBC7.cpp
+	// Color0 and Color1 might be swapped during the process
+	uint64_t EvaluateBC6H(const Imf::Rgba BlockColors[16], Imf::Rgba& Color0, Imf::Rgba& Color1, float& OutMinDiff)
+	{
+		// setup palette for BC6H
+		float PaletteR[16];
+		float PaletteG[16];
+		float PaletteB[16];
+		GetBC6HPalette(Color0, Color1, PaletteR, PaletteG, PaletteB);
+
+		OutMinDiff = 0;
+		int32_t BitShiftStart = 0;
+		uint64_t Indices = 0;
+		for (uint32_t Idx = 0; Idx < 16;)
+		{
+			const int32_t R = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)BlockColors[Idx].r.bits()));
+			const int32_t G = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)BlockColors[Idx].g.bits()));
+			const int32_t B = UnquantizeFrom10Bit(QuantizeAs10Bit((int32_t)BlockColors[Idx].b.bits()));
+			Imf::Rgba Temp;
+			Temp.r = static_cast<uint16_t>(R);
+			Temp.g = static_cast<uint16_t>(G);
+			Temp.b = static_cast<uint16_t>(B);
+
+			float BlockR = Temp.r;
+			float BlockG = Temp.g;
+			float BlockB = Temp.b;
+
+			float MinDiff = std::numeric_limits<float>::max();
+			uint64_t ClosestIdx = 0;
+
+			for (uint32_t Jdx = 0; Jdx < 16; Jdx++)
+			{
+				const float Diff = sqrtf((float)(BlockR - PaletteR[Jdx]) * (float)(BlockR - PaletteR[Jdx])
+					+ (float)(BlockG - PaletteG[Jdx]) * (float)(BlockG - PaletteG[Jdx])
+					+ (float)(BlockB - PaletteB[Jdx]) * (float)(BlockB - PaletteB[Jdx]));
+
+				if (Diff < MinDiff)
+				{
+					MinDiff = Diff;
+					ClosestIdx = Jdx;
+				}
+			}
+
+			// since the MSB of the first index will be discarded, if closest index for the first is larger than 3-bit range
+			// swap the reference color and search again
+			if (ClosestIdx > 7 && Idx == 0)
+			{
+				Imf::Rgba Temp = Color0;
+				Color0 = Color1;
+				Color1 = Temp;
+				GetBC6HPalette(Color0, Color1, PaletteR, PaletteG, PaletteB);
+				continue;
+			}
+
+			OutMinDiff += MinDiff;
+			Indices |= ClosestIdx << BitShiftStart;
+			BitShiftStart += (Idx == 0) ? 3 : 4;
+			Idx++;
+		}
+
+		return Indices;
+	}
+
+	// assume it's signed, this function properly converts from half float to 10-bit data needed in BC6H decode
+	uint64_t HalfTo10Bit(int32_t InVal)
+	{
+		// do the BC6H quantitation intentionally then shift the bits
+		// it will be more consistent this way
+		int32_t Result = QuantizeAs10Bit(InVal);
+		Result = UnquantizeFrom10Bit(Result);
+
+		return static_cast<uint64_t>(Result) >> 6;
+	}
+
+	UHColorBC6HMode11 BlockCompressionHDR(const std::vector<Imf::Rgba>& RGBHalf, const uint32_t Width, const uint32_t Height, const int32_t StartY, const int32_t StartX)
+	{
+		// almost the same as BlockCompressionColor() impl, but store as half
+		Imf::Rgba BlockColors[16];
+		uint32_t ColorCount = 0;
+
+		UHColorRGB MaxTemp(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		UHColorRGB MinTemp(FLT_MAX, FLT_MAX, FLT_MAX);
+		for (int32_t Y = StartY; Y < StartY + 4; Y++)
+		{
+			for (int32_t X = StartX; X < StartX + 4; X++)
+			{
+				// clamp to nearest valid index
+				const int32_t NX = std::clamp(X, 0, (int32_t)Width - 1);
+				const int32_t NY = std::clamp(Y, 0, (int32_t)Height - 1);
+				const int32_t ColorIdx = Width * NY + NX;
+				const Imf::Rgba& Color = RGBHalf[ColorIdx];
+				BlockColors[ColorCount++] = Color;
+
+				UHColorRGB ColorF(Color.r, Color.g, Color.b);
+				if (ColorF.Lumin() > MaxTemp.Lumin())
+				{
+					MaxTemp = ColorF;
+				}
+
+				if (ColorF.Lumin() < MinTemp.Lumin())
+				{
+					MinTemp = ColorF;
+				}
+			}
+		}
+		Imf::Rgba MaxColor(MaxTemp.R, MaxTemp.G, MaxTemp.B);
+		Imf::Rgba MinColor(MinTemp.R, MinTemp.G, MinTemp.B);
+
+		// brute-force method, test all combination of color reference and use the result that has the smallest BC1MinDiff
+		float BC6HMinDiff = std::numeric_limits<float>::max();
+		float MinDiff;
+		Imf::Rgba Color0;
+		Imf::Rgba Color1;
+		uint64_t Indices = 0;
+
+		for (int32_t Idx = 0; Idx < 16; Idx++)
+		{
+			for (int32_t Jdx = Idx + 1; Idx < 16; Idx++)
+			{
+				Imf::Rgba C0 = BlockColors[Idx];
+				Imf::Rgba C1 = BlockColors[Jdx];
+
+				const uint64_t Index = EvaluateBC6H(BlockColors, C0, C1, MinDiff);
+				if (MinDiff < BC6HMinDiff)
+				{
+					BC6HMinDiff = MinDiff;
+					Color0 = C0;
+					Color1 = C1;
+					Indices = Index;
+				}
+			}
+		}
+
+		// there is a chance that minimal distance method doesn't work the best, use min/max method for such case
+		const uint64_t Index = EvaluateBC6H(BlockColors, MaxColor, MinColor, MinDiff);
+		if (MinDiff < BC6HMinDiff)
+		{
+			Color0 = MaxColor;
+			Color1 = MinColor;
+			Indices = Index;
+		}
+
+		// store result from LSB to MSB
+		int32_t BitShiftStart = 0;
+		UHColorBC6HMode11 Result{};
+
+		// first 5 bits for mode, mode 11 is corresponding to 00011
+		Result.Data[0] = 3;
+		BitShiftStart += 5;
+
+		// next 60 bits for reference colors, 10 bits for each color component
+		Result.Data[0] |= HalfTo10Bit(Color0.r.bits()) << BitShiftStart;
+		BitShiftStart += 10;
+
+		Result.Data[0] |= HalfTo10Bit(Color0.g.bits()) << BitShiftStart;
+		BitShiftStart += 10;
+
+		Result.Data[0] |= HalfTo10Bit(Color0.b.bits()) << BitShiftStart;
+		BitShiftStart += 10;
+
+		Result.Data[0] |= HalfTo10Bit(Color1.r.bits()) << BitShiftStart;
+		BitShiftStart += 10;
+
+		Result.Data[0] |= HalfTo10Bit(Color1.g.bits()) << BitShiftStart;
+		BitShiftStart += 10;
+
+		// note that the second color reference blue will across the last 9 bits of Data[0] and the first bit of Data[1]
+		const uint64_t Color1_B = HalfTo10Bit(Color1.b.bits());
+		Result.Data[0] |= Color1_B << BitShiftStart;
+
+		BitShiftStart = 0;
+		Result.Data[1] = Color1_B >> 15;
+
+		BitShiftStart++;
+		Result.Data[1] |= Indices << BitShiftStart;
+
+		return Result;
+	}
+
+	std::vector<uint64_t> CompressBC6H(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	{
+		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
+		std::vector<uint64_t> Output(OutputSize * 2);
+
+		// collect RGB info
+		std::vector<Imf::Rgba> RGBHalf(Width * Height);
+
+		// input for BC6H should be RGBAFloat16, store as half float
+		size_t Stride = sizeof(Imf::Rgba);
+		for (size_t Idx = 0; Idx < RGBHalf.size(); Idx++)
+		{
+			Imf::Rgba RGBAHalf{};
+			memcpy_s(&RGBAHalf, Stride, Input.data() + Idx * Stride, Stride);
+			RGBHalf[Idx] = RGBAHalf;
+		}
+
+		// assign BC tasks to threads, divided based on the height
+		assert(GCompressThreadCount == 4);
+		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
+		{
+			// when height is < 8, use one thread only
+			if (Height <= 8 && Tdx > 0)
+			{
+				break;
+			}
+
+			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &RGBHalf, &Output]()
+				{
+					const uint32_t YProcessCount = Height / GCompressThreadCount;
+					const uint32_t StartY = (Height > 8) ? Tdx * YProcessCount : 0;
+					const uint32_t EndY = (Height > 8) ? StartY + YProcessCount : Height;
+
+					for (uint32_t Y = StartY; Y < EndY; Y += 4)
+					{
+						for (uint32_t X = 0; X < Width; X += 4)
+						{
+							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
+							if (OutputIdx < static_cast<int32_t>(OutputSize))
+							{
+								// carefully store the result
+								const UHColorBC6HMode11 Result = BlockCompressionHDR(RGBHalf, Width, Height, (int32_t)Y, (int32_t)X);
+								const size_t Stride = sizeof(UHColorBC6HMode11);
+								memcpy_s(Output.data() + OutputIdx * 2, Stride, &Result, Stride);
 							}
 						}
 					}

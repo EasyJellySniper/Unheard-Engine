@@ -409,3 +409,7 @@ BindDescriptor() might be only called once after BeginPass(), need to try this t
 Still an issue there when BeginRenderPass() is called for MotionOpaquePassObj, the RT gets cleared despite it's LOAD_OP_LOAD!
 Looks like it's a first-chance error for AMD integrated GPU, if I skip camera motion draw intentionally, the sky pass result gets cleared...
 Now I simply workaround the issue.
+
+27-10-2023: Started to add BC6H compression. Got a preliminary result, I should be close to the proper implemenation.
+
+28-10-2023: Finished BC6H compression.

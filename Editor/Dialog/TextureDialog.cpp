@@ -298,13 +298,13 @@ void UHTextureDialog::ControlBrowseRawTexture()
 
 void UHTextureDialog::RefreshImGuiMipLevel()
 {
-    UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-    PointClampedInfo.MaxAnisotropy = 1;
-    PointClampedInfo.MipBias = static_cast<float>(CurrentMip);
+    UHSamplerInfo LinearClampedInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    LinearClampedInfo.MaxAnisotropy = 1;
+    LinearClampedInfo.MipBias = static_cast<float>(CurrentMip);
 
     // though this might generate more sampler variations because of mip bias setting
     // it's fine to do so in editor
-    const UHSampler* PointSampler = Gfx->RequestTextureSampler(PointClampedInfo);
+    const UHSampler* PointSampler = Gfx->RequestTextureSampler(LinearClampedInfo);
     if (CurrentTextureDS != nullptr)
     {
         TextureDSToRemove.push_back(CurrentTextureDS);

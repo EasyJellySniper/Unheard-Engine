@@ -89,12 +89,13 @@ void UHTexture2D::Recreate()
 	TextureData = ReadbackTextureData();
 
 	// since the mip map generation can't be done in block compression, always process compression after raw data is done
-	const int32_t RawByteSize = GTextureFormatData[UH_FORMAT_RGBA8_UNORM].ByteSize;
+	const int32_t RawByteSize = (TextureSettings.bIsHDR) ? GTextureFormatData[UH_FORMAT_RGBA16F].ByteSize : GTextureFormatData[UH_FORMAT_RGBA8_UNORM].ByteSize;
 	if (TextureSettings.CompressionSetting != CompressionNone)
 	{
 		std::vector<uint64_t> CompressedData;
 		uint64_t MipStartIndex = 0;
 		uint64_t MipEndIndex = ImageExtent.width * ImageExtent.height * RawByteSize;
+
 		for (uint32_t Idx = 0; Idx < GetMipMapCount(); Idx++)
 		{
 			std::vector<uint8_t> MipData(TextureData.begin() + MipStartIndex, TextureData.begin() + MipEndIndex);
@@ -116,6 +117,10 @@ void UHTexture2D::Recreate()
 
 			case BC5:
 				CompressedMipData = UHTextureCompressor::CompressBC5(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				break;
+
+			case BC6H:
+				CompressedMipData = UHTextureCompressor::CompressBC6H(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
 				break;
 
 			default:
@@ -245,26 +250,17 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderB
 		return;
 	}
 
-	// calculate byte stride
-	const uint64_t ByteStrides[] = { 1, 8, 4, 8, 4 };
-	const uint64_t MinMipSize[] = { 1, 8, 16, 8, 16 };
-	uint64_t ByteDivider = 1;
-	if (TextureSettings.bIsCompressed)
-	{
-		ByteDivider = ByteStrides[TextureSettings.CompressionSetting];
-	}
-
 	// copy data to staging buffer first
 	RawStageBuffers.resize(GetMipMapCount());
-	const uint64_t ByteSize = TextureSettings.bIsHDR ? 8 : 4;
+	const UHTextureFormatData TextureFormatData = GTextureFormatData[ImageFormat];
 	uint64_t MipStartIndex = 0;
 
 	for (uint32_t MipIdx = 0; MipIdx < GetMipMapCount(); MipIdx++)
 	{
-		uint64_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * ByteSize / ByteDivider;
+		uint64_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * TextureFormatData.ByteSize / TextureFormatData.BlockSize;
 		if (TextureSettings.bIsCompressed)
 		{
-			MipSize = std::max(MipSize, MinMipSize[TextureSettings.CompressionSetting]);
+			MipSize = std::max(MipSize, static_cast<uint64_t>(TextureFormatData.ByteSize));
 		}
 
 		if (MipStartIndex >= TextureData.size())
@@ -380,13 +376,15 @@ bool UHTexture2D::CreateTextureFromMemory()
 			break;
 
 		case BC4:
-			// BC4 only works for linear texture, use [0,1] normalization for now
 			Info.Format = UH_FORMAT_BC4;
 			break;
 
 		case BC5:
-			// BC5 only works for linear texture, use [0,1] normalization for now
 			Info.Format = UH_FORMAT_BC5;
+			break;
+
+		case BC6H:
+			Info.Format = UH_FORMAT_BC6H;
 			break;
 
 		default:
