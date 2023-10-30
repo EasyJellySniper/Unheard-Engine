@@ -37,28 +37,18 @@ namespace UHTextureCompressor
 		uint8_t AlphaIndices[6];
 	};
 
-	// BC6H color, 16 bytes per block, UHE uses mode 11 implementation for now
-	struct UHColorBC6HMode11
+	// BC6H color, 16 bytes per block, the data layout depends on the implementation
+	// there are 14 modes for BC6H, each one uses different data layout
+	struct UHColorBC6H
 	{
-		UHColorBC6HMode11()
+		UHColorBC6H()
 		{
-			memset(Data, 0, sizeof(uint64_t) * ARRAYSIZE(Data));
+			LowBits = 0;
+			HighBits = 0;
 		}
 
-		uint64_t Data[2];
-
-		// use bit operation to store data
-		//uint64_t ModeBits : 5;
-
-		//uint64_t Color0_R : 10;
-		//uint64_t Color0_G : 10;
-		//uint64_t Color0_B : 10;
-
-		//uint64_t Color1_R : 10;
-		//uint64_t Color1_G : 10;
-		//uint64_t Color1_B : 10;
-
-		//uint64_t PartitionIndices : 63;
+		uint64_t LowBits;
+		uint64_t HighBits;
 	};
 
 	// compression

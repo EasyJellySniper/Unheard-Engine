@@ -160,7 +160,7 @@ void UHTextureDialog::Update()
         // texture preview
         if (CurrentTextureDS)
         {
-            const float ImgSize = WndSize.x * 0.45f;
+            const float ImgSize = ImGui::GetColumnWidth() * 0.9f;
             const float AspectRatioHW = (float)CurrentTexture->GetExtent().height / (float)CurrentTexture->GetExtent().width;
             ImGui::Image(CurrentTextureDS, ImVec2(ImgSize, ImgSize * AspectRatioHW));
         }

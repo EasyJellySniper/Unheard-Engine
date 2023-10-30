@@ -413,3 +413,10 @@ Now I simply workaround the issue.
 27-10-2023: Started to add BC6H compression. Got a preliminary result, I should be close to the proper implemenation.
 
 28-10-2023: Finished BC6H compression.
+29-10-2023: Spotted stupid typos in the texture compressor, fixed it lol. Also used higher thread count for compression.
+Still trying the mode 10 of BC6H, have not succeed yet. After a few considerations, I think trying mode 14 might be better.
+Finished the experient of mode 14, the delta precision is too low and it's almost like choosing one end point only!
+Next is to try: mode 13 or dynamically select mode 11 and 14 or check the max diff in a block search and select mode based on it!
+
+30-10-2023: Contined to refine the BC6H compression. Now it selects the mode11~14 based on the max delta between color reference.
+Finished high-quality BC6H compression!
