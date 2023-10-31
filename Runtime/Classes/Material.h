@@ -98,14 +98,12 @@ public:
 
 	void SetName(std::string InName);
 	void SetMaterialProps(UHMaterialProperty InProp);
-	void SetSystemTex(UHSystemTextureType InType, UHTexture* InTex);
-	void SetSystemSampler(UHSystemTextureType InType, UHSampler* InSampler);
 	void SetIsSkybox(bool InFlag);
 	void SetCompileFlag(UHMaterialCompileFlag InFlag);
 	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
 	void AllocateMaterialBuffer();
 	void AllocateRTMaterialBuffer();
-	void UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex);
+	void UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex, const UHTextureCube* InEnvCube);
 
 	std::string GetName() const;
 	UHCullMode GetCullMode() const;
@@ -118,8 +116,6 @@ public:
 	bool IsOpaque() const;
 	static bool IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB);
 
-	UHTexture* GetSystemTex(UHSystemTextureType InType) const;
-	UHSampler* GetSystemSampler(UHSystemTextureType InType) const;
 	std::vector<std::string> GetMaterialDefines();
 	std::vector<std::string> GetRegisteredTextureNames();
 	const std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
@@ -154,8 +150,6 @@ private:
 	bool bIsTangentSpace;
 
 	UHMaterialProperty MaterialProps;
-	std::array<UHTexture*, UHSystemTextureType::TextureTypeMax> SystemTextures;
-	std::array<UHSampler*, UHSystemTextureType::TextureTypeMax> SystemSamplers;
 	std::array<std::string, UHMaterialInputs::MaterialMax> TexFileNames;
 
 	UniquePtr<UHMaterialNode> MaterialNode;

@@ -127,6 +127,9 @@ public:
 
 	// get image view
 	VkImageView GetImageView() const;
+#if WITH_EDITOR
+	VkImageView GetCubemapImageView(const int32_t SliceIndex) const;
+#endif
 
 	// get image view info
 	VkImageViewCreateInfo GetImageViewInfo() const;
@@ -159,6 +162,7 @@ protected:
 	uint64_t MemoryOffset;
 	UHTextureVersion TextureVersion;
 	UHTextureType TextureType;
+	uint32_t MipMapCount;
 
 private:
 
@@ -169,6 +173,10 @@ private:
 	// device variables
 	VkImageView ImageView;
 	VkImageViewCreateInfo ImageViewInfo;
-	uint32_t MipMapCount;
 	UHTextureInfo TextureInfo;
+
+#if WITH_EDITOR
+	// individual face image view for editor use
+	VkImageView CubemapImageView[6];
+#endif
 };

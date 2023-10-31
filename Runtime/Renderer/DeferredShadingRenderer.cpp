@@ -83,6 +83,10 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
 	bIsSwapChainResetRT = bIsSwapChainResetGT;
 	bEnableAsyncComputeRT = bEnableAsyncComputeGT;
+	if (SkyMeshRT == nullptr)
+	{
+		SkyMeshRT = AssetManagerInterface->GetMesh("UHMesh_Cube");
+	}
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -225,7 +229,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			UHMaterial* Mat = Renderer->GetMaterial();
 			if (Mat->IsRenderDirty(CurrentFrameGT))
 			{
-				Mat->UploadMaterialData(CurrentFrameGT, DefaultSamplerIndex);
+				Mat->UploadMaterialData(CurrentFrameGT, DefaultSamplerIndex, SkyLight->GetCubemap());
 				Mat->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
@@ -396,6 +400,17 @@ void UHDeferredShadingRenderer::GetLightCullingTileCount(uint32_t& TileCountX, u
 	// safely round up the tile counts, doing culling at half resolution
 	TileCountX = ((RenderResolution.width >> 1) + LightCullingTileSize) / LightCullingTileSize;
 	TileCountY = ((RenderResolution.height >> 1) + LightCullingTileSize) / LightCullingTileSize;
+}
+
+UHTextureCube* UHDeferredShadingRenderer::GetCurrentSkyCube() const
+{
+	UHTextureCube* CurrSkyCube = nullptr;
+	if (CurrentScene->GetSkyLight())
+	{
+		CurrSkyCube = CurrentScene->GetSkyLight()->GetCubemap();
+	}
+
+	return CurrSkyCube;
 }
 
 void UHDeferredShadingRenderer::SortingOpaqueTask(int32_t ThreadIdx)

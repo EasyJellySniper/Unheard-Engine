@@ -7,8 +7,7 @@
 #include "../Components/GameScript.h"
 
 UHScene::UHScene()
-	: SkyboxRenderer(nullptr)
-	, ConfigCache(nullptr)
+	: ConfigCache(nullptr)
 	, Input(nullptr)
 	, Timer(nullptr)
 	, CurrentSkyLight(nullptr)
@@ -53,13 +52,6 @@ void UHScene::Release()
 void UHScene::Update()
 {
 	UpdateCamera();
-
-	// make skybox always follow camera's pos
-	if (SkyboxRenderer)
-	{
-		SkyboxRenderer->SetPosition(DefaultCamera.GetPosition());
-		SkyboxRenderer->Update();
-	}
 
 	// for objects won't update per-frame, conditionally call update, save ~0.2ms time for me
 	for (auto& Renderer : MeshRenderers)
@@ -173,12 +165,7 @@ UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* In
 	// adds raw pointer cache to vectors
 	Renderers.push_back(MeshRenderers.back().get());
 	
-	// cache skybox renderer if it's a sky material
-	if (InMaterial->IsSkybox())
-	{
-		SkyboxRenderer = MeshRenderers.back().get();
-	}
-	else
+	if (!InMaterial->IsSkybox())
 	{
 		// otherwise, adds cache based on blend mode
 		switch (InMaterial->GetBlendMode())
@@ -292,11 +279,6 @@ UHCameraComponent* UHScene::GetMainCamera()
 UHSkyLightComponent* UHScene::GetSkyLight() const
 {
 	return CurrentSkyLight;
-}
-
-UHMeshRendererComponent* UHScene::GetSkyboxRenderer() const
-{
-	return SkyboxRenderer;
 }
 
 void UHScene::UpdateCamera()

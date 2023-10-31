@@ -4,7 +4,7 @@
 
 UHGPUMemory::UHGPUMemory()
 	: MemoryBudgetByte(0)
-	, BufferMemory(VK_NULL_HANDLE)
+	, BufferMemory(nullptr)
     , CurrentOffset(0)
 {
 

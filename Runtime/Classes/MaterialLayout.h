@@ -38,13 +38,6 @@ enum UHConstantTypes
 	ConstantTypeMax
 };
 
-// system texture type used for material
-enum UHSystemTextureType
-{
-	SkyCube,
-	TextureTypeMax
-};
-
 // UH material inputs used for both runtime and editor
 enum UHMaterialInputs
 {

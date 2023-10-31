@@ -363,6 +363,9 @@
     <ClInclude Include="Runtime\Classes\TextureFormat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Editor\Dialog\CubemapDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -687,6 +690,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Classes\TextureFormat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Dialog\CubemapDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -22,12 +22,6 @@ UHMaterial::UHMaterial()
 	, bIsTangentSpace(false)
 	, MaterialBufferSize(0)
 {
-	for (int32_t Idx = 0; Idx < UHSystemTextureType::TextureTypeMax; Idx++)
-	{
-		SystemTextures[Idx] = nullptr;
-		SystemSamplers[Idx] = nullptr;
-	}
-
 	MaterialNode = MakeUnique<UHMaterialNode>(this);
 	DefaultMaterialNodePos.x = 544;
 	DefaultMaterialNodePos.y = 208;
@@ -362,16 +356,6 @@ void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
 	SetRenderDirties(true);
 }
 
-void UHMaterial::SetSystemTex(UHSystemTextureType InType, UHTexture* InTex)
-{
-	SystemTextures[InType] = InTex;
-}
-
-void UHMaterial::SetSystemSampler(UHSystemTextureType InType, UHSampler* InSampler)
-{
-	SystemSamplers[InType] = InSampler;
-}
-
 void UHMaterial::SetIsSkybox(bool InFlag)
 {
 	bIsSkybox = InFlag;
@@ -424,7 +408,7 @@ void UHMaterial::AllocateRTMaterialBuffer()
 	}
 }
 
-void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex)
+void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex, const UHTextureCube* InEnvCube)
 {
 	if (MaterialBufferSize == 0)
 	{
@@ -455,9 +439,9 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 	BufferAddress += Stride;
 
 	// fill env cube mip map count
-	if (SystemTextures[UHSystemTextureType::SkyCube] != nullptr)
+	if (InEnvCube != nullptr)
 	{
-		float EnvCubeMipMapCount = static_cast<float>(SystemTextures[UHSystemTextureType::SkyCube]->GetMipMapCount());
+		float EnvCubeMipMapCount = static_cast<float>(InEnvCube->GetMipMapCount());
 		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &EnvCubeMipMapCount, Stride);
 	}
 
@@ -538,24 +522,9 @@ std::filesystem::path UHMaterial::GetPath() const
 	return MaterialPath;
 }
 
-UHTexture* UHMaterial::GetSystemTex(UHSystemTextureType InType) const
-{
-	return SystemTextures[InType];
-}
-
-UHSampler* UHMaterial::GetSystemSampler(UHSystemTextureType InType) const
-{
-	return SystemSamplers[InType];
-}
-
 std::vector<std::string> UHMaterial::GetMaterialDefines()
 {
 	std::vector<std::string> Defines;
-	if (SystemTextures[UHSystemTextureType::SkyCube] != nullptr)
-	{
-		Defines.push_back("WITH_ENVCUBE");
-	}
-
 	if (BlendMode == UHBlendMode::Masked)
 	{
 		Defines.push_back("WITH_ALPHATEST");

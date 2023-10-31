@@ -33,6 +33,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, PointClampedSampler(nullptr)
 	, LinearClampedSampler(nullptr)
 	, AnisoClampedSampler(nullptr)
+	, SkyCubeSampler(nullptr)
+	, SkyMeshRT(nullptr)
 	, DefaultSamplerIndex(-1)
 	, bEnableDepthPrePass(false)
 	, PostProcessRT(nullptr)
@@ -198,6 +200,12 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	// needs the cmd buffer
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 
+	UHMesh* SkyMesh = AssetManagerInterface->GetMesh("UHMesh_Cube");
+	if (SkyMesh)
+	{
+		SkyMesh->CreateGPUBuffers(GraphicInterface);
+	}
+
 	for (const UHMeshRendererComponent* Renderer : Renderers)
 	{
 		UHMesh* Mesh = Renderer->GetMesh();
@@ -220,12 +228,6 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 		RTInstanceCount = TopLevelAS[Idx]->CreateTopAS(Renderers, CreationCmd);
 	}
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
-
-	// release CPU mesh data after uploading
-	for (const UHMeshRendererComponent* Renderer : Renderers)
-	{
-		Renderer->GetMesh()->ReleaseCPUMeshData();
-	}
 
 	// release scratch data of AS after creation
 	for (const UHMeshRendererComponent* Renderer : Renderers)
@@ -270,22 +272,14 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	UHRenderBuilder RenderBuilder(GraphicInterface, CreationCmd);
-	// Step2: Build all cubemaps in use
-	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
-	{
-		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && Mat->GetSystemTex(UHSystemTextureType::SkyCube))
-		{
-			UHTextureCube* Cube = static_cast<UHTextureCube*>(Mat->GetSystemTex(UHSystemTextureType::SkyCube));
-			Cube->Build(GraphicInterface, CreationCmd, RenderBuilder);
-		}
-	}
 
-	if (const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer())
+	// Step2: Build all cubemaps in use
+	const UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
+	if (SkyLight)
 	{
-		if (SkyRenderer->GetMaterial() && SkyRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube))
+		UHTextureCube* Cube = SkyLight->GetCubemap();
+		if (Cube)
 		{
-			UHTextureCube* Cube = static_cast<UHTextureCube*>(SkyRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube));
 			Cube->Build(GraphicInterface, CreationCmd, RenderBuilder);
 		}
 	}
@@ -313,6 +307,9 @@ void UHDeferredShadingRenderer::PrepareSamplers()
 	LinearClampedInfo.MaxAnisotropy = 16;
 	AnisoClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
 	DefaultSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), AnisoClampedSampler);
+
+	SkyCubeSampler = GraphicInterface->RequestTextureSampler(UHSamplerInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT
+		, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT));
 }
 
 void UHDeferredShadingRenderer::PrepareRenderingShaders()
@@ -419,6 +416,7 @@ bool UHDeferredShadingRenderer::InitQueueSubmitters()
 void UHDeferredShadingRenderer::UpdateDescriptors()
 {
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
+	UHTextureCube* CurrSkyCube = GetCurrentSkyCube();
 
 	// ------------------------------------------------ Bindless table update
 	UpdateTextureDescriptors();
@@ -457,7 +455,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		}
 	#endif
 
-		BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, Renderer);
+		BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, Renderer, CurrSkyCube, SkyCubeSampler);
 	}
 
 	// ------------------------------------------------ Lighting culling descriptor update
@@ -471,10 +469,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		, GBuffers, SceneResult, LinearClampedSampler, RTInstanceCount, RTShadowResult);
 
 	// ------------------------------------------------ sky pass descriptor update
-	if (const UHMeshRendererComponent* SkyRenderer = CurrentScene->GetSkyboxRenderer())
-	{
-		SkyPassShader->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, SkyRenderer);
-	}
+	SkyPassShader->BindParameters(SystemConstantsGPU, CurrSkyCube, SkyCubeSampler);
 
 	// ------------------------------------------------ motion pass descriptor update
 	MotionCameraShader->BindParameters(SystemConstantsGPU, SceneDepth, PointClampedSampler);
@@ -531,7 +526,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		TranslucentPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
 			, PointLightBuffer, SpotLightBuffer, PointLightListTransBuffer, SpotLightListTransBuffer
-			, RTShadowResult, LinearClampedSampler, Renderer, RTInstanceCount);
+			, RTShadowResult, LinearClampedSampler, Renderer, RTInstanceCount, CurrSkyCube, SkyCubeSampler);
 	}
 
 	// ------------------------------------------------ post process pass descriptor update
@@ -1074,6 +1069,28 @@ UHDeferredShadingRenderer* UHDeferredShadingRenderer::GetRendererEditorOnly()
 	return SceneRendererEditorOnly;
 }
 
+void UHDeferredShadingRenderer::RefreshSkyLight()
+{
+	if (UHTextureCube* Cube = GetCurrentSkyCube())
+	{
+		if (!Cube->IsBuilt())
+		{
+			VkCommandBuffer Cmd = GraphicInterface->BeginOneTimeCmd();
+			UHRenderBuilder Builder(GraphicInterface, Cmd);
+			Cube->Build(GraphicInterface, Cmd, Builder);
+			GraphicInterface->EndOneTimeCmd(Cmd);
+		}
+	}
+
+	// refresh all materials
+	const std::vector<UHMaterial*> Mats = AssetManagerInterface->GetMaterials();
+	for (UHMaterial* Mat : Mats)
+	{
+		Mat->SetCompileFlag(FullCompileTemporary);
+		UHDeferredShadingRenderer::GetRendererEditorOnly()->RefreshMaterialShaders(Mat, false);
+	}
+}
+
 void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNeedReassignRendererGroup)
 {
 	// refresh material shader if necessary
@@ -1175,6 +1192,8 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 	const int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const bool bReleaseDescriptorOnly = CompileFlag == RendererMaterialChanged;
 
+	UHTextureCube* CurrSkyCube = GetCurrentSkyCube();
+
 	if (CompileFlag == FullCompileTemporary || CompileFlag == FullCompileResave || CompileFlag == RendererMaterialChanged)
 	{
 		// release shaders if it's re-compiling
@@ -1199,7 +1218,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 			}
 
 			BasePassShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU
-				, InMeshRenderer);
+				, InMeshRenderer, CurrSkyCube, SkyCubeSampler);
 
 			MotionOpaqueShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, InMeshRenderer);
 		}
@@ -1208,7 +1227,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 			MotionTranslucentShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, InMeshRenderer);
 			TranslucentPassShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
 				, PointLightBuffer, SpotLightBuffer, PointLightListTransBuffer, SpotLightListTransBuffer
-				, RTShadowResult, LinearClampedSampler, InMeshRenderer, RTInstanceCount);
+				, RTShadowResult, LinearClampedSampler, InMeshRenderer, RTInstanceCount, CurrSkyCube, SkyCubeSampler);
 		}
 	}
 	else if (CompileFlag == StateChangedOnly)
@@ -1267,6 +1286,9 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 	int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout() };
 
+	UHTextureCube* CurrSkyCube = GetCurrentSkyCube();
+	const bool bHasEnvCube = (CurrSkyCube != nullptr);
+
 	if (InMat->IsOpaque())
 	{
 		if (bEnableDepthPrePass)
@@ -1275,9 +1297,10 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 			DepthPassShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, InMeshRenderer);
 		}
 
-		BasePassShaders[RendererBufferIndex] = MakeUnique<UHBasePassShader>(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, InMat, bEnableDepthPrePass, BindlessLayouts);
+		BasePassShaders[RendererBufferIndex] = MakeUnique<UHBasePassShader>(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, InMat, bEnableDepthPrePass
+			, bHasEnvCube, BindlessLayouts);
 		BasePassShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU
-			, InMeshRenderer);
+			, InMeshRenderer, CurrSkyCube, SkyCubeSampler);
 
 		MotionOpaqueShaders[RendererBufferIndex] = MakeUnique<UHMotionObjectPassShader>(GraphicInterface, "MotionObjectShader", MotionOpaquePassObj.RenderPass, InMat, bEnableDepthPrePass, BindlessLayouts);
 		MotionOpaqueShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, InMeshRenderer);
@@ -1288,10 +1311,10 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 		MotionTranslucentShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, InMeshRenderer);
 
 		TranslucentPassShaders[RendererBufferIndex]
-			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, BindlessLayouts);
+			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, bHasEnvCube, BindlessLayouts);
 		TranslucentPassShaders[RendererBufferIndex]->BindParameters(SystemConstantsGPU, ObjectConstantsGPU, DirectionalLightBuffer
 			, PointLightBuffer, SpotLightBuffer, PointLightListTransBuffer, SpotLightListTransBuffer
-			, RTShadowResult, LinearClampedSampler, InMeshRenderer, RTInstanceCount);
+			, RTShadowResult, LinearClampedSampler, InMeshRenderer, RTInstanceCount, CurrSkyCube, SkyCubeSampler);
 	}
 
 	InMeshRenderer->SetRayTracingDirties(true);

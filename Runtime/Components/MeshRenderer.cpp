@@ -102,7 +102,7 @@ void UHMeshRendererComponent::OnGenerateDetailView()
 	const UHAssetManager* AssetMgr = UHAssetManager::GetAssetMgrEditor();
 
 	// mesh list
-	if (MeshCache && ImGui::BeginCombo("Mesh", MeshCache->GetName().c_str()))
+	if (ImGui::BeginCombo("Mesh", (MeshCache) ? MeshCache->GetName().c_str() : "##"))
 	{
 		const std::vector<UHMesh*>& Meshes = AssetMgr->GetUHMeshes();
 		for (size_t Idx = 0; Idx < Meshes.size(); Idx++)
@@ -118,7 +118,7 @@ void UHMeshRendererComponent::OnGenerateDetailView()
 	}
 
 	// material list
-	if (MaterialCache && ImGui::BeginCombo("Material", MaterialCache->GetName().c_str()))
+	if (ImGui::BeginCombo("Material", (MaterialCache) ? MaterialCache->GetName().c_str() : "##"))
 	{
 		const std::vector<UHMaterial*>& Materials = AssetMgr->GetMaterials();
 		for (size_t Idx = 0; Idx < Materials.size(); Idx++)

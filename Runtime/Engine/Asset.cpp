@@ -93,7 +93,7 @@ void UHAssetManager::ImportMeshes()
 	for (std::filesystem::recursive_directory_iterator Idx(GMeshAssetFolder.c_str()), end; Idx != end; Idx++)
 	{
 		// skip directory
-		if (std::filesystem::is_directory(Idx->path()))
+		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GMeshAssetExtension)
 		{
 			continue;
 		}
@@ -173,8 +173,8 @@ void UHAssetManager::ImportTextures(UHGraphic* InGfx)
 	// load UH textures from asset folder
 	for (std::filesystem::recursive_directory_iterator Idx(GTextureAssetFolder.c_str()), end; Idx != end; Idx++)
 	{
-		// skip directory
-		if (std::filesystem::is_directory(Idx->path()))
+		// skip directory & wrong formats
+		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GTextureAssetExtension)
 		{
 			continue;
 		}
@@ -193,6 +193,39 @@ void UHAssetManager::ImportTextures(UHGraphic* InGfx)
 	}
 }
 
+void UHAssetManager::ImportCubemaps(UHGraphic* InGfx)
+{
+	if (!std::filesystem::exists(GTextureAssetFolder))
+	{
+		std::filesystem::create_directories(GTextureAssetFolder);
+	}
+
+	// load UH cubes from asset folder
+	for (std::filesystem::recursive_directory_iterator Idx(GTextureAssetFolder.c_str()), end; Idx != end; Idx++)
+	{
+		// skip directory
+		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GCubemapAssetExtension)
+		{
+			continue;
+		}
+
+		UHTextureCube LoadedCube;
+		if (LoadedCube.Import(Idx->path()))
+		{
+			// import successfully, request texture cube from GFX
+			UHTextureInfo Info{};
+			Info.Format = LoadedCube.GetFormat();
+			Info.Extent = LoadedCube.GetExtent();
+
+			UHTextureCube* NewCube = InGfx->RequestTextureCube(LoadedCube);
+#if WITH_EDITOR
+			NewCube->SetSourcePath(LoadedCube.GetSourcePath());
+#endif
+			UHCubemaps.push_back(NewCube);
+		}
+	}
+}
+
 void UHAssetManager::ImportMaterials(UHGraphic* InGfx)
 {
 	// load all UHMaterials under asset folder
@@ -204,7 +237,7 @@ void UHAssetManager::ImportMaterials(UHGraphic* InGfx)
 	for (std::filesystem::recursive_directory_iterator Idx(GMaterialAssetPath.c_str()), end; Idx != end; Idx++)
 	{
 		// skip directory
-		if (std::filesystem::is_directory(Idx->path()))
+		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GMaterialAssetExtension)
 		{
 			continue;
 		}
@@ -278,6 +311,11 @@ std::vector<UHTexture2D*> UHAssetManager::GetReferencedTexture2Ds() const
 	return ReferencedTexture2Ds;
 }
 
+std::vector<UHTextureCube*> UHAssetManager::GetCubemaps() const
+{
+	return UHCubemaps;
+}
+
 // get texture by name, only use for initialization
 UHTexture2D* UHAssetManager::GetTexture2D(std::string InName) const
 {
@@ -296,6 +334,32 @@ UHTexture2D* UHAssetManager::GetTexture2D(std::string InName) const
 UHTexture2D* UHAssetManager::GetTexture2DByPath(std::filesystem::path InPath) const
 {
 	for (UHTexture2D* Tex : UHTexture2Ds)
+	{
+		if (Tex->GetSourcePath() == InPath)
+		{
+			return Tex;
+		}
+	}
+
+	return nullptr;
+}
+
+UHTextureCube* UHAssetManager::GetCubemapByName(std::string InName) const
+{
+	for (UHTextureCube* Tex : UHCubemaps)
+	{
+		if (Tex->GetName() == InName)
+		{
+			return Tex;
+		}
+	}
+
+	return nullptr;
+}
+
+UHTextureCube* UHAssetManager::GetCubemapByPath(std::filesystem::path InPath) const
+{
+	for (UHTextureCube* Tex : UHCubemaps)
 	{
 		if (Tex->GetSourcePath() == InPath)
 		{
@@ -378,5 +442,10 @@ std::string UHAssetManager::FindTexturePathName(std::string InName)
 	}
 
 	return InName;
+}
+
+void UHAssetManager::AddCubemap(UHTextureCube* InCube)
+{
+	UHCubemaps.push_back(InCube);
 }
 #endif

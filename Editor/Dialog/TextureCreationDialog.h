@@ -6,22 +6,38 @@
 #include "../Classes/TextureImporter.h"
 
 class UHTextureDialog;
+class UHCubemapDialog;
+class UHAssetManager;
+class UHGraphic;
+
 class UHTextureCreationDialog : public UHDialog
 {
 public:
 	UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter);
+	UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDialog* InCubemapDialog, UHAssetManager* InAssetMgr);
+
 	virtual void Update() override;
 
 private:
+	void ShowTexture2DCreationUI();
+	void ShowCubemapCreationUI();
+
 	void ControlTextureCreate();
+	void ControlCubemapCreate(bool bIsPanorama);
 	void ControlBrowserInput();
 	void ControlBrowserOutputFolder();
 
+	UHAssetManager* AssetMgr;
+	UHGraphic* Gfx;
 	UHTextureImporter* TextureImporter;
 	UHTextureDialog* TextureDialog;
+	UHCubemapDialog* CubemapDialog;
 	UHTextureSettings CurrentEditingSettings;
+
 	std::string CurrentSourceFile;
 	std::string CurrentOutputPath;
+	std::string CurrentSelectedSlice[6];
+	std::string CurrentSelectedPanorama;
 };
 
 #endif

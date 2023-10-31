@@ -8,6 +8,7 @@ static std::string GTempFilePath = "Temp/";
 // texture paths
 static std::string GTextureAssetFolder = "Assets/Textures/";
 static std::string GTextureAssetExtension = ".uhtexture";
+static std::string GCubemapAssetExtension = ".uhcubemap";
 
 // mesh paths
 static std::string GMeshAssetFolder = "Assets/Meshes/";

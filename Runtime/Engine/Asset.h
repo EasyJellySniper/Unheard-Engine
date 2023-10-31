@@ -2,6 +2,7 @@
 #include "../Classes/Mesh.h"
 #include "../Classes/Material.h"
 #include "../Classes/Texture2D.h"
+#include "../Classes/TextureCube.h"
 
 #if WITH_EDITOR
 #include "../../Editor/Classes/FbxImporter.h"
@@ -18,11 +19,14 @@ public:
 	UHAssetManager();
 	void Release();
 	void ImportMeshes();
+
 	void TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
 		, std::vector<std::string> Defines, std::filesystem::path& OutputShaderPath);
 	void CompileShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> Defines);
+
 	void ImportTextures(UHGraphic* InGfx);
+	void ImportCubemaps(UHGraphic* InGfx);
 	void ImportMaterials(UHGraphic* InGfx);
 	void MapTextureIndex(UHMaterial* InMat);
 
@@ -30,8 +34,13 @@ public:
 	std::vector<UHMaterial*> GetMaterials() const;
 	std::vector<UHTexture2D*> GetTexture2Ds() const;
 	std::vector<UHTexture2D*> GetReferencedTexture2Ds() const;
+	std::vector<UHTextureCube*> GetCubemaps() const;
+
 	UHTexture2D* GetTexture2D(std::string InName) const;
 	UHTexture2D* GetTexture2DByPath(std::filesystem::path InPath) const;
+	UHTextureCube* GetCubemapByName(std::string InName) const;
+	UHTextureCube* GetCubemapByPath(std::filesystem::path InPath) const;
+
 	UHMaterial* GetMaterial(std::string InName) const;
 	UHMesh* GetMesh(std::string InName) const;
 
@@ -40,6 +49,8 @@ public:
 	static UHAssetManager* GetAssetMgrEditor();
 	static UHTexture2D* GetTexture2DByPathEditor(std::string InName);
 	static std::string FindTexturePathName(std::string InName);
+
+	void AddCubemap(UHTextureCube* InCube);
 #endif
 
 private:
@@ -68,4 +79,5 @@ private:
 	// loaded textures
 	std::vector<UHTexture2D*> UHTexture2Ds;
 	std::vector<UHTexture2D*> ReferencedTexture2Ds;
+	std::vector<UHTextureCube*> UHCubemaps;
 };

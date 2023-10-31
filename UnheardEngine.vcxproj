@@ -233,6 +233,7 @@
     <ClInclude Include="Editor\Controls\RadioButton.h" />
     <ClInclude Include="Editor\Controls\Slider.h" />
     <ClInclude Include="Editor\Controls\TextBox.h" />
+    <ClInclude Include="Editor\Dialog\CubemapDialog.h" />
     <ClInclude Include="Editor\Dialog\StatusDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureCreationDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureDialog.h" />
@@ -350,6 +351,7 @@
     <ClCompile Include="Editor\Controls\RadioButton.cpp" />
     <ClCompile Include="Editor\Controls\Slider.cpp" />
     <ClCompile Include="Editor\Controls\TextBox.cpp" />
+    <ClCompile Include="Editor\Dialog\CubemapDialog.cpp" />
     <ClCompile Include="Editor\Dialog\StatusDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureCreationDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureDialog.cpp" />

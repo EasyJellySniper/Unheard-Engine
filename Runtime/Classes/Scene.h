@@ -47,7 +47,6 @@ public:
 	std::vector<UHMaterial*> GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight() const;
-	UHMeshRendererComponent* GetSkyboxRenderer() const;
 
 	UHMeshRendererComponent* AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial);
 	void AddDirectionalLight(UHDirectionalLightComponent* InLight);
@@ -75,7 +74,6 @@ private:
 	std::vector<UHDirectionalLightComponent*> DirectionalLights;
 	std::vector<UHPointLightComponent*> PointLights;
 	std::vector<UHSpotLightComponent*> SpotLights;
-	UHMeshRendererComponent* SkyboxRenderer;
 
 #if WITH_EDITOR
 	UHComponent* CurrentSelectedComp;

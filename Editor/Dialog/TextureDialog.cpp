@@ -6,7 +6,6 @@
 #include "../../resource.h"
 #include "../../Runtime/Engine/Asset.h"
 #include "../../Runtime/Classes/Texture2D.h"
-#include "../Editor/PreviewScene.h"
 #include "../../Runtime/Renderer/RenderBuilder.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "../../Runtime/Classes/AssetPath.h"
@@ -304,12 +303,12 @@ void UHTextureDialog::RefreshImGuiMipLevel()
 
     // though this might generate more sampler variations because of mip bias setting
     // it's fine to do so in editor
-    const UHSampler* PointSampler = Gfx->RequestTextureSampler(LinearClampedInfo);
+    const UHSampler* LinearSampler = Gfx->RequestTextureSampler(LinearClampedInfo);
     if (CurrentTextureDS != nullptr)
     {
         TextureDSToRemove.push_back(CurrentTextureDS);
     }
-    CurrentTextureDS = ImGui_ImplVulkan_AddTexture(PointSampler->GetSampler(), CurrentTexture->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    CurrentTextureDS = ImGui_ImplVulkan_AddTexture(LinearSampler->GetSampler(), CurrentTexture->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 #endif

@@ -1130,6 +1130,32 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 	return nullptr;
 }
 
+// light version of texture cube request, usually called when an existed asset is imported
+UHTextureCube* UHGraphic::RequestTextureCube(UHTextureCube& LoadedCube)
+{
+	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(LoadedCube.GetName(), LoadedCube.GetExtent(), LoadedCube.GetFormat());
+	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, *NewCube.get());
+	if (Idx != UHINDEXNONE)
+	{
+		return TextureCubePools[Idx].get();
+	}
+
+	NewCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewCube->SetGfxCache(this);
+	for (int32_t Idx = 0; Idx < 6; Idx++)
+	{
+		NewCube->SetCubeData(LoadedCube.GetCubeData(Idx), Idx);
+	}
+
+	if (NewCube->CreateCube())
+	{
+		TextureCubePools.push_back(std::move(NewCube));
+		return TextureCubePools.back().get();
+	}
+
+	return nullptr;
+}
+
 // request material without any import
 // mostly used for engine materials
 UHMaterial* UHGraphic::RequestMaterial()

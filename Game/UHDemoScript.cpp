@@ -10,7 +10,7 @@ UHDemoScript::UHDemoScript()
 	, Geo364OriginPos(XMFLOAT3())
 	, TimeCounter(0)
 	, TimeSign(1)
-	, TestType(SpotLightNight)
+	, TestType(DayTest)
 	, PointLightTimeCounter(0.0f)
 {
 
@@ -90,18 +90,6 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 
 void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx)
 {
-	// request a texture cube, put slices in a order as: +x,-x,+y,-y,+z,-z
-	std::vector<UHTexture2D*> Slices = { InAsset->GetTexture2DByPath("Daylight Box_Pieces/posx")
-		,InAsset->GetTexture2DByPath("Daylight Box_Pieces/negx")
-		,InAsset->GetTexture2DByPath("Daylight Box_Pieces/posy")
-		,InAsset->GetTexture2DByPath("Daylight Box_Pieces/negy")
-		,InAsset->GetTexture2DByPath("Daylight Box_Pieces/posz")
-		,InAsset->GetTexture2DByPath("Daylight Box_Pieces/negz") };
-
-	UHTextureCube* SkyCubeTex = InGfx->RequestTextureCube("UHDefaultSkyCubeTex", Slices);
-	UHSampler* SkyCubeSampler = InGfx->RequestTextureSampler(UHSamplerInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT
-		, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, static_cast<float>(Slices[0]->GetMipMapCount())));
-
 	// brutal test for renderers
 	float MarginX = 75.0f;
 	float MarginZ = 25.0f;
@@ -121,10 +109,6 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				continue;
 			}
 
-			// set env cube
-			Mat->SetSystemTex(UHSystemTextureType::SkyCube, SkyCubeTex);
-			Mat->SetSystemSampler(UHSystemTextureType::SkyCube, SkyCubeSampler);
-
 			UHMeshRendererComponent* NewRenderer = InScene->AddMeshRenderer(LoadedMeshes[Idx], Mat);
 			if (LoadedMeshes[Idx]->GetName() == "Geo364" && Offset == 0)
 			{
@@ -135,16 +119,6 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			NewRenderer->Translate(XMFLOAT3(MarginX * OffsetX[Offset], 0, MarginZ * OffsetZ[Offset]), UHTransformSpace::World);
 		}
 	}
-
-	// add skybox renderer
-	UHMesh* SkyCube = InAsset->GetMesh("UHMesh_Cube");
-	UHMaterial* SkyMat = InGfx->RequestMaterial();
-	SkyMat->SetIsSkybox(true);
-	SkyMat->SetName("UHDefaultSky");
-	SkyMat->SetSystemTex(UHSystemTextureType::SkyCube, SkyCubeTex);
-	SkyMat->SetSystemSampler(UHSystemTextureType::SkyCube, SkyCubeSampler);
-
-	InScene->AddMeshRenderer(SkyCube, SkyMat);
 
 	// setup default light
 	DefaultDirectionalLight.SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
@@ -157,6 +131,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	DefaultSkyLight.SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
 	DefaultSkyLight.SetSkyIntensity(TestType != DayTest ? 0.1f : 1.0f);
 	DefaultSkyLight.SetGroundIntensity(TestType != DayTest ? 0.5f : 1.5f);
+	DefaultSkyLight.SetCubemap(InAsset->GetCubemapByName("posx_Cube"));
 	InScene->SetSkyLight(&DefaultSkyLight);
 
 	// setup default camera

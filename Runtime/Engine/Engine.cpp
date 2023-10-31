@@ -59,6 +59,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 	// import assets, texture needs graphic interface
 	UHEAsset->ImportTextures(UHEGraphic.get());
+	UHEAsset->ImportCubemaps(UHEGraphic.get());
 	UHEAsset->ImportMeshes();
 	UHEAsset->ImportMaterials(UHEGraphic.get());
 
@@ -103,6 +104,11 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	for (UHTexture2D* Tex : UHEAsset->GetTexture2Ds())
 	{
 		Tex->ReleaseCPUTextureData();
+	}
+
+	for (UHTextureCube* Cube : UHEAsset->GetCubemaps())
+	{
+		Cube->ReleaseCPUData();
 	}
 
 	for (UHMesh* Mesh : UHEAsset->GetUHMeshes())

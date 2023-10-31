@@ -42,6 +42,7 @@
 #define ID_VIEWMODE_RTSHADOW_TRANSLUCENT 32785
 #define ID_WINDOW_WORLDEDITOR           32786
 #define ID_WINDOW_DETAILVIEW            32787
+#define ID_WINDOW_CUBEMAPEDITOR         32788
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -50,7 +51,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        132
-#define _APS_NEXT_COMMAND_VALUE         32788
+#define _APS_NEXT_COMMAND_VALUE         32789
 #define _APS_NEXT_CONTROL_VALUE         1070
 #define _APS_NEXT_SYMED_VALUE           110
 #endif

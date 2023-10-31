@@ -1,11 +1,16 @@
 #include "SkyLight.h"
 #include <string>
+#if WITH_EDITOR
+#include "../Engine/Asset.h"
+#include "../Renderer/DeferredShadingRenderer.h"
+#endif
 
 UHSkyLightComponent::UHSkyLightComponent()
 	: AmbientSkyColor(XMFLOAT3())
 	, AmbientGroundColor(XMFLOAT3())
 	, SkyIntensity(1.0f)
 	, GroundIntensity(1.0f)
+	, CubemapCache(nullptr)
 {
 	SetName("SkyLightLightComponent" + std::to_string(GetId()));
 }
@@ -50,6 +55,16 @@ float UHSkyLightComponent::GetGroundIntensity() const
 	return GroundIntensity;
 }
 
+void UHSkyLightComponent::SetCubemap(UHTextureCube* InCube)
+{
+	CubemapCache = InCube;
+}
+
+UHTextureCube* UHSkyLightComponent::GetCubemap() const
+{
+	return CubemapCache;
+}
+
 #if WITH_EDITOR
 void UHSkyLightComponent::OnGenerateDetailView()
 {
@@ -61,5 +76,23 @@ void UHSkyLightComponent::OnGenerateDetailView()
 	ImGui::InputFloat3("AmbientGroundColor", (float*)&AmbientGroundColor);
 	ImGui::InputFloat("SkyIntensity", &SkyIntensity);
 	ImGui::InputFloat("GroundIntensity", &GroundIntensity);
+
+	// texture cube list
+	const UHAssetManager* AssetMgr = UHAssetManager::GetAssetMgrEditor();
+	if (ImGui::BeginCombo("Cubemap", (CubemapCache) ? CubemapCache->GetName().c_str() : "##"))
+	{
+		const std::vector<UHTextureCube*>& Cubemaps = AssetMgr->GetCubemaps();
+		for (size_t Idx = 0; Idx < Cubemaps.size(); Idx++)
+		{
+			bool bIsSelected = (CubemapCache == Cubemaps[Idx]);
+			if (ImGui::Selectable(Cubemaps[Idx]->GetName().c_str(), bIsSelected))
+			{
+				CubemapCache = Cubemaps[Idx];
+				UHDeferredShadingRenderer::GetRendererEditorOnly()->RefreshSkyLight();
+			}
+		}
+
+		ImGui::EndCombo();
+	}
 }
 #endif

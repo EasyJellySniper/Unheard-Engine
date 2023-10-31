@@ -1,6 +1,7 @@
 #pragma once
 #include "../Classes/Types.h"
 #include "Transform.h"
+#include "../Classes/TextureCube.h"
 
 // UH Skylight component
 class UHSkyLightComponent : public UHTransformComponent
@@ -18,6 +19,9 @@ public:
 	float GetSkyIntensity() const;
 	float GetGroundIntensity() const;
 
+	void SetCubemap(UHTextureCube* InCube);
+	UHTextureCube* GetCubemap() const;
+
 #if WITH_EDITOR
 	virtual void OnGenerateDetailView() override;
 #endif
@@ -28,4 +32,5 @@ private:
 	XMFLOAT3 AmbientGroundColor;
 	float SkyIntensity;
 	float GroundIntensity;
+	UHTextureCube* CubemapCache;
 };

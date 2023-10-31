@@ -29,6 +29,7 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     WorldDialog = MakeUnique<UHWorldDialog>(HWnd, DeferredRenderer);
     TextureDialog = MakeUnique<UHTextureDialog>(AssetManager, InGfx, InRenderer);
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
+    CubemapDialog = MakeUnique<UHCubemapDialog>(AssetManager, InGfx, InRenderer);
 
     // always showing world dialog after initialization
     WorldDialog->ShowDialog();
@@ -42,6 +43,7 @@ void UHEditor::OnEditorUpdate()
     TextureDialog->Update();
     MaterialDialog->Update();
     WorldDialog->Update();
+    CubemapDialog->Update();
 }
 
 void UHEditor::OnEditorMove()
@@ -71,6 +73,9 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         break;
     case ID_WINDOW_TEXTURE:
         TextureDialog->ShowDialog();
+        break;
+    case ID_WINDOW_CUBEMAPEDITOR:
+        CubemapDialog->ShowDialog();
         break;
     default:
         break;

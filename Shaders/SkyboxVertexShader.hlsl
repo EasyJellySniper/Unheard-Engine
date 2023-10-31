@@ -9,7 +9,7 @@ struct SkyVertexOutput
 SkyVertexOutput SkyboxVS(float3 Position : POSITION)
 {
 	SkyVertexOutput Vout = (SkyVertexOutput)0;
-	float3 WorldPos = mul(float4(Position, 1.0f), UHWorld).xyz;
+    float3 WorldPos = Position.xyz + UHCameraPos.xyz;
 
 	// doesn't need jitter VP for skybox
 	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);

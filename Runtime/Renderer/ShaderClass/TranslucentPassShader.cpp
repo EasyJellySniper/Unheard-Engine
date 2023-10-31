@@ -1,7 +1,8 @@
 #include "TranslucentPassShader.h"
 #include "../../Components/MeshRenderer.h"
 
-UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
+UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bHasEnvCube
+	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHTranslucentPassShader), InMat)
 {
 	// sys, obj, mat consts
@@ -35,8 +36,12 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 
 	// define macros
 	std::vector<std::string> VSDefines = InMat->GetMaterialDefines();
-	std::vector<std::string> PSDefines = InMat->GetMaterialDefines();
+	if (bHasEnvCube)
+	{
+		VSDefines.push_back("WITH_ENVCUBE");
+	}
 
+	std::vector<std::string> PSDefines = VSDefines;
 	if (InGfx->IsRayTracingEnabled())
 	{
 		PSDefines.push_back("WITH_RTSHADOWS");
@@ -71,7 +76,10 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 	, const UHRenderTexture* RTShadowResult
 	, const UHSampler* LinearClamppedSampler
 	, const UHMeshRendererComponent* InRenderer
-	, const int32_t RTInstanceCount)
+	, const int32_t RTInstanceCount
+	, const UHTextureCube* EnvCube
+	, const UHSampler* EnvSampler
+)
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
@@ -96,15 +104,6 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 	BindSampler(LinearClamppedSampler, 12);
 
 	// write textures/samplers when they are available
-	UHTexture* Tex = InRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube);
-	if (Tex)
-	{
-		BindImage(Tex, 13);
-	}
-
-	UHSampler* Sampler = InRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube);
-	if (Sampler)
-	{
-		BindSampler(Sampler, 14);
-	}
+	BindImage(EnvCube, 13);
+	BindSampler(EnvSampler, 14);
 }

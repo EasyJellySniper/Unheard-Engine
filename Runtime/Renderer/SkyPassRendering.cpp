@@ -2,7 +2,7 @@
 
 void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 {
-	if (CurrentScene == nullptr || CurrentScene->GetSkyboxRenderer() == nullptr)
+	if (CurrentScene == nullptr || CurrentScene->GetSkyLight() == nullptr || GetCurrentSkyCube() == nullptr)
 	{
 		return;
 	}
@@ -24,13 +24,9 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.BindDescriptorSet(SkyPassShader->GetPipelineLayout(), SkyPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw skybox renderer
-		const UHMeshRendererComponent* SkyboxRenderer = CurrentScene->GetSkyboxRenderer();
-		const UHMaterial* Mat = SkyboxRenderer->GetMaterial();
-		UHMesh* Mesh = SkyboxRenderer->GetMesh();
-
-		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		RenderBuilder.BindIndexBuffer(Mesh);
-		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		RenderBuilder.BindVertexBuffer(SkyMeshRT->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(SkyMeshRT);
+		RenderBuilder.DrawIndexed(SkyMeshRT->GetIndicesCount());
 
 		RenderBuilder.EndRenderPass();
 	}

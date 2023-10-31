@@ -84,6 +84,7 @@ public:
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
 
 	static UHDeferredShadingRenderer* GetRendererEditorOnly();
+	void RefreshSkyLight();
 	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup = false);
 	void OnRendererMaterialChanged(UHMeshRendererComponent* InRenderer, UHMaterial* OldMat, UHMaterial* NewMat);
 
@@ -154,6 +155,9 @@ private:
 
 	// get light culling tile count
 	void GetLightCullingTileCount(uint32_t& TileCountX, uint32_t& TileCountY);
+
+	// get current skycube
+	UHTextureCube* GetCurrentSkyCube() const;
 
 
 	/************************************************ rendering functions ************************************************/
@@ -254,6 +258,7 @@ private:
 	UHSampler* PointClampedSampler;
 	UHSampler* LinearClampedSampler;
 	UHSampler* AnisoClampedSampler;
+	UHSampler* SkyCubeSampler;
 	int32_t DefaultSamplerIndex;
 
 	// bindless table
@@ -303,6 +308,7 @@ private:
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
 	UniquePtr<UHSkyPassShader> SkyPassShader;
 	UHRenderPassObject SkyboxPassObj;
+	UHMesh* SkyMeshRT;
 
 	// -------------------------------------------- Motion vector Pass -------------------------------------------- //
 	UHTextureFormat MotionFormat;

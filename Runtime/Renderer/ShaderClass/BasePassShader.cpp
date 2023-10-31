@@ -1,7 +1,7 @@
 #include "BasePassShader.h"
 #include "../../Components/MeshRenderer.h"
 
-UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
+UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass, bool bHasEnvCube
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat)
 {
@@ -30,6 +30,11 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 		MatDefines.push_back("WITH_DEPTHPREPASS");
 	}
 
+	if (bHasEnvCube)
+	{
+		MatDefines.push_back("WITH_ENVCUBE");
+	}
+
 	ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", MatDefines);
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = InMat;
@@ -51,7 +56,9 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 void UHBasePassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const UHMeshRendererComponent* InRenderer)
+	, const UHMeshRendererComponent* InRenderer
+	, const UHTextureCube* EnvCube
+	, const UHSampler* EnvSampler)
 {
 	BindConstant(SysConst, 0);
 	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
@@ -63,15 +70,6 @@ void UHBasePassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
 
 	// write textures/samplers when they are available
-	UHTexture* Tex = InRenderer->GetMaterial()->GetSystemTex(UHSystemTextureType::SkyCube);
-	if (Tex)
-	{
-		BindImage(Tex, 6);
-	}
-
-	UHSampler* Sampler = InRenderer->GetMaterial()->GetSystemSampler(UHSystemTextureType::SkyCube);
-	if (Sampler)
-	{
-		BindSampler(Sampler, 7);
-	}
+	BindImage(EnvCube, 6);
+	BindSampler(EnvSampler, 7);
 }

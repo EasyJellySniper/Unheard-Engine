@@ -11,8 +11,8 @@ class UHRenderBuffer : public UHRenderResource
 {
 public:
     UHRenderBuffer() 
-        : BufferSource(VK_NULL_HANDLE)
-        , BufferMemory(VK_NULL_HANDLE)
+        : BufferSource(nullptr)
+        , BufferMemory(nullptr)
         , ElementCount(0)
         , bIsUploadBuffer(false)
         , bIsShaderDeviceAddress(false)
@@ -168,8 +168,8 @@ public:
             vkFreeMemory(LogicalDevice, BufferMemory, nullptr);
         }
 
-        BufferSource = VK_NULL_HANDLE;
-        BufferMemory = VK_NULL_HANDLE;
+        BufferSource = nullptr;
+        BufferMemory = nullptr;
     }
 
 	// upload all data, this will copy whole buffer

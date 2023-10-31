@@ -12,24 +12,24 @@ UHGraphicState::UHGraphicState()
 
 UHGraphicState::UHGraphicState(UHRenderPassInfo InInfo)
 	: RenderPassInfo(InInfo)
-	, PassPipeline(VK_NULL_HANDLE)
-	, RTPipeline(VK_NULL_HANDLE)
+	, PassPipeline(nullptr)
+	, RTPipeline(nullptr)
 {
 
 }
 
 UHGraphicState::UHGraphicState(UHRayTracingInfo InInfo)
 	: RayTracingInfo(InInfo)
-	, PassPipeline(VK_NULL_HANDLE)
-	, RTPipeline(VK_NULL_HANDLE)
+	, PassPipeline(nullptr)
+	, RTPipeline(nullptr)
 {
 
 }
 
 UHGraphicState::UHGraphicState(UHComputePassInfo InInfo)
 	: ComputePassInfo(InInfo)
-	, PassPipeline(VK_NULL_HANDLE)
-	, RTPipeline(VK_NULL_HANDLE)
+	, PassPipeline(nullptr)
+	, RTPipeline(nullptr)
 {
 
 }
@@ -264,10 +264,10 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	PipelineInfo.layout = RenderPassInfo.PipelineLayout;
 	PipelineInfo.renderPass = RenderPassInfo.RenderPass;
 	PipelineInfo.subpass = 0;
-	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+	PipelineInfo.basePipelineHandle = nullptr; // Optional
 	PipelineInfo.basePipelineIndex = UHINDEXNONE; // Optional
 
-	VkResult Result = vkCreateGraphicsPipelines(LogicalDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &PassPipeline);
+	VkResult Result = vkCreateGraphicsPipelines(LogicalDevice, nullptr, 1, &PipelineInfo, nullptr, &PassPipeline);
 	if (Result != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create graphics pipeline!\n");
@@ -402,7 +402,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	CreateInfo.pLibraryInterface = &PipelineInterfaceInfo;
 
 	// create state for ray tracing pipeline
-	VkResult Result = GVkCreateRayTracingPipelinesKHR(LogicalDevice, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &CreateInfo, nullptr, &RTPipeline);
+	VkResult Result = GVkCreateRayTracingPipelinesKHR(LogicalDevice, nullptr, nullptr, 1, &CreateInfo, nullptr, &RTPipeline);
 	if (Result != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create ray tracing pipeline!\n");
@@ -432,10 +432,10 @@ bool UHGraphicState::CreateState(UHComputePassInfo InInfo)
 
 	// optional
 	PipelineInfo.flags = 0;
-	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	PipelineInfo.basePipelineHandle = nullptr;
 	PipelineInfo.basePipelineIndex = UHINDEXNONE;
 
-	VkResult Result = vkCreateComputePipelines(LogicalDevice, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &PassPipeline);
+	VkResult Result = vkCreateComputePipelines(LogicalDevice, nullptr, 1, &PipelineInfo, nullptr, &PassPipeline);
 	if (Result != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create graphics pipeline!\n");

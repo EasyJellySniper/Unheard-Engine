@@ -4,7 +4,7 @@
 class UHTranslucentPassShader : public UHShaderClass
 {
 public:
-	UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
+	UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bHasEnvCube, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 
 	void BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
 		, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
@@ -16,5 +16,7 @@ public:
 		, const UHRenderTexture* RTShadowResult
 		, const UHSampler* LinearClamppedSampler
 		, const UHMeshRendererComponent* InRenderer
-		, const int32_t RTInstanceCount);
+		, const int32_t RTInstanceCount
+		, const UHTextureCube* EnvCube
+		, const UHSampler* EnvSampler);
 };

@@ -8,8 +8,8 @@ struct SkyVertexOutput
 	float3 LocalPos : TEXCOORD0;
 };
 
-TextureCube SkyCube : register(t2);
-SamplerState SkySampler : register(s3);
+TextureCube SkyCube : register(t1);
+SamplerState SkySampler : register(s2);
 
 float4 SkyboxPS(SkyVertexOutput Vin) : SV_Target
 {

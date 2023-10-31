@@ -13,9 +13,9 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	: Name(InName)
 	, ImageFormat(InFormat)
 	, ImageExtent(InExtent)
-	, ImageSource(VK_NULL_HANDLE)
-	, ImageView(VK_NULL_HANDLE)
-	, ImageMemory(VK_NULL_HANDLE)
+	, ImageSource(nullptr)
+	, ImageView(nullptr)
+	, ImageMemory(nullptr)
 	, ImageViewInfo(VkImageViewCreateInfo{})
 	, bIsSourceCreatedByThis(false)
 	, bHasUploadedToGPU(false)
@@ -26,7 +26,12 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, MipMapCount(1)
 	, TextureType(Texture2D)
 {
-
+#if WITH_EDITOR
+	for (int32_t Idx = 0; Idx < 6; Idx++)
+	{
+		CubemapImageView[Idx] = nullptr;
+	}
+#endif
 }
 
 #if WITH_EDITOR
@@ -50,16 +55,24 @@ void UHTexture::SetExtent(uint32_t Width, uint32_t Height)
 void UHTexture::Release()
 {
 	vkFreeMemory(LogicalDevice, ImageMemory, nullptr);
-	ImageMemory = VK_NULL_HANDLE;
+	ImageMemory = nullptr;
 	vkDestroyImageView(LogicalDevice, ImageView, nullptr);
-	ImageView = VK_NULL_HANDLE;
+	ImageView = nullptr;
+
+#if WITH_EDITOR
+	for (int32_t Idx = 0; Idx < 6; Idx++)
+	{
+		vkDestroyImageView(LogicalDevice, CubemapImageView[Idx], nullptr);
+		CubemapImageView[Idx] = nullptr;
+	}
+#endif
 
 	// only destroy source if it's created by this
 	// image like swap chain can't be destroyed here
 	if (bIsSourceCreatedByThis)
 	{
 		vkDestroyImage(LogicalDevice, ImageSource, nullptr);
-		ImageSource = VK_NULL_HANDLE;
+		ImageSource = nullptr;
 	}
 
 	bHasUploadedToGPU = false;
@@ -80,7 +93,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 	TextureInfo = InInfo;
 
 	// only create if the source is null, otherwise create image view only
-	if (ImageSource == VK_NULL_HANDLE)
+	if (ImageSource == nullptr)
 	{
 		VkImageCreateInfo CreateInfo{};
 		CreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -231,6 +244,22 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 		return false;
 	}
 
+#if WITH_EDITOR
+	if (InViewType == VK_IMAGE_VIEW_TYPE_CUBE)
+	{
+		CreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		CreateInfo.subresourceRange.layerCount = 1;
+		for (int32_t Idx = 0; Idx < 6; Idx++)
+		{
+			CreateInfo.subresourceRange.baseArrayLayer = Idx;
+			if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &CubemapImageView[Idx]) != VK_SUCCESS)
+			{
+				UHE_LOG(L"Failed to create cubemap image views!\n");
+			}
+		}
+	}
+#endif
+
 	ImageViewInfo = CreateInfo;
 	return true;
 }
@@ -269,6 +298,13 @@ VkImageView UHTexture::GetImageView() const
 {
 	return ImageView;
 }
+
+#if WITH_EDITOR
+VkImageView UHTexture::GetCubemapImageView(const int32_t SliceIndex) const
+{
+	return CubemapImageView[SliceIndex];
+}
+#endif
 
 VkImageViewCreateInfo UHTexture::GetImageViewInfo() const
 {

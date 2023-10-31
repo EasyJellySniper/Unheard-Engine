@@ -12,11 +12,28 @@ class UHTextureCube : public UHTexture
 public:
 	UHTextureCube();
 	UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat);
+	void ReleaseCPUData();
+	void SetCubeData(std::vector<uint8_t> InData, int32_t Slice);
+	std::vector<uint8_t> GetCubeData(int32_t Slice) const;
+	bool IsBuilt() const;
+
+	bool Import(std::filesystem::path InCubePath);
+#if WITH_EDITOR
+	void Export(std::filesystem::path InCubePath);
+	void SetSourcePath(std::filesystem::path InPath);
+	size_t GetDataSize() const;
+#endif
+
 	void Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder);
+	void UploadSlice(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder, const int32_t SliceIndex, const uint32_t MipMapCount);
 
 private:
 	bool CreateCube(std::vector<UHTexture2D*> InSlices);
+	bool CreateCube();
+
+	std::vector<uint8_t> SliceData[6];
 	std::vector<UHTexture2D*> Slices;
+	std::vector<UHRenderBuffer<uint8_t>> RawStageBuffers[6];
 	bool bIsCubeBuilt;
 
 	friend UHGraphic;
