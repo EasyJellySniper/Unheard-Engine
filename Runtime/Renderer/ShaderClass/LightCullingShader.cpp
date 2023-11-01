@@ -1,4 +1,5 @@
 #include "LightCullingShader.h"
+#include "../RendererShared.h"
 
 UHLightCullingShader::UHLightCullingShader(UHGraphic* InGfx, std::string Name)
 	: UHShaderClass(InGfx, Name, typeid(UHLightCullingShader), nullptr)
@@ -26,25 +27,16 @@ UHLightCullingShader::UHLightCullingShader(UHGraphic* InGfx, std::string Name)
 	CreateComputeState(Info);
 }
 
-void UHLightCullingShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight>& SpotLightConst
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightListTrans
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightList
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightListTrans
-	, const UHRenderTexture* DepthTexture
-	, const UHRenderTexture* TransDepthTexture
-	, const UHSampler* LinearClampped)
+void UHLightCullingShader::BindParameters()
 {
-	BindConstant(SysConst, 0);
-	BindStorage(PointLightConst, 1, 0, true);
-	BindStorage(SpotLightConst, 2, 0, true);
-	BindStorage(PointLightList.get(), 3, 0, true);
-	BindStorage(PointLightListTrans.get(), 4, 0, true);
-	BindStorage(SpotLightList.get(), 5, 0, true);
-	BindStorage(SpotLightListTrans.get(), 6, 0, true);
-	BindImage(DepthTexture, 7);
-	BindImage(TransDepthTexture, 8);
-	BindSampler(LinearClampped, 9);
+	BindConstant(GSystemConstantBuffer, 0);
+	BindStorage(GPointLightBuffer, 1, 0, true);
+	BindStorage(GSpotLightBuffer, 2, 0, true);
+	BindStorage(GPointLightListBuffer.get(), 3, 0, true);
+	BindStorage(GPointLightListTransBuffer.get(), 4, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 5, 0, true);
+	BindStorage(GSpotLightListTransBuffer.get(), 6, 0, true);
+	BindImage(GSceneDepth, 7);
+	BindImage(GSceneTranslucentDepth, 8);
+	BindSampler(GLinearClampedSampler, 9);
 }

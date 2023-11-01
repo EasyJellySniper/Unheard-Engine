@@ -150,7 +150,7 @@ private:
 	bool bIsTangentSpace;
 
 	UHMaterialProperty MaterialProps;
-	std::array<std::string, UHMaterialInputs::MaterialMax> TexFileNames;
+	std::string TexFileNames[UHMaterialInputs::MaterialMax];
 
 	UniquePtr<UHMaterialNode> MaterialNode;
 	std::vector<UniquePtr<UHGraphNode>> EditNodes;
@@ -166,5 +166,5 @@ private:
 	std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight> MaterialConstantsGPU;
 
 	UHRTMaterialData MaterialRTDataCPU;
-	std::array<UniquePtr<UHRenderBuffer<UHRTMaterialData>>, GMaxFrameInFlight> MaterialRTDataGPU;
+	UniquePtr<UHRenderBuffer<UHRTMaterialData>> MaterialRTDataGPU[GMaxFrameInFlight];
 };

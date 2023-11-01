@@ -1,4 +1,5 @@
 #include "LightPassShader.h"
+#include "../RendererShared.h"
 
 UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t RTInstanceCount)
 	: UHShaderClass(InGfx, Name, typeid(UHLightPassShader), nullptr)
@@ -36,31 +37,23 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 	CreateComputeState(Info);
 }
 
-void UHLightPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLightConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight>& SpotLightConst
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightList
-	, const std::vector<UHTexture*>& GBuffers
-	, const UHRenderTexture* SceneResult
-	, const UHSampler* LinearClamppedSampler
-	, const int32_t RTInstanceCount
-	, const UHRenderTexture* RTShadowResult)
+void UHLightPassShader::BindParameters()
 {
-	BindConstant(SysConst, 0);
-	BindStorage(DirLightConst, 1, 0, true);
-	BindStorage(PointLightConst, 2, 0, true);
-	BindStorage(SpotLightConst, 3, 0, true);
-	BindImage(GBuffers, 4);
-	BindImage(SceneResult, 5, -1, true);
+	BindConstant(GSystemConstantBuffer, 0);
+	BindStorage(GDirectionalLightBuffer, 1, 0, true);
+	BindStorage(GPointLightBuffer, 2, 0, true);
+	BindStorage(GSpotLightBuffer, 3, 0, true);
 
-	if (Gfx->IsRayTracingEnabled() && RTInstanceCount > 0)
+	const std::vector<UHTexture*> GBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth, GSceneMip, GSceneVertexNormal };
+	BindImage(GBuffers, 4);
+	BindImage(GSceneResult, 5, -1, true);
+
+	if (Gfx->IsRayTracingEnabled())
 	{
-		BindImage(RTShadowResult, 6);
+		BindImage(GRTShadowResult, 6);
 	}
 
-	BindStorage(PointLightList.get(), 7, 0, true);
-	BindStorage(SpotLightList.get(), 8, 0, true);
-	BindSampler(LinearClamppedSampler, 9);
+	BindStorage(GPointLightListBuffer.get(), 7, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 8, 0, true);
+	BindSampler(GLinearClampedSampler, 9);
 }

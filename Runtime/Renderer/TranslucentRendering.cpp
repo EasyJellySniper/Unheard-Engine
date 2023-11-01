@@ -101,7 +101,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 		}
 
 		RenderBuilder.EndRenderPass();
-		RenderBuilder.ResourceBarrier(SceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

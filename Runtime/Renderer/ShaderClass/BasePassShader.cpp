@@ -1,5 +1,6 @@
 #include "BasePassShader.h"
 #include "../../Components/MeshRenderer.h"
+#include "../RendererShared.h"
 
 UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass, bool bHasEnvCube
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
@@ -54,14 +55,10 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHBasePassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const UHMeshRendererComponent* InRenderer
-	, const UHTextureCube* EnvCube
-	, const UHSampler* EnvSampler)
+void UHBasePassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
-	BindConstant(SysConst, 0);
-	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
+	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	UHMesh* Mesh = InRenderer->GetMesh();
@@ -70,6 +67,6 @@ void UHBasePassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
 
 	// write textures/samplers when they are available
-	BindImage(EnvCube, 6);
-	BindSampler(EnvSampler, 7);
+	BindImage(GSkyLightCube, 6);
+	BindSampler(GSkyCubeSampler, 7);
 }

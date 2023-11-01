@@ -1,4 +1,5 @@
 #include "TemporalAAShader.h"
+#include "../../RendererShared.h"
 
 UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name)
 	: UHShaderClass(InGfx, Name, typeid(UHTemporalAAShader), nullptr)
@@ -22,21 +23,17 @@ UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name)
 	CreateComputeState(CInfo);
 }
 
-void UHTemporalAAShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const UHRenderTexture* PreviousSceneResult
-	, const UHRenderTexture* MotionVectorRT
-	, const UHRenderTexture* PrevMotionVectorRT
-	, const UHSampler* LinearClampedSampler)
+void UHTemporalAAShader::BindParameters()
 {
-	BindConstant(SysConst, 0);
+	BindConstant(GSystemConstantBuffer, 0);
 
 	// Due to the post processing alternatively reuses temporary RT
 	// the scene result is bound in PostProcessing Rendering instead
 	// BindImage(OutputRT, 1);
 	// BindImage(SceneResult, 2);
 
-	BindImage(PreviousSceneResult, 3);
-	BindImage(MotionVectorRT, 4);
-	BindImage(PrevMotionVectorRT, 5);
-	BindSampler(LinearClampedSampler, 6);
+	BindImage(GPreviousSceneResult, 3);
+	BindImage(GMotionVectorRT, 4);
+	BindImage(GPrevMotionVectorRT, 5);
+	BindSampler(GLinearClampedSampler, 6);
 }

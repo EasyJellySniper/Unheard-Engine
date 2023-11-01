@@ -122,7 +122,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.EndRenderPass();
 
 		// transition states of Gbuffer after base pass, they will be used in the shader
-		std::vector<UHTexture*> GBuffers = { SceneDiffuse, SceneNormal, SceneMaterial, SceneMip, SceneVertexNormal };
+		std::vector<UHTexture*> GBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneMip, GSceneVertexNormal };
 		RenderBuilder.ResourceBarrier(GBuffers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		
 		// doesn't need to transition depth as the following motion pass will do it

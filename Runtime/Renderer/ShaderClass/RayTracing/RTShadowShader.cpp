@@ -1,4 +1,5 @@
 #include "RTShadowShader.h"
+#include "../../RendererShared.h"
 
 UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	, const std::vector<uint32_t>& InClosestHits
@@ -49,38 +50,24 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	InitHitGroupTable(InAnyHits.size());
 }
 
-void UHRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const UHRenderTexture* RTShadowResult
-	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLights
-	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLights
-	, const std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight>& SpotLights
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightListTrans
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightList
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightListTrans
-	, const UHRenderTexture* SceneMip
-	, const UHRenderTexture* SceneDepth
-	, const UHRenderTexture* TranslucentDepth
-	, const UHRenderTexture* VertexNormal
-	, const UHRenderTexture* TranslucentVertexNormal
-	, const UHSampler* LinearClampedSampler)
+void UHRTShadowShader::BindParameters()
 {
-	BindConstant(SysConst, 0);
+	BindConstant(GSystemConstantBuffer, 0);
 
 	// TLAS will be bound on the fly
 
-	BindRWImage(RTShadowResult, 2);
-	BindStorage(DirLights, 3, 0, true);
-	BindStorage(PointLights, 4, 0, true);
-	BindStorage(SpotLights, 5, 0, true);
-	BindStorage(PointLightList.get(), 6, 0, true);
-	BindStorage(PointLightListTrans.get(), 7, 0, true);
-	BindStorage(SpotLightList.get(), 8, 0, true);
-	BindStorage(SpotLightListTrans.get(), 9, 0, true);
-	BindImage(SceneMip, 10);
-	BindImage(SceneDepth, 11);
-	BindImage(TranslucentDepth, 12);
-	BindImage(VertexNormal, 13);
-	BindImage(TranslucentVertexNormal, 14);
-	BindSampler(LinearClampedSampler, 15);
+	BindRWImage(GRTSharedTextureRG16F, 2);
+	BindStorage(GDirectionalLightBuffer, 3, 0, true);
+	BindStorage(GPointLightBuffer, 4, 0, true);
+	BindStorage(GSpotLightBuffer, 5, 0, true);
+	BindStorage(GPointLightListBuffer.get(), 6, 0, true);
+	BindStorage(GPointLightListTransBuffer.get(), 7, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 8, 0, true);
+	BindStorage(GSpotLightListTransBuffer.get(), 9, 0, true);
+	BindImage(GSceneMip, 10);
+	BindImage(GSceneDepth, 11);
+	BindImage(GSceneTranslucentDepth, 12);
+	BindImage(GSceneVertexNormal, 13);
+	BindImage(GSceneTranslucentVertexNormal, 14);
+	BindSampler(GLinearClampedSampler, 15);
 }

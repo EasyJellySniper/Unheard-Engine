@@ -1,5 +1,6 @@
 #include "TranslucentPassShader.h"
 #include "../../Components/MeshRenderer.h"
+#include "../RendererShared.h"
 
 UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bHasEnvCube
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
@@ -66,23 +67,10 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight>& DirLightConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight>& PointLightConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight>& SpotLightConst
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& PointLightList
-	, const UniquePtr<UHRenderBuffer<uint32_t>>& SpotLightList
-	, const UHRenderTexture* RTShadowResult
-	, const UHSampler* LinearClamppedSampler
-	, const UHMeshRendererComponent* InRenderer
-	, const int32_t RTInstanceCount
-	, const UHTextureCube* EnvCube
-	, const UHSampler* EnvSampler
-)
+void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
-	BindConstant(SysConst, 0);
-	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
+	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	UHMesh* Mesh = InRenderer->GetMesh();
@@ -91,19 +79,19 @@ void UHTranslucentPassShader::BindParameters(const std::array<UniquePtr<UHRender
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
 
 	// bind light const
-	BindStorage(DirLightConst, 6, 0, true);
-	BindStorage(PointLightConst, 7, 0, true);
-	BindStorage(SpotLightConst, 8, 0, true);
+	BindStorage(GDirectionalLightBuffer, 6, 0, true);
+	BindStorage(GPointLightBuffer, 7, 0, true);
+	BindStorage(GSpotLightBuffer, 8, 0, true);
 
-	if (Gfx->IsRayTracingEnabled() && RTInstanceCount > 0)
+	if (Gfx->IsRayTracingEnabled())
 	{
-		BindImage(RTShadowResult, 9);
+		BindImage(GRTShadowResult, 9);
 	}
-	BindStorage(PointLightList.get(), 10, 0, true);
-	BindStorage(SpotLightList.get(), 11, 0, true);
-	BindSampler(LinearClamppedSampler, 12);
+	BindStorage(GPointLightListBuffer.get(), 10, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 11, 0, true);
+	BindSampler(GLinearClampedSampler, 12);
 
 	// write textures/samplers when they are available
-	BindImage(EnvCube, 13);
-	BindSampler(EnvSampler, 14);
+	BindImage(GSkyLightCube, 13);
+	BindSampler(GSkyCubeSampler, 14);
 }

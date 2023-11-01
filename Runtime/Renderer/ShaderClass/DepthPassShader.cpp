@@ -1,5 +1,6 @@
 #include "DepthPassShader.h"
 #include "../../Components/MeshRenderer.h"
+#include "../RendererShared.h"
 
 UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHDepthPassShader), InMat)
@@ -41,12 +42,10 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHDepthPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const UHMeshRendererComponent* InRenderer)
+void UHDepthPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
-	BindConstant(SysConst, 0);
-	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
+	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	UHMesh* Mesh = InRenderer->GetMesh();

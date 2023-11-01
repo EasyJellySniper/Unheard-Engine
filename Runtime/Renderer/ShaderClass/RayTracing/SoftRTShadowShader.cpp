@@ -1,4 +1,5 @@
 #include "SoftRTShadowShader.h"
+#include "../../RendererShared.h"
 
 UHSoftRTShadowShader::UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name)
 	: UHShaderClass(InGfx, Name, typeid(UHSoftRTShadowShader), nullptr)
@@ -22,19 +23,13 @@ UHSoftRTShadowShader::UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name)
 	CreateComputeState(Info);
 }
 
-void UHSoftRTShadowShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const UHRenderTexture* RTShadowResult
-	, const UHRenderTexture* InputRTShadow
-	, const UHRenderTexture* DepthTexture
-	, const UHRenderTexture* TranslucentDepth
-	, const UHRenderTexture* SceneMip
-	, const UHSampler* LinearClamppedSampler)
+void UHSoftRTShadowShader::BindParameters()
 {
-	BindConstant(SysConst, 0);
-	BindRWImage(RTShadowResult, 1);
-	BindImage(InputRTShadow, 2);
-	BindImage(DepthTexture, 3);
-	BindImage(TranslucentDepth, 4);
-	BindImage(SceneMip, 5);
-	BindSampler(LinearClamppedSampler, 6);
+	BindConstant(GSystemConstantBuffer, 0);
+	BindRWImage(GRTShadowResult, 1);
+	BindImage(GRTSharedTextureRG16F, 2);
+	BindImage(GSceneDepth, 3);
+	BindImage(GSceneTranslucentDepth, 4);
+	BindImage(GSceneMip, 5);
+	BindSampler(GLinearClampedSampler, 6);
 }

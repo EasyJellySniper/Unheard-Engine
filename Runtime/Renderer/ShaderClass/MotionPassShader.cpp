@@ -1,5 +1,6 @@
 #include "MotionPassShader.h"
 #include "../../Components/MeshRenderer.h"
+#include "../RendererShared.h"
 
 UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
 	: UHShaderClass(InGfx, Name, typeid(UHMotionCameraPassShader), nullptr)
@@ -25,13 +26,11 @@ UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string
 	CreateGraphicState(Info);
 }
 
-void UHMotionCameraPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const UHRenderTexture* DepthTexture
-	, const UHSampler* PointClamppedSampler)
+void UHMotionCameraPassShader::BindParameters()
 {
-	BindConstant(SysConst, 0);
-	BindImage(DepthTexture, 1);
-	BindSampler(PointClamppedSampler, 2);
+	BindConstant(GSystemConstantBuffer, 0);
+	BindImage(GSceneDepth, 1);
+	BindSampler(GPointClampedSampler, 2);
 }
 
 UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
@@ -78,12 +77,10 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 	CreateMaterialState(MaterialPassInfo);
 }
 
-void UHMotionObjectPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight>& ObjConst
-	, const UHMeshRendererComponent* InRenderer)
+void UHMotionObjectPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
-	BindConstant(SysConst, 0);
-	BindConstant(ObjConst, 1, InRenderer->GetBufferDataIndex());
+	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	BindStorage(InRenderer->GetMesh()->GetUV0Buffer(), 3, 0, true);

@@ -283,6 +283,7 @@
     <ClInclude Include="Runtime\Classes\RenderTexture.h" />
     <ClInclude Include="Runtime\Renderer\ParallelSubmitter.h" />
     <ClInclude Include="Runtime\Renderer\QueueSubmitter.h" />
+    <ClInclude Include="Runtime\Renderer\RendererShared.h" />
     <ClInclude Include="Runtime\Renderer\RenderingTypes.h" />
     <ClInclude Include="Runtime\Renderer\RenderBuilder.h" />
     <ClInclude Include="Runtime\Renderer\DeferredShadingRenderer.h" />

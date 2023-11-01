@@ -1,5 +1,6 @@
 #include "SkyPassShader.h"
 #include "../../Components/MeshRenderer.h"
+#include "../RendererShared.h"
 
 UHSkyPassShader::UHSkyPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
 	: UHShaderClass(InGfx, Name, typeid(UHSkyPassShader), nullptr)
@@ -25,11 +26,9 @@ UHSkyPassShader::UHSkyPassShader(UHGraphic* InGfx, std::string Name, VkRenderPas
 	CreateGraphicState(Info);
 }
 
-void UHSkyPassShader::BindParameters(const std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight>& SysConst
-	, const UHTextureCube* EnvCube
-	, const UHSampler* EnvSampler)
+void UHSkyPassShader::BindParameters()
 {
-	BindConstant(SysConst, 0);
-	BindImage(EnvCube, 1);
-	BindSampler(EnvSampler, 2);
+	BindConstant(GSystemConstantBuffer, 0);
+	BindImage(GSkyLightCube, 1);
+	BindSampler(GSkyCubeSampler, 2);
 }

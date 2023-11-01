@@ -220,9 +220,9 @@ public:
 	int32_t GetBufferDataIndex() const;
 
 private:
-	std::array<bool, GMaxFrameInFlight> bIsRenderDirties;
-	std::array<bool, GMaxFrameInFlight> bIsRayTracingDirties;
-	std::array<bool, GMaxFrameInFlight> bIsMotionDirties;
+	bool bIsRenderDirties[GMaxFrameInFlight];
+	bool bIsRayTracingDirties[GMaxFrameInFlight];
+	bool bIsMotionDirties[GMaxFrameInFlight];
 	int32_t BufferDataIndex;
 };
 

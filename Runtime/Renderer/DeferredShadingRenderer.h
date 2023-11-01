@@ -11,6 +11,7 @@
 #include "../Classes/GPUQuery.h"
 #include "../Classes/Thread.h"
 #include "RenderingTypes.h"
+#include "RendererShared.h"
 #include "RenderBuilder.h"
 #include "ParallelSubmitter.h"
 #include "QueueSubmitter.h"
@@ -234,31 +235,16 @@ private:
 
 	// system constant
 	UHSystemConstants SystemConstantsCPU;
-	std::array<UniquePtr<UHRenderBuffer<UHSystemConstants>>, GMaxFrameInFlight> SystemConstantsGPU;
 
 	// object & material constants, I'll create constant buffer which are big enough for all renderers
 	std::vector<UHObjectConstants> ObjectConstantsCPU;
-	std::array<UniquePtr<UHRenderBuffer<UHObjectConstants>>, GMaxFrameInFlight> ObjectConstantsGPU;
 
 	// light buffers, this will be used as structure buffer instead of constant
 	std::vector<UHDirectionalLightConstants> DirLightConstantsCPU;
-	std::array<UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>>, GMaxFrameInFlight> DirectionalLightBuffer;
 	std::vector<UHPointLightConstants> PointLightConstantsCPU;
-	std::array<UniquePtr<UHRenderBuffer<UHPointLightConstants>>, GMaxFrameInFlight> PointLightBuffer;
 	std::vector<UHSpotLightConstants> SpotLightConstantsCPU;
-	std::array<UniquePtr<UHRenderBuffer<UHSpotLightConstants>>, GMaxFrameInFlight> SpotLightBuffer;
-
-	// light culling buffers
-	UniquePtr<UHRenderBuffer<uint32_t>> PointLightListBuffer;
-	UniquePtr<UHRenderBuffer<uint32_t>> PointLightListTransBuffer;
-	UniquePtr<UHRenderBuffer<uint32_t>> SpotLightListBuffer;
-	UniquePtr<UHRenderBuffer<uint32_t>> SpotLightListTransBuffer;
 
 	// shared samplers
-	UHSampler* PointClampedSampler;
-	UHSampler* LinearClampedSampler;
-	UHSampler* AnisoClampedSampler;
-	UHSampler* SkyCubeSampler;
 	int32_t DefaultSamplerIndex;
 
 	// bindless table
@@ -284,16 +270,6 @@ private:
 	UHTextureFormat DepthFormat;
 	UHTextureFormat HDRFormat;
 
-	UHRenderTexture* SceneDiffuse;
-	UHRenderTexture* SceneNormal;
-	UHRenderTexture* SceneMaterial;
-	UHRenderTexture* SceneResult;
-	UHRenderTexture* SceneMip;
-	UHRenderTexture* SceneDepth;
-	UHRenderTexture* SceneTranslucentDepth;
-	UHRenderTexture* SceneVertexNormal;
-	UHRenderTexture* SceneTranslucentVertexNormal;
-
 	// store different base pass object, the id is renderer data index
 	std::unordered_map<int32_t, UniquePtr<UHBasePassShader>> BasePassShaders;
 	UHRenderPassObject BasePassObj;
@@ -312,8 +288,6 @@ private:
 
 	// -------------------------------------------- Motion vector Pass -------------------------------------------- //
 	UHTextureFormat MotionFormat;
-	UHRenderTexture* MotionVectorRT;
-	UHRenderTexture* PrevMotionVectorRT;
 	UHRenderPassObject MotionCameraPassObj;
 	UniquePtr<UHMotionCameraPassShader> MotionCameraShader;
 	UniquePtr<UHMotionCameraPassShader> MotionCameraWorkaroundShader;
@@ -333,13 +307,11 @@ private:
 	// post process needs to use two textures and keep blit to each other, so the effects can be accumulated
 	static const int32_t NumOfPostProcessRT = 2;
 	int32_t PostProcessResultIdx;
-	std::array<UHRenderPassObject, NumOfPostProcessRT> PostProcessPassObj;
-	UHRenderTexture* PostProcessRT;
-	std::array<UHRenderTexture*, NumOfPostProcessRT> PostProcessResults;
-	UHRenderTexture* PreviousSceneResult;
+	UHRenderPassObject PostProcessPassObj[NumOfPostProcessRT];
+	UHRenderTexture* PostProcessResults[NumOfPostProcessRT];
 
 	UniquePtr<UHToneMappingShader> ToneMapShader;
-	std::array<UniquePtr<UHRenderBuffer<uint32_t>>, GMaxFrameInFlight> ToneMapData;
+	UniquePtr<UHRenderBuffer<uint32_t>> ToneMapData[NumOfPostProcessRT];
 
 	UniquePtr<UHTemporalAAShader> TemporalAAShader;
 	bool bIsTemporalReset;
@@ -352,7 +324,7 @@ private:
 
 	// debug bound shader
 	UniquePtr<UHDebugBoundShader> DebugBoundShader;
-	std::array<UniquePtr<UHRenderBuffer<UHDebugBoundConstant>>, GMaxFrameInFlight> DebugBoundData;
+	UniquePtr<UHRenderBuffer<UHDebugBoundConstant>> DebugBoundData[GMaxFrameInFlight];
 
 	// profiles
 	float RenderThreadTime;
@@ -366,20 +338,15 @@ private:
 
 	static UHDeferredShadingRenderer* SceneRendererEditorOnly;
 #endif
-	std::array<UHGPUQuery*, UHRenderPassTypes::UHRenderPassMax> GPUTimeQueries;
+	UHGPUQuery* GPUTimeQueries[UHRenderPassTypes::UHRenderPassMax];
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
 	UHTextureFormat RTShadowFormat;
-	std::array<UniquePtr<UHAccelerationStructure>, GMaxFrameInFlight> TopLevelAS;
+	UniquePtr<UHAccelerationStructure> TopLevelAS[GMaxFrameInFlight];
 
 	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;
 	UniquePtr<UHSoftRTShadowShader> SoftRTShadowShader;
 	UniquePtr<UHRTShadowShader> RTShadowShader;
-
-	UHRenderTexture* RTShadowResult;
-
-	// shared texture aim for being reused during rendering
-	UHRenderTexture* RTSharedTextureRG16F;
 
 	UniquePtr<UHRTVertexTable> RTVertexTable;
 	UniquePtr<UHRTIndicesTable> RTIndicesTable;

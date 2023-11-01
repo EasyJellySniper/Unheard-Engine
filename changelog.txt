@@ -422,3 +422,5 @@ Next is to try: mode 13 or dynamically select mode 11 and 14 or check the max di
 Finished high-quality BC6H compression!
 31-10-2023: Started adding cubemap editor. Also started adding cubemap asset management.
 Now creation, import, and export cubemap works properly. Integrated sky cubemap to skylight component, and removed redundant skybox renderer.
+
+01-11-2023: Refactored shared resources in renderer.

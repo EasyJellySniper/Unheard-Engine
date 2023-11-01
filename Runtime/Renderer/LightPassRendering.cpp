@@ -12,10 +12,10 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuil
 		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightCulling]);
 
 		// clear the point light/spot light list buffer
-		RenderBuilder.ClearUAVBuffer(PointLightListBuffer->GetBuffer(), 0);
-		RenderBuilder.ClearUAVBuffer(PointLightListTransBuffer->GetBuffer(), 0);
-		RenderBuilder.ClearUAVBuffer(SpotLightListBuffer->GetBuffer(), 0);
-		RenderBuilder.ClearUAVBuffer(SpotLightListTransBuffer->GetBuffer(), 0);
+		RenderBuilder.ClearUAVBuffer(GPointLightListBuffer->GetBuffer(), 0);
+		RenderBuilder.ClearUAVBuffer(GPointLightListTransBuffer->GetBuffer(), 0);
+		RenderBuilder.ClearUAVBuffer(GSpotLightListBuffer->GetBuffer(), 0);
+		RenderBuilder.ClearUAVBuffer(GSpotLightListTransBuffer->GetBuffer(), 0);
 
 		// bind state
 		UHComputeState* State = LightCullingShader->GetComputeState();
@@ -43,7 +43,7 @@ void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 	{
 		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightPass]);
 
-		RenderBuilder.ResourceBarrier(SceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 		// bind state
 		UHComputeState* State = LightPassShader->GetComputeState();
@@ -55,7 +55,7 @@ void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 		// dispatch
 		RenderBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
 
-		RenderBuilder.ResourceBarrier(SceneResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

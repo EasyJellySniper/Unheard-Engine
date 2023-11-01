@@ -55,9 +55,9 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 {
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Postprocessing Passes");
 	// post process RT starts from undefined, transition it first
-	RenderBuilder.ResourceBarrier(PostProcessRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	PostProcessResults[0] = PostProcessRT;
-	PostProcessResults[1] = SceneResult;
+	RenderBuilder.ResourceBarrier(GPostProcessRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	PostProcessResults[0] = GPostProcessRT;
+	PostProcessResults[1] = GSceneResult;
 
 	// this index will toggle between 0 and 1 during the post processing
 	int32_t CurrentPostProcessRTIndex = 0;
@@ -74,7 +74,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]);
 		if (ConfigInterface->RenderingSetting().bTemporalAA)
 		{
-			RenderBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			RenderBuilder.ResourceBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			if (!bIsTemporalReset)
 			{
 				// only render it when it's not resetting
@@ -84,9 +84,9 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 			}
 
 			// copy to TAA history
-			RenderBuilder.ResourceBarrier(PreviousSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+			RenderBuilder.ResourceBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 			RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-			RenderBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], PreviousSceneResult);
+			RenderBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], GPreviousSceneResult);
 			RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 			bIsTemporalReset = false;

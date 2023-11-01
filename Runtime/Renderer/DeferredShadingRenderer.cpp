@@ -123,7 +123,7 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			DebugViewShader->BindConstant(DebugViewData, 0, Idx);
 		}
 
-		UHRenderTexture* Buffers[] = { nullptr, SceneDiffuse, SceneNormal, SceneMaterial, SceneDepth, MotionVectorRT, SceneMip, RTShadowResult };
+		UHRenderTexture* Buffers[] = { nullptr, GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth, GMotionVectorRT, GSceneMip, GRTShadowResult };
 		DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
 	}
 }
@@ -208,7 +208,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	SystemConstantsCPU.UHNumRTInstances = RTInstanceCount;
 
-	SystemConstantsGPU[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
+	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
 	// upload object constants, only update CPU value if transform is changed
 	if (CurrentScene->GetAllRendererCount() > 0)
@@ -233,7 +233,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 				Mat->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
-		ObjectConstantsGPU[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
+		GObjectConstantBuffer[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
 	}
 
 	// upload directional light data
@@ -249,7 +249,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 				Light->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
-		DirectionalLightBuffer[CurrentFrameGT]->UploadAllData(DirLightConstantsCPU.data());
+		GDirectionalLightBuffer[CurrentFrameGT]->UploadAllData(DirLightConstantsCPU.data());
 	}
 
 	// upload point light data
@@ -265,7 +265,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 				Light->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
-		PointLightBuffer[CurrentFrameGT]->UploadAllData(PointLightConstantsCPU.data());
+		GPointLightBuffer[CurrentFrameGT]->UploadAllData(PointLightConstantsCPU.data());
 	}
 
 	// upload spot light data
@@ -281,7 +281,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 				Light->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
-		SpotLightBuffer[CurrentFrameGT]->UploadAllData(SpotLightConstantsCPU.data());
+		GSpotLightBuffer[CurrentFrameGT]->UploadAllData(SpotLightConstantsCPU.data());
 	}
 
 	// upload tone map data
