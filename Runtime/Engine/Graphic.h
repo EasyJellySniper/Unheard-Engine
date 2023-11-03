@@ -228,7 +228,7 @@ public:
 	bool IsDepthPrePassEnabled() const;
 	bool IsRayTracingEnabled() const;
 	bool IsDebugLayerEnabled() const;
-	bool IsHDRSupported() const;
+	bool IsHDRAvailable() const;
 	bool IsPresentWaitSupported() const;
 	bool Is24BitDepthSupported() const;
 	bool IsAMDIntegratedGPU() const;

@@ -285,7 +285,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	}
 
 	// upload tone map data
-	uint32_t IsHDR = GraphicInterface->IsHDRSupported() && ConfigInterface->RenderingSetting().bEnableHDR;
+	uint32_t IsHDR = GraphicInterface->IsHDRAvailable();
 	ToneMapData[CurrentFrameGT]->UploadAllData(&IsHDR);
 }
 

@@ -1533,9 +1533,9 @@ bool UHGraphic::IsDebugLayerEnabled() const
 	return bUseValidationLayers;
 }
 
-bool UHGraphic::IsHDRSupported() const
+bool UHGraphic::IsHDRAvailable() const
 {
-	return bSupportHDR;
+	return bSupportHDR && ConfigInterface->RenderingSetting().bEnableHDR;
 }
 
 bool UHGraphic::IsPresentWaitSupported() const
@@ -1709,7 +1709,7 @@ bool UHGraphic::RecreateImGui()
 	InitInfo.Allocator = nullptr;
 	InitInfo.CheckVkResultFn = nullptr;
 	InitInfo.SwapChainFormat = GetSwapChainFormat();
-	InitInfo.SwapChainColorSpace = bSupportHDR ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	InitInfo.SwapChainColorSpace = IsHDRAvailable() ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
 	// init Vulkan ImGui
 	bImGuiSucceed &= ImGui_ImplVulkan_Init(&InitInfo, GetSwapChainRenderPass());
@@ -1806,7 +1806,7 @@ bool UHGraphic::CreateSwapChain()
 
 	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
 	UHTransitionInfo SwapChainTransition(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	UHTextureFormat TargetFormat = bSupportHDR ? UH_FORMAT_ABGR2101010 : UH_FORMAT_BGRA8_SRGB;
+	UHTextureFormat TargetFormat = IsHDRAvailable() ? UH_FORMAT_ABGR2101010 : UH_FORMAT_BGRA8_SRGB;
 	SwapChainRenderPass = CreateRenderPass(TargetFormat, SwapChainTransition);
 
 	// create swap chain RTs
@@ -1819,7 +1819,7 @@ bool UHGraphic::CreateSwapChain()
 	}
 
 	// HDR metadata setting
-	if (bSupportHDR && ConfigInterface->RenderingSetting().bEnableHDR)
+	if (IsHDRAvailable())
 	{
 		VkHdrMetadataEXT HDRMetadata{};
 		HDRMetadata.sType = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
