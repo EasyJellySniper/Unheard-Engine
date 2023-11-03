@@ -82,10 +82,10 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 	// upload the 1st slice and generate mip map
 	VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
 	UHRenderBuilder UploadBuilder(GfxCache, UploadCmd);
-	UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
+	UploadToGPU(GfxCache, UploadBuilder);
 	if (bNeedGeneratMipmap)
 	{
-		GenerateMipMaps(GfxCache, UploadCmd, UploadBuilder);
+		GenerateMipMaps(GfxCache, UploadBuilder);
 	}
 	GfxCache->EndOneTimeCmd(UploadCmd);
 
@@ -156,7 +156,7 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 		// upload compressed data
 		VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
 		UHRenderBuilder UploadBuilder(GfxCache, UploadCmd);
-		UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
+		UploadToGPU(GfxCache, UploadBuilder);
 		GfxCache->EndOneTimeCmd(UploadCmd);
 	}
 
@@ -253,7 +253,7 @@ std::vector<uint8_t>& UHTexture2D::GetTextureData()
 	return TextureData;
 }
 
-void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder)
+void UHTexture2D::UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 {
 	if (bHasUploadedToGPU)
 	{
@@ -312,14 +312,14 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderB
 
 		// transition to dst before copy
 		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
-		vkCmdCopyBufferToImage(InCmd, SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
+		vkCmdCopyBufferToImage(InRenderBuilder.GetCmdList(), SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
 		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 	}
 
 	bHasUploadedToGPU = true;
 }
 
-void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder)
+void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 {
 	// generate mip maps for this texture, should be called in editor only
 	if (bIsMipMapGenerated || !TextureSettings.bUseMipmap)

@@ -204,7 +204,7 @@ void UHTextureDialog::SelectTexture(int32_t TexIndex)
         // upload to gpu if it's not in resident
         VkCommandBuffer UploadCmd = Gfx->BeginOneTimeCmd();
         UHRenderBuilder UploadBuilder(Gfx, UploadCmd);
-        CurrentTexture->UploadToGPU(Gfx, UploadCmd, UploadBuilder);
+        CurrentTexture->UploadToGPU(Gfx, UploadBuilder);
         Gfx->EndOneTimeCmd(UploadCmd);
     }
 

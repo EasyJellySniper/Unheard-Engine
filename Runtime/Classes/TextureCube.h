@@ -19,13 +19,14 @@ public:
 
 	bool Import(std::filesystem::path InCubePath);
 #if WITH_EDITOR
+	void Recreate();
 	void Export(std::filesystem::path InCubePath);
 	void SetSourcePath(std::filesystem::path InPath);
 	size_t GetDataSize() const;
 #endif
 
-	void Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder);
-	void UploadSlice(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder, const int32_t SliceIndex, const uint32_t MipMapCount);
+	void Build(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder);
+	void UploadSlice(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder, const int32_t SliceIndex, const uint32_t MipMapCount);
 
 private:
 	bool CreateCube(std::vector<UHTexture2D*> InSlices);

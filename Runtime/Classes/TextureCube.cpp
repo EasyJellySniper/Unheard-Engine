@@ -85,6 +85,21 @@ bool UHTextureCube::Import(std::filesystem::path InCubePath)
 }
 
 #if WITH_EDITOR
+void UHTextureCube::Recreate()
+{
+	GfxCache->WaitGPU();
+	Release();
+
+	if (Slices.size() > 0)
+	{
+		CreateCube(Slices);
+	}
+	else
+	{
+		CreateCube();
+	}
+}
+
 void UHTextureCube::Export(std::filesystem::path InCubePath)
 {
 	// open UHTexture file
@@ -135,7 +150,7 @@ size_t UHTextureCube::GetDataSize() const
 #endif
 
 // actually builds cubemap and upload to gpu
-void UHTextureCube::Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder)
+void UHTextureCube::Build(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 {
 	if (bIsCubeBuilt)
 	{
@@ -149,8 +164,8 @@ void UHTextureCube::Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuild
 		{
 			// simply copy all slices into cube map
 			// if texture slices isn't built yet, build it
-			Slices[Idx]->UploadToGPU(InGfx, InCmd, InRenderBuilder);
-			Slices[Idx]->GenerateMipMaps(InGfx, InCmd, InRenderBuilder);
+			Slices[Idx]->UploadToGPU(InGfx, InRenderBuilder);
+			Slices[Idx]->GenerateMipMaps(InGfx, InRenderBuilder);
 
 			// transition and copy, all mip maps need to be copied
 			for (uint32_t Mdx = 0; Mdx < MipMapCount; Mdx++)
@@ -168,14 +183,14 @@ void UHTextureCube::Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuild
 		else if (SliceData[Idx].size() > 0)
 		{
 			// if slices are not there, upload from raw data directly, mipdata is also contained
-			UploadSlice(InGfx, InCmd, InRenderBuilder, Idx, MipMapCount);
+			UploadSlice(InGfx, InRenderBuilder, Idx, MipMapCount);
 		}
 	}
 
 	bIsCubeBuilt = true;
 }
 
-void UHTextureCube::UploadSlice(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder, const int32_t SliceIndex, const uint32_t MipMapCount)
+void UHTextureCube::UploadSlice(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder, const int32_t SliceIndex, const uint32_t MipMapCount)
 {
 	// copy data to staging buffer first
 	RawStageBuffers[SliceIndex].resize(MipMapCount);
@@ -229,7 +244,7 @@ void UHTextureCube::UploadSlice(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRende
 
 		// transition to dst before copy
 		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx, SliceIndex);
-		vkCmdCopyBufferToImage(InCmd, SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
+		vkCmdCopyBufferToImage(InRenderBuilder.GetCmdList(), SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
 		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx, SliceIndex);
 	}
 }

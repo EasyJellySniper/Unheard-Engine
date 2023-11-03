@@ -26,10 +26,10 @@ public:
 	std::vector<uint8_t>& GetTextureData();
 
 	// upload texture data to GPU
-	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) override;
+	virtual void UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) override;
 
 	// generate mip maps
-	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) override;
+	virtual void GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) override;
 
 private:
 	bool CreateTexture(bool bFromSharedMemory);

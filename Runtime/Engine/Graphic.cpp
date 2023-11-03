@@ -1066,6 +1066,7 @@ void UHGraphic::RequestReleaseTexture2D(UHTexture2D* InTex)
 		return;
 	}
 
+	Texture2DPools[Idx]->ReleaseCPUTextureData();
 	Texture2DPools[Idx]->Release();
 	Texture2DPools[Idx].reset();
 	UHUtilities::RemoveByIndex(Texture2DPools, Idx);
@@ -1167,6 +1168,20 @@ UHTextureCube* UHGraphic::RequestTextureCube(UHTextureCube& LoadedCube)
 	}
 
 	return nullptr;
+}
+
+void UHGraphic::RequestReleaseTextureCube(UHTextureCube* InCube)
+{
+	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, *InCube);
+	if (Idx == UHINDEXNONE)
+	{
+		return;
+	}
+
+	TextureCubePools[Idx]->ReleaseCPUData();
+	TextureCubePools[Idx]->Release();
+	TextureCubePools[Idx].reset();
+	UHUtilities::RemoveByIndex(TextureCubePools, Idx);
 }
 
 // request material without any import

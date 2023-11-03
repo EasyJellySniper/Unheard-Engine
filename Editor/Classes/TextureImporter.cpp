@@ -3,6 +3,7 @@
 #if WITH_EDITOR
 #include "../Runtime/Classes/AssetPath.h"
 #include "../../Runtime/Engine/Graphic.h"
+#define IMATH_HALF_NO_LOOKUP_TABLE
 #include <ImfRgbaFile.h>
 #include <ImfArray.h>
 
@@ -35,6 +36,60 @@ std::vector<uint8_t> UHTextureImporter::LoadTexture(std::filesystem::path Filena
 		Imf::Array2D<Imf::Rgba> Pixels(Width, Height);
 		File.setFrameBuffer(&Pixels[0][0], 1, Width);
 		File.readPixels(Dimension.min.y, Dimension.max.y);
+
+		// check the float value, and relatively scale down with the max value searched
+		float HalfMax = 65504.0f;
+		float MaxValueR = 0.0f;
+		float MaxValueG = 0.0f;
+		float MaxValueB = 0.0f;
+
+		for (uint32_t X = 0; X < Width; X++)
+		{
+			for (uint32_t Y = 0; Y < Height; Y++)
+			{
+				Imf::Rgba& Color = Pixels[X][Y];
+				UHColorRGB ColorF(Color.r, Color.g, Color.b);
+				if (isinf(ColorF.R))
+				{
+					ColorF.R = HalfMax;
+					Color.r = ColorF.R;
+				}
+
+				if (isinf(ColorF.G))
+				{
+					ColorF.G = HalfMax;
+					Color.g = ColorF.G;
+				}
+
+				if (isinf(ColorF.B))
+				{
+					ColorF.B = HalfMax;
+					Color.b = ColorF.B;
+				}
+
+				MaxValueR = (std::max)(MaxValueR, ColorF.R);
+				MaxValueG = (std::max)(MaxValueG, ColorF.G);
+				MaxValueB = (std::max)(MaxValueB, ColorF.B);
+			}
+		}
+
+		// scale down if max value of color exceed the desired max value
+		const float DesiredMaxValue = 32767.0f;
+		if (MaxValueR > DesiredMaxValue || MaxValueG > DesiredMaxValue || MaxValueB > DesiredMaxValue)
+		{
+			for (uint32_t X = 0; X < Width; X++)
+			{
+				for (uint32_t Y = 0; Y < Height; Y++)
+				{
+					Imf::Rgba& Color = Pixels[X][Y];
+					UHColorRGB ColorF(Color.r, Color.g, Color.b);
+
+					Color.r = ColorF.R / MaxValueR * DesiredMaxValue;
+					Color.g = ColorF.G / MaxValueG * DesiredMaxValue;
+					Color.b = ColorF.B / MaxValueB * DesiredMaxValue;
+				}
+			}
+		}
 
 		// allocate W * H * sizeof(R16G16B16A16)
 		size_t Size = Width * Height * sizeof(Imf::Rgba);

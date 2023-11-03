@@ -265,7 +265,7 @@ void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
 		UHTexture2D* Tex = AssetManagerInterface->GetTexture2D(RegisteredTexture);
 		if (Tex)
 		{
-			Tex->UploadToGPU(GraphicInterface, CreationCmd, RenderBuilder);
+			Tex->UploadToGPU(GraphicInterface, RenderBuilder);
 		}
 	}
 
@@ -296,7 +296,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		UHTextureCube* Cube = SkyLight->GetCubemap();
 		if (Cube)
 		{
-			Cube->Build(GraphicInterface, CreationCmd, RenderBuilder);
+			Cube->Build(GraphicInterface, RenderBuilder);
 		}
 	}
 
@@ -1082,7 +1082,7 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 	{
 		VkCommandBuffer Cmd = GraphicInterface->BeginOneTimeCmd();
 		UHRenderBuilder Builder(GraphicInterface, Cmd);
-		GSkyLightCube->Build(GraphicInterface, Cmd, Builder);
+		GSkyLightCube->Build(GraphicInterface, Builder);
 		GraphicInterface->EndOneTimeCmd(Cmd);
 	}
 

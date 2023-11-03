@@ -448,4 +448,13 @@ void UHAssetManager::AddCubemap(UHTextureCube* InCube)
 {
 	UHCubemaps.push_back(InCube);
 }
+
+void UHAssetManager::RemoveCubemap(UHTextureCube* InCube)
+{
+	const int32_t Index = UHUtilities::FindIndex(UHCubemaps, InCube);
+	if (Index != UHINDEXNONE)
+	{
+		UHUtilities::RemoveByIndex(UHCubemaps, Index);
+	}
+}
 #endif

@@ -129,7 +129,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	// setup default sky light
 	DefaultSkyLight.SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
 	DefaultSkyLight.SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
-	DefaultSkyLight.SetSkyIntensity(TestType != DayTest ? 0.15f : 1.0f);
+	DefaultSkyLight.SetSkyIntensity(TestType != DayTest ? 0.15f : 2.0f);
 	DefaultSkyLight.SetGroundIntensity(TestType != DayTest ? 0.5f : 1.5f);
 
 	if (TestType == DayTest)

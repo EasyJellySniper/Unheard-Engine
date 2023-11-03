@@ -90,8 +90,8 @@ public:
 	UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings);
 	virtual ~UHTexture() {}
 
-	virtual void UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) {}
-	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) {}
+	virtual void UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) {}
+	virtual void GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) {}
 
 #if WITH_EDITOR
 	virtual std::vector<uint8_t> ReadbackTextureData() { return std::vector<uint8_t>(); }

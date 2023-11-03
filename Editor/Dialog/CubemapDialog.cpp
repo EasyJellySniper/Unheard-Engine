@@ -192,6 +192,7 @@ void UHCubemapDialog::OnCreationFinished(UHTexture* InTexture)
     SelectCubemap(NewIdx);
     CurrentCubeIndex = NewIdx;
     Renderer->UpdateTextureDescriptors();
+    Renderer->RefreshSkyLight(false);
 }
 
 void UHCubemapDialog::SelectCubemap(int32_t TexIndex)
@@ -202,7 +203,7 @@ void UHCubemapDialog::SelectCubemap(int32_t TexIndex)
         // upload to gpu if it's not in resident
         VkCommandBuffer UploadCmd = Gfx->BeginOneTimeCmd();
         UHRenderBuilder UploadBuilder(Gfx, UploadCmd);
-        CurrentCube->Build(Gfx, UploadCmd, UploadBuilder);
+        CurrentCube->Build(Gfx, UploadBuilder);
         Gfx->EndOneTimeCmd(UploadCmd);
     }
 

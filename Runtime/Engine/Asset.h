@@ -51,6 +51,7 @@ public:
 	static std::string FindTexturePathName(std::string InName);
 
 	void AddCubemap(UHTextureCube* InCube);
+	void RemoveCubemap(UHTextureCube* InCube);
 #endif
 
 private:

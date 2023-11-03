@@ -144,8 +144,10 @@ public:
 	// request a managed texture 2d/cube
 	UHTexture2D* RequestTexture2D(UHTexture2D& LoadedTex, bool bUseSharedMemory);
 	void RequestReleaseTexture2D(UHTexture2D* InTex);
+
 	UHTextureCube* RequestTextureCube(std::string InName, std::vector<UHTexture2D*> InTextures);
 	UHTextureCube* RequestTextureCube(UHTextureCube& LoadedCube);
+	void RequestReleaseTextureCube(UHTextureCube* InCube);
 
 	// request a managed material
 	UHMaterial* RequestMaterial();

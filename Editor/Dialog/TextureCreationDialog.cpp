@@ -324,7 +324,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
             if (!InputTexture->HasUploadedToGPU())
             {
-                InputTexture->UploadToGPU(Gfx, RenderBuilder.GetCmdList(), RenderBuilder);
+                InputTexture->UploadToGPU(Gfx, RenderBuilder);
             }
 
             RenderBuilder.BeginRenderPass(SphereToCubemapRenderPass, SphereToCubemapFrameBuffer, OutputExtent, VkClearValue{ {0,0,0,0} });
@@ -365,7 +365,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
             RenderBuilder.CopyTexture(CubemapRT[Idx], Slices[Idx]);
             RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            Slices[Idx]->GenerateMipMaps(Gfx, RenderBuilder.GetCmdList(), RenderBuilder);
+            Slices[Idx]->GenerateMipMaps(Gfx, RenderBuilder);
         }
         Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
 
@@ -386,8 +386,16 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
         // Step 3 ------------------------------------------------- build a texture cube from slices
         RenderBuilder = UHRenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
-        UHTextureCube* NewCube = Gfx->RequestTextureCube(InputTexture->GetName() + "_Cube", Slices);
-        NewCube->Build(Gfx, RenderBuilder.GetCmdList(), RenderBuilder);
+
+        const std::string CubeName = InputTexture->GetName() + "_Cube";
+        if (UHTextureCube* OldCube = AssetMgr->GetCubemapByName(CubeName))
+        {
+            Gfx->RequestReleaseTextureCube(OldCube);
+        }
+
+        UHTextureCube* NewCube = Gfx->RequestTextureCube(CubeName, Slices);
+        NewCube->Build(Gfx, RenderBuilder);
+
         Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
 
         // creation finished, export the cube
@@ -432,7 +440,17 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         }
 
         UHStatusDialogScope StatusDialog("Creating...");
-        UHTextureCube* NewCube = Gfx->RequestTextureCube(Slices[0]->GetName() + "_Cube", Slices);
+
+        // remove the existed one before creating new
+        Gfx->WaitGPU();
+        const std::string CubeName = Slices[0]->GetName() + "_Cube";
+        if (UHTextureCube* OldCube = AssetMgr->GetCubemapByName(CubeName))
+        {
+            AssetMgr->RemoveCubemap(OldCube);
+            Gfx->RequestReleaseTextureCube(OldCube);
+        }
+
+        UHTextureCube* NewCube = Gfx->RequestTextureCube(CubeName, Slices);
         if (NewCube)
         {
             std::string OutputPathName = OutputFolder.string() + "/" + NewCube->GetName();
@@ -444,7 +462,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             {
                 VkCommandBuffer Cmd = Gfx->BeginOneTimeCmd();
                 UHRenderBuilder Builder(Gfx, Cmd);
-                NewCube->Build(Gfx, Cmd, Builder);
+                NewCube->Build(Gfx, Builder);
                 Gfx->EndOneTimeCmd(Cmd);
             }
             NewCube->Export(GTextureAssetFolder + "/" + NewCube->GetSourcePath());
