@@ -93,7 +93,7 @@ public:
 	void Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D SrcExtent, VkExtent2D DstExtent, uint32_t SrcMip = 0, uint32_t DstMip = 0, VkFilter InFilter = VK_FILTER_LINEAR);
 
 	// copy texture
-	void CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint32_t MipLevel = 0, uint32_t DstArray = 0);
+	void CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint32_t MipLevel = 0, uint32_t DstArray = 0, uint32_t SrcArray = 0);
 
 	// draw full screen quad
 	void DrawFullScreenQuad();

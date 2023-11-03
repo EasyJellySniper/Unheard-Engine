@@ -11,6 +11,7 @@
 #include "../../Runtime/Engine/Asset.h"
 #include "../../Runtime/Engine/Graphic.h"
 #include "../../Runtime/Renderer/RenderBuilder.h"
+#include "../../Runtime/Renderer/RendererShared.h"
 #include "StatusDialog.h"
 
 UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter)
@@ -21,6 +22,8 @@ UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDial
     , CubemapDialog(nullptr)
     , AssetMgr(nullptr)
     , Gfx(InGfx)
+    , bNeedCreatingTexture(false)
+    , bNeedCreatingCube(false)
 {
     CurrentOutputPath = "Assets\\Textures";
 }
@@ -33,6 +36,8 @@ UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDial
     , TextureImporter(nullptr)
     , AssetMgr(InAssetMgr)
     , Gfx(InGfx)
+    , bNeedCreatingTexture(false)
+    , bNeedCreatingCube(false)
 {
     CurrentOutputPath = "Assets\\Textures";
 }
@@ -46,6 +51,24 @@ void UHTextureCreationDialog::Update()
     else if (CubemapDialog)
     {
         ShowCubemapCreationUI();
+    }
+}
+
+void UHTextureCreationDialog::CheckPendingTextureCreation()
+{
+    if (bNeedCreatingTexture)
+    {
+        ControlTextureCreate();
+        bNeedCreatingTexture = false;
+    }
+}
+
+void UHTextureCreationDialog::CheckPendingCubeCreation()
+{
+    if (bNeedCreatingCube)
+    {
+        ControlCubemapCreate();
+        bNeedCreatingCube = false;
     }
 }
 
@@ -77,7 +100,8 @@ void UHTextureCreationDialog::ShowTexture2DCreationUI()
         ImGui::Checkbox("Is Normal", &CurrentEditingSettings.bIsNormal);
         if (ImGui::Button("Create"))
         {
-            ControlTextureCreate();
+            // set creating flag as true and do the creation next frame
+            bNeedCreatingTexture = true;
         }
 
         ImGui::TableNextColumn();
@@ -142,7 +166,8 @@ void UHTextureCreationDialog::ShowCubemapCreationUI()
 
         if (ImGui::Button("Create from 6 slices"))
         {
-            ControlCubemapCreate(false);
+            bNeedCreatingCube = true;
+            bCreatingCubeFromPanorama = false;
         }
 
         ImGui::TableNextColumn();
@@ -162,7 +187,8 @@ void UHTextureCreationDialog::ShowCubemapCreationUI()
 
         if (ImGui::Button("Create from panorama"))
         {
-            ControlCubemapCreate(true);
+            bNeedCreatingCube = true;
+            bCreatingCubeFromPanorama = true;
         }
 
         ImGui::EndTable();
@@ -220,7 +246,7 @@ void UHTextureCreationDialog::ControlTextureCreate()
     }
 }
 
-void UHTextureCreationDialog::ControlCubemapCreate(bool bIsPanorama)
+void UHTextureCreationDialog::ControlCubemapCreate()
 {
     std::filesystem::path OutputFolder = CurrentOutputPath;
     std::filesystem::path TextureAssetPath = GTextureAssetFolder;
@@ -239,9 +265,147 @@ void UHTextureCreationDialog::ControlCubemapCreate(bool bIsPanorama)
     // remove the project folder
     OutputFolder = std::filesystem::relative(OutputFolder);
 
-    if (bIsPanorama)
+    if (bCreatingCubeFromPanorama)
     {
-        // @TODO: Implement Panorama to Cubemap conversion
+        // Panorama to Cubemap conversion, use a shader pass for it
+        UHTexture2D* InputTexture = AssetMgr->GetTexture2DByPath(CurrentSelectedPanorama);
+        if (InputTexture == nullptr)
+        {
+            MessageBoxA(nullptr, "Invalid panorama texture input!", "Cubemap Creation", MB_OK);
+            return;
+        }
+
+        UHStatusDialogScope StatusDialog("Creating...");
+
+        // setup output dimension, follow the height of panorama map
+        VkExtent2D OutputExtent;
+        uint32_t Size = (std::min)(InputTexture->GetExtent().width, InputTexture->GetExtent().height);
+        OutputExtent.width = Size;
+        OutputExtent.height = Size;
+
+        UHTextureSettings Settings = InputTexture->GetTextureSettings();
+        UHTextureFormat UncompressedFormat = UH_FORMAT_NONE;
+        if (Settings.bIsHDR)
+        {
+            UncompressedFormat = UH_FORMAT_RGBA16F;
+        }
+        else
+        {
+            UncompressedFormat = Settings.bIsLinear ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
+        }
+
+        // Step 1 ------------------------------------------------- Convert panorama to individual cube slice RT
+        UHRenderTexture* CubemapRT[6];
+        for (int32_t Idx = 0; Idx < 6; Idx++)
+        {
+            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat);
+        }
+
+        // draw a pass that transfer sphere map to cube map
+        for (int32_t Idx = 0; Idx < 6; Idx++)
+        {
+            VkRenderPass SphereToCubemapRenderPass = Gfx->CreateRenderPass(UncompressedFormat, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+            VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx]->GetImageView(), SphereToCubemapRenderPass, OutputExtent);
+
+            // setup shader
+            UniquePtr<UHPanoramaToCubemapShader> SphereToCubemapShader = MakeUnique<UHPanoramaToCubemapShader>(Gfx, "SphereToCubemap", SphereToCubemapRenderPass);
+
+            UniquePtr<UHRenderBuffer<int32_t>> ShaderData = Gfx->RequestRenderBuffer<int32_t>();
+            ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            ShaderData->UploadData(&Idx, 0);
+
+            SphereToCubemapShader->BindConstant(ShaderData, 0, 0);
+            SphereToCubemapShader->BindImage(InputTexture, 1);
+
+            UHSamplerInfo Info(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, 1.0f);
+            UHSampler* LinearWrappedSampler = Gfx->RequestTextureSampler(Info);
+            SphereToCubemapShader->BindSampler(LinearWrappedSampler, 2);
+
+            UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+            if (!InputTexture->HasUploadedToGPU())
+            {
+                InputTexture->UploadToGPU(Gfx, RenderBuilder.GetCmdList(), RenderBuilder);
+            }
+
+            RenderBuilder.BeginRenderPass(SphereToCubemapRenderPass, SphereToCubemapFrameBuffer, OutputExtent, VkClearValue{ {0,0,0,0} });
+            RenderBuilder.SetViewport(OutputExtent);
+            RenderBuilder.SetScissor(OutputExtent);
+
+            // bind state
+            RenderBuilder.BindGraphicState(SphereToCubemapShader->GetState());
+
+            // bind sets
+            RenderBuilder.BindDescriptorSet(SphereToCubemapShader->GetPipelineLayout(), SphereToCubemapShader->GetDescriptorSet(0));
+
+            // draw fullscreen quad
+            RenderBuilder.BindVertexBuffer(nullptr);
+            RenderBuilder.DrawFullScreenQuad();
+            RenderBuilder.EndRenderPass();
+            Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+            UH_SAFE_RELEASE(SphereToCubemapShader);
+            vkDestroyFramebuffer(Gfx->GetLogicalDevice(), SphereToCubemapFrameBuffer, nullptr);
+            vkDestroyRenderPass(Gfx->GetLogicalDevice(), SphereToCubemapRenderPass, nullptr);
+            UH_SAFE_RELEASE(ShaderData);
+        }
+
+        // Step 2 ------------------------------------------------- Copy from RT slices to regular slices
+        Settings.bIsCompressed = false;
+        Settings.CompressionSetting = CompressionNone;
+
+        UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+        std::vector<UHTexture2D*> Slices(6);
+        for (int32_t Idx = 0; Idx < 6; Idx++)
+        {
+            // defer the mip map genertaion as copy texture doesn't work if mipmap count mismatched
+            const std::string SliceName = "CubemapCreationSlice" + std::to_string(Idx);
+            UHTexture2D Slice(SliceName, SliceName, OutputExtent, UncompressedFormat, Settings);
+            Slices[Idx] = Gfx->RequestTexture2D(Slice, false);
+
+            RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            RenderBuilder.CopyTexture(CubemapRT[Idx], Slices[Idx]);
+            RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            Slices[Idx]->GenerateMipMaps(Gfx, RenderBuilder.GetCmdList(), RenderBuilder);
+        }
+        Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+        // now readback slices and recreate the slices following the input texture settings
+        std::vector<uint8_t> SliceData[6];
+        for (int32_t Idx = 0; Idx < 6; Idx++)
+        {
+            SliceData[Idx] = Slices[Idx]->ReadbackTextureData();
+            Slices[Idx]->SetTextureData(SliceData[Idx]);
+
+            // recreate slices if compression is needed
+            if (InputTexture->GetTextureSettings().CompressionSetting != CompressionNone)
+            {
+                Slices[Idx]->SetTextureSettings(InputTexture->GetTextureSettings());
+                Slices[Idx]->Recreate(false);
+            }
+        }
+
+        // Step 3 ------------------------------------------------- build a texture cube from slices
+        RenderBuilder = UHRenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+        UHTextureCube* NewCube = Gfx->RequestTextureCube(InputTexture->GetName() + "_Cube", Slices);
+        NewCube->Build(Gfx, RenderBuilder.GetCmdList(), RenderBuilder);
+        Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+        // creation finished, export the cube
+        std::string OutputPathName = OutputFolder.string() + "/" + NewCube->GetName();
+        std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", "/");
+        SavedPathName = UHUtilities::StringReplace(SavedPathName, GTextureAssetFolder, "");
+        NewCube->SetSourcePath(SavedPathName);
+        NewCube->Export(GTextureAssetFolder + "/" + NewCube->GetSourcePath());
+
+        CubemapDialog->OnCreationFinished(NewCube);
+
+        // release all temporory textures
+        for (int32_t Idx = 0; Idx < 6; Idx++)
+        {
+            Slices[Idx]->ReleaseCPUTextureData();
+            Gfx->RequestReleaseTexture2D(Slices[Idx]);
+            Gfx->RequestReleaseRT(CubemapRT[Idx]);
+        }
     }
     else
     {
@@ -267,7 +431,7 @@ void UHTextureCreationDialog::ControlCubemapCreate(bool bIsPanorama)
             return;
         }
 
-        // @TODO: Provide rename funtion somewhere else
+        UHStatusDialogScope StatusDialog("Creating...");
         UHTextureCube* NewCube = Gfx->RequestTextureCube(Slices[0]->GetName() + "_Cube", Slices);
         if (NewCube)
         {

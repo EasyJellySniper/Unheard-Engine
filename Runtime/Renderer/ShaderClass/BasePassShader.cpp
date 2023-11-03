@@ -4,7 +4,9 @@
 
 UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass, bool bHasEnvCube
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat)
+	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat, InRenderPass)
+	, bHasDepthPrePass(bEnableDepthPrePass)
+	, bHasEnvCubemap(bHasEnvCube)
 {
 	// DeferredPass: Bind all constants, visiable in VS/PS only
 	for (int32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
@@ -23,30 +25,34 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	CreateMaterialDescriptor(ExtraLayouts);
+	OnCompile();
+}
 
+void UHBasePassShader::OnCompile()
+{
 	// also check prepass define
-	std::vector<std::string> MatDefines = InMat->GetMaterialDefines();
-	if (bEnableDepthPrePass)
+	std::vector<std::string> MatDefines = MaterialCache->GetMaterialDefines();
+	if (bHasDepthPrePass)
 	{
 		MatDefines.push_back("WITH_DEPTHPREPASS");
 	}
 
-	if (bHasEnvCube)
+	if (bHasEnvCubemap)
 	{
 		MatDefines.push_back("WITH_ENVCUBE");
 	}
 
-	ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", MatDefines);
+	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", MatDefines);
 	UHMaterialCompileData Data{};
-	Data.MaterialCache = InMat;
-	ShaderPS = InGfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, MatDefines);
+	Data.MaterialCache = MaterialCache;
+	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, MatDefines);
 
 	// states
-	MaterialPassInfo = UHRenderPassInfo(InRenderPass
+	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
 		// adjust depth info based on depth pre pass setting
-		, UHDepthInfo(true, !bEnableDepthPrePass, (bEnableDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
-		, InMat->GetCullMode()
-		, InMat->GetBlendMode()
+		, UHDepthInfo(true, !bHasDepthPrePass, (bHasDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
+		, MaterialCache->GetCullMode()
+		, MaterialCache->GetBlendMode()
 		, ShaderVS
 		, ShaderPS
 		, GNumOfGBuffers

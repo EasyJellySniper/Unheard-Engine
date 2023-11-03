@@ -11,6 +11,8 @@ public:
 		AddLayoutBinding(NumOfMeshes, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
 		CreateDescriptor();
 	}
+
+	virtual void OnCompile() override {}
 };
 
 class UHRTIndicesTable : public UHShaderClass
@@ -23,6 +25,8 @@ public:
 		AddLayoutBinding(NumOfMeshes, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
 		CreateDescriptor();
 	}
+
+	virtual void OnCompile() override {}
 };
 
 class UHRTIndicesTypeTable : public UHShaderClass
@@ -34,4 +38,6 @@ public:
 		AddLayoutBinding(1, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
 		CreateDescriptor();
 	}
+
+	virtual void OnCompile() override {}
 };

@@ -183,7 +183,7 @@ void UHAssetManager::ImportTextures(UHGraphic* InGfx)
 		if (LoadedTex.Import(Idx->path()))
 		{
 			// import successfully, request texture 2d from GFX
-			UHTexture2D* NewTex = InGfx->RequestTexture2D(LoadedTex);
+			UHTexture2D* NewTex = InGfx->RequestTexture2D(LoadedTex, true);
 
 #if WITH_EDITOR
 			NewTex->SetRawSourcePath(LoadedTex.GetRawSourcePath());

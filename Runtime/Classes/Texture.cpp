@@ -88,8 +88,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 {
 	ImageFormat = InInfo.Format;
 	ImageExtent = InInfo.Extent;
-	MipMapCount = InInfo.bUseMipMap ? static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1
-		: 1;
+	MipMapCount = TextureSettings.bUseMipmap ? static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1 : 1;
 	TextureInfo = InInfo;
 
 	// only create if the source is null, otherwise create image view only
@@ -146,6 +145,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			// so switching between compressed/uncompressed won't be an issue
 			CreateInfo.format = (TextureSettings.bIsLinear) ? VK_FORMAT_R8G8B8A8_UNORM : VK_FORMAT_R8G8B8A8_SRGB;
 			CreateInfo.format = (TextureSettings.bIsHDR) ? VK_FORMAT_R16G16B16A16_SFLOAT : CreateInfo.format;
+			CreateInfo.mipLevels = MipMapCount;
 			ImageMemoryReqs.pCreateInfo = &CreateInfo;
 
 			VkMemoryRequirements2 MemoryReqs2{};
@@ -244,6 +244,8 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 		return false;
 	}
 
+	ImageViewInfo = CreateInfo;
+
 #if WITH_EDITOR
 	if (InViewType == VK_IMAGE_VIEW_TYPE_CUBE)
 	{
@@ -260,7 +262,6 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 	}
 #endif
 
-	ImageViewInfo = CreateInfo;
 	return true;
 }
 
@@ -319,6 +320,11 @@ uint32_t UHTexture::GetMipMapCount() const
 UHTextureSettings UHTexture::GetTextureSettings() const
 {
 	return TextureSettings;
+}
+
+void UHTexture::SetHasUploadedToGPU(bool bFlag)
+{
+	bHasUploadedToGPU = bFlag;
 }
 
 bool UHTexture::HasUploadedToGPU() const

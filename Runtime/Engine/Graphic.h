@@ -129,20 +129,21 @@ public:
 
 	// create frame buffer, imageless/single/multiple
 	VkFramebuffer CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D InExtent) const;
-	VkFramebuffer CreateFrameBuffer(VkImageView InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent) const;
-	VkFramebuffer CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent) const;
+	VkFramebuffer CreateFrameBuffer(VkImageView InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
+	VkFramebuffer CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
 
 	// create query pool
 	UHGPUQuery* RequestGPUQuery(uint32_t Count, VkQueryType QueueType);
 
 	// request a managed render texture
-	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite = false, bool bIsShadowRT = false);
-	UHRenderTexture* RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite = false
-		, bool bIsShadowRT = false);
+	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite = false);
+	UHRenderTexture* RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat
+		, bool bIsReadWrite = false);
 	void RequestReleaseRT(UHRenderTexture* InRT);
 
 	// request a managed texture 2d/cube
-	UHTexture2D* RequestTexture2D(UHTexture2D& LoadedTex);
+	UHTexture2D* RequestTexture2D(UHTexture2D& LoadedTex, bool bUseSharedMemory);
+	void RequestReleaseTexture2D(UHTexture2D* InTex);
 	UHTextureCube* RequestTextureCube(std::string InName, std::vector<UHTexture2D*> InTextures);
 	UHTextureCube* RequestTextureCube(UHTextureCube& LoadedCube);
 

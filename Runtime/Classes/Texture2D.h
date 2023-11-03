@@ -19,7 +19,7 @@ public:
 	void SetTextureData(std::vector<uint8_t> InData);
 
 #if WITH_EDITOR
-	virtual void Recreate() override;
+	void Recreate(bool bNeedGeneratMipmap);
 	virtual std::vector<uint8_t> ReadbackTextureData() override;
 	void Export(std::filesystem::path InTexturePath);
 #endif
@@ -32,10 +32,11 @@ public:
 	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) override;
 
 private:
-	bool CreateTextureFromMemory();
+	bool CreateTexture(bool bFromSharedMemory);
 
 	std::vector<uint8_t> TextureData;
 	std::vector<UHRenderBuffer<uint8_t>> RawStageBuffers;
+	bool bSharedMemory;
 
 	friend UHGraphic;
 };

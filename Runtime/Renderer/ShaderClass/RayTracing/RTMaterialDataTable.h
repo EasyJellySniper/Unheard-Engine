@@ -11,4 +11,6 @@ public:
 		AddLayoutBinding(NumOfMaterials, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
 		CreateDescriptor();
 	}
+
+	virtual void OnCompile() override {}
 };

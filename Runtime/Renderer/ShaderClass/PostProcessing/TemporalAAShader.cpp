@@ -14,7 +14,12 @@ UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 	
 	CreateDescriptor();
-	ShaderCS = InGfx->RequestShader("TemporalAACSShader", "Shaders/PostProcessing/TemporalAAComputeShader.hlsl", "TemporalAACS", "cs_6_0");
+	OnCompile();
+}
+
+void UHTemporalAAShader::OnCompile()
+{
+	ShaderCS = Gfx->RequestShader("TemporalAACSShader", "Shaders/PostProcessing/TemporalAAComputeShader.hlsl", "TemporalAACS", "cs_6_0");
 
 	// state
 	UHComputePassInfo CInfo = UHComputePassInfo(PipelineLayout);

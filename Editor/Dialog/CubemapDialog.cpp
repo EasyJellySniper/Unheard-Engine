@@ -59,6 +59,9 @@ void UHCubemapDialog::Update()
         return;
     }
 
+    // check the creation before ImGui kicks off
+    TextureCreationDialog->CheckPendingCubeCreation();
+
     // check if there is any texture DS to remove
     if (CubeDSToRemove.size() > 0)
     {

@@ -4,7 +4,8 @@
 
 UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bHasEnvCube
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHTranslucentPassShader), InMat)
+	: UHShaderClass(InGfx, Name, typeid(UHTranslucentPassShader), InMat, InRenderPass)
+	, bHasEnvCubemap(bHasEnvCube)
 {
 	// sys, obj, mat consts
 	for (int32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
@@ -34,31 +35,35 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	CreateMaterialDescriptor(ExtraLayouts);
+	OnCompile();
+}
 
+void UHTranslucentPassShader::OnCompile()
+{
 	// define macros
-	std::vector<std::string> VSDefines = InMat->GetMaterialDefines();
-	if (bHasEnvCube)
+	std::vector<std::string> VSDefines = MaterialCache->GetMaterialDefines();
+	if (bHasEnvCubemap)
 	{
 		VSDefines.push_back("WITH_ENVCUBE");
 	}
 
 	std::vector<std::string> PSDefines = VSDefines;
-	if (InGfx->IsRayTracingEnabled())
+	if (Gfx->IsRayTracingEnabled())
 	{
 		PSDefines.push_back("WITH_RTSHADOWS");
 	}
 
-	ShaderVS = InGfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", VSDefines);
+	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", VSDefines);
 	UHMaterialCompileData Data{};
-	Data.MaterialCache = InMat;
-	ShaderPS = InGfx->RequestMaterialShader("TranslucentPixelShader", "Shaders/TranslucentPixelShader.hlsl", "TranslucentPS", "ps_6_0", Data, PSDefines);
+	Data.MaterialCache = MaterialCache;
+	ShaderPS = Gfx->RequestMaterialShader("TranslucentPixelShader", "Shaders/TranslucentPixelShader.hlsl", "TranslucentPS", "ps_6_0", Data, PSDefines);
 
 	// states
-	MaterialPassInfo = UHRenderPassInfo(InRenderPass
+	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
 		// translucent doesn't output depth
 		, UHDepthInfo(true, false, VK_COMPARE_OP_GREATER_OR_EQUAL)
-		, InMat->GetCullMode()
-		, InMat->GetBlendMode()
+		, MaterialCache->GetCullMode()
+		, MaterialCache->GetBlendMode()
 		, ShaderVS
 		, ShaderPS
 		, 1

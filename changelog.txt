@@ -423,4 +423,11 @@ Finished high-quality BC6H compression!
 31-10-2023: Started adding cubemap editor. Also started adding cubemap asset management.
 Now creation, import, and export cubemap works properly. Integrated sky cubemap to skylight component, and removed redundant skybox renderer.
 
-01-11-2023: Refactored shared resources in renderer.
+01-11-2023: Refactored shared resources in renderer. Fixed related error after validation layer is back.
+Still working on the panorama map to cube map.
+02-11-2023: Got some progress on the map conversion. Next is to deal with the seam artifact.
+The Y faces still need a better formula... 
+Finally correct the formula! Next is to deal with mipmap and compression.
+
+03-11-2023: Mipmap generation and data transfer is done for panorama-to-cubemap creation. Deal with compression next.
+Finished texture cube creation from panorama.

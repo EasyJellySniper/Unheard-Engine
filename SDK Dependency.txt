@@ -16,4 +16,5 @@ Viking Huts is downloaded from CGTrader:
 https://www.cgtrader.com/free-3d-models/exterior/house/viking-hut
 
 Skybox HDRI from:
-https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky
+https://polyhaven.com/a/table_mountain_1_puresky
+https://polyhaven.com/a/kloppenheim_07_puresky

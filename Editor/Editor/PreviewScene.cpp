@@ -75,7 +75,7 @@ UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InG
 	SwapChainFrameBuffer.resize(CreateInfo.minImageCount);
 	for (size_t Idx = 0; Idx < CreateInfo.minImageCount; Idx++)
 	{
-		SwapChainRT[Idx] = Gfx->RequestRenderTexture("PreviewSceneSwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, UH_FORMAT_BGRA8_SRGB, false);
+		SwapChainRT[Idx] = Gfx->RequestRenderTexture("PreviewSceneSwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, UH_FORMAT_BGRA8_SRGB);
 		SwapChainFrameBuffer[Idx] = Gfx->CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
 	}
 

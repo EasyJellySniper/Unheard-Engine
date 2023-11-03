@@ -11,5 +11,11 @@ public:
 		, const std::vector<uint32_t>& InAnyHits
 		, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 
+	virtual void OnCompile() override;
+
 	void BindParameters();
+
+private:
+	std::vector<uint32_t> ClosestHitIDs;
+	std::vector<uint32_t> AnyHitIDs;
 };

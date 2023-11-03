@@ -17,8 +17,12 @@ UHLightCullingShader::UHLightCullingShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor();
+	OnCompile();
+}
 
-	ShaderCS = InGfx->RequestShader("LightCullingComputeShader", "Shaders/LightCullingComputeShader.hlsl", "LightCullingCS", "cs_6_0");
+void UHLightCullingShader::OnCompile()
+{
+	ShaderCS = Gfx->RequestShader("LightCullingComputeShader", "Shaders/LightCullingComputeShader.hlsl", "LightCullingCS", "cs_6_0");
 
 	// state
 	UHComputePassInfo Info(PipelineLayout);

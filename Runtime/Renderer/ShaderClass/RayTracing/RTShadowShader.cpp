@@ -32,22 +32,30 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor(ExtraLayouts);
-	RayGenShader = InGfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowRayGen", "lib_6_3");
-	MissShader = InGfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowMiss", "lib_6_3");
 
-	UHRayTracingInfo RTInfo{};
-	RTInfo.PipelineLayout = PipelineLayout;
-	RTInfo.RayGenShader = RayGenShader;
-	RTInfo.ClosestHitShaders = InClosestHits;
-	RTInfo.AnyHitShaders = InAnyHits;
-	RTInfo.MissShader = MissShader;
-	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
-	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
-	RTState = InGfx->RequestRTState(RTInfo);
+	ClosestHitIDs = InClosestHits;
+	AnyHitIDs = InAnyHits;
+	OnCompile();
 
 	InitRayGenTable();
 	InitMissTable();
 	InitHitGroupTable(InAnyHits.size());
+}
+
+void UHRTShadowShader::OnCompile()
+{
+	RayGenShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowRayGen", "lib_6_3");
+	MissShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowMiss", "lib_6_3");
+
+	UHRayTracingInfo RTInfo{};
+	RTInfo.PipelineLayout = PipelineLayout;
+	RTInfo.RayGenShader = RayGenShader;
+	RTInfo.ClosestHitShaders = ClosestHitIDs;
+	RTInfo.AnyHitShaders = AnyHitIDs;
+	RTInfo.MissShader = MissShader;
+	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
+	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
+	RTState = Gfx->RequestRTState(RTInfo);
 }
 
 void UHRTShadowShader::BindParameters()

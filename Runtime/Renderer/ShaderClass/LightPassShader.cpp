@@ -3,6 +3,7 @@
 
 UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t RTInstanceCount)
 	: UHShaderClass(InGfx, Name, typeid(UHLightPassShader), nullptr)
+	, RTObjectCount(RTInstanceCount)
 {
 	// Lighting pass: bind system, light buffer, GBuffers, and samplers, all fragment only since it's a full screen quad draw
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -22,13 +23,17 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor();
+	OnCompile();
+}
 
+void UHLightPassShader::OnCompile()
+{
 	std::vector<std::string> Defines;
-	if (RTInstanceCount > 0)
+	if (RTObjectCount > 0)
 	{
 		Defines.push_back("WITH_RTSHADOWS");
 	}
-	ShaderCS = InGfx->RequestShader("LightComputeShader", "Shaders/LightComputeShader.hlsl", "LightCS", "cs_6_0", Defines);
+	ShaderCS = Gfx->RequestShader("LightComputeShader", "Shaders/LightComputeShader.hlsl", "LightCS", "cs_6_0", Defines);
 
 	// state
 	UHComputePassInfo Info(PipelineLayout);

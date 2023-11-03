@@ -99,7 +99,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	DiffuseFormat = UH_FORMAT_RGBA8_SRGB;
 	NormalFormat = UH_FORMAT_ARGB2101010;
 	SpecularFormat = UH_FORMAT_RGBA8_UNORM;
-	SceneResultFormat = UH_FORMAT_ABGR2101010;
+	SceneResultFormat = UH_FORMAT_RGBA16F;
 	DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UH_FORMAT_X8_D24 : UH_FORMAT_D32F;
 	HDRFormat = UH_FORMAT_RGBA16F;
 
@@ -332,7 +332,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 {
 	// bindless table
 	TextureTable = MakeUnique<UHTextureTable>(GraphicInterface, "TextureTable");
-	SamplerTable = MakeUnique<UHSamplerTable>(GraphicInterface, "SamplerTable", static_cast<uint32_t>(GraphicInterface->GetSamplers().size()));
+	SamplerTable = MakeUnique<UHSamplerTable>(GraphicInterface, "SamplerTable");
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout()};
 
 	// this loop will create all material shaders
@@ -436,10 +436,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	// ------------------------------------------------ Bindless table update
 	UpdateTextureDescriptors();
-
-	// bind sampler table
-	std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
-	SamplerTable->BindSampler(Samplers, 0);
 
 	// ------------------------------------------------ Depth pass descriptor update
 	if (bEnableDepthPrePass)
@@ -705,35 +701,35 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	RenderResolution.height = ConfigInterface->RenderingSetting().RenderHeight;
 
 	// color buffer (A channel as AO)
-	GSceneDiffuse = GraphicInterface->RequestRenderTexture("GBufferA", RenderResolution, DiffuseFormat, false);
+	GSceneDiffuse = GraphicInterface->RequestRenderTexture("GBufferA", RenderResolution, DiffuseFormat);
 
 	// normal buffer
-	GSceneNormal = GraphicInterface->RequestRenderTexture("GBufferB", RenderResolution, NormalFormat, true);
+	GSceneNormal = GraphicInterface->RequestRenderTexture("GBufferB", RenderResolution, NormalFormat);
 
 	// material buffer (M/R/S)
-	GSceneMaterial = GraphicInterface->RequestRenderTexture("GBufferC", RenderResolution, SpecularFormat, true);
+	GSceneMaterial = GraphicInterface->RequestRenderTexture("GBufferC", RenderResolution, SpecularFormat);
 
 	// scene result in HDR
-	GSceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, true, true);
+	GSceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, true);
 
 	// uv grad buffer
-	GSceneMip = GraphicInterface->RequestRenderTexture("SceneMip", RenderResolution, SceneMipFormat, true);
+	GSceneMip = GraphicInterface->RequestRenderTexture("SceneMip", RenderResolution, SceneMipFormat);
 
 	// depth buffer, also needs another depth buffer with translucent
-	GSceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat, true);
-	GSceneTranslucentDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat, true);
+	GSceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat);
+	GSceneTranslucentDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat);
 
 	// vertex normal buffer for saving the "search ray" in RT shadows
-	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat, true);
-	GSceneTranslucentVertexNormal = GraphicInterface->RequestRenderTexture("SceneTranslucentVertexNormal", RenderResolution, NormalFormat, true);
+	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat);
+	GSceneTranslucentVertexNormal = GraphicInterface->RequestRenderTexture("SceneTranslucentVertexNormal", RenderResolution, NormalFormat);
 
 	// post process buffer, use the same format as scene result
-	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true, true);
+	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
 	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, SceneResultFormat, true);
 
 	// motion vector buffer
-	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat, true);
-	GPrevMotionVectorRT = GraphicInterface->RequestRenderTexture("PrevMotionVectorRT", RenderResolution, MotionFormat, true);
+	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
+	GPrevMotionVectorRT = GraphicInterface->RequestRenderTexture("PrevMotionVectorRT", RenderResolution, MotionFormat);
 
 	// rt shadows buffer
 	if (GraphicInterface->IsRayTracingEnabled())
@@ -741,8 +737,8 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true, true);
-		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat, true, true);
+		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true);
+		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat, true);
 	}
 
 	// collect image views for creaing one frame buffer
@@ -1024,8 +1020,8 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers()
 		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true, true);
-		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat, true, true);
+		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat);
+		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat);
 
 		// need to rewrite descriptors after resize
 		UpdateDescriptors();
@@ -1049,8 +1045,19 @@ void UHDeferredShadingRenderer::UpdateTextureDescriptors()
 		Texes.push_back(nullptr);
 		ReferencedSize++;
 	}
-
 	TextureTable->BindImage(Texes, 0);
+
+	// bind sampler table
+	std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
+	ReferencedSize = Samplers.size();
+	while (ReferencedSize < GSamplerTableSize)
+	{
+		// fill with the first sampler as desciptor sampler can't be null
+		Samplers.push_back(Samplers[0]);
+		ReferencedSize++;
+	}
+
+	SamplerTable->BindSampler(Samplers, 0);
 }
 
 #if WITH_EDITOR
@@ -1068,7 +1075,7 @@ UHDeferredShadingRenderer* UHDeferredShadingRenderer::GetRendererEditorOnly()
 	return SceneRendererEditorOnly;
 }
 
-void UHDeferredShadingRenderer::RefreshSkyLight()
+void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 {
 	GSkyLightCube = GetCurrentSkyCube();
 	if (GSkyLightCube && !GSkyLightCube->IsBuilt())
@@ -1079,12 +1086,31 @@ void UHDeferredShadingRenderer::RefreshSkyLight()
 		GraphicInterface->EndOneTimeCmd(Cmd);
 	}
 
-	// refresh all materials
-	const std::vector<UHMaterial*> Mats = AssetManagerInterface->GetMaterials();
-	for (UHMaterial* Mat : Mats)
+	GraphicInterface->WaitGPU();
+	SkyPassShader->BindImage(GSkyLightCube, 1);
+
+	if (bNeedRecompile)
 	{
-		Mat->SetCompileFlag(FullCompileTemporary);
-		UHDeferredShadingRenderer::GetRendererEditorOnly()->RefreshMaterialShaders(Mat, false);
+		// recompiling all base and translucent shaders
+		for (auto& BaseShader : BasePassShaders)
+		{
+			BaseShader.second->OnCompile();
+		}
+
+		for (auto& TransShader : TranslucentPassShaders)
+		{
+			TransShader.second->OnCompile();
+		}
+	}
+
+	for (auto& BaseShader : BasePassShaders)
+	{
+		BaseShader.second->BindImage(GSkyLightCube, 6);
+	}
+
+	for (auto& TransShader : TranslucentPassShaders)
+	{
+		TransShader.second->BindImage(GSkyLightCube, 13);
 	}
 }
 
@@ -1110,8 +1136,8 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 		}
 	}
 
-	// re-create shader and bind parameters
-	if (CompileFlag == FullCompileTemporary || CompileFlag == FullCompileResave)
+	// recreate shader if need to assign renderer group again
+	if (bNeedReassignRendererGroup)
 	{
 		for (UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
@@ -1189,7 +1215,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 	const int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const bool bReleaseDescriptorOnly = CompileFlag == RendererMaterialChanged;
 
-	if (CompileFlag == FullCompileTemporary || CompileFlag == FullCompileResave || CompileFlag == RendererMaterialChanged)
+	if (bNeedReassignRendererGroup || CompileFlag == RendererMaterialChanged)
 	{
 		// release shaders if it's re-compiling
 		if (bEnableDepthPrePass)
@@ -1201,6 +1227,26 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 		SafeReleaseShaderPtr(MotionOpaqueShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 		SafeReleaseShaderPtr(MotionTranslucentShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 		SafeReleaseShaderPtr(TranslucentPassShaders, RendererBufferIndex, bReleaseDescriptorOnly);
+	}
+	else if (CompileFlag == FullCompileTemporary || CompileFlag == FullCompileResave)
+	{
+		// compile only
+		if (bIsOpaque)
+		{
+			if (bEnableDepthPrePass)
+			{
+				DepthPassShaders[RendererBufferIndex]->OnCompile();
+			}
+
+			BasePassShaders[RendererBufferIndex]->OnCompile();
+
+			MotionOpaqueShaders[RendererBufferIndex]->OnCompile();
+		}
+		else
+		{
+			MotionTranslucentShaders[RendererBufferIndex]->OnCompile();
+			TranslucentPassShaders[RendererBufferIndex]->OnCompile();
+		}
 	}
 	else if (CompileFlag == BindOnly)
 	{

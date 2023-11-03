@@ -8,7 +8,7 @@ Texture2D MotionTexture : register(t4);
 Texture2D HistoryMotionTexture : register(t5);
 SamplerState LinearSampler : register(s6);
 
-static const float GHistoryWeightMin = 0.5f;
+static const float GHistoryWeightMin = 0.8f;
 static const float GHistoryWeightMax = 0.8f;
 static const float GMotionDiffScale = 100.0f;
 

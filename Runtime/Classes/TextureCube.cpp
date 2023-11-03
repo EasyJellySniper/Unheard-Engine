@@ -4,13 +4,13 @@
 #include "Utility.h"
 
 UHTextureCube::UHTextureCube()
-	: UHTextureCube("", VkExtent2D(), UH_FORMAT_NONE)
+	: UHTextureCube("", VkExtent2D(), UH_FORMAT_NONE, UHTextureSettings())
 {
 
 }
 
-UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat)
-	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
+UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings)
+	: UHTexture(InName, InExtent, InFormat, InSettings)
 	, bIsCubeBuilt(false)
 {
 	TextureType = TextureCube;
@@ -142,7 +142,7 @@ void UHTextureCube::Build(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuild
 		return;
 	}
 
-	MipMapCount = static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1;
+	MipMapCount = TextureSettings.bUseMipmap ? static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1 : 1;
 	for (int32_t Idx = 0; Idx < 6; Idx++)
 	{
 		if (Slices.size() > 0 && Slices[Idx] != nullptr)
@@ -228,9 +228,9 @@ void UHTextureCube::UploadSlice(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRende
 		Region.imageExtent = { Extent.width >> Mdx, Extent.height >> Mdx, 1 };
 
 		// transition to dst before copy
-		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx, SliceIndex);
 		vkCmdCopyBufferToImage(InCmd, SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
-		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx, SliceIndex);
 	}
 }
 
@@ -242,7 +242,7 @@ bool UHTextureCube::CreateCube(std::vector<UHTexture2D*> InSlices)
 	// setup view type as Cube, the data is actually a 2D texture array
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D
 		, VK_IMAGE_VIEW_TYPE_CUBE, GetFormat(), GetExtent()
-		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, true);
+		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false);
 
 	return Create(Info, GfxCache->GetImageSharedMemory());
 }
@@ -251,7 +251,7 @@ bool UHTextureCube::CreateCube()
 {
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D
 		, VK_IMAGE_VIEW_TYPE_CUBE, GetFormat(), GetExtent()
-		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, true);
+		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false);
 
 	return Create(Info, GfxCache->GetImageSharedMemory());
 }

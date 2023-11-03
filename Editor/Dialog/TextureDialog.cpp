@@ -43,6 +43,13 @@ void UHTextureDialog::Init()
     TextureCreationDialog = MakeUnique<UHTextureCreationDialog>(Gfx, this, &TextureImporter);
     CurrentTextureIndex = UHINDEXNONE;
     CurrentTexture = nullptr;
+
+    if (CurrentTextureDS)
+    {
+        Gfx->WaitGPU();
+        ImGui_ImplVulkan_RemoveTexture(CurrentTextureDS);
+    }
+    CurrentTextureDS = nullptr;
 }
 
 void UHTextureDialog::Update()
@@ -51,6 +58,9 @@ void UHTextureDialog::Update()
     {
         return;
     }
+
+    // check the creation before ImGui kicks off
+    TextureCreationDialog->CheckPendingTextureCreation();
 
     // check if there is any texture DS to remove
     if (TextureDSToRemove.size() > 0)
@@ -235,7 +245,7 @@ void UHTextureDialog::ControlApply()
     std::vector<uint8_t> RawData = TextureImporter.LoadTexture(RawSourcePath, W, H);
     CurrentTexture->SetExtent(W, H);
     CurrentTexture->SetTextureData(RawData);
-    CurrentTexture->Recreate();
+    CurrentTexture->Recreate(true);
     Renderer->UpdateTextureDescriptors();
 
     const bool bIsNormalChanged = NewSetting.bIsNormal != OldSetting.bIsNormal || NewSetting.CompressionSetting != OldSetting.CompressionSetting;

@@ -8,7 +8,7 @@ std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
 std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> GMaterialStateTable;
 std::unordered_map<uint32_t, UHComputeState*> GComputeStateTable;
 
-UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_index InType, UHMaterial* InMat)
+UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_index InType, UHMaterial* InMat, VkRenderPass InRenderPass)
 	: Gfx(InGfx)
 	, Name(InName)
 	, TypeIndexCache(InType)
@@ -24,6 +24,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, RTState(nullptr)
 	, RayGenTable(nullptr)
 	, HitGroupTable(nullptr)
+	, RenderPassCache(InRenderPass)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{

@@ -21,7 +21,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 	float LightRotSpd = 5.0f * DeltaTime;
 	if (TestType == DayTest)
 	{
-		DefaultDirectionalLight.Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+		//DefaultDirectionalLight.Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
 	}
 
 	// move geo364
@@ -53,7 +53,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		float MaxRadius = 15.0f;
 		for (int32_t Idx = 0; Idx < 27; Idx++)
 		{
-			float NewIntensity = MathHelpers::Lerp(8.0f, 6.0f, PointLightTimeCounter);
+			float NewIntensity = MathHelpers::Lerp(4.0f, 3.0f, PointLightTimeCounter);
 			TestPointLights[Idx]->SetIntensity(NewIntensity);
 			TestPointLights2[Idx]->SetIntensity(NewIntensity);
 
@@ -122,16 +122,24 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	// setup default light
 	DefaultDirectionalLight.SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
-	DefaultDirectionalLight.SetIntensity(TestType != DayTest ? 0.5f : 4.5f);
-	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, 250, 0));
+	DefaultDirectionalLight.SetIntensity(TestType != DayTest ? 0.2f : 4.5f);
+	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, -120, 0));
 	InScene->AddDirectionalLight(&DefaultDirectionalLight);
 
 	// setup default sky light
 	DefaultSkyLight.SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
 	DefaultSkyLight.SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
-	DefaultSkyLight.SetSkyIntensity(TestType != DayTest ? 0.1f : 1.0f);
+	DefaultSkyLight.SetSkyIntensity(TestType != DayTest ? 0.15f : 1.0f);
 	DefaultSkyLight.SetGroundIntensity(TestType != DayTest ? 0.5f : 1.5f);
-	DefaultSkyLight.SetCubemap(InAsset->GetCubemapByName("posx_Cube"));
+
+	if (TestType == DayTest)
+	{
+		DefaultSkyLight.SetCubemap(InAsset->GetCubemapByName("table_mountain_1_puresky_4k_Cube"));
+	}
+	else
+	{
+		DefaultSkyLight.SetCubemap(InAsset->GetCubemapByName("kloppenheim_07_puresky_4k_Cube"));
+	}
 	InScene->SetSkyLight(&DefaultSkyLight);
 
 	// setup default camera
@@ -146,7 +154,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	SecondDirectionalLight.SetRotation(XMFLOAT3(45, -30, 0));
 	if (TestType == DayTest)
 	{
-		InScene->AddDirectionalLight(&SecondDirectionalLight);
+		//InScene->AddDirectionalLight(&SecondDirectionalLight);
 	}
 
 	if (TestType == PointLightNight)
@@ -164,7 +172,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
 				TestPointLights[LightIndex] = MakeUnique<UHPointLightComponent>();
-				TestPointLights[LightIndex]->SetIntensity(8.0f);
+				TestPointLights[LightIndex]->SetIntensity(1.5f);
 				TestPointLights[LightIndex]->SetRadius(10.0f);
 				TestPointLights[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
 				TestPointLights[LightIndex]->SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
@@ -184,7 +192,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
 				TestPointLights2[LightIndex] = MakeUnique<UHPointLightComponent>();
-				TestPointLights2[LightIndex]->SetIntensity(8.0f);
+				TestPointLights2[LightIndex]->SetIntensity(1.5f);
 				TestPointLights2[LightIndex]->SetRadius(10.0f);
 				TestPointLights2[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
 				TestPointLights2[LightIndex]->SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
@@ -208,7 +216,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
 				TestSpotLights[LightIndex] = MakeUnique<UHSpotLightComponent>();
-				TestSpotLights[LightIndex]->SetIntensity(8.0f);
+				TestSpotLights[LightIndex]->SetIntensity(4.0f);
 				TestSpotLights[LightIndex]->SetRadius(20.0f);
 				TestSpotLights[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
 				TestSpotLights[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
@@ -231,7 +239,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
 				TestSpotLights2[LightIndex] = MakeUnique<UHSpotLightComponent>();
-				TestSpotLights2[LightIndex]->SetIntensity(8.0f);
+				TestSpotLights2[LightIndex]->SetIntensity(4.0f);
 				TestSpotLights2[LightIndex]->SetRadius(20.0f);
 				TestSpotLights2[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
 				TestSpotLights2[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));

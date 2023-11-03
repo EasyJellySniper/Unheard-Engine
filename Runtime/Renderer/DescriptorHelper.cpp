@@ -9,8 +9,8 @@ UHDescriptorHelper::UHDescriptorHelper(VkDevice InDevice, VkDescriptorSet InSet)
 
 UHDescriptorHelper::~UHDescriptorHelper()
 {
-	LogicalDevice = VK_NULL_HANDLE;
-	DescriptorSetToWrite = VK_NULL_HANDLE;
+	LogicalDevice = nullptr;
+	DescriptorSetToWrite = nullptr;
 }
 
 void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite)
@@ -39,7 +39,7 @@ void UHDescriptorHelper::WriteImage(const std::vector<UHTexture*>& InTextures, u
 		// allow null image view
 		VkDescriptorImageInfo NewInfo{};
 		NewInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		NewInfo.imageView = (InTextures[Idx] != nullptr) ? InTextures[Idx]->GetImageView() : VK_NULL_HANDLE;
+		NewInfo.imageView = (InTextures[Idx] != nullptr) ? InTextures[Idx]->GetImageView() : nullptr;
 		NewInfos[Idx] = NewInfo;
 	}
 
@@ -78,7 +78,7 @@ void UHDescriptorHelper::WriteSampler(const std::vector<UHSampler*>& InSamplers,
 	for (size_t Idx = 0; Idx < NewInfos.size(); Idx++)
 	{
 		VkDescriptorImageInfo NewInfo{};
-		NewInfo.sampler = InSamplers[Idx]->GetSampler();
+		NewInfo.sampler = InSamplers[Idx] ? InSamplers[Idx]->GetSampler() : nullptr;
 		NewInfos[Idx] = NewInfo;
 	}
 

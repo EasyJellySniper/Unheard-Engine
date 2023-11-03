@@ -31,19 +31,18 @@ enum UHTextureCompressionSettings
 struct UHTextureInfo
 {
 	UHTextureInfo()
-		: UHTextureInfo(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, UH_FORMAT_NONE, VkExtent2D(), VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, false)
+		: UHTextureInfo(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, UH_FORMAT_NONE, VkExtent2D(), VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false)
 	{
 	}
 
 	UHTextureInfo(VkImageType InType, VkImageViewType InViewType, UHTextureFormat InFormat, VkExtent2D InExtent, VkImageUsageFlags InUsage
-		, bool bInIsRT, bool bInUseMipMap)
+		, bool bInIsRT)
 		: Type(InType)
 		, ViewType(InViewType)
 		, Format(InFormat)
 		, Extent(InExtent)
 		, Usage(InUsage)
 		, bIsRT(bInIsRT)
-		, bUseMipMap(bInUseMipMap)
 		, bIsShadowRT(false)
 		, ReboundOffset(~0)
 	{
@@ -56,7 +55,6 @@ struct UHTextureInfo
 	VkExtent2D Extent;
 	VkImageUsageFlags Usage;
 	bool bIsRT;
-	bool bUseMipMap;
 	bool bIsShadowRT;
 	uint64_t ReboundOffset;
 };
@@ -69,6 +67,7 @@ struct UHTextureSettings
 		, CompressionSetting(CompressionNone)
 		, bIsCompressed(false)
 		, bIsHDR(false)
+		, bUseMipmap(true)
 	{
 	}
 
@@ -77,6 +76,7 @@ struct UHTextureSettings
 	UHTextureCompressionSettings CompressionSetting;
 	bool bIsCompressed;
 	bool bIsHDR;
+	bool bUseMipmap;
 };
 
 class UHGraphic;
@@ -94,7 +94,6 @@ public:
 	virtual void GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder) {}
 
 #if WITH_EDITOR
-	virtual void Recreate() {}
 	virtual std::vector<uint8_t> ReadbackTextureData() { return std::vector<uint8_t>(); }
 	void SetTextureSettings(UHTextureSettings InSetting);
 	void SetRawSourcePath(std::string InPath);
@@ -138,6 +137,7 @@ public:
 
 	UHTextureSettings GetTextureSettings() const;
 
+	void SetHasUploadedToGPU(bool bFlag);
 	bool HasUploadedToGPU() const;
 
 	// is depth format?

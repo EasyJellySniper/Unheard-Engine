@@ -17,8 +17,10 @@ struct UHShaderRecord
 class UHShaderClass : public UHObject
 {
 public:
-	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType, UHMaterial* InMat);
+	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType, UHMaterial* InMat = nullptr, VkRenderPass InRenderPass = nullptr);
 	void Release(bool bDescriptorOnly = false);
+
+	virtual void OnCompile() = 0;
 
 	template <typename T>
 	void BindConstant(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
@@ -188,6 +190,7 @@ protected:
 	std::string Name;
 	std::type_index TypeIndexCache;
 	UHMaterial* MaterialCache;
+	VkRenderPass RenderPassCache;
 	UHRenderPassInfo MaterialPassInfo;
 
 	std::vector<VkDescriptorSetLayoutBinding> LayoutBindings;

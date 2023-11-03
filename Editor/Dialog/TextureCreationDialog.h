@@ -4,6 +4,7 @@
 #if WITH_EDITOR
 #include <unordered_map>
 #include "../Classes/TextureImporter.h"
+#include "../../../Runtime/Renderer/ShaderClass/PanoramaToCubemapShader.h"
 
 class UHTextureDialog;
 class UHCubemapDialog;
@@ -17,13 +18,15 @@ public:
 	UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDialog* InCubemapDialog, UHAssetManager* InAssetMgr);
 
 	virtual void Update() override;
+	void CheckPendingTextureCreation();
+	void CheckPendingCubeCreation();
 
 private:
 	void ShowTexture2DCreationUI();
 	void ShowCubemapCreationUI();
 
 	void ControlTextureCreate();
-	void ControlCubemapCreate(bool bIsPanorama);
+	void ControlCubemapCreate();
 	void ControlBrowserInput();
 	void ControlBrowserOutputFolder();
 
@@ -38,6 +41,10 @@ private:
 	std::string CurrentOutputPath;
 	std::string CurrentSelectedSlice[6];
 	std::string CurrentSelectedPanorama;
+
+	bool bNeedCreatingTexture;
+	bool bNeedCreatingCube;
+	bool bCreatingCubeFromPanorama;
 };
 
 #endif

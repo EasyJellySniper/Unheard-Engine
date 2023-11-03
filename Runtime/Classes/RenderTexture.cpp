@@ -2,12 +2,11 @@
 #include "../Classes/Utility.h"
 #include "../../UnheardEngine.h"
 
-UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bReadWrite, bool bShadowRT)
+UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bReadWrite)
 	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
 	, bIsReadWrite(bReadWrite)
-	, bIsShadowRT(bShadowRT)
 {
-	TextureSettings.bIsLinear = bIsLinear;
+
 }
 
 // create image based on format and extent info
@@ -19,8 +18,8 @@ bool UHRenderTexture::CreateRT()
 		Usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 	}
 
-	UHTextureInfo Info(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, ImageFormat, ImageExtent, Usage, true, false);
-	Info.bIsShadowRT = bIsShadowRT;
+	UHTextureInfo Info(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, ImageFormat, ImageExtent, Usage, true);
+	TextureSettings.bUseMipmap = false;
 
 	// UHE doesn't use shared memory for RTs at the momment, since they could resize
 	return Create(Info, nullptr);

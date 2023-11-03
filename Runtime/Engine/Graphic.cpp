@@ -172,6 +172,7 @@ void UHGraphic::Release()
 
 	for (auto& Cube : TextureCubePools)
 	{
+		Cube->ReleaseCPUData();
 		Cube->Release();
 		Cube.reset();
 	}
@@ -949,13 +950,13 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D
 	return CreateFrameBuffer(Views, InRenderPass, InExtent);
 }
 
-VkFramebuffer UHGraphic::CreateFrameBuffer(VkImageView InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent) const
+VkFramebuffer UHGraphic::CreateFrameBuffer(VkImageView InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
 {
 	std::vector<VkImageView> Views{ InImageView };
-	return CreateFrameBuffer(Views, InRenderPass, InExtent);
+	return CreateFrameBuffer(Views, InRenderPass, InExtent, Layers);
 }
 
-VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent) const
+VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
 {
 	VkFramebuffer NewFrameBuffer = nullptr;
 
@@ -967,7 +968,7 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView,
 	FramebufferInfo.pAttachments = InImageView.data();
 	FramebufferInfo.width = InExtent.width;
 	FramebufferInfo.height = InExtent.height;
-	FramebufferInfo.layers = 1;
+	FramebufferInfo.layers = Layers;
 
 	if (vkCreateFramebuffer(LogicalDevice, &FramebufferInfo, nullptr, &NewFrameBuffer) != VK_SUCCESS)
 	{
@@ -989,17 +990,16 @@ UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 }
 
 // request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite, bool bIsShadowRT)
+UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite)
 {
-	return RequestRenderTexture(InName, nullptr, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
+	return RequestRenderTexture(InName, nullptr, InExtent, InFormat, bIsReadWrite);
 }
 
 // request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsLinear, bool bIsReadWrite
-	, bool bIsShadowRT)
+UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite)
 {
 	// return cached if there is already one
-	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsLinear, bIsReadWrite, bIsShadowRT);
+	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsReadWrite);
 	NewRT->SetImage(InImage);
 
 	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, *NewRT.get());
@@ -1034,7 +1034,7 @@ void UHGraphic::RequestReleaseRT(UHRenderTexture* InRT)
 	UHUtilities::RemoveByIndex(RTPools, Idx);
 }
 
-UHTexture2D* UHGraphic::RequestTexture2D(UHTexture2D& LoadedTex)
+UHTexture2D* UHGraphic::RequestTexture2D(UHTexture2D& LoadedTex, bool bUseSharedMemory)
 {
 	// return cached if there is already one
 	int32_t Idx = UHUtilities::FindIndex<UHTexture2D>(Texture2DPools, LoadedTex);
@@ -1049,13 +1049,26 @@ UHTexture2D* UHGraphic::RequestTexture2D(UHTexture2D& LoadedTex)
 	NewTex->SetGfxCache(this);
 	NewTex->SetTextureData(LoadedTex.GetTextureData());
 
-	if (NewTex->CreateTextureFromMemory())
+	if (NewTex->CreateTexture(bUseSharedMemory))
 	{
 		Texture2DPools.push_back(std::move(NewTex));
 		return Texture2DPools.back().get();
 	}
 
 	return nullptr;
+}
+
+void UHGraphic::RequestReleaseTexture2D(UHTexture2D* InTex)
+{
+	int32_t Idx = UHUtilities::FindIndex<UHTexture2D>(Texture2DPools, *InTex);
+	if (Idx == UHINDEXNONE)
+	{
+		return;
+	}
+
+	Texture2DPools[Idx]->Release();
+	Texture2DPools[Idx].reset();
+	UHUtilities::RemoveByIndex(Texture2DPools, Idx);
 }
 
 bool AreTextureSliceConsistent(std::string InArrayName, std::vector<UHTexture2D*> InTextures)
@@ -1111,7 +1124,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 		return nullptr;
 	}
 
-	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat());
+	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(InName, InTextures[0]->GetExtent(), InTextures[0]->GetFormat(), InTextures[0]->GetTextureSettings());
 	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, *NewCube.get());
 	if (Idx != UHINDEXNONE)
 	{
@@ -1133,7 +1146,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 // light version of texture cube request, usually called when an existed asset is imported
 UHTextureCube* UHGraphic::RequestTextureCube(UHTextureCube& LoadedCube)
 {
-	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(LoadedCube.GetName(), LoadedCube.GetExtent(), LoadedCube.GetFormat());
+	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(LoadedCube.GetName(), LoadedCube.GetExtent(), LoadedCube.GetFormat(), LoadedCube.GetTextureSettings());
 	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, *NewCube.get());
 	if (Idx != UHINDEXNONE)
 	{
@@ -1801,7 +1814,7 @@ bool UHGraphic::CreateSwapChain()
 	SwapChainFrameBuffer.resize(ImageCount);
 	for (size_t Idx = 0; Idx < ImageCount; Idx++)
 	{
-		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, TargetFormat, false);
+		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, TargetFormat);
 		SwapChainFrameBuffer[Idx] = CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
 	}
 

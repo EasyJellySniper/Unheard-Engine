@@ -85,7 +85,7 @@ public:
 	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
 
 	static UHDeferredShadingRenderer* GetRendererEditorOnly();
-	void RefreshSkyLight();
+	void RefreshSkyLight(bool bNeedRecompile);
 	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup = false);
 	void OnRendererMaterialChanged(UHMeshRendererComponent* InRenderer, UHMaterial* OldMat, UHMaterial* NewMat);
 

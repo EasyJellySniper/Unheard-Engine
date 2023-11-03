@@ -505,7 +505,7 @@ void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D 
 	// image type must be equal
 	if (SrcInfo.viewType != DstInfo.viewType)
 	{
-		UHE_LOG(L"Inconsistent view type when calling Blit!\n");
+		UHE_LOG(L"[UHRenderBuilder::Blit] Inconsistent view type when calling Blit!\n");
 		return;
 	}
 
@@ -539,12 +539,12 @@ void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D 
 #endif
 }
 
-void UHRenderBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint32_t MipLevel, uint32_t DstArray)
+void UHRenderBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint32_t MipLevel, uint32_t DstArray, uint32_t SrcArray)
 {
 	// copy should work on the same dimension
 	if (SrcImage->GetExtent().width != DstImage->GetExtent().width || SrcImage->GetExtent().height != DstImage->GetExtent().height)
 	{
-		UHE_LOG(L"Dimension mismatched when copying texture!\n");
+		UHE_LOG(L"[UHRenderBuilder::CopyTexture] Dimension mismatched when copying texture!\n");
 		return;
 	}
 
@@ -567,6 +567,8 @@ void UHRenderBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint
 	VkImageCopy CopyInfo{};
 	CopyInfo.srcSubresource = SrcLayer;
 	CopyInfo.srcSubresource.mipLevel = MipLevel;
+	CopyInfo.srcSubresource.layerCount = 1;
+	CopyInfo.srcSubresource.baseArrayLayer = SrcArray;
 	CopyInfo.dstSubresource = DstLayer;
 	CopyInfo.dstSubresource.mipLevel = MipLevel;
 	CopyInfo.dstSubresource.layerCount = 1;

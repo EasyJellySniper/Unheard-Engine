@@ -7,13 +7,14 @@
 #include "TextureCompressor.h"
 
 UHTexture2D::UHTexture2D()
-	: UHTexture()
+	: UHTexture2D("", "", VkExtent2D(), UH_FORMAT_RGBA8_SRGB, UHTextureSettings())
 {
 
 }
 
 UHTexture2D::UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings)
 	: UHTexture(InName, InExtent, InFormat, InSettings)
+	, bSharedMemory(true)
 {
 	SourcePath = InSourcePath;
 	TextureType = Texture2D;
@@ -67,7 +68,7 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 }
 
 #if WITH_EDITOR
-void UHTexture2D::Recreate()
+void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 {
 	GfxCache->WaitGPU();
 	for (UHRenderBuffer<uint8_t>& Buffer : RawStageBuffers)
@@ -76,14 +77,18 @@ void UHTexture2D::Recreate()
 	}
 	Release();
 	TextureSettings.bIsCompressed = false;
-	CreateTextureFromMemory();
+	CreateTexture(bSharedMemory);
 
 	// upload the 1st slice and generate mip map
 	VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
 	UHRenderBuilder UploadBuilder(GfxCache, UploadCmd);
 	UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
-	GenerateMipMaps(GfxCache, UploadCmd, UploadBuilder);
+	if (bNeedGeneratMipmap)
+	{
+		GenerateMipMaps(GfxCache, UploadCmd, UploadBuilder);
+	}
 	GfxCache->EndOneTimeCmd(UploadCmd);
+
 
 	// readback CPU data for storage, this includes the mip map data
 	TextureData = ReadbackTextureData();
@@ -146,13 +151,18 @@ void UHTexture2D::Recreate()
 			Buffer.Release();
 		}
 		Release();
-		CreateTextureFromMemory();
+		CreateTexture(bSharedMemory);
 
 		// upload compressed data
 		VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
 		UHRenderBuilder UploadBuilder(GfxCache, UploadCmd);
 		UploadToGPU(GfxCache, UploadCmd, UploadBuilder);
 		GfxCache->EndOneTimeCmd(UploadCmd);
+	}
+
+	if (!bNeedGeneratMipmap)
+	{
+		bIsMipMapGenerated = true;
 	}
 }
 
@@ -312,7 +322,7 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderB
 void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRenderBuilder& InRenderBuilder)
 {
 	// generate mip maps for this texture, should be called in editor only
-	if (bIsMipMapGenerated)
+	if (bIsMipMapGenerated || !TextureSettings.bUseMipmap)
 	{
 		return;
 	}
@@ -355,13 +365,19 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, VkCommandBuffer InCmd, UHRen
 	bIsMipMapGenerated = true;
 }
 
-bool UHTexture2D::CreateTextureFromMemory()
+bool UHTexture2D::CreateTexture(bool bFromSharedMemory)
 {
 	// texture also needs SRC/DST bits for copying/blit operation
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D
-		, VK_IMAGE_VIEW_TYPE_2D, (TextureSettings.bIsLinear) ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB, ImageExtent
-		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false, true);
+		, VK_IMAGE_VIEW_TYPE_2D, ImageFormat, ImageExtent
+		, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, false);
 	Info.ReboundOffset = MemoryOffset;
+	bSharedMemory = bFromSharedMemory;
+
+	if (ImageFormat == UH_FORMAT_NONE)
+	{
+		ImageFormat = (TextureSettings.bIsLinear) ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
+	}
 
 	if (TextureSettings.bIsCompressed)
 	{
@@ -396,5 +412,5 @@ bool UHTexture2D::CreateTextureFromMemory()
 		Info.Format = UH_FORMAT_RGBA16F;
 	}
 
-	return Create(Info, GfxCache->GetImageSharedMemory());
+	return Create(Info, (bFromSharedMemory) ? GfxCache->GetImageSharedMemory() : nullptr);
 }

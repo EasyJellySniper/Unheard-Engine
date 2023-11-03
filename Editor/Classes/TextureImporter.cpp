@@ -122,11 +122,11 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	UHTexture2D NewTex(SourcePath.stem().string(), SavedPathName, Extent, DesiredFormat, InSettings);
 	NewTex.SetTextureData(TextureData);
 
-	UHTexture2D* OutputTex = Gfx->RequestTexture2D(NewTex);
+	UHTexture2D* OutputTex = Gfx->RequestTexture2D(NewTex, true);
 	OutputTex->SetRawSourcePath(SourcePath.string());
 	if (OutputTex != nullptr)
 	{
-		OutputTex->Recreate();
+		OutputTex->Recreate(true);
 		OutputTex->Export(OutputPathName);
 		MessageBoxA(nullptr, ("Import " + NewTex.GetName() + " successfully.").c_str(), "Texture Import", MB_OK);
 	}

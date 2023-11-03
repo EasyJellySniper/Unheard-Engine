@@ -3,7 +3,7 @@
 #include "../RendererShared.h"
 
 UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
-	: UHShaderClass(InGfx, Name, typeid(UHMotionCameraPassShader), nullptr)
+	: UHShaderClass(InGfx, Name, typeid(UHMotionCameraPassShader), nullptr, InRenderPass)
 {
 	// system const + depth texture + sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -11,11 +11,16 @@ UHMotionCameraPassShader::UHMotionCameraPassShader(UHGraphic* InGfx, std::string
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor();
-	ShaderVS = InGfx->RequestShader("PostProcessVS", "Shaders/PostProcessing/PostProcessVS.hlsl", "PostProcessVS", "vs_6_0");
-	ShaderPS = InGfx->RequestShader("MotionCameraShader", "Shaders/MotionCameraShader.hlsl", "CameraMotionPS", "ps_6_0");
+	OnCompile();
+}
+
+void UHMotionCameraPassShader::OnCompile()
+{
+	ShaderVS = Gfx->RequestShader("PostProcessVS", "Shaders/PostProcessing/PostProcessVS.hlsl", "PostProcessVS", "vs_6_0");
+	ShaderPS = Gfx->RequestShader("MotionCameraShader", "Shaders/MotionCameraShader.hlsl", "CameraMotionPS", "ps_6_0");
 
 	// states
-	UHRenderPassInfo Info = UHRenderPassInfo(InRenderPass, UHDepthInfo(false, false, VK_COMPARE_OP_ALWAYS)
+	UHRenderPassInfo Info = UHRenderPassInfo(RenderPassCache, UHDepthInfo(false, false, VK_COMPARE_OP_ALWAYS)
 		, UHCullMode::CullNone
 		, UHBlendMode::Opaque
 		, ShaderVS
@@ -35,7 +40,8 @@ void UHMotionCameraPassShader::BindParameters()
 
 UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHMotionObjectPassShader), InMat)
+	: UHShaderClass(InGfx, Name, typeid(UHMotionObjectPassShader), InMat, InRenderPass)
+	, bHasDepthPrePass(bEnableDepthPrePass)
 {
 	// Motion pass: constants + opacity image for cutoff (if there is any)
 	for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
@@ -48,27 +54,31 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	CreateMaterialDescriptor(ExtraLayouts);
+	OnCompile();
+}
 
-	std::vector<std::string> MatDefines = InMat->GetMaterialDefines();
-	ShaderVS = InGfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", MatDefines);
+void UHMotionObjectPassShader::OnCompile()
+{
+	std::vector<std::string> MatDefines = MaterialCache->GetMaterialDefines();
+	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", MatDefines);
 
-	if (bEnableDepthPrePass)
+	if (bHasDepthPrePass)
 	{
 		MatDefines.push_back("WITH_DEPTHPREPASS");
 	}
 
 	UHMaterialCompileData Data;
-	Data.MaterialCache = InMat;
+	Data.MaterialCache = MaterialCache;
 	Data.bIsDepthOrMotionPass = true;
-	ShaderPS = InGfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, MatDefines);
+	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, MatDefines);
 
 	// states, enable depth test, and write depth for translucent object only
-	const bool bIsTranslucent = InMat->GetBlendMode() > UHBlendMode::Masked;
-	MaterialPassInfo = UHRenderPassInfo(InRenderPass, 
+	const bool bIsTranslucent = MaterialCache->GetBlendMode() > UHBlendMode::Masked;
+	MaterialPassInfo = UHRenderPassInfo(RenderPassCache,
 		UHDepthInfo(true, bIsTranslucent
-		, (bEnableDepthPrePass && !bIsTranslucent) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL)
-		, InMat->GetCullMode()
-		, InMat->GetBlendMode()
+			, (bHasDepthPrePass && !bIsTranslucent) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL)
+		, MaterialCache->GetCullMode()
+		, MaterialCache->GetBlendMode()
 		, ShaderVS
 		, ShaderPS
 		, bIsTranslucent ? 2 : 1

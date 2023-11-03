@@ -87,8 +87,15 @@ void UHSkyLightComponent::OnGenerateDetailView()
 			bool bIsSelected = (CubemapCache == Cubemaps[Idx]);
 			if (ImGui::Selectable(Cubemaps[Idx]->GetName().c_str(), bIsSelected))
 			{
+				bool bNeedRecompile = false;
+				if ((CubemapCache == nullptr && Cubemaps[Idx])
+					|| (CubemapCache && Cubemaps[Idx] == nullptr))
+				{
+					bNeedRecompile = true;
+				}
+
 				CubemapCache = Cubemaps[Idx];
-				UHDeferredShadingRenderer::GetRendererEditorOnly()->RefreshSkyLight();
+				UHDeferredShadingRenderer::GetRendererEditorOnly()->RefreshSkyLight(bNeedRecompile);
 			}
 		}
 
