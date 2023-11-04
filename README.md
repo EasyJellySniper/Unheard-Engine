@@ -23,4 +23,4 @@
 
 <br> Day test scene: https://www.youtube.com/watch?v=bmW_U1yBwxw <br>
 <br> Night test scene: https://www.youtube.com/watch?v=ewRdUFsdBGg <br>
-<br> HDR test: https://i.imgur.com/1ceJ21f.gif <br>
+<br> HDR test: https://www.youtube.com/watch?v=9PLZA3NtMnA <br>
