@@ -431,3 +431,4 @@ Finally correct the formula! Next is to deal with mipmap and compression.
 
 03-11-2023: Mipmap generation and data transfer is done for panorama-to-cubemap creation. Deal with compression next.
 Finished texture cube creation from panorama.
+04-11-2023: Minor bugfixes for low-end GPU and blog post.

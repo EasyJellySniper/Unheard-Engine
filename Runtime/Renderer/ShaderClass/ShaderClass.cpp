@@ -437,7 +437,8 @@ void UHShaderClass::CreateMaterialDescriptor(std::vector<VkDescriptorSetLayout> 
 	{
 		VkDescriptorPoolSize PoolSize{};
 		PoolSize.type = LayoutBindings[Idx].descriptorType;
-		PoolSize.descriptorCount = GMaxFrameInFlight;
+		// number of this count needs to be [Count * GMaxFrameInFlight]
+		PoolSize.descriptorCount = LayoutBindings[Idx].descriptorCount * GMaxFrameInFlight;
 		PoolSizes.push_back(PoolSize);
 	}
 

@@ -140,11 +140,46 @@ public:
         vkGetBufferMemoryRequirements(LogicalDevice, BufferSource, &MemRequirements);
 
         // bind to shared memory and keep the offset
+        bool bExceedSharedMemory = false;
         OffsetInSharedMemory = SharedMemory->BindMemory(MemRequirements.size, MemRequirements.alignment, BufferSource);
         if (OffsetInSharedMemory == ~0)
         {
-            UHE_LOG(L"Failed to bind buffer to GPU. Exceed mesh buffer memory budget!\n");
-            return false;
+            bExceedSharedMemory = true;
+            static bool bIsExceedingMsgPrinted = false;
+            if (!bIsExceedingMsgPrinted)
+            {
+                UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
+                bIsExceedingMsgPrinted = true;
+            }
+        }
+
+        if (bExceedSharedMemory)
+        {
+            VkMemoryAllocateInfo AllocInfo{};
+            AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            AllocInfo.allocationSize = MemRequirements.size;
+            AllocInfo.memoryTypeIndex = UHUtilities::FindMemoryTypes(&DeviceMemoryProperties, MemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+            VkMemoryAllocateFlagsInfo MemFlagInfo{};
+            MemFlagInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+            MemFlagInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+
+            if (bIsShaderDeviceAddress)
+            {
+                // put the VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT flag if buffer usage has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                AllocInfo.pNext = &MemFlagInfo;
+            }
+
+            if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &BufferMemory) != VK_SUCCESS)
+            {
+                UHE_LOG(L"Failed to allocate buffer memory!\n");
+            }
+
+            // committed resource to GPU
+            if (vkBindBufferMemory(LogicalDevice, BufferSource, BufferMemory, 0) != VK_SUCCESS)
+            {
+                UHE_LOG(L"Failed to bind buffer to GPU!\n");
+            }
         }
 
         return true;

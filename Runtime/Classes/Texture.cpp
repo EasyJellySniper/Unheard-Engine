@@ -180,6 +180,12 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			AllocInfo.allocationSize = MemRequirements.size;
 			AllocInfo.memoryTypeIndex = UHUtilities::FindMemoryTypes(&DeviceMemoryProperties, MemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+			if (AllocInfo.allocationSize > DeviceMemoryProperties.memoryHeaps[AllocInfo.memoryTypeIndex].size)
+			{
+				// use the host memory if device heap isn't enough
+				AllocInfo.memoryTypeIndex = 1;
+			}
+
 			if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &ImageMemory) != VK_SUCCESS)
 			{
 				UHE_LOG(L"Failed to commit image to GPU!\n");
