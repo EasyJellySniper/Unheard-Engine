@@ -990,16 +990,17 @@ UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 }
 
 // request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite)
+UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite, bool bUseMipmap)
 {
-	return RequestRenderTexture(InName, nullptr, InExtent, InFormat, bIsReadWrite);
+	return RequestRenderTexture(InName, nullptr, InExtent, InFormat, bIsReadWrite, bUseMipmap);
 }
 
 // request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite)
+UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent
+	, UHTextureFormat InFormat, bool bIsReadWrite, bool bUseMipmap)
 {
 	// return cached if there is already one
-	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsReadWrite);
+	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsReadWrite, bUseMipmap);
 	NewRT->SetImage(InImage);
 
 	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, *NewRT.get());

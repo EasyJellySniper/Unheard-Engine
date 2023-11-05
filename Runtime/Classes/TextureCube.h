@@ -19,7 +19,8 @@ public:
 
 	bool Import(std::filesystem::path InCubePath);
 #if WITH_EDITOR
-	void Recreate();
+	void SetSlices(std::vector<UHTexture2D*> InSlices);
+	void Recreate(UHTextureFormat NewFormat);
 	void Export(std::filesystem::path InCubePath);
 	void SetSourcePath(std::filesystem::path InPath);
 	size_t GetDataSize() const;

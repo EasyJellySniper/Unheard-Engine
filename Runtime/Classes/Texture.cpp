@@ -25,6 +25,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, TextureVersion(InitialTexture)
 	, MipMapCount(1)
 	, TextureType(Texture2D)
+	, bCreatePerMipImageView(false)
 {
 #if WITH_EDITOR
 	for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -58,6 +59,12 @@ void UHTexture::Release()
 	ImageMemory = nullptr;
 	vkDestroyImageView(LogicalDevice, ImageView, nullptr);
 	ImageView = nullptr;
+
+	for (size_t Idx = 0; Idx < ImageViewPerMip.size(); Idx++)
+	{
+		vkDestroyImageView(LogicalDevice, ImageViewPerMip[Idx], nullptr);
+	}
+	ImageViewPerMip.clear();
 
 #if WITH_EDITOR
 	for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -227,7 +234,7 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 	CreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	CreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-	// again, layer settings is for VR
+	// again, layer settings is for array sources
 	CreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	CreateInfo.subresourceRange.baseMipLevel = 0;
 	CreateInfo.subresourceRange.levelCount = MipMapCount;
@@ -249,8 +256,24 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 		UHE_LOG(L"Failed to create image views!\n");
 		return false;
 	}
-
 	ImageViewInfo = CreateInfo;
+
+	// create individual mipmap view if requested
+	if (bCreatePerMipImageView)
+	{
+		for (uint32_t Idx = 0; Idx < MipMapCount; Idx++)
+		{
+			VkImageView NewView;
+			CreateInfo.subresourceRange.baseMipLevel = Idx;
+			CreateInfo.subresourceRange.levelCount = 1;
+			if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &NewView) != VK_SUCCESS)
+			{
+				UHE_LOG(L"Failed to create image views!\n");
+				return false;
+			}
+			ImageViewPerMip.push_back(NewView);
+		}
+	}
 
 #if WITH_EDITOR
 	if (InViewType == VK_IMAGE_VIEW_TYPE_CUBE)
@@ -306,6 +329,11 @@ VkImageView UHTexture::GetImageView() const
 	return ImageView;
 }
 
+VkImageView UHTexture::GetImageView(int32_t MipIndex) const
+{
+	return ImageViewPerMip[MipIndex];
+}
+
 #if WITH_EDITOR
 VkImageView UHTexture::GetCubemapImageView(const int32_t SliceIndex) const
 {
@@ -336,6 +364,11 @@ void UHTexture::SetHasUploadedToGPU(bool bFlag)
 bool UHTexture::HasUploadedToGPU() const
 {
 	return bHasUploadedToGPU;
+}
+
+void UHTexture::SetMipmapGenerated(bool bFlag)
+{
+	bIsMipMapGenerated = bFlag;
 }
 
 bool UHTexture::operator==(const UHTexture& InTexture)

@@ -77,6 +77,7 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 	}
 	Release();
 	TextureSettings.bIsCompressed = false;
+	ImageFormat = UH_FORMAT_NONE;
 	CreateTexture(bSharedMemory);
 
 	// upload the 1st slice and generate mip map
@@ -322,7 +323,7 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder
 void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 {
 	// generate mip maps for this texture, should be called in editor only
-	if (bIsMipMapGenerated || !TextureSettings.bUseMipmap)
+	if (bIsMipMapGenerated || !TextureSettings.bUseMipmap || !GTextureFormatData[ImageFormat].bCanGenerateMipmap)
 	{
 		return;
 	}
@@ -377,6 +378,7 @@ bool UHTexture2D::CreateTexture(bool bFromSharedMemory)
 	if (ImageFormat == UH_FORMAT_NONE)
 	{
 		ImageFormat = (TextureSettings.bIsLinear) ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
+		Info.Format = ImageFormat;
 	}
 
 	if (TextureSettings.bIsCompressed)

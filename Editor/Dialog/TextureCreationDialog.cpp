@@ -14,6 +14,12 @@
 #include "../../Runtime/Renderer/RendererShared.h"
 #include "StatusDialog.h"
 
+struct UHPanoramaData
+{
+    int32_t FaceIndex;
+    int32_t MipIndex;
+};
+
 UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter)
 	: UHDialog(nullptr, nullptr)
     , CurrentEditingSettings(UHTextureSettings())
@@ -298,55 +304,65 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         UHRenderTexture* CubemapRT[6];
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
-            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat);
+            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat, false, true);
         }
 
-        // draw a pass that transfer sphere map to cube map
+        // draw a pass that transfer sphere map to cube map, do this for all mipmaps
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
-            VkRenderPass SphereToCubemapRenderPass = Gfx->CreateRenderPass(UncompressedFormat, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
-            VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx]->GetImageView(), SphereToCubemapRenderPass, OutputExtent);
-
-            // setup shader
-            UniquePtr<UHPanoramaToCubemapShader> SphereToCubemapShader = MakeUnique<UHPanoramaToCubemapShader>(Gfx, "SphereToCubemap", SphereToCubemapRenderPass);
-
-            UniquePtr<UHRenderBuffer<int32_t>> ShaderData = Gfx->RequestRenderBuffer<int32_t>();
-            ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-            ShaderData->UploadData(&Idx, 0);
-
-            SphereToCubemapShader->BindConstant(ShaderData, 0, 0);
-            SphereToCubemapShader->BindImage(InputTexture, 1);
-
-            UHSamplerInfo Info(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT, 1.0f);
-            UHSampler* LinearWrappedSampler = Gfx->RequestTextureSampler(Info);
-            SphereToCubemapShader->BindSampler(LinearWrappedSampler, 2);
-
-            UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
-            if (!InputTexture->HasUploadedToGPU())
+            for (uint32_t MipIdx = 0; MipIdx < CubemapRT[Idx]->GetMipMapCount(); MipIdx++)
             {
-                InputTexture->UploadToGPU(Gfx, RenderBuilder);
+                // adjust mip extent
+                VkExtent2D MipExtent = OutputExtent;
+                MipExtent.width >>= MipIdx;
+                MipExtent.height >>= MipIdx;
+
+                VkRenderPass SphereToCubemapRenderPass = Gfx->CreateRenderPass(UncompressedFormat, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+                VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx]->GetImageView(MipIdx), SphereToCubemapRenderPass, MipExtent);
+
+                // setup shader
+                UniquePtr<UHPanoramaToCubemapShader> SphereToCubemapShader = MakeUnique<UHPanoramaToCubemapShader>(Gfx, "SphereToCubemap", SphereToCubemapRenderPass);
+
+                // setup uniform data
+                UHPanoramaData Data{};
+                Data.FaceIndex = Idx;
+                Data.MipIndex = MipIdx;
+
+                UniquePtr<UHRenderBuffer<UHPanoramaData>> ShaderData = Gfx->RequestRenderBuffer<UHPanoramaData>();
+                ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+                ShaderData->UploadData(&Data, 0);
+
+                SphereToCubemapShader->BindConstant(ShaderData, 0, 0);
+                SphereToCubemapShader->BindImage(InputTexture, 1);
+                SphereToCubemapShader->BindSampler(GLinearClampedSampler, 2);
+
+                UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+                if (!InputTexture->HasUploadedToGPU())
+                {
+                    InputTexture->UploadToGPU(Gfx, RenderBuilder);
+                }
+
+                RenderBuilder.BeginRenderPass(SphereToCubemapRenderPass, SphereToCubemapFrameBuffer, MipExtent, VkClearValue{ {0,0,0,0} });
+                RenderBuilder.SetViewport(MipExtent);
+                RenderBuilder.SetScissor(MipExtent);
+
+                // bind state
+                RenderBuilder.BindGraphicState(SphereToCubemapShader->GetState());
+
+                // bind sets
+                RenderBuilder.BindDescriptorSet(SphereToCubemapShader->GetPipelineLayout(), SphereToCubemapShader->GetDescriptorSet(0));
+
+                // draw fullscreen quad
+                RenderBuilder.BindVertexBuffer(nullptr);
+                RenderBuilder.DrawFullScreenQuad();
+                RenderBuilder.EndRenderPass();
+                Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+                UH_SAFE_RELEASE(SphereToCubemapShader);
+                vkDestroyFramebuffer(Gfx->GetLogicalDevice(), SphereToCubemapFrameBuffer, nullptr);
+                vkDestroyRenderPass(Gfx->GetLogicalDevice(), SphereToCubemapRenderPass, nullptr);
+                UH_SAFE_RELEASE(ShaderData);
             }
-
-            RenderBuilder.BeginRenderPass(SphereToCubemapRenderPass, SphereToCubemapFrameBuffer, OutputExtent, VkClearValue{ {0,0,0,0} });
-            RenderBuilder.SetViewport(OutputExtent);
-            RenderBuilder.SetScissor(OutputExtent);
-
-            // bind state
-            RenderBuilder.BindGraphicState(SphereToCubemapShader->GetState());
-
-            // bind sets
-            RenderBuilder.BindDescriptorSet(SphereToCubemapShader->GetPipelineLayout(), SphereToCubemapShader->GetDescriptorSet(0));
-
-            // draw fullscreen quad
-            RenderBuilder.BindVertexBuffer(nullptr);
-            RenderBuilder.DrawFullScreenQuad();
-            RenderBuilder.EndRenderPass();
-            Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
-
-            UH_SAFE_RELEASE(SphereToCubemapShader);
-            vkDestroyFramebuffer(Gfx->GetLogicalDevice(), SphereToCubemapFrameBuffer, nullptr);
-            vkDestroyRenderPass(Gfx->GetLogicalDevice(), SphereToCubemapRenderPass, nullptr);
-            UH_SAFE_RELEASE(ShaderData);
         }
 
         // Step 2 ------------------------------------------------- Copy from RT slices to regular slices
@@ -362,10 +378,12 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             UHTexture2D Slice(SliceName, SliceName, OutputExtent, UncompressedFormat, Settings);
             Slices[Idx] = Gfx->RequestTexture2D(Slice, false);
 
-            RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-            RenderBuilder.CopyTexture(CubemapRT[Idx], Slices[Idx]);
-            RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            Slices[Idx]->GenerateMipMaps(Gfx, RenderBuilder);
+            for (uint32_t MipIdx = 0; MipIdx < Slices[Idx]->GetMipMapCount(); MipIdx++)
+            {
+                RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, MipIdx);
+                RenderBuilder.CopyTexture(CubemapRT[Idx], Slices[Idx], MipIdx);
+                RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, MipIdx);
+            }
         }
         Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
 
@@ -375,6 +393,10 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         {
             SliceData[Idx] = Slices[Idx]->ReadbackTextureData();
             Slices[Idx]->SetTextureData(SliceData[Idx]);
+
+            // bypass gpu uploading and mipmap generation
+            Slices[Idx]->SetHasUploadedToGPU(true);
+            Slices[Idx]->SetMipmapGenerated(true);
 
             // recreate slices if compression is needed
             if (InputTexture->GetTextureSettings().CompressionSetting != CompressionNone)
@@ -388,12 +410,14 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         RenderBuilder = UHRenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
 
         const std::string CubeName = InputTexture->GetName() + "_Cube";
-        if (UHTextureCube* OldCube = AssetMgr->GetCubemapByName(CubeName))
+        UHTextureCube* OldCube = AssetMgr->GetCubemapByName(CubeName);
+        UHTextureCube* NewCube = (OldCube) ? OldCube : Gfx->RequestTextureCube(CubeName, Slices);
+        if (OldCube)
         {
-            Gfx->RequestReleaseTextureCube(OldCube);
+            NewCube->SetTextureSettings(Slices[0]->GetTextureSettings());
+            NewCube->SetSlices(Slices);
+            NewCube->Recreate(Slices[0]->GetFormat());
         }
-
-        UHTextureCube* NewCube = Gfx->RequestTextureCube(CubeName, Slices);
         NewCube->Build(Gfx, RenderBuilder);
 
         Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
@@ -444,13 +468,16 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         // remove the existed one before creating new
         Gfx->WaitGPU();
         const std::string CubeName = Slices[0]->GetName() + "_Cube";
-        if (UHTextureCube* OldCube = AssetMgr->GetCubemapByName(CubeName))
+
+        UHTextureCube* OldCube = AssetMgr->GetCubemapByName(CubeName);
+        UHTextureCube* NewCube = (OldCube) ? OldCube : Gfx->RequestTextureCube(CubeName, Slices);
+        if (OldCube)
         {
-            AssetMgr->RemoveCubemap(OldCube);
-            Gfx->RequestReleaseTextureCube(OldCube);
+            NewCube->SetTextureSettings(Slices[0]->GetTextureSettings());
+            NewCube->SetSlices(Slices);
+            NewCube->Recreate(Slices[0]->GetFormat());
         }
 
-        UHTextureCube* NewCube = Gfx->RequestTextureCube(CubeName, Slices);
         if (NewCube)
         {
             std::string OutputPathName = OutputFolder.string() + "/" + NewCube->GetName();

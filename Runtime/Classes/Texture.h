@@ -126,6 +126,7 @@ public:
 
 	// get image view
 	VkImageView GetImageView() const;
+	VkImageView GetImageView(int32_t MipIndex) const;
 #if WITH_EDITOR
 	VkImageView GetCubemapImageView(const int32_t SliceIndex) const;
 #endif
@@ -139,6 +140,7 @@ public:
 
 	void SetHasUploadedToGPU(bool bFlag);
 	bool HasUploadedToGPU() const;
+	void SetMipmapGenerated(bool bFlag);
 
 	// is depth format?
 	bool IsDepthFormat() const;
@@ -158,6 +160,7 @@ protected:
 
 	bool bHasUploadedToGPU;
 	bool bIsMipMapGenerated;
+	bool bCreatePerMipImageView;
 	UHTextureSettings TextureSettings;
 	uint64_t MemoryOffset;
 	UHTextureVersion TextureVersion;
@@ -170,8 +173,9 @@ private:
 	bool CreateImageView(VkImageViewType InViewType);
 	bool bIsSourceCreatedByThis;
 
-	// device variables
+	// device variables, the image view per mip can be useful for render texture
 	VkImageView ImageView;
+	std::vector<VkImageView> ImageViewPerMip;
 	VkImageViewCreateInfo ImageViewInfo;
 	UHTextureInfo TextureInfo;
 

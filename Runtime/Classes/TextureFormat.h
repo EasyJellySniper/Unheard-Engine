@@ -38,8 +38,11 @@ enum UHTextureFormat
 
 struct UHTextureFormatData
 {
-	UHTextureFormatData(int32_t InByteSize, int32_t InBlockSize, int32_t InNumChannels)
-		: ByteSize(InByteSize), BlockSize(InBlockSize), NumChannels(InNumChannels)
+	UHTextureFormatData(int32_t InByteSize, int32_t InBlockSize, int32_t InNumChannels, bool bInCanGenerateMipmap)
+		: ByteSize(InByteSize)
+		, BlockSize(InBlockSize)
+		, NumChannels(InNumChannels)
+		, bCanGenerateMipmap(bInCanGenerateMipmap)
 	{
 	}
 
@@ -49,36 +52,38 @@ struct UHTextureFormatData
 	int32_t BlockSize;
 
 	int32_t NumChannels;
+
+	bool bCanGenerateMipmap;
 };
 
 // texture format data, their info must match the format definition
 inline const UHTextureFormatData GTextureFormatData[UH_FORMAT_MAX] =
 {
-	{0,0,0},
-	{4,1,4},
-	{4,1,4},
-	{8,1,4},
-	{4,1,4},
-	{4,1,4},
-	{12,1,3},
-	{2,1,1},
-	{4,1,2},
-	{4,1,1},
-	{8,1,2},
-	{4,1,1},
-	{4,1,4},
-	{4,1,4},
-	{4,1,2},
-	{1,1,1},
-	{2,1,1},
+	{0,0,0,true},
+	{4,1,4,true},
+	{4,1,4,true},
+	{8,1,4,true},
+	{4,1,4,true},
+	{4,1,4,true},
+	{12,1,3,true},
+	{2,1,1,true},
+	{4,1,2,true},
+	{4,1,1,true},
+	{8,1,2,true},
+	{4,1,1,true},
+	{4,1,4,true},
+	{4,1,4,true},
+	{4,1,2,true},
+	{1,1,1,true},
+	{2,1,1,true},
 
-	{8,16,3},
-	{8,16,3},
-	{16,16,4},
-	{16,16,4},
-	{8,16,1},
-	{16,16,2},
-	{16,16,3}
+	{8,16,3,false},
+	{8,16,3,false},
+	{16,16,4,false},
+	{16,16,4,false},
+	{8,16,1,false},
+	{16,16,2,false},
+	{16,16,3,false}
 };
 
 extern VkFormat GetVulkanFormat(UHTextureFormat InUHFormat);

@@ -21,10 +21,11 @@ static const float2 GTexCoords[6] =
 cbuffer Panorama2CubemapConstant : register(b0)
 {
     int GOutputFaceIndex;
+    uint GInputMipmapIndex;
 };
 
 Texture2D InputTexture : register(t1);
-SamplerState LinearWrappedSampler: register(s2);
+SamplerState LinearClampedSampler: register(s2);
 
 // convert UV to xyz and back, based on https://en.wikipedia.org/wiki/Cube_mapping
 void ConvertUVtoXYZ(float2 UV, out float3 Pos, int Index)
@@ -146,19 +147,20 @@ Panorama2CubemapOutput PanoramaToCubemapVS(uint Vid : SV_VertexID)
 float4 PanoramaToCubemapPS(Panorama2CubemapOutput Vin) : SV_Target
 {    
     // inverse the UV.y for Y faces
+    float2 QuadUV = Vin.UV;
     if (GOutputFaceIndex != 2 && GOutputFaceIndex != 3)
     {
-        Vin.UV.y = 1.0f - Vin.UV.y;
+        QuadUV.y = 1.0f - QuadUV.y;
     }
     
     // the goal is to solve the "original UV" of InputTexture and sampling from it
     // so the first thing to do is reconstruct the sphere pos based on the quad UV and the requested cube face
     float3 SpherePos = 0;
-    ConvertUVtoXYZ(Vin.UV, SpherePos, GOutputFaceIndex);
+    ConvertUVtoXYZ(QuadUV, SpherePos, GOutputFaceIndex);
     
     // the second step, calculate the original uv with spherical formula
-    float2 UV = ConvertSpherePosToUV(SpherePos, GOutputFaceIndex, Vin.UV);
+    float2 UV = ConvertSpherePosToUV(SpherePos, GOutputFaceIndex, QuadUV);
     UV = fmod(UV, 1.0f);
-
-    return InputTexture.SampleLevel(LinearWrappedSampler, UV, 0);
+    
+    return InputTexture.SampleLevel(LinearClampedSampler, UV, GInputMipmapIndex);
 }

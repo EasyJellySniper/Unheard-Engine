@@ -85,10 +85,16 @@ bool UHTextureCube::Import(std::filesystem::path InCubePath)
 }
 
 #if WITH_EDITOR
-void UHTextureCube::Recreate()
+void UHTextureCube::SetSlices(std::vector<UHTexture2D*> InSlices)
+{
+	Slices = InSlices;
+}
+
+void UHTextureCube::Recreate(UHTextureFormat NewFormat)
 {
 	GfxCache->WaitGPU();
 	Release();
+	ImageFormat = NewFormat;
 
 	if (Slices.size() > 0)
 	{
@@ -98,6 +104,8 @@ void UHTextureCube::Recreate()
 	{
 		CreateCube();
 	}
+
+	bIsCubeBuilt = false;
 }
 
 void UHTextureCube::Export(std::filesystem::path InCubePath)
