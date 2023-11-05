@@ -1009,6 +1009,7 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 		return RTPools[Idx].get();
 	}
 
+	NewRT->SetGfxCache(this);
 	NewRT->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewRT->SetImage(InImage);
 

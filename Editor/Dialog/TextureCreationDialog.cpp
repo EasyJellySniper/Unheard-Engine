@@ -273,6 +273,10 @@ void UHTextureCreationDialog::ControlCubemapCreate()
     // remove the project folder
     OutputFolder = std::filesystem::relative(OutputFolder);
 
+    // temporary resource defines
+    UHRenderTexture* CubemapRT[6];
+    std::vector<UHTexture2D*> Slices(6);
+
     if (bCreatingCubeFromPanorama)
     {
         // Panorama to Cubemap conversion, use a shader pass for it
@@ -292,18 +296,13 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         OutputExtent.height = Size;
 
         UHTextureSettings Settings = InputTexture->GetTextureSettings();
-        UHTextureFormat UncompressedFormat = UH_FORMAT_NONE;
+        UHTextureFormat UncompressedFormat = UH_FORMAT_RGBA8_UNORM;
         if (Settings.bIsHDR)
         {
             UncompressedFormat = UH_FORMAT_RGBA16F;
         }
-        else
-        {
-            UncompressedFormat = Settings.bIsLinear ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
-        }
 
         // Step 1 ------------------------------------------------- Convert panorama to individual cube slice RT
-        UHRenderTexture* CubemapRT[6];
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
             CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat, true, true);
@@ -403,10 +402,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         Settings.CompressionSetting = CompressionNone;
 
         UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
-        std::vector<UHTexture2D*> Slices(6);
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
-            // defer the mip map genertaion as copy texture doesn't work if mipmap count mismatched
             const std::string SliceName = "CubemapCreationSlice" + std::to_string(Idx);
             UHTexture2D Slice(SliceName, SliceName, OutputExtent, UncompressedFormat, Settings);
             Slices[Idx] = Gfx->RequestTexture2D(Slice, false);
@@ -475,7 +472,6 @@ void UHTextureCreationDialog::ControlCubemapCreate()
     }
     else
     {
-        std::vector<UHTexture2D*> Slices(6);
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
             Slices[Idx] = AssetMgr->GetTexture2DByPath(CurrentSelectedSlice[Idx]);
@@ -498,11 +494,88 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         }
 
         UHStatusDialogScope StatusDialog("Creating...");
+        UHRenderBuilder RenderBuilder = UHRenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+        uint32_t Size = Slices[0]->GetExtent().width;
 
-        // remove the existed one before creating new
-        Gfx->WaitGPU();
+        // Step 1 ------------------------------------------------- Blit to cubemap RT for smoothing the cube edge
+        UHTextureSettings Settings = Slices[0]->GetTextureSettings();
+        UHTextureFormat UncompressedFormat = UH_FORMAT_RGBA8_UNORM;
+        if (Settings.bIsHDR)
+        {
+            UncompressedFormat = UH_FORMAT_RGBA16F;
+        }
+
+        for (int32_t Idx = 0; Idx < 6; Idx++)
+        {
+            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), Slices[Idx]->GetExtent(), UncompressedFormat, true, true);
+            if (!Slices[Idx]->HasUploadedToGPU())
+            {
+                Slices[Idx]->UploadToGPU(Gfx, RenderBuilder);
+            }
+
+            for (uint32_t MipIdx = 0; MipIdx < Slices[Idx]->GetMipMapCount(); MipIdx++)
+            {
+                VkExtent2D MipExtent = Slices[Idx]->GetExtent();
+                MipExtent.width >>= MipIdx;
+                MipExtent.height >>= MipIdx;
+
+                RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, MipIdx);
+                RenderBuilder.ResourceBarrier(CubemapRT[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, MipIdx);
+                RenderBuilder.Blit(Slices[Idx], CubemapRT[Idx], MipExtent, MipExtent, MipIdx, MipIdx, VK_FILTER_LINEAR);
+                RenderBuilder.ResourceBarrier(CubemapRT[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, MipIdx);
+                RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, MipIdx);
+            }
+        }
+        Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+        // Step 2 ------------------------------------------------- Smooth the edge of cubemap
+        UniquePtr<UHSmoothCubemapShader> SmoothCubemap = MakeUnique<UHSmoothCubemapShader>(Gfx, "SmoothCubemapShader");
+        for (uint32_t MipIdx = 0; MipIdx < CubemapRT[0]->GetMipMapCount(); MipIdx++)
+        {
+            UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+
+            // smooth shader
+            for (int32_t Idx = 0; Idx < 6; Idx++)
+            {
+                SmoothCubemap->BindRWImage(CubemapRT[Idx], Idx, MipIdx);
+            }
+            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>();
+            ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            uint32_t MipSize = Size >> MipIdx;
+            ShaderData->UploadData(&MipSize, 0);
+            SmoothCubemap->BindConstant(ShaderData, 6, 0);
+
+            RenderBuilder.BindComputeState(SmoothCubemap->GetComputeState());
+            RenderBuilder.BindDescriptorSetCompute(SmoothCubemap->GetPipelineLayout(), SmoothCubemap->GetDescriptorSet(0));
+            RenderBuilder.Dispatch((GThreadGroup2D_X + Size) / GThreadGroup2D_X, 1, 1);
+
+            Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+            UH_SAFE_RELEASE(ShaderData);
+        }
+        UH_SAFE_RELEASE(SmoothCubemap);
+
+        // Step 3 ------------------------------------------------- readback slice data and compress again
         const std::string CubeName = Slices[0]->GetName() + "_Cube";
 
+        for (int32_t Idx = 0; Idx < 6; Idx++)
+        {
+            UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+            for (uint32_t MipIdx = 0; MipIdx < CubemapRT[Idx]->GetMipMapCount(); MipIdx++)
+            {
+                RenderBuilder.ResourceBarrier(CubemapRT[Idx], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, MipIdx);
+            }
+            Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+            // request new slice and recreate with readback data
+            const std::vector<uint8_t>& Data = CubemapRT[Idx]->ReadbackTextureData();
+            const std::string SliceName = "CubemapCreationSlice" + std::to_string(Idx);
+            UHTexture2D Slice(SliceName, SliceName, Slices[Idx]->GetExtent(), Slices[Idx]->GetFormat(), Settings);
+            Slices[Idx] = Gfx->RequestTexture2D(Slice, false);
+            Slices[Idx]->SetTextureData(Data);
+            Slices[Idx]->Recreate(false);
+        }
+
+        // Step 4 ------------------------------------------------- Recreate cubemap
         UHTextureCube* OldCube = AssetMgr->GetCubemapByName(CubeName);
         UHTextureCube* NewCube = (OldCube) ? OldCube : Gfx->RequestTextureCube(CubeName, Slices);
         if (OldCube)
@@ -534,6 +607,14 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         {
             MessageBoxA(nullptr, "Cubemap creation failed.", "Cubemap Creation", MB_OK);
         }
+    }
+
+    // release all temporory textures
+    for (int32_t Idx = 0; Idx < 6; Idx++)
+    {
+        Slices[Idx]->ReleaseCPUTextureData();
+        Gfx->RequestReleaseTexture2D(Slices[Idx]);
+        Gfx->RequestReleaseRT(CubemapRT[Idx]);
     }
 }
 
