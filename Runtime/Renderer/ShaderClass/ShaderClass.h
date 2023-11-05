@@ -143,7 +143,7 @@ public:
 
 	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT = UHINDEXNONE, bool bIsReadWrite = false);
 	void BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding);
-	void BindRWImage(const UHTexture* InImage, int32_t DstBinding);
+	void BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx = UHINDEXNONE);
 	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrameRT);

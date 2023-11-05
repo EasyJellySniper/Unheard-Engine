@@ -13,11 +13,12 @@ UHDescriptorHelper::~UHDescriptorHelper()
 	DescriptorSetToWrite = nullptr;
 }
 
-void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite)
+void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite, int32_t MipIdx)
 {
 	VkDescriptorImageInfo NewInfo{};
 	NewInfo.imageLayout = (bIsReadWrite) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	NewInfo.imageView = InTexture->GetImageView();
+	// support mip map binding for RW textures
+	NewInfo.imageView = (MipIdx == UHINDEXNONE) ? InTexture->GetImageView() : InTexture->GetImageView(MipIdx);
 
 	VkWriteDescriptorSet DescriptorWrite{};
 	DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

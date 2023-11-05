@@ -4,7 +4,6 @@
 #if WITH_EDITOR
 #include <unordered_map>
 #include "../Classes/TextureImporter.h"
-#include "../../../Runtime/Renderer/ShaderClass/PanoramaToCubemapShader.h"
 
 class UHTextureDialog;
 class UHCubemapDialog;

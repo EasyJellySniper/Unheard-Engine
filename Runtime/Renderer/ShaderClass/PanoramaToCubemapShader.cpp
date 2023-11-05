@@ -14,8 +14,8 @@ UHPanoramaToCubemapShader::UHPanoramaToCubemapShader(UHGraphic* InGfx, std::stri
 
 void UHPanoramaToCubemapShader::OnCompile()
 {
-	ShaderVS = Gfx->RequestShader("PanoramaToCubemapVS", "Shaders/PanoramaToCubemap.hlsl", "PanoramaToCubemapVS", "vs_6_0");
-	ShaderPS = Gfx->RequestShader("PanoramaToCubemapPS", "Shaders/PanoramaToCubemap.hlsl", "PanoramaToCubemapPS", "ps_6_0");
+	ShaderVS = Gfx->RequestShader("PanoramaToCubemapVS", "Shaders/PanoramaToCubemapShader.hlsl", "PanoramaToCubemapVS", "vs_6_0");
+	ShaderPS = Gfx->RequestShader("PanoramaToCubemapPS", "Shaders/PanoramaToCubemapShader.hlsl", "PanoramaToCubemapPS", "ps_6_0");
 
 	// states
 	UHRenderPassInfo Info = UHRenderPassInfo(RenderPassCache, UHDepthInfo(false, false, VK_COMPARE_OP_ALWAYS)

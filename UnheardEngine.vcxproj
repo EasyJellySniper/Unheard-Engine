@@ -320,6 +320,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMaterialDataTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\ShaderClass.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SkyPassShader.h" />
@@ -441,6 +442,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.cpp" />
     <ClCompile Include="Runtime\Renderer\TranslucentRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\SkyPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ShaderClass.cpp" />
@@ -583,7 +585,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\PanoramaToCubemap.hlsl">
+    <None Include="Shaders\PanoramaToCubemapShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SmoothCubemapComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

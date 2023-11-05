@@ -13,6 +13,8 @@
 #include "../../Runtime/Renderer/RenderBuilder.h"
 #include "../../Runtime/Renderer/RendererShared.h"
 #include "StatusDialog.h"
+#include "../../../Runtime/Renderer/ShaderClass/PanoramaToCubemapShader.h"
+#include "../../../Runtime/Renderer/ShaderClass/SmoothCubemapShader.h"
 
 struct UHPanoramaData
 {
@@ -304,7 +306,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         UHRenderTexture* CubemapRT[6];
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
-            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat, false, true);
+            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat, true, true);
         }
 
         // draw a pass that transfer sphere map to cube map, do this for all mipmaps
@@ -317,7 +319,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 MipExtent.width >>= MipIdx;
                 MipExtent.height >>= MipIdx;
 
-                VkRenderPass SphereToCubemapRenderPass = Gfx->CreateRenderPass(UncompressedFormat, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+                VkRenderPass SphereToCubemapRenderPass = Gfx->CreateRenderPass(UncompressedFormat, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_GENERAL));
                 VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx]->GetImageView(MipIdx), SphereToCubemapRenderPass, MipExtent);
 
                 // setup shader
@@ -332,9 +334,14 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
                 ShaderData->UploadData(&Data, 0);
 
+                // non biased sampler
+                UHSamplerInfo SamplerInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 1.0f);
+                SamplerInfo.MipBias = 0.0f;
+                UHSampler* LinearClampedSampler = Gfx->RequestTextureSampler(SamplerInfo);
+
                 SphereToCubemapShader->BindConstant(ShaderData, 0, 0);
                 SphereToCubemapShader->BindImage(InputTexture, 1);
-                SphereToCubemapShader->BindSampler(GLinearClampedSampler, 2);
+                SphereToCubemapShader->BindSampler(LinearClampedSampler, 2);
 
                 UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
                 if (!InputTexture->HasUploadedToGPU())
@@ -365,7 +372,33 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             }
         }
 
-        // Step 2 ------------------------------------------------- Copy from RT slices to regular slices
+        // Step 2 ------------------------------------------------- Smooth the edge of cubemap
+        UniquePtr<UHSmoothCubemapShader> SmoothCubemap = MakeUnique<UHSmoothCubemapShader>(Gfx, "SmoothCubemapShader");
+        for (uint32_t MipIdx = 0; MipIdx < CubemapRT[0]->GetMipMapCount(); MipIdx++)
+        {
+            UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+
+            // smooth shader
+            for (int32_t Idx = 0; Idx < 6; Idx++)
+            {
+                SmoothCubemap->BindRWImage(CubemapRT[Idx], Idx, MipIdx);
+            }
+            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>();
+            ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            uint32_t MipSize = Size >> MipIdx;
+            ShaderData->UploadData(&MipSize, 0);
+            SmoothCubemap->BindConstant(ShaderData, 6, 0);
+
+            RenderBuilder.BindComputeState(SmoothCubemap->GetComputeState());
+            RenderBuilder.BindDescriptorSetCompute(SmoothCubemap->GetPipelineLayout(), SmoothCubemap->GetDescriptorSet(0));
+            RenderBuilder.Dispatch((GThreadGroup2D_X + Size) / GThreadGroup2D_X, 1, 1);
+
+            Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+            UH_SAFE_RELEASE(ShaderData);
+        }
+        UH_SAFE_RELEASE(SmoothCubemap);
+
+        // Step 3 ------------------------------------------------- Copy from RT slices to regular slices
         Settings.bIsCompressed = false;
         Settings.CompressionSetting = CompressionNone;
 
@@ -380,6 +413,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
             for (uint32_t MipIdx = 0; MipIdx < Slices[Idx]->GetMipMapCount(); MipIdx++)
             {
+                RenderBuilder.ResourceBarrier(CubemapRT[Idx], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, MipIdx);
                 RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, MipIdx);
                 RenderBuilder.CopyTexture(CubemapRT[Idx], Slices[Idx], MipIdx);
                 RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, MipIdx);
@@ -406,7 +440,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             }
         }
 
-        // Step 3 ------------------------------------------------- build a texture cube from slices
+        // Step 4 ------------------------------------------------- build a texture cube from slices
         RenderBuilder = UHRenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
 
         const std::string CubeName = InputTexture->GetName() + "_Cube";

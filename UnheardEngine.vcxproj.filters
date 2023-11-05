@@ -372,6 +372,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -704,6 +707,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -747,6 +753,7 @@
     <None Include="ThirdParty\ImGui\backends\vulkan\generate_spv.sh" />
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.frag" />
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.vert" />
-    <None Include="Shaders\PanoramaToCubemap.hlsl" />
+    <None Include="Shaders\PanoramaToCubemapShader.hlsl" />
+    <None Include="Shaders\SmoothCubemapComputeShader.hlsl" />
   </ItemGroup>
 </Project>

@@ -147,14 +147,14 @@ void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, int32_t Ds
 	}
 }
 
-void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding)
+void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
 		if (InImage)
 		{
-			Helper.WriteImage(InImage, DstBinding, true);
+			Helper.WriteImage(InImage, DstBinding, true, MipIdx);
 		}
 	}
 }

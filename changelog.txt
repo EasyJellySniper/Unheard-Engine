@@ -434,3 +434,4 @@ Finished texture cube creation from panorama.
 04-11-2023: Minor bugfixes for low-end GPU and blog post.
 
 05-11-2023: Added mipmap support for render texture. Fixed all kinds of minor issues when I was playing around texture/cubemap editor.
+Added cubemap smoothing shader.

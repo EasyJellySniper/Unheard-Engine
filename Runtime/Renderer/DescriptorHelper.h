@@ -111,7 +111,7 @@ public:
 	}
 
 	// write image/sampler once
-	void WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite = false);
+	void WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite = false, int32_t MipIdx = UHINDEXNONE);
 	void WriteImage(const std::vector<UHTexture*>& InTextures, uint32_t InDstBinding);
 	void WriteSampler(const UHSampler* InSampler, uint32_t InDstBinding);
 	void WriteSampler(const std::vector<UHSampler*>& InSamplers, uint32_t InDstBinding);
