@@ -381,3 +381,11 @@ UHColorRGB operator/(const UHColorRGB& Lhs, float Rhs)
     Result.B = Lhs.B / Rhs;
     return Result;
 }
+
+UHColorRGBInt::UHColorRGBInt()
+    : R(0)
+    , G(0)
+    , B(0)
+{
+
+}

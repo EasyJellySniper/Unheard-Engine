@@ -3,296 +3,137 @@
 #if WITH_EDITOR
 #include <assert.h>
 #include "Types.h"
-#include <array>
 #include "Utility.h"
-#include <unordered_map>
-#include <thread>
 #define IMATH_HALF_NO_LOOKUP_TABLE
 #include <ImfRgba.h>
-#include <bitset>
+#include "../Renderer/ShaderClass/BlockCompressionShader.h"
+#include "../Renderer/RenderBuilder.h"
 
+// compress raw texture data to block compression, implementation follows the Microsoft document
+// https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression
+// input is assumed as RGBA8888 for non-HDR, and RGBAHalf for HDR
+// implementation is done on the compute shader
 namespace UHTextureCompressor
 {
-	const uint32_t GCompressThreadCount = 8;
-	std::thread GCompressTasks[GCompressThreadCount];
-	const float GOneDivide255 = 0.0039215686274509803921568627451f;
-	// compress raw texture data to block compression, implementation follows the Microsoft document
-	// https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression
-	// input is assumed as RGBA8888 for non-HDR, and RGBAHalf for HDR
-
-	UHColorBC1 EvaluateBC1(const UHColorRGB BlockColors[16], const UHColorRGB& Color0, const UHColorRGB& Color1, float& OutMinDiff)
+	struct UHCompressionConstant
 	{
-		UHColorRGB RefColor[4];
-		RefColor[0] = Color0;
-		RefColor[1] = Color1;
-		OutMinDiff = 0;
-
-		// store color0 and color1 as RGB565
-		uint16_t RCache[2] = { 0 };
-		uint16_t GCache[2] = { 0 };
-		uint16_t BCache[2] = { 0 };
-
-		UHColorBC1 Result;
-		for (int32_t Idx = 0; Idx < 2; Idx++)
+		UHCompressionConstant()
+			: Width(0)
+			, Height(0)
+			, IsBC3(0)
 		{
-			RCache[Idx] = std::min((uint16_t)(RefColor[Idx].R * GOneDivide255 * 31.0f + 0.5f), (uint16_t)31);
-			GCache[Idx] = std::min((uint16_t)(RefColor[Idx].G * GOneDivide255 * 63.0f + 0.5f), (uint16_t)63);
-			BCache[Idx] = std::min((uint16_t)(RefColor[Idx].B * GOneDivide255 * 31.0f + 0.5f), (uint16_t)31);
-
-			Result.Color[Idx] |= RCache[Idx] << 11;
-			Result.Color[Idx] |= GCache[Idx] << 5;
-			Result.Color[Idx] |= BCache[Idx];
 		}
 
-		// intepolate color_2 and color_3, need to use uint index for condition
-		if (RCache[0] > RCache[1])
-		{
-			RefColor[2].R = RefColor[0].R * 0.667f + RefColor[1].R * 0.333f;
-			RefColor[3].R = RefColor[1].R * 0.667f + RefColor[0].R * 0.333f;
-		}
-		else
-		{
-			RefColor[2].R = (RefColor[0].R + RefColor[1].R) * 0.5f;
-		}
+		uint32_t Width;
+		uint32_t Height;
+		int32_t IsBC3;
+	};
 
-		if (GCache[0] > GCache[1])
-		{
-			RefColor[2].G = RefColor[0].G * 0.667f + RefColor[1].G * 0.333f;
-			RefColor[3].G = RefColor[1].G * 0.667f + RefColor[0].G * 0.333f;
-		}
-		else
-		{
-			RefColor[2].G = (RefColor[0].G + RefColor[1].G) * 0.5f;
-		}
-
-		if (BCache[0] > BCache[1])
-		{
-			RefColor[2].B = RefColor[0].B * 0.667f + RefColor[1].B * 0.333f;
-			RefColor[3].B = RefColor[1].B * 0.667f + RefColor[0].B * 0.333f;
-		}
-		else
-		{
-			RefColor[2].B = (RefColor[0].B + RefColor[1].B) * 0.5f;
-		}
-
-		// store indices from LSB to MSB
-		int32_t BitShiftStart = 0;
-		for (uint32_t Idx = 0; Idx < 16; Idx++)
-		{
-			float MinDiff = std::numeric_limits<float>::max();
-			uint32_t ClosestIdx = 0;
-			for (uint32_t Jdx = 0; Jdx < 4; Jdx++)
-			{
-				const float Diff = sqrtf(UHColorRGB::SquareDiff(BlockColors[Idx], RefColor[Jdx]));
-				if (Diff < MinDiff)
-				{
-					MinDiff = Diff;
-					ClosestIdx = Jdx;
-				}
-			}
-
-			OutMinDiff += MinDiff;
-			Result.Indices |= ClosestIdx << BitShiftStart;
-			BitShiftStart += 2;
-		}
-
-		return Result;
-	}
-
-	uint64_t BlockCompressionColor(const std::vector<UHColorRGB>& RGB888, const uint32_t Width, const uint32_t Height, const int32_t StartY, const int32_t StartX)
-	{
-		// collect the block colors and find the min/max color
-		UHColorRGB BlockColors[16];
-		uint32_t ColorCount = 0;
-		UHColorRGB MaxColor;
-		UHColorRGB MinColor(255, 255, 255);
-
-		for (int32_t Y = StartY; Y < StartY + 4; Y++)
-		{
-			for (int32_t X = StartX; X < StartX + 4; X++)
-			{
-				// clamp to nearest valid index
-				const int32_t NX = std::clamp(X, 0, (int32_t)Width - 1);
-				const int32_t NY = std::clamp(Y, 0, (int32_t)Height - 1);
-				const int32_t ColorIdx = Width * NY + NX;
-				const UHColorRGB& Color = RGB888[ColorIdx];
-				BlockColors[ColorCount++] = Color;
-
-				if (Color.Lumin() > MaxColor.Lumin())
-				{
-					MaxColor = Color;
-				}
-
-				if (Color.Lumin() < MinColor.Lumin())
-				{
-					MinColor = Color;
-				}
-			}
-		}
-
-		// brute-force method, test all combination of color reference and use the result that has the smallest BC1MinDiff
-		float BC1MinDiff = std::numeric_limits<float>::max();
-		UHColorBC1 FinalResult;
-		UHColorBC1 Result;
-		float MinDiff;
-
-		for (int32_t Idx = 0; Idx < 16; Idx++)
-		{
-			for (int32_t Jdx = Idx + 1; Jdx < 16; Jdx++)
-			{
-				Result = EvaluateBC1(BlockColors, BlockColors[Idx], BlockColors[Jdx], MinDiff);
-				if (MinDiff < BC1MinDiff)
-				{
-					BC1MinDiff = MinDiff;
-					FinalResult = Result;
-				}
-			}
-		}
-
-		// there is a chance that minimal distance method doesn't work the best, use min/max method for such case
-		Result = EvaluateBC1(BlockColors, MaxColor, MinColor, MinDiff);
-		if (MinDiff < BC1MinDiff)
-		{
-			FinalResult = Result;
-		}
-
-		uint64_t OutResult;
-		memcpy_s(&OutResult, sizeof(UHColorBC1), &FinalResult, sizeof(UHColorBC1));
-		return OutResult;
-	}
-
-	// evaludate bc3, almost the same algorithem as BC1
-	UHColorBC3 EvaluateBC3(const uint32_t BlockAlphas[16], const uint32_t& Alpha0, const uint32_t& Alpha1, float& OutMinDiff)
-	{
-		float RefAlpha[8];
-		RefAlpha[0] = static_cast<float>(Alpha0);
-		RefAlpha[1] = static_cast<float>(Alpha1);
-		OutMinDiff = 0;
-
-		// interpolate alpha 2 ~ alpha 8 based on the condition, use float for better precision
-		// but still using uint alpha as the condition
-		if (Alpha0 > Alpha1)
-		{
-			for (int32_t Idx = 2; Idx < 8; Idx++)
-			{
-				RefAlpha[Idx] = (RefAlpha[0] * (8 - Idx) + RefAlpha[1] * (Idx - 1)) / 7.0f;
-			}
-		}
-		else
-		{
-			for (int32_t Idx = 2; Idx < 6; Idx++)
-			{
-				RefAlpha[Idx] = (RefAlpha[0] * (6 - Idx) + RefAlpha[1] * (Idx - 1)) / 5.0f;
-			}
-			RefAlpha[6] = 0.0f;
-			RefAlpha[7] = 1.0f;
-		}
-
-		// store alpha_0 and alpha_1
-		UHColorBC3 Result;
-		Result.Alpha0 = static_cast<uint8_t>(Alpha0);
-		Result.Alpha1 = static_cast<uint8_t>(Alpha1);
-
-		// store indices from LSB to MSB
-		int32_t BitShiftStart = 0;
-		uint64_t Indices = 0;
-		for (uint32_t Idx = 0; Idx < 16; Idx++)
-		{
-			float MinDiff = std::numeric_limits<float>::max();
-			uint64_t ClosestIdx = 0;
-			for (uint32_t Jdx = 0; Jdx < 8; Jdx++)
-			{
-				float Diff = std::abs((float)BlockAlphas[Idx] - RefAlpha[Jdx]);
-				if (Diff < MinDiff)
-				{
-					MinDiff = Diff;
-					ClosestIdx = Jdx;
-				}
-			}
-
-			OutMinDiff += MinDiff;
-			Indices |= ClosestIdx << BitShiftStart;
-			BitShiftStart += 3;
-		}
-
-		// copy 48-bit to result
-		memcpy_s(&Result.AlphaIndices[0], sizeof(uint8_t) * 6, &Indices, sizeof(uint8_t) * 6);
-
-		return Result;
-	}
-
-	uint64_t BlockCompressionAlpha(const std::vector<uint32_t>& Alpha8, const uint32_t Width, const uint32_t Height, const int32_t StartY, const int32_t StartX)
-	{
-		uint32_t BlockAlphas[16] = { 0 };
-		uint32_t MaxAlpha = 0;
-		uint32_t MinAlpha = 255;
-		uint32_t AlphaCount = 0;
-
-		// for alpha compression, it has more indices bits than color, min-max method should be good enough
-		for (int32_t Y = StartY; Y < StartY + 4; Y++)
-		{
-			for (int32_t X = StartX; X < StartX + 4; X++)
-			{
-				// clamp to nearest valid index
-				const int32_t NX = std::clamp(X, 0, (int32_t)Width - 1);
-				const int32_t NY = std::clamp(Y, 0, (int32_t)Height - 1);
-				const int32_t AlphaIdx = Width * NY + NX;
-				const uint32_t& Alpha = Alpha8[AlphaIdx];
-
-				MaxAlpha = std::max(MaxAlpha, Alpha);
-				MinAlpha = std::min(MinAlpha, Alpha);
-				BlockAlphas[AlphaCount++] = Alpha;
-			}
-		}
-
-		// brute-force method, test all combination of color reference and use the result that has the smallest BC3MinDiff
-		float BC3MinDiff = std::numeric_limits<float>::max();
-		UHColorBC3 FinalResult;
-		UHColorBC3 Result;
-		float MinDiff;
-
-		for (int32_t Idx = 0; Idx < 16; Idx++)
-		{
-			for (int32_t Jdx = Idx + 1; Jdx < 16; Jdx++)
-			{
-				Result = EvaluateBC3(BlockAlphas, BlockAlphas[Idx], BlockAlphas[Jdx], MinDiff);
-				if (MinDiff < BC3MinDiff)
-				{
-					BC3MinDiff = MinDiff;
-					FinalResult = Result;
-				}
-			}
-		}
-
-		// there is a chance that minimal distance method doesn't work the best, use min/max method for such case
-		Result = EvaluateBC3(BlockAlphas, MaxAlpha, MinAlpha, MinDiff);
-		if (MinDiff < BC3MinDiff)
-		{
-			FinalResult = Result;
-		}
-
-		uint64_t OutResult;
-		memcpy_s(&OutResult, sizeof(UHColorBC3), &Result, sizeof(UHColorBC3));
-		return OutResult;
-	}
-
-	void WaitCompressionThreads()
-	{
-		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
-		{
-			if (GCompressTasks[Tdx].joinable())
-			{
-				GCompressTasks[Tdx].join();
-			}
-		}
-	}
-
-	std::vector<uint64_t> CompressBC1(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	void BlockCompressionColorGPU(const uint32_t Width, const uint32_t Height, std::vector<UHColorRGB>& RGB888, UHGraphic* InGfx, std::vector<uint64_t>& Output, bool bIsBC3)
 	{
 		// 8 bytes per 4x4 block, BC1 compression, alpha channel will be discard
 		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
-		std::vector<uint64_t> Output(OutputSize);
 
+		// prepare compression shader
+		UniquePtr<UHBlockCompressionShader> ColorCompressor = MakeUnique<UHBlockCompressionShader>(InGfx, "ColorCompressor", "BlockCompressColor");
+		UHRenderBuilder RenderBuilder(InGfx, InGfx->BeginOneTimeCmd());
+
+		// prepare data buffer and bind
+		UniquePtr<UHRenderBuffer<UHColorRGB>> InputData = InGfx->RequestRenderBuffer<UHColorRGB>();
+		InputData->CreateBuffer(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		InputData->UploadAllData(RGB888.data());
+
+		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>();
+		OutputData->CreateBuffer(OutputSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>();
+		Constants->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		UHCompressionConstant Consts;
+		Consts.Width = Width;
+		Consts.Height = Height;
+		Consts.IsBC3 = bIsBC3 ? 1 : 0;
+		Constants->UploadData(&Consts, 0);
+
+		ColorCompressor->BindStorage(OutputData.get(), 0, 0, true);
+		ColorCompressor->BindStorage(InputData.get(), 1, 0, true);
+		ColorCompressor->BindConstant(Constants, 2, 0);
+
+		// dispatch work
+		RenderBuilder.BindComputeState(ColorCompressor->GetComputeState());
+		RenderBuilder.BindDescriptorSetCompute(ColorCompressor->GetPipelineLayout(), ColorCompressor->GetDescriptorSet(0));
+		if (Width * Height > 16)
+		{
+			RenderBuilder.Dispatch((Width + 4) / 4, (Height + 4) / 4, 1);
+		}
+		else
+		{
+			RenderBuilder.Dispatch(1, 1, 1);
+		}
+		InGfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+		// readback data
+		Output = OutputData->ReadbackData();
+
+		ColorCompressor->Release();
+		InputData->Release();
+		OutputData->Release();
+		Constants->Release();
+	}
+
+	void BlockCompressionAlphaGPU(const uint32_t Width, const uint32_t Height, std::vector<uint32_t>& Alpha8, UHGraphic* InGfx, std::vector<uint64_t>& Output)
+	{
+		// 8 bytes per 4x4 block, BC1 compression, alpha channel will be discard
+		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
+
+		// prepare compression shader
+		UniquePtr<UHBlockCompressionShader> AlphaCompressor = MakeUnique<UHBlockCompressionShader>(InGfx, "AlphaCompressor", "BlockCompressAlpha");
+		UHRenderBuilder RenderBuilder(InGfx, InGfx->BeginOneTimeCmd());
+
+		// prepare data buffer and bind
+		UniquePtr<UHRenderBuffer<uint32_t>> InputData = InGfx->RequestRenderBuffer<uint32_t>();
+		InputData->CreateBuffer(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		InputData->UploadAllData(Alpha8.data());
+
+		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>();
+		OutputData->CreateBuffer(OutputSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>();
+		Constants->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		UHCompressionConstant Consts;
+		Consts.Width = Width;
+		Consts.Height = Height;
+		Consts.IsBC3 = 0;
+		Constants->UploadData(&Consts, 0);
+
+		AlphaCompressor->BindStorage(OutputData.get(), 0, 0, true);
+		AlphaCompressor->BindStorage(InputData.get(), 1, 0, true);
+		AlphaCompressor->BindConstant(Constants, 2, 0);
+
+		// dispatch work
+		RenderBuilder.BindComputeState(AlphaCompressor->GetComputeState());
+		RenderBuilder.BindDescriptorSetCompute(AlphaCompressor->GetPipelineLayout(), AlphaCompressor->GetDescriptorSet(0));
+		if (Width * Height > 16)
+		{
+			RenderBuilder.Dispatch((Width + 4) / 4, (Height + 4) / 4, 1);
+		}
+		else
+		{
+			RenderBuilder.Dispatch(1, 1, 1);
+		}
+		InGfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+		// readback data
+		Output = OutputData->ReadbackData();
+
+		AlphaCompressor->Release();
+		InputData->Release();
+		OutputData->Release();
+		Constants->Release();
+	}
+
+	std::vector<uint64_t> CompressBC1(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx)
+	{
+		// store color as float
 		std::vector<UHColorRGB> RGB888(Width * Height);
 		const size_t RawColorStride = 4;
 		for (size_t Idx = 0; Idx < RGB888.size(); Idx++)
@@ -302,40 +143,12 @@ namespace UHTextureCompressor
 			RGB888[Idx].B = (float)Input[Idx * RawColorStride + 2];
 		}
 
-		// assign BC tasks to threads, divided based on the height
-		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
-		{
-			// when height is < 8, use one thread only
-			if (Height <= GCompressThreadCount * 2 && Tdx > 0)
-			{
-				break;
-			}
-
-			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &RGB888, &Output]()
-				{
-					const uint32_t YProcessCount = Height / GCompressThreadCount;
-					const uint32_t StartY = (Height > GCompressThreadCount * 2) ? Tdx * YProcessCount : 0;
-					const uint32_t EndY = (Height > GCompressThreadCount * 2) ? StartY + YProcessCount : Height;
-
-					for (uint32_t Y = StartY; Y < EndY; Y += 4)
-					{
-						for (uint32_t X = 0; X < Width; X += 4)
-						{
-							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
-							if (OutputIdx < static_cast<int32_t>(OutputSize))
-							{
-								Output[OutputIdx] = BlockCompressionColor(RGB888, Width, Height, (int32_t)Y, (int32_t)X);
-							}
-						}
-					}
-				});
-		}
-		WaitCompressionThreads();
-
+		std::vector<uint64_t> Output;
+		BlockCompressionColorGPU(Width, Height, RGB888, InGfx, Output, false);
 		return Output;
 	}
 
-	std::vector<uint64_t> CompressBC3(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	std::vector<uint64_t> CompressBC3(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx)
 	{
 		// 16 bytes per 4x4 block, BC3 compression, alpha channel will be preserved
 		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
@@ -353,46 +166,24 @@ namespace UHTextureCompressor
 			Alpha8[Idx] = Input[Idx * RawColorStride + 3];
 		}
 
-		// assign BC tasks to threads, divided based on the height
-		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
+		std::vector<uint64_t> AlphaOutput;
+		BlockCompressionAlphaGPU(Width, Height, Alpha8, InGfx, AlphaOutput);
+
+		std::vector<uint64_t> ColorOutput;
+		BlockCompressionColorGPU(Width, Height, RGB888, InGfx, ColorOutput, true);
+
+		// assign to the output
+		for (size_t Idx = 0; Idx < ColorOutput.size(); Idx++)
 		{
-			// when height is < 8, use one thread only
-			if (Height <= GCompressThreadCount * 2 && Tdx > 0)
-			{
-				break;
-			}
-
-			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &RGB888, &Alpha8, &Output]()
-				{
-					const uint32_t YProcessCount = Height / GCompressThreadCount;
-					const uint32_t StartY = (Height > GCompressThreadCount * 2) ? Tdx * YProcessCount : 0;
-					const uint32_t EndY = (Height > GCompressThreadCount * 2) ? StartY + YProcessCount : Height;
-
-					for (uint32_t Y = StartY; Y < EndY; Y += 4)
-					{
-						for (uint32_t X = 0; X < Width; X += 4)
-						{
-							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
-							if (OutputIdx < static_cast<int32_t>(OutputSize))
-							{
-								Output[2 * OutputIdx] = BlockCompressionAlpha(Alpha8, Width, Height, (int32_t)Y, (int32_t)X);
-								Output[2 * OutputIdx + 1] = BlockCompressionColor(RGB888, Width, Height, (int32_t)Y, (int32_t)X);
-							}
-						}
-					}
-				});
+			Output[2 * Idx] = AlphaOutput[Idx];
+			Output[2 * Idx + 1] = ColorOutput[Idx];
 		}
-		WaitCompressionThreads();
-
 		return Output;
 	}
 
-	std::vector<uint64_t> CompressBC4(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	std::vector<uint64_t> CompressBC4(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx)
 	{
 		// 8 bytes per 4x4 block, BC4 compression, stores red channel only
-		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
-		std::vector<uint64_t> Output(OutputSize);
-
 		std::vector<uint32_t> Red8(Width * Height);
 		const size_t RawColorStride = 4;
 		for (size_t Idx = 0; Idx < Red8.size(); Idx++)
@@ -400,41 +191,12 @@ namespace UHTextureCompressor
 			Red8[Idx] = Input[Idx * RawColorStride];
 		}
 
-		// assign BC tasks to threads, divided based on the height
-		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
-		{
-			// when height is < 8, use one thread only
-			if (Height <= GCompressThreadCount * 2 && Tdx > 0)
-			{
-				break;
-			}
-
-			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &Red8, &Output]()
-				{
-					const uint32_t YProcessCount = Height / GCompressThreadCount;
-					const uint32_t StartY = (Height > GCompressThreadCount * 2) ? Tdx * YProcessCount : 0;
-					const uint32_t EndY = (Height > GCompressThreadCount * 2) ? StartY + YProcessCount : Height;
-
-					for (uint32_t Y = StartY; Y < EndY; Y += 4)
-					{
-						for (uint32_t X = 0; X < Width; X += 4)
-						{
-							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
-							if (OutputIdx < static_cast<int32_t>(OutputSize))
-							{
-								// BC4 uses the same way as BC3's alpha part to store R
-								Output[OutputIdx] = BlockCompressionAlpha(Red8, Width, Height, (int32_t)Y, (int32_t)X);
-							}
-						}
-					}
-				});
-		}
-		WaitCompressionThreads();
-
-		return Output;
+		std::vector<uint64_t> AlphaOutput;
+		BlockCompressionAlphaGPU(Width, Height, Red8, InGfx, AlphaOutput);
+		return AlphaOutput;
 	}
 
-	std::vector<uint64_t> CompressBC5(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	std::vector<uint64_t> CompressBC5(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx)
 	{
 		// 16 bytes per 4x4 block, BC5 compression, stores red/green channel only
 		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
@@ -449,603 +211,89 @@ namespace UHTextureCompressor
 			Green8[Idx] = Input[Idx * RawColorStride + 1];
 		}
 
-		// assign BC tasks to threads, divided based on the height
-		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
+		std::vector<uint64_t> RedOutput;
+		BlockCompressionAlphaGPU(Width, Height, Red8, InGfx, RedOutput);
+
+		std::vector<uint64_t> GreenOutput;
+		BlockCompressionAlphaGPU(Width, Height, Green8, InGfx, GreenOutput);
+
+		// assign output
+		for (size_t Idx = 0; Idx < RedOutput.size(); Idx++)
 		{
-			// when height is < 8, use one thread only
-			if (Height <= GCompressThreadCount * 2 && Tdx > 0)
-			{
-				break;
-			}
-
-			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &Red8, &Green8, &Output]()
-				{
-					const uint32_t YProcessCount = Height / GCompressThreadCount;
-					const uint32_t StartY = (Height > GCompressThreadCount * 2) ? Tdx * YProcessCount : 0;
-					const uint32_t EndY = (Height > GCompressThreadCount * 2) ? StartY + YProcessCount : Height;
-
-					for (uint32_t Y = StartY; Y < EndY; Y += 4)
-					{
-						for (uint32_t X = 0; X < Width; X += 4)
-						{
-							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
-							if (OutputIdx < static_cast<int32_t>(OutputSize))
-							{
-								// BC5 uses the same way as BC3's alpha part to store R/G
-								Output[2 * OutputIdx] = BlockCompressionAlpha(Red8, Width, Height, (int32_t)Y, (int32_t)X);
-								Output[2 * OutputIdx + 1] = BlockCompressionAlpha(Green8, Width, Height, (int32_t)Y, (int32_t)X);
-							}
-						}
-					}
-				});
+			Output[2 * Idx] = RedOutput[Idx];
+			Output[2 * Idx + 1] = GreenOutput[Idx];
 		}
-		WaitCompressionThreads();
-
 		return Output;
 	}
 
-
-	// all quantize below is signed
-	int32_t QuantizeAsNBit(int32_t InVal, int32_t InBit)
-	{
-		int32_t S = 0;
-		if (InVal < 0)
-		{
-			S = 1;
-			InVal = -InVal;
-		}
-
-		int32_t Q = (InVal << (InBit - 1)) / (0x7bff + 1);
-		if (S)
-		{
-			Q = -Q;
-		}
-
-		return Q;
-	}
-
-	int32_t UnquantizeFromNBit(int32_t InVal, int32_t InBit)
-	{
-		int32_t S = 0;
-		if (InVal < 0)
-		{
-			S = 1;
-			InVal = -InVal;
-		}
-
-		int32_t Q;
-		if (InVal == 0)
-		{
-			Q = 0;
-		}
-		else if (InVal >= ((1 << (InBit - 1)) - 1))
-		{
-			Q = 0x7FFF;
-		}
-		else
-		{
-			Q = ((InVal << 15) + 0x4000) >> (InBit - 1);
-		}
-
-		if (S)
-		{
-			Q = -Q;
-		}
-
-		return Q;
-	}
-
-	void GetBC6HPalette(const Imf::Rgba& Color0, const Imf::Rgba& Color1, float PaletteR[16], float PaletteG[16], float PaletteB[16])
-	{
-		const int32_t Weights[] = { 0, 4, 9, 13, 17, 21, 26, 30, 34, 38, 43, 47, 51, 55, 60, 64 };
-
-		const int32_t RefR0 = static_cast<int32_t>(Color0.r.bits());
-		const int32_t RefG0 = static_cast<int32_t>(Color0.g.bits());
-		const int32_t RefB0 = static_cast<int32_t>(Color0.b.bits());
-		const int32_t RefR1 = static_cast<int32_t>(Color1.r.bits());
-		const int32_t RefG1 = static_cast<int32_t>(Color1.g.bits());
-		const int32_t RefB1 = static_cast<int32_t>(Color1.b.bits());
-
-		// interpolate 16 values for comparison
-		for (int32_t Idx = 0; Idx < 16; Idx++)
-		{
-			const int32_t R = (RefR0 * (64 - Weights[Idx]) + RefR1 * Weights[Idx] + 32) >> 6;
-			const int32_t G = (RefG0 * (64 - Weights[Idx]) + RefG1 * Weights[Idx] + 32) >> 6;
-			const int32_t B = (RefB0 * (64 - Weights[Idx]) + RefB1 * Weights[Idx] + 32) >> 6;
-
-			Imf::Rgba Temp;
-			Temp.r = static_cast<uint16_t>(R);
-			Temp.g = static_cast<uint16_t>(G);
-			Temp.b = static_cast<uint16_t>(B);
-			PaletteR[Idx] = Temp.r;
-			PaletteG[Idx] = Temp.g;
-			PaletteB[Idx] = Temp.b;
-		}
-	}
-
-	// BC6H references:
-	// https://learn.microsoft.com/en-us/windows/win32/direct3d11/bc6h-format
-	// https://github.com/microsoft/DirectXTex/blob/main/DirectXTex/BC6HBC7.cpp
-	// Color0 and Color1 might be swapped during the process
-	uint64_t EvaluateBC6H(const Imf::Rgba BlockColors[16], Imf::Rgba& Color0, Imf::Rgba& Color1, float& OutMinDiff)
-	{
-		// setup palette for BC6H
-		float PaletteR[16];
-		float PaletteG[16];
-		float PaletteB[16];
-		GetBC6HPalette(Color0, Color1, PaletteR, PaletteG, PaletteB);
-
-		OutMinDiff = 0;
-		int32_t BitShiftStart = 0;
-		uint64_t Indices = 0;
-		for (uint32_t Idx = 0; Idx < 16;)
-		{
-			const int32_t R = static_cast<int32_t>(BlockColors[Idx].r.bits());
-			const int32_t G = static_cast<int32_t>(BlockColors[Idx].g.bits());
-			const int32_t B = static_cast<int32_t>(BlockColors[Idx].b.bits());
-			Imf::Rgba Temp;
-			Temp.r = static_cast<uint16_t>(R);
-			Temp.g = static_cast<uint16_t>(G);
-			Temp.b = static_cast<uint16_t>(B);
-
-			float BlockR = Temp.r;
-			float BlockG = Temp.g;
-			float BlockB = Temp.b;
-
-			float MinDiff = std::numeric_limits<float>::max();
-			uint64_t ClosestIdx = 0;
-
-			for (uint32_t Jdx = 0; Jdx < 16; Jdx++)
-			{
-				const float Diff = sqrtf((float)(BlockR - PaletteR[Jdx]) * (float)(BlockR - PaletteR[Jdx])
-					+ (float)(BlockG - PaletteG[Jdx]) * (float)(BlockG - PaletteG[Jdx])
-					+ (float)(BlockB - PaletteB[Jdx]) * (float)(BlockB - PaletteB[Jdx]));
-
-				if (Diff < MinDiff)
-				{
-					MinDiff = Diff;
-					ClosestIdx = Jdx;
-				}
-			}
-
-			// since the MSB of the first index will be discarded, if closest index for the first is larger than 3-bit range
-			// swap the reference color and search again
-			if (ClosestIdx > 7 && Idx == 0)
-			{
-				Imf::Rgba Temp = Color0;
-				Color0 = Color1;
-				Color1 = Temp;
-				GetBC6HPalette(Color0, Color1, PaletteR, PaletteG, PaletteB);
-				continue;
-			}
-
-			OutMinDiff += MinDiff;
-			Indices |= ClosestIdx << BitShiftStart;
-			BitShiftStart += (Idx == 0) ? 3 : 4;
-			Idx++;
-		}
-
-		return Indices;
-	}
-
-	bool StoreBC6HMode14(const Imf::Rgba& Color0, const Imf::Rgba& Color1, uint64_t Indices, UHColorBC6H &OutResult)
-	{
-		// the first endpoint and the delta
-		// 16 bits for the endpoint and 4 bits for the delta
-		uint64_t RW = UnquantizeFromNBit(QuantizeAsNBit(Color0.r.bits(), 16), 16);
-		uint64_t GW = UnquantizeFromNBit(QuantizeAsNBit(Color0.g.bits(), 16), 16);
-		uint64_t BW = UnquantizeFromNBit(QuantizeAsNBit(Color0.b.bits(), 16), 16);
-
-		int32_t RX = UnquantizeFromNBit(QuantizeAsNBit(Color1.r.bits() - Color0.r.bits(), 16), 16);
-		int32_t GX = UnquantizeFromNBit(QuantizeAsNBit(Color1.g.bits() - Color0.g.bits(), 16), 16);
-		int32_t BX = UnquantizeFromNBit(QuantizeAsNBit(Color1.b.bits() - Color0.b.bits(), 16), 16);
-		if (!(RX >= -8 && RX < 7
-			&& GX >= -8 && GX < 7
-			&& BX >= -8 && BX < 7))
-		{
-			return false;
-		}
-
-		std::bitset<16> RWBits = RW;
-		std::bitset<16> GWBits = GW;
-		std::bitset<16> BWBits = BW;
-
-		// store result from LSB to MSB
-		int32_t BitShiftStart = 0;
-		UHColorBC6H Result{};
-
-		// first 5 bits for mode, mode 14 is 01111
-		Result.LowBits = 0b1111;
-		BitShiftStart += 5;
-
-		// store RW/GW/BW 10-bit [9:0]
-		Result.LowBits |= (RW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= (GW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= (BW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		// store RX[3:0]
-		Result.LowBits |= static_cast<uint64_t>(RX & 0b1111) << BitShiftStart;
-		BitShiftStart += 4;
-
-		// store RW[10:15], note this is reversed!
-		for (int32_t Idx = 15; Idx >= 10; Idx--)
-		{
-			Result.LowBits |= static_cast<uint64_t>(RWBits[Idx]) << BitShiftStart;
-			BitShiftStart++;
-		}
-
-		// store GX[3:0]
-		Result.LowBits |= static_cast<uint64_t>(GX & 0b1111) << BitShiftStart;
-		BitShiftStart += 4;
-
-		// store GW[10:15], note this is reversed!
-		for (int32_t Idx = 15; Idx >= 10; Idx--)
-		{
-			Result.LowBits |= static_cast<uint64_t>(GWBits[Idx]) << BitShiftStart;
-			BitShiftStart++;
-		}
-
-		// store BX[3:0]
-		Result.LowBits |= static_cast<uint64_t>(BX & 0b1111) << BitShiftStart;
-		BitShiftStart += 4;
-
-		// store BW[10:15], note this is reversed and across the low-high bits!
-		for (int32_t Idx = 15; Idx >= 11; Idx--)
-		{
-			Result.LowBits |= static_cast<uint64_t>(BWBits[Idx]) << BitShiftStart;
-			BitShiftStart++;
-		}
-		assert(BitShiftStart == 64);
-
-		BitShiftStart = 0;
-		Result.HighBits |= static_cast<uint64_t>(BWBits[10]) << BitShiftStart;
-
-		BitShiftStart++;
-		Result.HighBits |= Indices << BitShiftStart;
-
-		OutResult = Result;
-		return true;
-	}
-
-	bool StoreBC6HMode13(const Imf::Rgba& Color0, const Imf::Rgba& Color1, uint64_t Indices, UHColorBC6H& OutResult)
-	{
-		// the first endpoint and the delta
-		// 12 bits for the endpoint and 8 bits for the delta
-		uint64_t RW = UnquantizeFromNBit(QuantizeAsNBit(Color0.r.bits(), 12), 12) >> 4;
-		uint64_t GW = UnquantizeFromNBit(QuantizeAsNBit(Color0.g.bits(), 12), 12) >> 4;
-		uint64_t BW = UnquantizeFromNBit(QuantizeAsNBit(Color0.b.bits(), 12), 12) >> 4;
-
-		int32_t RX = UnquantizeFromNBit(QuantizeAsNBit(Color1.r.bits() - Color0.r.bits(), 12), 12) >> 4;
-		int32_t GX = UnquantizeFromNBit(QuantizeAsNBit(Color1.g.bits() - Color0.g.bits(), 12), 12) >> 4;
-		int32_t BX = UnquantizeFromNBit(QuantizeAsNBit(Color1.b.bits() - Color0.b.bits(), 12), 12) >> 4;
-		if (!(RX >= -128 && RX < 127
-			&& GX >= -128 && GX < 127
-			&& BX >= -128 && BX < 127))
-		{
-			return false;
-		}
-
-		std::bitset<12> RWBits = RW;
-		std::bitset<12> GWBits = GW;
-		std::bitset<12> BWBits = BW;
-
-		// store result from LSB to MSB
-		int32_t BitShiftStart = 0;
-		UHColorBC6H Result{};
-
-		// first 5 bits for mode, mode 13 is 01011
-		Result.LowBits = 0b1011;
-		BitShiftStart += 5;
-
-		// store RW/GW/BW 10-bit [9:0]
-		Result.LowBits |= (RW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= (GW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= (BW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		// store RX[7:0]
-		Result.LowBits |= static_cast<uint64_t>(RX & 0b11111111) << BitShiftStart;
-		BitShiftStart += 8;
-
-		// store RW[10:11], note this is reversed!
-		for (int32_t Idx = 11; Idx >= 10; Idx--)
-		{
-			Result.LowBits |= static_cast<uint64_t>(RWBits[Idx]) << BitShiftStart;
-			BitShiftStart++;
-		}
-
-		// store GX[7:0]
-		Result.LowBits |= static_cast<uint64_t>(GX & 0b11111111) << BitShiftStart;
-		BitShiftStart += 8;
-
-		// store GW[10:11], note this is reversed!
-		for (int32_t Idx = 11; Idx >= 10; Idx--)
-		{
-			Result.LowBits |= static_cast<uint64_t>(GWBits[Idx]) << BitShiftStart;
-			BitShiftStart++;
-		}
-
-		// store BX[7:0]
-		Result.LowBits |= static_cast<uint64_t>(BX & 0b11111111) << BitShiftStart;
-		BitShiftStart += 8;
-
-		// store BW[10:11], note this is reversed and across the low-high bits!
-		Result.LowBits |= static_cast<uint64_t>(BWBits[11]) << BitShiftStart;
-		BitShiftStart++;
-		assert(BitShiftStart == 64);
-
-		BitShiftStart = 0;
-		Result.HighBits |= static_cast<uint64_t>(BWBits[10]) << BitShiftStart;
-
-		BitShiftStart++;
-		Result.HighBits |= Indices << BitShiftStart;
-
-		OutResult = Result;
-		return true;
-	}
-
-	bool StoreBC6HMode12(const Imf::Rgba& Color0, const Imf::Rgba& Color1, uint64_t Indices, UHColorBC6H& OutResult)
-	{
-		// the first endpoint and the delta
-		// 11 bits for the endpoint and 9 bits for the delta
-		// for the odd bits, round up the value before shift
-		uint64_t RW = UnquantizeFromNBit(QuantizeAsNBit(Color0.r.bits(), 11), 11 + 32) >> 5;
-		uint64_t GW = UnquantizeFromNBit(QuantizeAsNBit(Color0.g.bits(), 11), 11 + 32) >> 5;
-		uint64_t BW = UnquantizeFromNBit(QuantizeAsNBit(Color0.b.bits(), 11), 11 + 32) >> 5;
-
-		int32_t RX = UnquantizeFromNBit(QuantizeAsNBit(Color1.r.bits() - Color0.r.bits(), 11), 11 + 32) >> 5;
-		int32_t GX = UnquantizeFromNBit(QuantizeAsNBit(Color1.g.bits() - Color0.g.bits(), 11), 11 + 32) >> 5;
-		int32_t BX = UnquantizeFromNBit(QuantizeAsNBit(Color1.b.bits() - Color0.b.bits(), 11), 11 + 32) >> 5;
-		if (!(RX >= -256 && RX < 255
-			&& GX >= -256 && GX < 255
-			&& BX >= -256 && BX < 255))
-		{
-			return false;
-		}
-
-		std::bitset<11> RWBits = RW;
-		std::bitset<11> GWBits = GW;
-		std::bitset<11> BWBits = BW;
-
-		// store result from LSB to MSB
-		int32_t BitShiftStart = 0;
-		UHColorBC6H Result{};
-
-		// first 5 bits for mode, mode 12 is 00111
-		Result.LowBits = 0b111;
-		BitShiftStart += 5;
-
-		// store RW/GW/BW 10-bit [9:0]
-		Result.LowBits |= (RW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= (GW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= (BW & 0b1111111111) << BitShiftStart;
-		BitShiftStart += 10;
-
-		// store RX[8:0]
-		Result.LowBits |= static_cast<uint64_t>(RX & 0b111111111) << BitShiftStart;
-		BitShiftStart += 9;
-
-		// store RW[10]
-		Result.LowBits |= static_cast<uint64_t>(RWBits[10]) << BitShiftStart;
-		BitShiftStart++;
-
-		// store GX[8:0]
-		Result.LowBits |= static_cast<uint64_t>(GX & 0b111111111) << BitShiftStart;
-		BitShiftStart += 9;
-
-		// store GW[10]
-		Result.LowBits |= static_cast<uint64_t>(GWBits[10]) << BitShiftStart;
-		BitShiftStart++;
-
-		// store BX[8:0]
-		Result.LowBits |= static_cast<uint64_t>(BX & 0b111111111) << BitShiftStart;
-		BitShiftStart += 9;
-		assert(BitShiftStart == 64);
-
-		// store BW[10]
-		Result.HighBits |= static_cast<uint64_t>(BWBits[10]) << BitShiftStart;
-		BitShiftStart++;
-
-		BitShiftStart++;
-		Result.HighBits |= Indices << BitShiftStart;
-
-		OutResult = Result;
-		return true;
-	}
-
-	UHColorBC6H StoreBC6HMode11(const Imf::Rgba& Color0, const Imf::Rgba& Color1, uint64_t Indices)
-	{
-		// store result from LSB to MSB
-		int32_t BitShiftStart = 0;
-		UHColorBC6H Result{};
-
-		// quantize and unquantize back for the consistency
-		uint64_t RW = UnquantizeFromNBit(QuantizeAsNBit(Color0.r.bits(), 10), 10) >> 6;
-		uint64_t GW = UnquantizeFromNBit(QuantizeAsNBit(Color0.g.bits(), 10), 10) >> 6;
-		uint64_t BW = UnquantizeFromNBit(QuantizeAsNBit(Color0.b.bits(), 10), 10) >> 6;
-
-		uint64_t RX = UnquantizeFromNBit(QuantizeAsNBit(Color1.r.bits(), 10), 10) >> 6;
-		uint64_t GX = UnquantizeFromNBit(QuantizeAsNBit(Color1.g.bits(), 10), 10) >> 6;
-		uint64_t BX = UnquantizeFromNBit(QuantizeAsNBit(Color1.b.bits(), 10), 10) >> 6;
-
-		// first 5 bits for mode, mode 11 is corresponding to 00011
-		Result.LowBits = 0b11;
-		BitShiftStart += 5;
-
-		// next 60 bits for reference colors, 10 bits for each color component
-		Result.LowBits |= RW << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= GW << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= BW << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= RX << BitShiftStart;
-		BitShiftStart += 10;
-
-		Result.LowBits |= GX << BitShiftStart;
-		BitShiftStart += 10;
-
-		// note that the second color reference blue will across the last 9 bits of Data[0] and the first bit of Data[1]
-		Result.LowBits |= BX << BitShiftStart;
-
-		BitShiftStart = 0;
-		Result.HighBits = BX >> 9;
-
-		BitShiftStart++;
-		Result.HighBits |= Indices << BitShiftStart;
-
-		return Result;
-	}
-
-	// the BC6H compression always uses mode 14 for now
-	UHColorBC6H BlockCompressionHDR(const std::vector<Imf::Rgba>& RGBHalf, const uint32_t Width, const uint32_t Height, const int32_t StartY, const int32_t StartX)
-	{
-		// almost the same as BlockCompressionColor() impl, but store as half
-		Imf::Rgba BlockColors[16];
-		uint32_t ColorCount = 0;
-
-		UHColorRGB MaxTemp(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-		UHColorRGB MinTemp(FLT_MAX, FLT_MAX, FLT_MAX);
-		for (int32_t Y = StartY; Y < StartY + 4; Y++)
-		{
-			for (int32_t X = StartX; X < StartX + 4; X++)
-			{
-				// clamp to nearest valid index
-				const int32_t NX = std::clamp(X, 0, (int32_t)Width - 1);
-				const int32_t NY = std::clamp(Y, 0, (int32_t)Height - 1);
-				const int32_t ColorIdx = Width * NY + NX;
-				const Imf::Rgba& Color = RGBHalf[ColorIdx];
-				BlockColors[ColorCount++] = Color;
-
-				UHColorRGB ColorF(Color.r, Color.g, Color.b);
-				if (ColorF.Lumin() > MaxTemp.Lumin())
-				{
-					MaxTemp = ColorF;
-				}
-
-				if (ColorF.Lumin() < MinTemp.Lumin())
-				{
-					MinTemp = ColorF;
-				}
-			}
-		}
-		Imf::Rgba MaxColor(MaxTemp.R, MaxTemp.G, MaxTemp.B);
-		Imf::Rgba MinColor(MinTemp.R, MinTemp.G, MinTemp.B);
-
-		// brute-force method, test all combination of color reference and use the result that has the smallest BC1MinDiff
-		float BC6HMinDiff = std::numeric_limits<float>::max();
-		float MinDiff;
-		Imf::Rgba Color0;
-		Imf::Rgba Color1;
-		uint64_t Indices = 0;
-
-		for (int32_t Idx = 0; Idx < 16; Idx++)
-		{
-			for (int32_t Jdx = Idx + 1; Jdx < 16; Jdx++)
-			{
-				Imf::Rgba C0 = BlockColors[Idx];
-				Imf::Rgba C1 = BlockColors[Jdx];
-
-				const uint64_t Index = EvaluateBC6H(BlockColors, C0, C1, MinDiff);
-				if (MinDiff < BC6HMinDiff)
-				{
-					BC6HMinDiff = MinDiff;
-					Color0 = C0;
-					Color1 = C1;
-					Indices = Index;
-				}
-			}
-		}
-
-		// there is a chance that minimal distance method doesn't work the best, use min/max method for such case
-		const uint64_t Index = EvaluateBC6H(BlockColors, MaxColor, MinColor, MinDiff);
-		if (MinDiff < BC6HMinDiff)
-		{
-			Color0 = MaxColor;
-			Color1 = MinColor;
-			Indices = Index;
-		}
-
-		UHColorBC6H Result = {};
-
-		// conditionally select the BC6H mode, they will be evaluate in the funciton
-		if (StoreBC6HMode14(Color0, Color1, Indices, Result)) { }
-		else if (StoreBC6HMode13(Color0, Color1, Indices, Result)) { }
-		else if (StoreBC6HMode12(Color0, Color1, Indices, Result)) { }
-		else
-		{
-			Result = StoreBC6HMode11(Color0, Color1, Indices);
-		}
-
-		return Result;
-	}
-
-	std::vector<uint64_t> CompressBC6H(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input)
+	void BlockCompressionHDRGPU(const uint32_t Width, const uint32_t Height, std::vector<UHColorRGBInt>& RGBInt, UHGraphic* InGfx, std::vector<uint64_t>& Output)
 	{
 		const uint32_t OutputSize = std::max(Width * Height / 16, (uint32_t)1);
-		std::vector<uint64_t> Output(OutputSize * 2);
 
+		// prepare compression shader
+		UniquePtr<UHBlockCompressionNewShader> BC6HCompressor = MakeUnique<UHBlockCompressionNewShader>(InGfx, "BC6HCompressor");
+		UHRenderBuilder RenderBuilder(InGfx, InGfx->BeginOneTimeCmd());
+
+		// prepare data buffer and bind
+		UniquePtr<UHRenderBuffer<UHColorRGBInt>> InputData = InGfx->RequestRenderBuffer<UHColorRGBInt>();
+		InputData->CreateBuffer(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		InputData->UploadAllData(RGBInt.data());
+
+		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>();
+		OutputData->CreateBuffer(OutputSize * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>();
+		Constants->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		UHCompressionConstant Consts;
+		Consts.Width = Width;
+		Consts.Height = Height;
+		Constants->UploadData(&Consts, 0);
+
+		BC6HCompressor->BindStorage(OutputData.get(), 0, 0, true);
+		BC6HCompressor->BindStorage(InputData.get(), 1, 0, true);
+		BC6HCompressor->BindConstant(Constants, 2, 0);
+
+		// dispatch work
+		RenderBuilder.BindComputeState(BC6HCompressor->GetComputeState());
+		RenderBuilder.BindDescriptorSetCompute(BC6HCompressor->GetPipelineLayout(), BC6HCompressor->GetDescriptorSet(0));
+		if (Width * Height > 16)
+		{
+			RenderBuilder.Dispatch((Width + 4) / 4, (Height + 4) / 4, 1);
+		}
+		else
+		{
+			RenderBuilder.Dispatch(1, 1, 1);
+		}
+		InGfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
+
+		// readback data
+		Output = OutputData->ReadbackData();
+
+		BC6HCompressor->Release();
+		InputData->Release();
+		OutputData->Release();
+		Constants->Release();
+	}
+
+	std::vector<uint64_t> CompressBC6H(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx)
+	{
 		// collect RGB info
-		std::vector<Imf::Rgba> RGBHalf(Width * Height);
+		std::vector<UHColorRGBInt> RGBInt(Width * Height);
 
-		// input for BC6H should be RGBAFloat16, store as half float
+		// store float data
 		size_t Stride = sizeof(Imf::Rgba);
-		for (size_t Idx = 0; Idx < RGBHalf.size(); Idx++)
+		for (size_t Idx = 0; Idx < RGBInt.size(); Idx++)
 		{
 			Imf::Rgba RGBAHalf{};
 			memcpy_s(&RGBAHalf, Stride, Input.data() + Idx * Stride, Stride);
-			RGBHalf[Idx] = RGBAHalf;
+
+			RGBInt[Idx].R = RGBAHalf.r.bits();
+			RGBInt[Idx].G = RGBAHalf.g.bits();
+			RGBInt[Idx].B = RGBAHalf.b.bits();
 		}
 
-		// assign BC tasks to threads, divided based on the height
-		for (uint32_t Tdx = 0; Tdx < GCompressThreadCount; Tdx++)
-		{
-			// when height is < 8, use one thread only
-			if (Height <= GCompressThreadCount * 2 && Tdx > 0)
-			{
-				break;
-			}
-
-			GCompressTasks[Tdx] = std::thread([Tdx, Width, Height, OutputSize, &RGBHalf, &Output]()
-				{
-					const uint32_t YProcessCount = Height / GCompressThreadCount;
-					const uint32_t StartY = (Height > GCompressThreadCount * 2) ? Tdx * YProcessCount : 0;
-					const uint32_t EndY = (Height > GCompressThreadCount * 2) ? StartY + YProcessCount : Height;
-
-					for (uint32_t Y = StartY; Y < EndY; Y += 4)
-					{
-						for (uint32_t X = 0; X < Width; X += 4)
-						{
-							const int32_t OutputIdx = X / 4 + (Y / 4) * (Width / 4);
-							if (OutputIdx < static_cast<int32_t>(OutputSize))
-							{
-								// carefully store the result
-								const UHColorBC6H Result = BlockCompressionHDR(RGBHalf, Width, Height, (int32_t)Y, (int32_t)X);
-								const size_t Stride = sizeof(UHColorBC6H);
-								memcpy_s(Output.data() + OutputIdx * 2, Stride, &Result, Stride);
-							}
-						}
-					}
-				});
-		}
-		WaitCompressionThreads();
-
+		std::vector<uint64_t> Output;
+		BlockCompressionHDRGPU(Width, Height, RGBInt, InGfx, Output);
 		return Output;
 	}
 }

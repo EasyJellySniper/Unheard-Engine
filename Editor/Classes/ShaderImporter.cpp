@@ -272,10 +272,11 @@ void UHShaderImporter::CompileHLSL(std::string InShaderName, std::filesystem::pa
 		return;
 	}
 
-	// compile, setup dx layout as well
+	// compile, setup dx layout as well, be careful that the path must include "" mark in case there are folders with whitespace name
+	const std::string QuoteMark = "\"";
 	std::string CompileCmd = " -spirv -T " + ProfileName + " -E " + EntryName + " "
-		+ std::filesystem::absolute(InSource).string()
-		+ " -Fo " + std::filesystem::absolute(OutputShaderPath).string()
+		+ QuoteMark + std::filesystem::absolute(InSource).string() + QuoteMark
+		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
 		+ " -fspv-target-env=vulkan1.1spirv1.4 ";
@@ -372,10 +373,11 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		? GShaderAssetFolder + OutName + GShaderAssetExtension
 		: TempShaderPath + GShaderAssetExtension;
 
-	// compile, setup dx layout as well
+	// compile, setup dx layout as well, be careful with path system, quotation mark is needed
+	const std::string QuoteMark = "\"";
 	std::string CompileCmd = " -spirv -T " + ProfileName + " -E " + EntryName + " "
-		+ std::filesystem::absolute(TempShaderPath + GRawShaderExtension).string()
-		+ " -Fo " + std::filesystem::absolute(OutputShaderPath).string()
+		+ QuoteMark + std::filesystem::absolute(TempShaderPath + GRawShaderExtension).string() + QuoteMark
+		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
 		+ " -fspv-target-env=vulkan1.1spirv1.4 ";

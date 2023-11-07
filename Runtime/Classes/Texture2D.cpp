@@ -110,23 +110,23 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 			switch (TextureSettings.CompressionSetting)
 			{
 			case BC1:
-				CompressedMipData = UHTextureCompressor::CompressBC1(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				CompressedMipData = UHTextureCompressor::CompressBC1(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
 			case BC3:
-				CompressedMipData = UHTextureCompressor::CompressBC3(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				CompressedMipData = UHTextureCompressor::CompressBC3(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
 			case BC4:
-				CompressedMipData = UHTextureCompressor::CompressBC4(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				CompressedMipData = UHTextureCompressor::CompressBC4(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
 			case BC5:
-				CompressedMipData = UHTextureCompressor::CompressBC5(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				CompressedMipData = UHTextureCompressor::CompressBC5(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
 			case BC6H:
-				CompressedMipData = UHTextureCompressor::CompressBC6H(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData);
+				CompressedMipData = UHTextureCompressor::CompressBC6H(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
 			default:

@@ -435,3 +435,8 @@ Finished texture cube creation from panorama.
 
 05-11-2023: Added mipmap support for render texture. Fixed all kinds of minor issues when I was playing around texture/cubemap editor.
 Added cubemap smoothing shader.
+06-11-2023: Started moving texture compression implementation to compute shader. 
+Corrected the BC3 color part, I realized it will always go with the color0 <= color1 case...That makes point search useless and I have to use min/max color.
+Also corrected a path bug when compiling shader. By far, BC1~BC5 are already on compute shader!
+
+07-11-2023: Moved BC6H implementation to the compute shader as well.

@@ -375,6 +375,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -710,6 +713,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -755,5 +761,7 @@
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.vert" />
     <None Include="Shaders\PanoramaToCubemapShader.hlsl" />
     <None Include="Shaders\SmoothCubemapComputeShader.hlsl" />
+    <None Include="Shaders\BlockCompressionOldShader.hlsl" />
+    <None Include="Shaders\BlockCompressionNewShader.hlsl" />
   </ItemGroup>
 </Project>

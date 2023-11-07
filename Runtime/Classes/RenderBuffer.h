@@ -274,7 +274,14 @@ public:
     std::vector<T> ReadbackData()
     {
         // map & unmap memory operation
-        std::vector<T> OutputData(BufferSize);
+        std::vector<T> OutputData(BufferSize / BufferStride);
+        if (bIsUploadBuffer)
+        {
+            // already mapped, copy directly
+            memcpy_s(OutputData.data(), BufferSize, &DstData[0], BufferSize);
+            return OutputData;
+        }
+
         vkMapMemory(LogicalDevice, BufferMemory, 0, BufferSize, 0, reinterpret_cast<void**>(&DstData));
         memcpy_s(OutputData.data(), BufferSize, &DstData[0], BufferSize);
         vkUnmapMemory(LogicalDevice, BufferMemory);

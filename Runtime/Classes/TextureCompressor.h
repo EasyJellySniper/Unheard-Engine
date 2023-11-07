@@ -2,6 +2,8 @@
 #include "../UnheardEngine.h"
 
 #if WITH_EDITOR
+#include "../Engine/Graphic.h"
+
 namespace UHTextureCompressor
 {
 	// helper structure for readability, can be move somewhere else if they're useful
@@ -52,10 +54,10 @@ namespace UHTextureCompressor
 	};
 
 	// compression
-	std::vector<uint64_t> CompressBC1(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input);
-	std::vector<uint64_t> CompressBC3(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input);
-	std::vector<uint64_t> CompressBC4(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input);
-	std::vector<uint64_t> CompressBC5(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input);
-	std::vector<uint64_t> CompressBC6H(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input);
+	std::vector<uint64_t> CompressBC1(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx);
+	std::vector<uint64_t> CompressBC3(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx);
+	std::vector<uint64_t> CompressBC4(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx);
+	std::vector<uint64_t> CompressBC5(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx);
+	std::vector<uint64_t> CompressBC6H(const uint32_t Width, const uint32_t Height, const std::vector<uint8_t>& Input, UHGraphic* InGfx);
 }
 #endif

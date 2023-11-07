@@ -103,3 +103,12 @@ struct UHColorRGB
 
 UHColorRGB operator*(float Lhs, const UHColorRGB& Rhs);
 UHColorRGB operator/(const UHColorRGB& Lhs, float Rhs);
+
+struct UHColorRGBInt
+{
+    UHColorRGBInt();
+
+    uint32_t R;
+    uint32_t G;
+    uint32_t B;
+};
