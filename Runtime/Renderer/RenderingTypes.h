@@ -76,6 +76,7 @@ struct UHDirectionalLightConstants
 	// intensity is multiplied to Color before sending to GPU
 	XMFLOAT4 Color;
 	XMFLOAT3 Dir;
+	int32_t IsEnabled = 1;
 };
 
 struct UHPointLightConstants
@@ -84,6 +85,7 @@ struct UHPointLightConstants
 	XMFLOAT4 Color;
 	float Radius;
 	XMFLOAT3 Position;
+	int32_t IsEnabled = 1;
 };
 
 struct UHSpotLightConstants
@@ -95,6 +97,7 @@ struct UHSpotLightConstants
 	float Angle;
 	XMFLOAT3 Position;
 	float InnerAngle;
+	int32_t IsEnabled = 1;
 };
 
 enum UHRenderPassTypes

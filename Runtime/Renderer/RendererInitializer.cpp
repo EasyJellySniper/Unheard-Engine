@@ -68,6 +68,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bVsyncRT(false)
 	, bIsSwapChainResetGT(false)
 	, bIsSwapChainResetRT(false)
+	, bIsRenderingEnabledRT(true)
+	, bIsSkyLightEnabledRT(true)
 	, ParallelTask(UHParallelTask::None)
 	, LightCullingTileSize(16)
 	, MaxPointLightPerTile(32)
@@ -172,6 +174,7 @@ void UHDeferredShadingRenderer::Release()
 	GraphicInterface->WaitGPU();
 
 	// end render thread
+	RenderThread->WaitTask();
 	RenderThread->EndThread();
 	RenderThread.reset();
 	for (auto& WorkerThread : WorkerThreads)

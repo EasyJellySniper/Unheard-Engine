@@ -131,35 +131,39 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& Rend
 		RenderBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		RenderBuilder.ClearRenderTexture(SwapChainRT);
 
-		// transfer scene result and blit it, the scene result comes after post processing, it will be SceneResult or PostProcessRT
-		RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessResultIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-		// blit with the same aspect ratio as render resolution regardless of the swap chain size
-		VkExtent2D ConstraintedOffset;
-		VkExtent2D ConstraintedExtent;
-		ConstraintedExtent.width = SwapChainExtent.width;
-		ConstraintedExtent.height = SwapChainExtent.width * RenderResolution.height / RenderResolution.width;
-		ConstraintedOffset.width = 0;
-		ConstraintedOffset.height = (SwapChainExtent.height - ConstraintedExtent.height) / 2;
-
-		if (ConstraintedExtent.height > SwapChainExtent.height)
+		if (bIsRenderingEnabledRT)
 		{
-			ConstraintedExtent.height = SwapChainExtent.height;
-			ConstraintedExtent.width = SwapChainExtent.height * RenderResolution.width / RenderResolution.height;
-			ConstraintedOffset.height = 0;
-			ConstraintedOffset.width = (SwapChainExtent.width - ConstraintedExtent.width) / 2;
-		}
+			// transfer scene result and blit it, the scene result comes after post processing, it will be SceneResult or PostProcessRT
+			RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessResultIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-		if (!ConfigInterface->PresentationSetting().bFullScreen)
-		{
-			RenderBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT, PostProcessResults[PostProcessResultIdx]->GetExtent(), ConstraintedExtent, ConstraintedOffset);
-		}
-		else
-		{
-			RenderBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT);
+			// blit with the same aspect ratio as render resolution regardless of the swap chain size
+			VkExtent2D ConstraintedOffset;
+			VkExtent2D ConstraintedExtent;
+			ConstraintedExtent.width = SwapChainExtent.width;
+			ConstraintedExtent.height = SwapChainExtent.width * RenderResolution.height / RenderResolution.width;
+			ConstraintedOffset.width = 0;
+			ConstraintedOffset.height = (SwapChainExtent.height - ConstraintedExtent.height) / 2;
+
+			if (ConstraintedExtent.height > SwapChainExtent.height)
+			{
+				ConstraintedExtent.height = SwapChainExtent.height;
+				ConstraintedExtent.width = SwapChainExtent.height * RenderResolution.width / RenderResolution.height;
+				ConstraintedOffset.height = 0;
+				ConstraintedOffset.width = (SwapChainExtent.width - ConstraintedExtent.width) / 2;
+			}
+
+			if (!ConfigInterface->PresentationSetting().bFullScreen)
+			{
+				RenderBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT, PostProcessResults[PostProcessResultIdx]->GetExtent(), ConstraintedExtent, ConstraintedOffset);
+			}
+			else
+			{
+				RenderBuilder.Blit(PostProcessResults[PostProcessResultIdx], SwapChainRT);
+			}
 		}
 
 #if WITH_EDITOR
+		// editor ImGui rendering
 		SwapChainExtent = GraphicInterface->GetSwapChainExtent();
 		RenderBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent);
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), RenderBuilder.GetCmdList(), GraphicInterface->GetImGuiPipeline());

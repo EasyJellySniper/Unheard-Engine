@@ -13,7 +13,7 @@ UHDemoScript::UHDemoScript()
 	, TestType(DayTest)
 	, PointLightTimeCounter(0.0f)
 {
-
+	SetName("Demo Script Component");
 }
 
 void UHDemoScript::OnEngineUpdate(float DeltaTime)
@@ -152,9 +152,10 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	SecondDirectionalLight.SetLightColor(XMFLOAT3(1.0f, 0.55f, 0.0f));
 	SecondDirectionalLight.SetIntensity(2.5f);
 	SecondDirectionalLight.SetRotation(XMFLOAT3(45, -30, 0));
+	SecondDirectionalLight.SetIsEnabled(false);
 	if (TestType == DayTest)
 	{
-		//InScene->AddDirectionalLight(&SecondDirectionalLight);
+		InScene->AddDirectionalLight(&SecondDirectionalLight);
 	}
 
 	if (TestType == PointLightNight)

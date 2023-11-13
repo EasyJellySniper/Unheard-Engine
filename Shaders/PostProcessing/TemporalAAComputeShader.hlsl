@@ -6,14 +6,15 @@ Texture2D SceneTexture : register(t2);
 Texture2D HistoryTexture : register(t3);
 Texture2D MotionTexture : register(t4);
 Texture2D HistoryMotionTexture : register(t5);
-SamplerState LinearSampler : register(s6);
+Texture2D DepthTexture : register(t6);
+SamplerState LinearSampler : register(s7);
 
-static const float GHistoryWeightMin = 0.8f;
+static const float GHistoryWeightMin = 0.65f;
 static const float GHistoryWeightMax = 0.8f;
 static const float GMotionDiffScale = 100.0f;
 
 // group optimization, use 1D array for the best perf
-groupshared float3 GColorCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];
+groupshared float GDepthCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];
 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
@@ -41,7 +42,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	// motion rejection
 	float MotionDiff = length(Motion - HistoryMotion);
 	MotionDiff = saturate(MotionDiff * GMotionDiffScale);
-	Weight = lerp(Weight, 0, saturate(MotionDiff / 0.1f));
+	Weight = lerp(Weight, 0, saturate(MotionDiff * 10.0f));
 
 	// if history UV is outside of the screen use the sample from current frame
 	Weight = lerp(Weight, 0, HistoryUV.x != saturate(HistoryUV.x) || HistoryUV.y != saturate(HistoryUV.y));
@@ -50,13 +51,11 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	float3 HistoryResult = HistoryTexture.SampleLevel(LinearSampler, HistoryUV, 0).rgb;
 
 	// cache the color sampling
-	GColorCache[GTid.x + GTid.y * UHTHREAD_GROUP2D_X] = Result;
+    GDepthCache[GTid.x + GTid.y * UHTHREAD_GROUP2D_X] = DepthTexture.SampleLevel(LinearSampler, UV, 0).r;
 	GroupMemoryBarrierWithGroupSync();
 
-	// 3x3 color clamping
-	float3 MinColor = 999;
-	float3 MaxColor = -999;
-
+	// 3x3 depth rejection
+    int ValidCount = 0;
 	UHUNROLL
 	for (int Idx = -1; Idx <= 1; Idx++)
 	{
@@ -66,12 +65,11 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 			int2 Pos = min(int2(GTid.xy) + int2(Idx, Jdx), int2(UHTHREAD_GROUP2D_X - 1, UHTHREAD_GROUP2D_Y - 1));
 			Pos = max(Pos, 0);
 
-			float3 Color = GColorCache[Pos.x + Pos.y * UHTHREAD_GROUP2D_X];
-			MinColor = min(MinColor, Color);
-			MaxColor = max(MaxColor, Color);
-		}
+            float Color = GDepthCache[Pos.x + Pos.y * UHTHREAD_GROUP2D_X];
+            ValidCount = lerp(ValidCount, ValidCount + 1, Color > 0.0f);
+        }
 	}
-	HistoryResult = clamp(HistoryResult, MinColor, MaxColor);
+    Weight = lerp(Weight, 0, ValidCount == 0);
 
 	// final accumulation blend
 	float3 Accumulation = lerp(Result, HistoryResult, Weight);

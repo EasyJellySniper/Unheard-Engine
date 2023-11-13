@@ -223,6 +223,9 @@ bool UHTransformComponent::IsTransformChanged() const
 #if WITH_EDITOR
 void UHTransformComponent::OnGenerateDetailView()
 {
+	UHComponent::OnGenerateDetailView();
+
+	ImGui::NewLine();
 	ImGui::Text("------ Transform ------");
 	if (ImGui::InputFloat3("Position", (float*)&Position))
 	{

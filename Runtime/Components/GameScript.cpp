@@ -9,7 +9,5 @@ UHGameScript::UHGameScript()
 		UHGameScripts[GetId()] = this;
 	}
 
-#if WITH_EDITOR
-	bIsEditable = false;
-#endif
+	SetName("GameScriptComponent" + std::to_string(GetId()));
 }

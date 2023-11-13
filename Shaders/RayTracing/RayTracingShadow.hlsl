@@ -67,6 +67,11 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 	{
 		// shoot ray from world pos to light dir
 		UHDirectionalLight DirLight = UHDirLights[Ldx];
+        UHBRANCH
+        if (!DirLight.bIsEnabled)
+        {
+            continue;
+        }
 
 		RayDesc ShadowRay = (RayDesc)0;
 		ShadowRay.Origin = WorldPos + WorldNormal * Gap;
@@ -115,6 +120,11 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         TileOffset += 4;
 		
         UHPointLight PointLight = UHPointLights[PointLightIdx];
+        UHBRANCH
+        if (!PointLight.bIsEnabled)
+        {
+            continue;
+        }
         LightToWorld = WorldPos - PointLight.Position;
 		
 		// point only needs to be traced by the length of LightToWorld
@@ -163,6 +173,11 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         TileOffset += 4;
 		
         UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
+        UHBRANCH
+        if (!SpotLight.bIsEnabled)
+        {
+            continue;
+        }
         LightToWorld = WorldPos - SpotLight.Position;
 		
 		// point only needs to be traced by the length of LightToWorld

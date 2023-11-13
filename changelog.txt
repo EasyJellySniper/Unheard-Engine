@@ -440,3 +440,6 @@ Corrected the BC3 color part, I realized it will always go with the color0 <= co
 Also corrected a path bug when compiling shader. By far, BC1~BC5 are already on compute shader!
 
 07-11-2023: Moved BC6H implementation to the compute shader as well.
+12-11-2023: Minor change to TAA. Fixed a thread bug in release build when app is closing.
+13-11-2023: Expose enable flag for component class. All components including game script should be able to toggle now.
+Fixed light list buffer for translucent objects, I gave the wrong buffer when organizing rendering resource before.

@@ -83,6 +83,9 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
 	bIsSwapChainResetRT = bIsSwapChainResetGT;
 	bEnableAsyncComputeRT = bEnableAsyncComputeGT;
+	bIsRenderingEnabledRT = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
+	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
+
 	if (SkyMeshRT == nullptr)
 	{
 		SkyMeshRT = AssetManagerInterface->GetMesh("UHMesh_Cube");
@@ -161,6 +164,11 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		return;
 	}
 
+	if (!CurrentCamera->IsEnabled())
+	{
+		return;
+	}
+
 	// setup system constants and upload
 	SystemConstantsCPU.UHViewProj = CurrentCamera->GetViewProjMatrix();
 	SystemConstantsCPU.UHViewProjInv = CurrentCamera->GetInvViewProjMatrix();
@@ -198,8 +206,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	// set sky light data
 	UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
-	SystemConstantsCPU.UHAmbientSky = SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity();
-	SystemConstantsCPU.UHAmbientGround = SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity();
+	SystemConstantsCPU.UHAmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
+	SystemConstantsCPU.UHAmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
 
 	SystemConstantsCPU.UHShadowResolution.x = static_cast<float>(RTShadowExtent.width);
 	SystemConstantsCPU.UHShadowResolution.y = static_cast<float>(RTShadowExtent.height);
@@ -299,6 +307,11 @@ void UHDeferredShadingRenderer::FrustumCulling()
 		return;
 	}
 
+	if (!CurrentCamera->IsEnabled())
+	{
+		return;
+	}
+
 	// wake frustum culling task
 	ParallelTask = UHParallelTask::FrustumCullingTask;
 	for (int32_t I = 0; I < NumWorkerThreads; I++)
@@ -372,6 +385,11 @@ void UHDeferredShadingRenderer::SortRenderer()
 		return;
 	}
 
+	if (!CurrentCamera->IsEnabled())
+	{
+		return;
+	}
+
 	// wake sorting opaque task
 	ParallelTask = UHParallelTask::SortingOpaqueTask;
 	for (int32_t I = 0; I < NumWorkerThreads; I++)
@@ -405,9 +423,12 @@ void UHDeferredShadingRenderer::GetLightCullingTileCount(uint32_t& TileCountX, u
 UHTextureCube* UHDeferredShadingRenderer::GetCurrentSkyCube() const
 {
 	UHTextureCube* CurrSkyCube = nullptr;
-	if (CurrentScene->GetSkyLight())
+	if (UHSkyLightComponent* SkyLightComp = CurrentScene->GetSkyLight())
 	{
-		CurrSkyCube = CurrentScene->GetSkyLight()->GetCubemap();
+		if (SkyLightComp->IsEnabled())
+		{
+			CurrSkyCube = SkyLightComp->GetCubemap();
+		}
 	}
 
 	return CurrSkyCube;
@@ -475,7 +496,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			UHProfilerScope Profiler(&RenderThreadProfile);
 
 			// collect worker bundle for this frame
-			if (bParallelSubmissionRT)
+			if (bParallelSubmissionRT && bIsRenderingEnabledRT)
 			{
 				DepthParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 				BaseParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
@@ -497,7 +518,10 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				AsyncComputeBuilder.BeginCommandBuffer();
 				GraphicInterface->BeginCmdDebug(AsyncComputeBuilder.GetCmdList(), "Executing Async Compute");
 
-				BuildTopLevelAS(AsyncComputeBuilder);
+				if (bIsRenderingEnabledRT)
+				{
+					BuildTopLevelAS(AsyncComputeBuilder);
+				}
 
 				GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
 				AsyncComputeBuilder.EndCommandBuffer();
@@ -514,19 +538,22 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			SceneRenderBuilder.BeginCommandBuffer();
 			GraphicInterface->BeginCmdDebug(SceneRenderBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
 
-			RenderDepthPrePass(SceneRenderBuilder);
-			RenderBasePass(SceneRenderBuilder);
-			RenderMotionPass(SceneRenderBuilder);
-			if (!bEnableAsyncComputeRT)
+			if (bIsRenderingEnabledRT)
 			{
-				BuildTopLevelAS(SceneRenderBuilder);
+				RenderDepthPrePass(SceneRenderBuilder);
+				RenderBasePass(SceneRenderBuilder);
+				RenderMotionPass(SceneRenderBuilder);
+				if (!bEnableAsyncComputeRT)
+				{
+					BuildTopLevelAS(SceneRenderBuilder);
+				}
+				DispatchLightCulling(SceneRenderBuilder);
+				DispatchRayShadowPass(SceneRenderBuilder);
+				RenderLightPass(SceneRenderBuilder);
+				RenderSkyPass(SceneRenderBuilder);
+				RenderTranslucentPass(SceneRenderBuilder);
+				RenderPostProcessing(SceneRenderBuilder);
 			}
-			DispatchLightCulling(SceneRenderBuilder);
-			DispatchRayShadowPass(SceneRenderBuilder);
-			RenderLightPass(SceneRenderBuilder);
-			RenderSkyPass(SceneRenderBuilder);
-			RenderTranslucentPass(SceneRenderBuilder);
-			RenderPostProcessing(SceneRenderBuilder);
 
 			// blit scene to swap chain
 			PresentIndex = RenderSceneToSwapChain(SceneRenderBuilder);

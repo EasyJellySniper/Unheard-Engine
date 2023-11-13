@@ -3,7 +3,7 @@
 void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 {
 	RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-	if (CurrentScene == nullptr || CurrentScene->GetSkyLight() == nullptr || GetCurrentSkyCube() == nullptr)
+	if (CurrentScene == nullptr || CurrentScene->GetSkyLight() == nullptr || !bIsSkyLightEnabledRT)
 	{
 		return;
 	}

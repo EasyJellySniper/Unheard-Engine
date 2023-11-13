@@ -144,6 +144,7 @@ struct UHDirectionalLight
 	// color.a for intensity, but it's already applied to color
 	float4 Color;
 	float3 Dir;
+    bool bIsEnabled;
 };
 StructuredBuffer<UHDirectionalLight> UHDirLights : register(UHDIRLIGHT_BIND);
 
@@ -153,6 +154,7 @@ struct UHPointLight
     float4 Color;
     float Radius;
     float3 Position;
+    bool bIsEnabled;
 };
 StructuredBuffer<UHPointLight> UHPointLights : register(UHPOINTLIGHT_BIND);
 
@@ -165,6 +167,7 @@ struct UHSpotLight
     float Angle;
     float3 Position;
     float InnerAngle;
+    bool bIsEnabled;
 };
 StructuredBuffer<UHSpotLight> UHSpotLights : register(UHSPOTLIGHT_BIND);
 

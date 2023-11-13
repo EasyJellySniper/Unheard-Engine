@@ -163,9 +163,12 @@ void UHEngine::Update()
 	UHEGameTimer->Tick();
 
 	// update scripts
-	for (const auto Script : UHGameScripts)
+	for (const auto& Script : UHGameScripts)
 	{
-		Script.second->OnEngineUpdate(UHEGameTimer->GetDeltaTime());
+		if (Script.second->IsEnabled())
+		{
+			Script.second->OnEngineUpdate(UHEGameTimer->GetDeltaTime());
+		}
 	}
 
 	// full screen toggling

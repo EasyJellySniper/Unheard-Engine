@@ -19,6 +19,11 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 
 void UHMeshRendererComponent::Update()
 {
+	if (!bIsEnabled)
+	{
+		return;
+	}
+
 	// make sure transform is up-to-date
 	UHTransformComponent::Update();
 
@@ -71,7 +76,7 @@ void UHMeshRendererComponent::SetVisible(bool bVisible)
 
 bool UHMeshRendererComponent::IsVisible() const
 {
-	return bIsVisible
+	return bIsVisible && bIsEnabled
 #if WITH_EDITOR
 		&& bIsVisibleEditor
 #endif

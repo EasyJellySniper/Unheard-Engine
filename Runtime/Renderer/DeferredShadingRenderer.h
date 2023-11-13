@@ -229,6 +229,8 @@ private:
 	bool bVsyncRT;
 	bool bIsSwapChainResetGT;
 	bool bIsSwapChainResetRT;
+	bool bIsRenderingEnabledRT;
+	bool bIsSkyLightEnabledRT;
 
 	// current scene
 	UHScene* CurrentScene;

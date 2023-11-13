@@ -92,8 +92,8 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 	{
 		BindImage(GRTShadowResult, 9);
 	}
-	BindStorage(GPointLightListBuffer.get(), 10, 0, true);
-	BindStorage(GSpotLightListBuffer.get(), 11, 0, true);
+	BindStorage(GPointLightListTransBuffer.get(), 10, 0, true);
+	BindStorage(GSpotLightListTransBuffer.get(), 11, 0, true);
 	BindSampler(GLinearClampedSampler, 12);
 
 	// write textures/samplers when they are available

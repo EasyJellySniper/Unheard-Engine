@@ -92,6 +92,12 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
+        UHBRANCH
+        if (!UHDirLights[Ldx].bIsEnabled)
+        {
+            continue;
+        }
+        
         LightInfo.LightColor = UHDirLights[Ldx].Color.rgb;
         LightInfo.LightDir = UHDirLights[Ldx].Dir;
         Result += LightBRDF(LightInfo);
@@ -99,8 +105,8 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	
 	// ------------------------------------------------------------------------------------------ point lights accumulation
 	// point lights accumulation, fetch the tile index here, note that the system culls at half resolution
-    uint TileX = uint(Vin.Position.x) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileY = uint(Vin.Position.y) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileX = uint(Vin.Position.x + 0.5f) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileY = uint(Vin.Position.y + 0.5f) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileIndex = TileX + TileY * UHLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightListTrans.Load(TileOffset);
@@ -115,6 +121,11 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         uint PointLightIdx = PointLightListTrans.Load(TileOffset);
        
         UHPointLight PointLight = UHPointLights[PointLightIdx];
+        UHBRANCH
+        if (!PointLight.bIsEnabled)
+        {
+            continue;
+        }
         LightInfo.LightColor = PointLight.Color.rgb;
 		
         LightToWorld = Vin.WorldPos - PointLight.Position;
@@ -142,6 +153,12 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         TileOffset += 4;
         
         UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
+        UHBRANCH
+        if (!SpotLight.bIsEnabled)
+        {
+            continue;
+        }
+        
         LightInfo.LightColor = SpotLight.Color.rgb;
         LightInfo.LightDir = SpotLight.Dir;
         LightToWorld = Vin.WorldPos - SpotLight.Position;

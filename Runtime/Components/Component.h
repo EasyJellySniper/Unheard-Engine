@@ -18,9 +18,12 @@ public:
 	// each component should implement Update() function
 	virtual void Update() = 0;
 
+	void SetIsEnabled(bool bInFlag);
+	bool IsEnabled() const;
+
 #if WITH_EDITOR
 	virtual UHDebugBoundConstant GetDebugBoundConst() const { return UHDebugBoundConstant{}; }
-	virtual void OnGenerateDetailView() { }
+	virtual void OnGenerateDetailView();
 	bool IsEditable() const;
 #endif
 
@@ -28,6 +31,7 @@ protected:
 #if WITH_EDITOR
 	bool bIsEditable;
 #endif
+	bool bIsEnabled;
 };
 
 template <typename T>

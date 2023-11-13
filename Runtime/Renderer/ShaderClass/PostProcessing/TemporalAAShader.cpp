@@ -11,6 +11,7 @@ UHTemporalAAShader::UHTemporalAAShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 	
 	CreateDescriptor();
@@ -40,5 +41,6 @@ void UHTemporalAAShader::BindParameters()
 	BindImage(GPreviousSceneResult, 3);
 	BindImage(GMotionVectorRT, 4);
 	BindImage(GPrevMotionVectorRT, 5);
-	BindSampler(GLinearClampedSampler, 6);
+	BindImage(GSceneDepth, 6);
+	BindSampler(GLinearClampedSampler, 7);
 }

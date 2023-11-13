@@ -148,6 +148,12 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     for (uint LightIdx = GIndex; LightIdx < UHNumPointLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
     {
         UHPointLight PointLight = UHPointLights[LightIdx];
+        UHBRANCH
+        if (!PointLight.bIsEnabled)
+        {
+            continue;
+        }
+        
         float3 PointLightViewPos = WorldToViewPos(PointLight.Position);
         
         bool bIsOverlapped = SphereIntersectsFrustum(float4(PointLightViewPos, PointLight.Radius), TileFrustum);
@@ -257,6 +263,12 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     for (uint LightIdx = GIndex; LightIdx < UHNumSpotLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
     {
         UHSpotLight SpotLight = UHSpotLights[LightIdx];
+        UHBRANCH
+        if (!SpotLight.bIsEnabled)
+        {
+            continue;
+        }
+        
         float3 SpotLightViewPos = WorldToViewPos(SpotLight.Position);
         
         bool bIsOverlapped = SphereIntersectsFrustum(float4(SpotLightViewPos, SpotLight.Radius), TileFrustum)

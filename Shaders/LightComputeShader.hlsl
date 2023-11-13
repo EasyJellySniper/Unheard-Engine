@@ -62,6 +62,12 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
         UHDirectionalLight DirLight = UHDirLights[Ldx];
+        UHBRANCH
+        if (!DirLight.bIsEnabled)
+        {
+            continue;
+        }
+        
         LightInfo.LightColor = DirLight.Color.rgb;
         LightInfo.LightDir = DirLight.Dir;
         Result += LightBRDF(LightInfo);
@@ -86,6 +92,11 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         uint PointLightIdx = PointLightList.Load(TileOffset);
        
         UHPointLight PointLight = UHPointLights[PointLightIdx];
+        UHBRANCH
+        if (!PointLight.bIsEnabled)
+        {
+            continue;
+        }
         LightInfo.LightColor = PointLight.Color.rgb;
 		
         LightToWorld = WorldPos - PointLight.Position;
@@ -113,6 +124,12 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         TileOffset += 4;
         
         UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
+        UHBRANCH
+        if (!SpotLight.bIsEnabled)
+        {
+            continue;
+        }
+        
         LightInfo.LightColor = SpotLight.Color.rgb;
         LightInfo.LightDir = SpotLight.Dir;
         LightToWorld = WorldPos - SpotLight.Position;

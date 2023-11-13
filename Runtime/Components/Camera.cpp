@@ -33,6 +33,11 @@ UHCameraComponent::UHCameraComponent()
 
 void UHCameraComponent::Update()
 {
+	if (!bIsEnabled)
+	{
+		return;
+	}
+
 	// must have latest transform info
 	UHTransformComponent::Update();
 

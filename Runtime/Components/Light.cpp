@@ -30,6 +30,11 @@ UHDirectionalLightComponent::UHDirectionalLightComponent()
 
 void UHDirectionalLightComponent::Update()
 {
+	if (!bIsEnabled)
+	{
+		return;
+	}
+
 	// light update doesn't need to calculate world matrix
 	bTransformChanged = bIsWorldDirty;
 
@@ -43,6 +48,12 @@ void UHDirectionalLightComponent::Update()
 UHDirectionalLightConstants UHDirectionalLightComponent::GetConstants() const
 {
 	UHDirectionalLightConstants Consts{};
+	if (!bIsEnabled)
+	{
+		Consts.IsEnabled = 0;
+		return Consts;
+	}
+
 	Consts.Color.x = LightColor.x;
 	Consts.Color.y = LightColor.y;
 	Consts.Color.z = LightColor.z;
@@ -88,6 +99,11 @@ UHPointLightComponent::UHPointLightComponent()
 
 void UHPointLightComponent::Update()
 {
+	if (!bIsEnabled)
+	{
+		return;
+	}
+
 	// light update doesn't need to calculate world matrix
 	bTransformChanged = bIsWorldDirty;
 
@@ -111,6 +127,12 @@ float UHPointLightComponent::GetRadius() const
 UHPointLightConstants UHPointLightComponent::GetConstants() const
 {
 	UHPointLightConstants Consts{};
+	if (!bIsEnabled)
+	{
+		Consts.IsEnabled = 0;
+		return Consts;
+	}
+
 	Consts.Color.x = LightColor.x;
 	Consts.Color.y = LightColor.y;
 	Consts.Color.z = LightColor.z;
@@ -172,6 +194,11 @@ UHSpotLightComponent::UHSpotLightComponent()
 
 void UHSpotLightComponent::Update()
 {
+	if (!bIsEnabled)
+	{
+		return;
+	}
+
 	// light update doesn't need to calculate world matrix
 	bTransformChanged = bIsWorldDirty;
 
@@ -206,6 +233,11 @@ float UHSpotLightComponent::GetAngle() const
 UHSpotLightConstants UHSpotLightComponent::GetConstants() const
 {
 	UHSpotLightConstants Consts{};
+	if (!bIsEnabled)
+	{
+		Consts.IsEnabled = 0;
+		return Consts;
+	}
 
 	Consts.Color.x = LightColor.x;
 	Consts.Color.y = LightColor.y;
