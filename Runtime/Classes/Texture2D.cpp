@@ -335,8 +335,9 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBui
 	for (uint32_t Mdx = 1; Mdx < TexInfo.subresourceRange.levelCount; Mdx++)
 	{
 		// transition mip M-1 to SRC BIT, and M to DST BIT, note mip M is still layout undefined at this point
-		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx - 1);
-		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx);
+		InRenderBuilder.PushResourceBarrier(UHImageBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx - 1));
+		InRenderBuilder.PushResourceBarrier(UHImageBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx));
+		InRenderBuilder.FlushResourceBarrier();
 
 		// blit to proper mip slices
 		VkExtent2D SrcExtent;
@@ -357,11 +358,9 @@ void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBui
 	for (uint32_t Mdx = 0; Mdx < TexInfo.subresourceRange.levelCount; Mdx++)
 	{
 		// the last mip is DST bit, differeniate here
-		if (Mdx != TexInfo.subresourceRange.levelCount - 1)
-		{
-			InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
-		}
+		InRenderBuilder.PushResourceBarrier(UHImageBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx));
 	}
+	InRenderBuilder.FlushResourceBarrier();
 
 	bIsMipMapGenerated = true;
 }

@@ -378,6 +378,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Editor\Dialog\InfoDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -714,6 +717,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Dialog\InfoDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

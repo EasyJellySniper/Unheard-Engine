@@ -6200,7 +6200,10 @@ static bool ImGui::UpdateWindowManualResize(ImGuiWindow* window, const ImVec2& s
         ItemAdd(resize_rect, resize_grip_id, NULL, ImGuiItemFlags_NoNav);
         ButtonBehavior(resize_rect, resize_grip_id, &hovered, &held, ImGuiButtonFlags_FlattenChildren | ImGuiButtonFlags_NoNavFocus);
         //GetForegroundDrawList(window)->AddRect(resize_rect.Min, resize_rect.Max, IM_COL32(255, 255, 0, 255));
-        if (hovered || held)
+        
+        // BEGIN UHE MOD - Prevent corner resizing
+        const bool bNoResizeGrip = (flags & ImGuiWindowFlags_NoResizeGrip);
+        if ((hovered || held) && !bNoResizeGrip)
             g.MouseCursor = (resize_grip_n & 1) ? ImGuiMouseCursor_ResizeNESW : ImGuiMouseCursor_ResizeNWSE;
 
         if (held && g.IO.MouseClickedCount[0] == 2 && resize_grip_n == 0)
@@ -6210,7 +6213,8 @@ static bool ImGui::UpdateWindowManualResize(ImGuiWindow* window, const ImVec2& s
             ret_auto_fit = true;
             ClearActiveID();
         }
-        else if (held)
+        // prevent resizing if NoResizeGrip flag is there
+        else if (held && !bNoResizeGrip)
         {
             // Resize from any of the four corners
             // We don't use an incremental MouseDelta but rather compute an absolute target size based on mouse position
@@ -6222,8 +6226,9 @@ static bool ImGui::UpdateWindowManualResize(ImGuiWindow* window, const ImVec2& s
         }
 
         // Only lower-left grip is visible before hovering/activating
-        if (resize_grip_n == 0 || held || hovered)
+        if ((resize_grip_n == 0 || held || hovered) && !bNoResizeGrip)
             resize_grip_col[resize_grip_n] = GetColorU32(held ? ImGuiCol_ResizeGripActive : hovered ? ImGuiCol_ResizeGripHovered : ImGuiCol_ResizeGrip);
+        // END UHE MOD
     }
     for (int border_n = 0; border_n < resize_border_count; border_n++)
     {

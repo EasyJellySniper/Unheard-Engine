@@ -31,8 +31,9 @@ void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHRender
 {
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch " + InName);
 
-	RenderBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.FlushResourceBarrier();
 
 	// bind compute state
 	UHGraphicState* State = InShader->GetComputeState();
@@ -44,8 +45,9 @@ void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHRender
 	// dispatch compute
 	RenderBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
 
-	RenderBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	PostProcessIdx = 1 - PostProcessIdx;
@@ -84,8 +86,10 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 			}
 
 			// copy to TAA history
-			RenderBuilder.ResourceBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-			RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+			RenderBuilder.FlushResourceBarrier();
+
 			RenderBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], GPreviousSceneResult);
 			RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
@@ -96,6 +100,10 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 #if WITH_EDITOR
 	if (DebugViewIndex > 0)
 	{
+		if (DebugViewIndex == 7)
+		{
+			RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 		RenderEffect(DebugViewShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Debug View");
 	}
 

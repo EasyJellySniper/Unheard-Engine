@@ -443,3 +443,4 @@ Also corrected a path bug when compiling shader. By far, BC1~BC5 are already on 
 12-11-2023: Minor change to TAA. Fixed a thread bug in release build when app is closing.
 13-11-2023: Expose enable flag for component class. All components including game script should be able to toggle now.
 Fixed light list buffer for translucent objects, I gave the wrong buffer when organizing rendering resource before.
+Merged a few multiple ResourceBarrier calls into one. Started adding information dialog (the editor section at the bottom of main window). Finished adding output log window.

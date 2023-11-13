@@ -46,7 +46,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_present_id"
 		, "VK_KHR_present_wait"
 		, "VK_EXT_hdr_metadata"
-		, "VK_KHR_dynamic_rendering" };
+		, "VK_KHR_dynamic_rendering"
+		, "VK_KHR_synchronization2" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"

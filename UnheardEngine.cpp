@@ -87,13 +87,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             if (GUnheardEngine)
             {
             #if WITH_EDITOR
+                GUnheardEngine->BeginProfile();
                 ImGui_ImplVulkan_NewFrame();
                 ImGui_ImplWin32_NewFrame();
                 ImGui::NewFrame();
 
                 // profile does not contain editor update time
                 GUnheardEngine->GetEditor()->OnEditorUpdate();
-                GUnheardEngine->BeginProfile();
             #endif
 
                 // update anyway, could consider adding a setting to decide wheter to pause update when it's minimized
@@ -112,14 +112,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 GUnheardEngine->EndFPSLimiter();
 
             #if WITH_EDITOR
-                GUnheardEngine->EndProfile();
-
                 // assume multi-view is always enabled
                 ImGui_Vulkan_CustomData CustomData{};
                 CustomData.Pipeline = GUnheardEngine->GetGfx()->GetImGuiPipeline();
 
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault(nullptr, &CustomData);
+                GUnheardEngine->EndProfile();
             #endif
             }
         }
@@ -281,7 +280,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
-    case WM_MOVING:
+    case WM_MOVE:
 #if WITH_EDITOR
         if (GUnheardEngine && GUnheardEngine->GetEditor())
         {

@@ -30,9 +30,11 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     TextureDialog = MakeUnique<UHTextureDialog>(AssetManager, InGfx, InRenderer);
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
     CubemapDialog = MakeUnique<UHCubemapDialog>(AssetManager, InGfx, InRenderer);
+    InfoDialog = MakeUnique<UHInfoDialog>(HWnd, WorldDialog.get());
 
-    // always showing world dialog after initialization
+    // always showing world / info dialog after initialization
     WorldDialog->ShowDialog();
+    InfoDialog->ShowDialog();
 }
 
 void UHEditor::OnEditorUpdate()
@@ -42,18 +44,25 @@ void UHEditor::OnEditorUpdate()
     ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config);
     TextureDialog->Update();
     MaterialDialog->Update();
-    WorldDialog->Update();
     CubemapDialog->Update();
+
+    if (!Config->PresentationSetting().bFullScreen)
+    {
+        WorldDialog->Update();
+        InfoDialog->Update();
+    }
 }
 
 void UHEditor::OnEditorMove()
 {
     WorldDialog->ResetDialogWindow();
+    InfoDialog->ResetDialogWindow();
 }
 
 void UHEditor::OnEditorResize()
 {
     WorldDialog->ResetDialogWindow();
+    InfoDialog->ResetDialogWindow();
 }
 
 void UHEditor::OnMenuSelection(int32_t WmId)
@@ -85,6 +94,7 @@ void UHEditor::OnMenuSelection(int32_t WmId)
 void UHEditor::EvaluateEditorDelta(uint32_t& OutW, uint32_t& OutH)
 {
     OutW += static_cast<uint32_t>(WorldDialog->GetWindowSize().x);
+    OutH += static_cast<uint32_t>(InfoDialog->GetWindowSize().y);
 }
 
 void UHEditor::SelectDebugViewModeMenu(int32_t WmId)

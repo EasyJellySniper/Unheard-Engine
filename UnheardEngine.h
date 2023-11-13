@@ -10,6 +10,7 @@
 #include <wrl.h>
 #include <wincodec.h>
 #include "Runtime/Classes/Types.h"
+#include "Runtime/Classes/Utility.h"
 
 #if WITH_EDITOR
 	#define LogMessage( str ) OutputDebugString( str );
@@ -24,16 +25,6 @@
 // macro for safe release UH objects
 #define UH_SAFE_RELEASE(x) if (x) x->Release();
 
-inline void UHE_LOG(std::wstring InString)
-{
-	LogMessage(InString.c_str());
-}
-
-inline void UHE_LOG(std::string InString)
-{
-	LogMessage(std::filesystem::path(InString).wstring().c_str());
-}
-
 #if WITH_EDITOR
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
@@ -42,4 +33,23 @@ inline void UHE_LOG(std::string InString)
 #include "ThirdParty/ImGui/imgui.h"
 #include "ThirdParty/ImGui/imgui_impl_win32.h"
 #include "ThirdParty/ImGui/imgui_impl_vulkan.h"
+
+inline std::vector<std::string> GLogBuffer;
+
 #endif
+
+inline void UHE_LOG(std::wstring InString)
+{
+#if WITH_EDITOR
+	LogMessage(InString.c_str());
+	GLogBuffer.push_back(UHUtilities::ToStringA(InString));
+#endif
+}
+
+inline void UHE_LOG(std::string InString)
+{
+#if WITH_EDITOR
+	LogMessage(std::filesystem::path(InString).wstring().c_str());
+	GLogBuffer.push_back(InString);
+#endif
+}

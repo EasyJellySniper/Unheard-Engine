@@ -14,6 +14,7 @@ UHWorldDialog::UHWorldDialog(HWND InParentWnd, UHDeferredShadingRenderer* InRend
 	, WindowHeight(0.0f)
 	, CurrComponent(nullptr)
 	, bResetWindow(false)
+	, bIsSizeChanged(false)
 {
 
 }
@@ -37,18 +38,19 @@ void UHWorldDialog::ShowDialog()
 
 void UHWorldDialog::Update()
 {
-	if (bResetWindow && WindowSize.has_value())
+	if (bResetWindow && DialogSize.has_value())
 	{
-		ImGui::SetNextWindowPos(ImVec2(WindowPos.x - WindowSize.value().x, WindowPos.y));
-		ImGui::SetNextWindowSize(ImVec2(WindowSize.value().x, WindowHeight));
+		ImGui::SetNextWindowPos(ImVec2(WindowPos.x - DialogSize.value().x, WindowPos.y));
+		ImGui::SetNextWindowSize(ImVec2(DialogSize.value().x, WindowHeight));
 		bResetWindow = false;
 	}
 
 	const std::string WndName = "World Objects";
 	const ImVec2 WndSize = ImGui::GetWindowSize();
+	bIsSizeChanged = false;
 
 	ImGui::PushStyleColor(ImGuiCol_ResizeGrip, 0);
-	ImGui::Begin(WndName.c_str(), nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
+	ImGui::Begin(WndName.c_str(), nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResizeGrip);
 	ImGui::Text(WndName.c_str());
 	if (ImGui::BeginListBox("##", ImVec2(-FLT_MIN, WndSize.y * 0.5f)))
 	{
@@ -73,7 +75,14 @@ void UHWorldDialog::Update()
 	{
 		CurrComponent->OnGenerateDetailView();
 	}
-	WindowSize = ImGui::GetWindowSize();
+
+	ImVec2 NewSize = ImGui::GetWindowSize();
+	if (DialogSize.has_value() && (DialogSize.value().x != NewSize.x || DialogSize.value().y != NewSize.y))
+	{
+		bIsSizeChanged = true;
+	}
+	DialogSize = NewSize;
+
 	ImGui::End();
 	ImGui::PopStyleColor();
 
@@ -101,7 +110,12 @@ void UHWorldDialog::ResetDialogWindow()
 
 ImVec2 UHWorldDialog::GetWindowSize() const
 {
-	return WindowSize.value();
+	return DialogSize.value();
+}
+
+bool UHWorldDialog::IsDialogSizeChanged() const
+{
+	return bIsSizeChanged;
 }
 
 void UHWorldDialog::ControlSceneObjectSelect()

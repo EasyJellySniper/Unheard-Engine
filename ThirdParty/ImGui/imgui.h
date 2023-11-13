@@ -1052,6 +1052,10 @@ enum ImGuiWindowFlags_
     ImGuiWindowFlags_Modal                  = 1 << 27,  // Don't use! For internal use by BeginPopupModal()
     ImGuiWindowFlags_ChildMenu              = 1 << 28,  // Don't use! For internal use by BeginMenu()
     ImGuiWindowFlags_DockNodeHost           = 1 << 29,  // Don't use! For internal use by Begin()/NewFrame()
+
+    // BEGIN UHE MOD - add a flag for disable "resize grip" only
+    ImGuiWindowFlags_NoResizeGrip           = 1 << 30,
+    // END UHE MOD
 };
 
 // Flags for ImGui::InputText()

@@ -52,8 +52,9 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 	RenderBuilder.TraceRay(RTShadowExtent, RTShadowShader->GetRayGenTable(), RTShadowShader->GetMissTable(), RTShadowShader->GetHitGroupTable());
 
 	// transition soften pass RTs
-	RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-	RenderBuilder.ResourceBarrier(GRTSharedTextureRG16F, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSharedTextureRG16F, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
 
 	// dispatch softing pass
 	UHComputeState* State = SoftRTShadowShader->GetComputeState();

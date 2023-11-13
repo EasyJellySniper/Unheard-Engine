@@ -12,18 +12,22 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::MotionPass]);
 
 		// copy result to history velocity before rendering a new one
-		RenderBuilder.ResourceBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		RenderBuilder.ResourceBarrier(GPrevMotionVectorRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GPrevMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
 		RenderBuilder.CopyTexture(GMotionVectorRT, GPrevMotionVectorRT);
-		RenderBuilder.ResourceBarrier(GPrevMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		RenderBuilder.ResourceBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GPrevMotionVectorRT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
 
 		// copy opaque depth to translucent depth RT
-		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		RenderBuilder.ResourceBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		RenderBuilder.CopyTexture(GSceneDepth, GSceneTranslucentDepth);
-		RenderBuilder.ResourceBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
 
 		VkClearValue Clear = { 0,0,0,0 };
 		RenderBuilder.BeginRenderPass(MotionCameraPassObj.RenderPass, MotionCameraPassObj.FrameBuffer, RenderResolution, Clear);
@@ -235,12 +239,13 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			RenderBuilder.EndRenderPass();
 
 			// done rendering, transition depth to shader read
-			RenderBuilder.ResourceBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-			RenderBuilder.ResourceBarrier(GSceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 		}
 
 		// depth/motion vector will be used in shader later, transition them
-		RenderBuilder.ResourceBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

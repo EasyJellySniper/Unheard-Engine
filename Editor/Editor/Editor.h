@@ -11,6 +11,7 @@
 #include "../Dialog/TextureDialog.h"
 #include "../Dialog/WorldDialog.h"
 #include "../Dialog/CubemapDialog.h"
+#include "../Dialog/InfoDialog.h"
 
 class UHEngine;
 class UHGraphic;
@@ -54,6 +55,7 @@ private:
 	UniquePtr<UHTextureDialog> TextureDialog;
 	UniquePtr<UHMaterialDialog> MaterialDialog;
 	UniquePtr<UHCubemapDialog> CubemapDialog;
+	UniquePtr<UHInfoDialog> InfoDialog;
 };
 
 #endif

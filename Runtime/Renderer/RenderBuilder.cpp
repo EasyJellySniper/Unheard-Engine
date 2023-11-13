@@ -370,12 +370,14 @@ void UHRenderBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, const std::
 	vkCmdBindDescriptorSets(CmdList, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, InLayout, 0, static_cast<uint32_t>(InSets.size()), InSets.data(), 0, nullptr);
 }
 
+// ResourceBarrier: Single transition version
 void UHRenderBuilder::ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
 {
 	std::vector<UHTexture*> Tex = { InTexture };
 	ResourceBarrier(Tex, OldLayout, NewLayout, BaseMipLevel, BaseArrayLayer);
 }
 
+// ResourceBarrier: Multiple textures but the same layout transition
 void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
 {
 	if (InTextures.size() == 0)
@@ -421,6 +423,53 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 		0, nullptr,
 		0, nullptr,
 		static_cast<uint32_t>(Barriers.size()), Barriers.data());
+}
+
+// ResourceBarrier: Can push different textures and layouts at once
+void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
+{
+	ImageBarriers.push_back(InBarrier);
+}
+
+void UHRenderBuilder::FlushResourceBarrier()
+{
+	if (ImageBarriers.size() == 0)
+	{
+		return;
+	}
+
+	VkDependencyInfo DependencyInfo{};
+	DependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	DependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(ImageBarriers.size());
+	
+	std::vector<VkImageMemoryBarrier2> Barriers(ImageBarriers.size());
+	for (size_t Idx = 0; Idx < ImageBarriers.size(); Idx++)
+	{
+		VkImageMemoryBarrier2 TempBarrier{};
+		TempBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+
+		// old layout must be undefined
+		TempBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		TempBarrier.newLayout = ImageBarriers[Idx].NewLayout;
+		TempBarrier.srcAccessMask = LayoutToAccessFlags[TempBarrier.oldLayout];
+		TempBarrier.dstAccessMask = LayoutToAccessFlags[TempBarrier.newLayout];
+		TempBarrier.srcStageMask = LayoutToStageFlags[TempBarrier.oldLayout];
+		TempBarrier.dstStageMask = LayoutToStageFlags[TempBarrier.newLayout];
+		TempBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		TempBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		TempBarrier.image = ImageBarriers[Idx].Texture->GetImage();
+		TempBarrier.subresourceRange = ImageBarriers[Idx].Texture->GetImageViewInfo().subresourceRange;
+
+		// this barrier will transition 1 mip slice only for now
+		TempBarrier.subresourceRange.baseMipLevel = ImageBarriers[Idx].BaseMipLevel;
+		TempBarrier.subresourceRange.levelCount = 1;
+		TempBarrier.subresourceRange.layerCount = 1;
+
+		Barriers[Idx] = std::move(TempBarrier);
+	}
+	DependencyInfo.pImageMemoryBarriers = Barriers.data();
+
+	vkCmdPipelineBarrier2(CmdList, &DependencyInfo);
 }
 
 void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter)

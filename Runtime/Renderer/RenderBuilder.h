@@ -3,6 +3,21 @@
 #include <unordered_map>
 #include "ShaderClass/ShaderClass.h"
 
+struct UHImageBarrier
+{
+	UHImageBarrier(UHTexture* InTexture, VkImageLayout InNewLayout, uint32_t InBaseMipLevel = 0)
+		: Texture(InTexture)
+		, NewLayout(InNewLayout)
+		, BaseMipLevel(InBaseMipLevel)
+	{
+
+	}
+
+	UHTexture* Texture;
+	VkImageLayout NewLayout;
+	uint32_t BaseMipLevel;
+};
+
 // render builder for Unheard Engine
 class UHRenderBuilder
 {
@@ -86,6 +101,8 @@ public:
 	// transition image
 	void ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
 	void ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
+	void PushResourceBarrier(const UHImageBarrier InBarrier);
+	void FlushResourceBarrier();
 
 	// blit image
 	void Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter = VK_FILTER_LINEAR);
@@ -129,6 +146,7 @@ private:
 	// lookup table for stage flag and access flag
 	std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;
 	std::unordered_map<VkImageLayout, VkAccessFlags> LayoutToAccessFlags;
+	std::vector<UHImageBarrier> ImageBarriers;
 
 	VkExtent2D PrevViewport;
 	VkExtent2D PrevScissor;
