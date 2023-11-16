@@ -14,8 +14,72 @@ UHScene::UHScene()
 #if WITH_EDITOR
 	, CurrentSelectedComp(nullptr)
 #endif
+	, MainCamera(nullptr)
 {
+	SetName("Scene" + std::to_string(GetId()));
+}
 
+void UHScene::OnSave(std::ofstream& OutStream)
+{
+	UHObject::OnSave(OutStream);
+
+	// save all components in a scene, note that this does not include game script.
+	// since the game script is always registered in runtime for now.
+	int32_t ComponentCount = 0;
+	for (size_t Idx = 0; Idx < ComponentPools.size(); Idx++)
+	{
+		if (ComponentPools[Idx]->GetComponentClassId() != UHGameScript::ClassId)
+		{
+			ComponentCount++;
+		}
+	}
+
+	// output number of components and component info after it
+	// component info consists of the class id and their own data
+	OutStream.write(reinterpret_cast<const char*>(&ComponentCount), sizeof(ComponentCount));
+	for (size_t Idx = 0; Idx < ComponentPools.size(); Idx++)
+	{
+		const uint32_t ClassId = ComponentPools[Idx]->GetComponentClassId();
+		if (ClassId != UHGameScript::ClassId)
+		{
+			OutStream.write(reinterpret_cast<const char*>(&ClassId), sizeof(ClassId));
+			ComponentPools[Idx]->OnSave(OutStream);
+		}
+	}
+}
+
+void UHScene::OnLoad(std::ifstream& InStream)
+{
+	UHObject::OnLoad(InStream);
+
+	int32_t ComponentCount;
+	InStream.read(reinterpret_cast<char*>(&ComponentCount), sizeof(ComponentCount));
+
+	// load and request components based on their type
+	for (int32_t Idx = 0; Idx < ComponentCount; Idx++)
+	{
+		uint32_t ClassId;
+		InStream.read(reinterpret_cast<char*>(&ClassId), sizeof(ClassId));
+
+		// request component based on class id
+		UHComponent* NewComp = RequestComponent(ClassId);
+		NewComp->OnLoad(InStream);
+	}
+}
+
+void UHScene::OnPostLoad(UHAssetManager* InAssetMgr)
+{
+	// certain types of component needs a post load callback to setup their reference
+	for (UniquePtr<UHComponent>& Comp : ComponentPools)
+	{
+		Comp->OnPostLoad(InAssetMgr);
+	}
+
+	// force a update after post loading callback
+	for (UniquePtr<UHComponent>& Comp : ComponentPools)
+	{
+		Comp->Update();
+	}
 }
 
 void UHScene::Initialize(UHAssetManager* InAsset, UHGraphic* InGfx, UHConfigManager* InConfig, UHRawInput* InInput, UHGameTimer* InTimer)
@@ -25,21 +89,25 @@ void UHScene::Initialize(UHAssetManager* InAsset, UHGraphic* InGfx, UHConfigMana
 	Timer = InTimer;
 
 	// call all scene initialized code in scripts
-	for (const auto Script : UHGameScripts)
+	for (const auto& Script : UHGameScripts)
 	{
 		Script.second->OnSceneInitialized(this, InAsset, InGfx);
+	}
+
+	// after initialization actions
+	for (UniquePtr<UHComponent>& Component : ComponentPools)
+	{
+		if (Component->GetComponentClassId() == UHMeshRendererComponent::ClassId)
+		{
+			AddMeshRenderer((UHMeshRendererComponent*)Component.get());
+		}
 	}
 }
 
 void UHScene::Release()
 {
-	for (auto& Renderer : MeshRenderers)
-	{
-		Renderer.reset();
-	}
-
 	// container clear
-	MeshRenderers.clear();
+	Renderers.clear();
 	Materials.clear();
 	Renderers.clear();
 	OpaqueRenderers.clear();
@@ -54,7 +122,7 @@ void UHScene::Update()
 	UpdateCamera();
 
 	// for objects won't update per-frame, conditionally call update, save ~0.2ms time for me
-	for (auto& Renderer : MeshRenderers)
+	for (UHMeshRendererComponent* Renderer : Renderers)
 	{
 		if (Renderer->IsWorldDirty())
 		{
@@ -85,6 +153,52 @@ void UHScene::Update()
 			Light->Update();
 		}
 	}
+}
+
+UHComponent* UHScene::RequestComponent(uint32_t InComponentClassId)
+{
+	UniquePtr<UHComponent> NewComp;
+	switch (InComponentClassId)
+	{
+	case UHCameraComponent::ClassId:
+		NewComp = MakeUnique<UHCameraComponent>();
+		if (MainCamera == nullptr)
+		{
+			MainCamera = (UHCameraComponent*)NewComp.get();
+		}
+		break;
+
+	case UHDirectionalLightComponent::ClassId:
+		NewComp = MakeUnique<UHDirectionalLightComponent>();
+		AddDirectionalLight((UHDirectionalLightComponent*)NewComp.get());
+		break;
+
+	case UHPointLightComponent::ClassId:
+		NewComp = MakeUnique<UHPointLightComponent>();
+		AddPointLight((UHPointLightComponent*)NewComp.get());
+		break;
+
+	case UHSpotLightComponent::ClassId:
+		NewComp = MakeUnique<UHSpotLightComponent>();
+		AddSpotLight((UHSpotLightComponent*)NewComp.get());
+		break;
+
+	case UHSkyLightComponent::ClassId:
+		NewComp = MakeUnique<UHSkyLightComponent>();
+		CurrentSkyLight = (UHSkyLightComponent*)NewComp.get();
+		break;
+
+	case UHMeshRendererComponent::ClassId:
+		NewComp = MakeUnique<UHMeshRendererComponent>();
+		break;
+
+	default:
+		break;
+	};
+
+	UHComponent* Result = NewComp.get();
+	ComponentPools.push_back(std::move(NewComp));
+	return Result;
 }
 
 #if WITH_EDITOR
@@ -131,26 +245,19 @@ UHComponent* UHScene::GetCurrentSelectedComponent() const
 
 #endif
 
-UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* InMaterial)
+void UHScene::AddMeshRenderer(UHMeshRendererComponent* InRenderer)
 {
-	if (InMesh == nullptr || InMaterial == nullptr)
+	if (InRenderer->GetMesh() == nullptr || InRenderer->GetMaterial() == nullptr)
 	{
-		UHE_LOG(L"Error when adding mesh renderer!\n");
-		return nullptr;
+		UHE_LOG(L"Missing mesh or material in mesh renderer!\n");
 	}
 
-	UniquePtr<UHMeshRendererComponent> NewRenderer = MakeUnique<UHMeshRendererComponent>(InMesh, InMaterial);
-
-	// set transform from imported info
-	NewRenderer->SetPosition(InMesh->GetImportedTranslation());
-	NewRenderer->SetRotation(InMesh->GetImportedRotation());
-	NewRenderer->SetScale(InMesh->GetImportedScale());
-
 	// give constant index, so the order in container doesn't matter when copying to constant buffer
-	NewRenderer->SetBufferDataIndex(static_cast<int32_t>(MeshRenderers.size()));
-	MeshRenderers.push_back(std::move(NewRenderer));
+	InRenderer->SetBufferDataIndex(static_cast<int32_t>(Renderers.size()));
+	Renderers.push_back(InRenderer);
 
 	// collect material as well, assign constant index for both newly added and already added cases
+	UHMaterial* InMaterial = InRenderer->GetMaterial();
 	int32_t ConstIdx = UHUtilities::FindIndex(Materials, InMaterial);
 	if (ConstIdx == UHINDEXNONE)
 	{
@@ -161,9 +268,6 @@ UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* In
 	{
 		InMaterial->SetBufferDataIndex(ConstIdx);
 	}
-
-	// adds raw pointer cache to vectors
-	Renderers.push_back(MeshRenderers.back().get());
 	
 	if (!InMaterial->IsSkybox())
 	{
@@ -172,20 +276,17 @@ UHMeshRendererComponent* UHScene::AddMeshRenderer(UHMesh* InMesh, UHMaterial* In
 		{
 		case UHBlendMode::Opaque:
 		case UHBlendMode::Masked:
-			OpaqueRenderers.push_back(MeshRenderers.back().get());
+			OpaqueRenderers.push_back(Renderers.back());
 			break;
 
 		case UHBlendMode::TranditionalAlpha:
-			TranslucentRenderers.push_back(MeshRenderers.back().get());
+			TranslucentRenderers.push_back(Renderers.back());
 			break;
 
 		default:
 			break;
 		}
 	}
-
-	// return added renderer, can use it or not
-	return Renderers.back();
 }
 
 void UHScene::AddDirectionalLight(UHDirectionalLightComponent* InLight)
@@ -206,14 +307,14 @@ void UHScene::AddSpotLight(UHSpotLightComponent* InLight)
 	SpotLights.push_back(InLight);
 }
 
-void UHScene::SetSkyLight(UHSkyLightComponent* InSkyLight)
+std::vector<UniquePtr<UHComponent>>& UHScene::GetAllCompoments()
 {
-	CurrentSkyLight = InSkyLight;
+	return ComponentPools;
 }
 
 size_t UHScene::GetAllRendererCount() const
 {
-	return MeshRenderers.size();
+	return Renderers.size();
 }
 
 size_t UHScene::GetMaterialCount() const
@@ -273,7 +374,7 @@ std::vector<UHMaterial*> UHScene::GetMaterials() const
 
 UHCameraComponent* UHScene::GetMainCamera()
 {
-	return &DefaultCamera;
+	return MainCamera;
 }
 
 UHSkyLightComponent* UHScene::GetSkyLight() const
@@ -283,44 +384,49 @@ UHSkyLightComponent* UHScene::GetSkyLight() const
 
 void UHScene::UpdateCamera()
 {
+	if (MainCamera == nullptr)
+	{
+		return;
+	}
+
 	// set temporal stuffs
-	DefaultCamera.SetResolution(ConfigCache->RenderingSetting().RenderWidth, ConfigCache->RenderingSetting().RenderHeight);
-	DefaultCamera.SetUseJitter(ConfigCache->RenderingSetting().bTemporalAA);
+	MainCamera->SetResolution(ConfigCache->RenderingSetting().RenderWidth, ConfigCache->RenderingSetting().RenderHeight);
+	MainCamera->SetUseJitter(ConfigCache->RenderingSetting().bTemporalAA);
 
 	// set aspect ratio of default camera
-	DefaultCamera.SetAspect(ConfigCache->RenderingSetting().RenderWidth / static_cast<float>(ConfigCache->RenderingSetting().RenderHeight));
+	MainCamera->SetAspect(ConfigCache->RenderingSetting().RenderWidth / static_cast<float>(ConfigCache->RenderingSetting().RenderHeight));
 
 	float DefaultCameraMoveSpeed = ConfigCache->EngineSetting().DefaultCameraMoveSpeed * Timer->GetDeltaTime();
 	float MouseRotSpeed = ConfigCache->EngineSetting().MouseRotationSpeed * Timer->GetDeltaTime();
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().ForwardKey))
 	{
-		DefaultCamera.Translate(XMFLOAT3(0, 0, DefaultCameraMoveSpeed));
+		MainCamera->Translate(XMFLOAT3(0, 0, DefaultCameraMoveSpeed));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().BackKey))
 	{
-		DefaultCamera.Translate(XMFLOAT3(0, 0, -DefaultCameraMoveSpeed));
+		MainCamera->Translate(XMFLOAT3(0, 0, -DefaultCameraMoveSpeed));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().LeftKey))
 	{
-		DefaultCamera.Translate(XMFLOAT3(-DefaultCameraMoveSpeed, 0, 0));
+		MainCamera->Translate(XMFLOAT3(-DefaultCameraMoveSpeed, 0, 0));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().RightKey))
 	{
-		DefaultCamera.Translate(XMFLOAT3(DefaultCameraMoveSpeed, 0, 0));
+		MainCamera->Translate(XMFLOAT3(DefaultCameraMoveSpeed, 0, 0));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().UpKey))
 	{
-		DefaultCamera.Translate(XMFLOAT3(0, DefaultCameraMoveSpeed, 0));
+		MainCamera->Translate(XMFLOAT3(0, DefaultCameraMoveSpeed, 0));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().DownKey))
 	{
-		DefaultCamera.Translate(XMFLOAT3(0, -DefaultCameraMoveSpeed, 0));
+		MainCamera->Translate(XMFLOAT3(0, -DefaultCameraMoveSpeed, 0));
 	}
 
 	if (Input->IsRightMouseHold())
@@ -328,9 +434,9 @@ void UHScene::UpdateCamera()
 		float X = static_cast<float>(Input->GetMouseData().lLastX) * MouseRotSpeed;
 		float Y = static_cast<float>(Input->GetMouseData().lLastY) * MouseRotSpeed;
 
-		DefaultCamera.Rotate(XMFLOAT3(Y, 0, 0));
-		DefaultCamera.Rotate(XMFLOAT3(0, X, 0), UHTransformSpace::World);
+		MainCamera->Rotate(XMFLOAT3(Y, 0, 0));
+		MainCamera->Rotate(XMFLOAT3(0, X, 0), UHTransformSpace::World);
 	}
 
-	DefaultCamera.Update();
+	MainCamera->Update();
 }

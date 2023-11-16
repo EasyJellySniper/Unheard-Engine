@@ -122,6 +122,7 @@ void UHAssetManager::ImportMeshes()
 	for (size_t Idx = 0; Idx < UHMeshesCache.size(); Idx++)
 	{
 		UHMeshesCache[Idx] = UHMeshes[Idx].get();
+		AllAssets.push_back(UHMeshes[Idx].get());
 	}
 }
 
@@ -179,16 +180,13 @@ void UHAssetManager::ImportTextures(UHGraphic* InGfx)
 			continue;
 		}
 
-		UHTexture2D LoadedTex;
-		if (LoadedTex.Import(Idx->path()))
+		UniquePtr<UHTexture2D> LoadedTex = MakeUnique<UHTexture2D>();
+		if (LoadedTex->Import(Idx->path()))
 		{
 			// import successfully, request texture 2d from GFX
 			UHTexture2D* NewTex = InGfx->RequestTexture2D(LoadedTex, true);
-
-#if WITH_EDITOR
-			NewTex->SetRawSourcePath(LoadedTex.GetRawSourcePath());
-#endif
 			UHTexture2Ds.push_back(NewTex);
+			AllAssets.push_back(NewTex);
 		}
 	}
 }
@@ -209,19 +207,17 @@ void UHAssetManager::ImportCubemaps(UHGraphic* InGfx)
 			continue;
 		}
 
-		UHTextureCube LoadedCube;
-		if (LoadedCube.Import(Idx->path()))
+		UniquePtr<UHTextureCube> LoadedCube = MakeUnique<UHTextureCube>();
+		if (LoadedCube->Import(Idx->path()))
 		{
 			// import successfully, request texture cube from GFX
 			UHTextureInfo Info{};
-			Info.Format = LoadedCube.GetFormat();
-			Info.Extent = LoadedCube.GetExtent();
+			Info.Format = LoadedCube->GetFormat();
+			Info.Extent = LoadedCube->GetExtent();
 
 			UHTextureCube* NewCube = InGfx->RequestTextureCube(LoadedCube);
-#if WITH_EDITOR
-			NewCube->SetSourcePath(LoadedCube.GetSourcePath());
-#endif
 			UHCubemaps.push_back(NewCube);
+			AllAssets.push_back(NewCube);
 		}
 	}
 }
@@ -248,6 +244,7 @@ void UHAssetManager::ImportMaterials(UHGraphic* InGfx)
 			// map texture index after creation
 			MapTextureIndex(Mat);
 			UHMaterialsCache.push_back(Mat);
+			AllAssets.push_back(Mat);
 		}
 	}
 }
@@ -398,6 +395,19 @@ UHMesh* UHAssetManager::GetMesh(std::string InName) const
 	return nullptr;
 }
 
+UHObject* UHAssetManager::GetAsset(UUID InAssetUuid) const
+{
+	for (UHObject* Obj : AllAssets)
+	{
+		if (Obj->GetRuntimeGuid() == InAssetUuid)
+		{
+			return Obj;
+		}
+	}
+
+	return nullptr;
+}
+
 #if WITH_EDITOR
 void UHAssetManager::AddTexture2D(UHTexture2D* InTexture2D)
 {
@@ -456,5 +466,15 @@ void UHAssetManager::RemoveCubemap(UHTextureCube* InCube)
 	{
 		UHUtilities::RemoveByIndex(UHCubemaps, Index);
 	}
+	RemoveFromAssetList(InCube);
 }
 #endif
+
+void UHAssetManager::RemoveFromAssetList(UHObject* InObj)
+{
+	const int32_t Index = UHUtilities::FindIndex(AllAssets, InObj);
+	if (Index != UHINDEXNONE)
+	{
+		UHUtilities::RemoveByIndex(AllAssets, Index);
+	}
+}

@@ -11,8 +11,48 @@ UHSkyLightComponent::UHSkyLightComponent()
 	, SkyIntensity(1.0f)
 	, GroundIntensity(1.0f)
 	, CubemapCache(nullptr)
+	, CubemapId(UUID())
 {
 	SetName("SkyLightLightComponent" + std::to_string(GetId()));
+	ComponentClassIdInternal = ClassId;
+}
+
+void UHSkyLightComponent::OnSave(std::ofstream& OutStream)
+{
+	UHComponent::OnSave(OutStream);
+	UHTransformComponent::OnSave(OutStream);
+	OutStream.write(reinterpret_cast<const char*>(&AmbientSkyColor), sizeof(AmbientSkyColor));
+	OutStream.write(reinterpret_cast<const char*>(&AmbientGroundColor), sizeof(AmbientGroundColor));
+	OutStream.write(reinterpret_cast<const char*>(&SkyIntensity), sizeof(SkyIntensity));
+	OutStream.write(reinterpret_cast<const char*>(&GroundIntensity), sizeof(GroundIntensity));
+
+	if (CubemapCache != nullptr)
+	{
+		UUID Id = CubemapCache->GetRuntimeGuid();
+		OutStream.write(reinterpret_cast<const char*>(&Id), sizeof(Id));
+	}
+	else
+	{
+		UUID Dummy{};
+		OutStream.write(reinterpret_cast<const char*>(&Dummy), sizeof(Dummy));
+	}
+}
+
+void UHSkyLightComponent::OnLoad(std::ifstream& InStream)
+{
+	UHComponent::OnLoad(InStream);
+	UHTransformComponent::OnLoad(InStream);
+	InStream.read(reinterpret_cast<char*>(&AmbientSkyColor), sizeof(AmbientSkyColor));
+	InStream.read(reinterpret_cast<char*>(&AmbientGroundColor), sizeof(AmbientGroundColor));
+	InStream.read(reinterpret_cast<char*>(&SkyIntensity), sizeof(SkyIntensity));
+	InStream.read(reinterpret_cast<char*>(&GroundIntensity), sizeof(GroundIntensity));
+
+	InStream.read(reinterpret_cast<char*>(&CubemapId), sizeof(CubemapId));
+}
+
+void UHSkyLightComponent::OnPostLoad(UHAssetManager* InAssetMgr)
+{
+	CubemapCache = (UHTextureCube*)InAssetMgr->GetAsset(CubemapId);
 }
 
 void UHSkyLightComponent::SetSkyColor(XMFLOAT3 InColor)

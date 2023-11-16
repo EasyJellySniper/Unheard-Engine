@@ -3,13 +3,18 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <Rpc.h>
 
 // UH base object define
+class UHAssetManager;
 class UHObject
 {
 public:
 	UHObject();
 	virtual ~UHObject();
+	virtual void OnSave(std::ofstream& OutStream);
+	virtual void OnLoad(std::ifstream& InStream);
+	virtual void OnPostLoad(UHAssetManager* InAssetMgr) {}
 
 	void AddReferenceObject(UHObject*);
 	void RemoveReferenceObject(UHObject*);
@@ -17,13 +22,22 @@ public:
 
 	std::vector<UHObject*> GetReferenceObjects() const;
 	uint32_t GetId() const;
+	UUID GetRuntimeGuid() const;
 	std::string GetName() const;
 
-	bool operator==(const UHObject& InMat);
+	bool operator==(const UHObject& InObj);
+
+protected:
+	// runtime GUID, this will always be generated when an object is created
+	UUID RuntimeGuid;
+	std::string Name;
+
+	// for file versioning
+	int32_t Version;
 
 private:
-	uint32_t Uid;
-	std::string Name;
+	// runtime id used for general purpose
+	uint32_t RuntimeId;
 };
 
 // global table for managing object references

@@ -57,12 +57,9 @@ bool UHTextureCube::Import(std::filesystem::path InCubePath)
 		return false;
 	}
 
-	// read cubemap version and type
-	FileIn.read(reinterpret_cast<char*>(&TextureVersion), sizeof(TextureVersion));
+	UHObject::OnLoad(FileIn);
+	// read type and source path
 	FileIn.read(reinterpret_cast<char*>(&TextureType), sizeof(TextureType));
-
-	// read texture name, source path
-	UHUtilities::ReadStringData(FileIn, Name);
 	UHUtilities::ReadStringData(FileIn, SourcePath);
 
 	// read extent and format
@@ -113,13 +110,11 @@ void UHTextureCube::Export(std::filesystem::path InCubePath)
 	// open UHTexture file
 	std::ofstream FileOut(InCubePath.string() + GCubemapAssetExtension, std::ios::out | std::ios::binary);
 
-	// write version and type
-	TextureVersion = static_cast<UHTextureVersion>(TextureVersionMax - 1);
-	FileOut.write(reinterpret_cast<const char*>(&TextureVersion), sizeof(TextureVersion));
-	FileOut.write(reinterpret_cast<const char*>(&TextureType), sizeof(TextureType));
+	Version = static_cast<UHTextureVersion>(TextureVersionMax - 1);
+	UHObject::OnSave(FileOut);
 
-	// write texture name, source path
-	UHUtilities::WriteStringData(FileOut, Name);
+	// write type and source path
+	FileOut.write(reinterpret_cast<const char*>(&TextureType), sizeof(TextureType));
 	UHUtilities::WriteStringData(FileOut, SourcePath);
 
 	// write image extent

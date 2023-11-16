@@ -10,4 +10,5 @@ UHGameScript::UHGameScript()
 	}
 
 	SetName("GameScriptComponent" + std::to_string(GetId()));
+	ComponentClassIdInternal = ClassId;
 }

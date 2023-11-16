@@ -44,6 +44,9 @@ public:
 	UHMaterial* GetMaterial(std::string InName) const;
 	UHMesh* GetMesh(std::string InName) const;
 
+	// general function for getting an asset, caller is responsible for type cast
+	UHObject* GetAsset(UUID InAssetUuid) const;
+
 #if WITH_EDITOR
 	void AddTexture2D(UHTexture2D* InTexture2D);
 	static UHAssetManager* GetAssetMgrEditor();
@@ -55,6 +58,8 @@ public:
 #endif
 
 private:
+	void RemoveFromAssetList(UHObject* InObj);
+
 	// loaded meshes
 	std::vector<UniquePtr<UHMesh>> UHMeshes;
 
@@ -81,4 +86,7 @@ private:
 	std::vector<UHTexture2D*> UHTexture2Ds;
 	std::vector<UHTexture2D*> ReferencedTexture2Ds;
 	std::vector<UHTextureCube*> UHCubemaps;
+
+	// general list for looking up
+	std::vector<UHObject*> AllAssets;
 };

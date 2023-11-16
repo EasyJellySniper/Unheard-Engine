@@ -25,8 +25,11 @@ enum UHTransformSpace
 class UHTransformComponent : public UHComponent
 {
 public:
+	STATIC_CLASS_ID(15385393)
 	UHTransformComponent();
 	virtual void Update() override;
+	virtual void OnSave(std::ofstream& OutStream) override;
+	virtual void OnLoad(std::ifstream& InStream) override;
 
 	void Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace = UHTransformSpace::Local);
 	void Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace = UHTransformSpace::Local);

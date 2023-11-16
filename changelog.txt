@@ -444,3 +444,10 @@ Also corrected a path bug when compiling shader. By far, BC1~BC5 are already on 
 13-11-2023: Expose enable flag for component class. All components including game script should be able to toggle now.
 Fixed light list buffer for translucent objects, I gave the wrong buffer when organizing rendering resource before.
 Merged a few multiple ResourceBarrier calls into one. Started adding information dialog (the editor section at the bottom of main window). Finished adding output log window.
+
+14-11-2023: Started the implementation of component save/load. Fixed a material compilation bug when it's resaving.
+Did a few refactorings in UHScene class, it's ready for save/load implementation.
+15-11-2023: Implemented scene save feature, now it can save scene as .uhscene asset.
+16-11-2023: Kicked off scene load feature. Made mesh asset store the UHObject stuff too.
+Started removing all request function that takes a variable directly, it's dangerous and not consistent.
+Scene load feature is done. But whole workflow could be improved.

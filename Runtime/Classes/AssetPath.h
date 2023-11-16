@@ -33,6 +33,10 @@ static std::string GMaterialAssetExtension = ".uhmaterial";
 static std::string GMaterialCachePath = "AssetCaches/Materials/";
 static std::string GMaterialCacheExtension = ".uhmaterialcache";
 
+// scene paths
+static std::string GSceneAssetPath = "Assets/Scenes/";
+static std::string GSceneAssetExtension = ".uhscene";
+
 namespace UHAssetPath
 {
 	inline std::string GetShaderOriginSubpath(std::filesystem::path InSource)

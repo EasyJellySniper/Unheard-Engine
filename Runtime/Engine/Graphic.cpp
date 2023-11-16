@@ -1037,24 +1037,21 @@ void UHGraphic::RequestReleaseRT(UHRenderTexture* InRT)
 	UHUtilities::RemoveByIndex(RTPools, Idx);
 }
 
-UHTexture2D* UHGraphic::RequestTexture2D(UHTexture2D& LoadedTex, bool bUseSharedMemory)
+UHTexture2D* UHGraphic::RequestTexture2D(UniquePtr<UHTexture2D>& LoadedTex, bool bUseSharedMemory)
 {
 	// return cached if there is already one
-	int32_t Idx = UHUtilities::FindIndex<UHTexture2D>(Texture2DPools, LoadedTex);
+	int32_t Idx = UHUtilities::FindIndex<UHTexture2D>(Texture2DPools, *LoadedTex.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return Texture2DPools[Idx].get();
 	}
 
-	UniquePtr<UHTexture2D> NewTex = MakeUnique<UHTexture2D>(LoadedTex.GetName()
-		, LoadedTex.GetSourcePath(), LoadedTex.GetExtent(), LoadedTex.GetFormat(), LoadedTex.GetTextureSettings());
-	NewTex->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
-	NewTex->SetGfxCache(this);
-	NewTex->SetTextureData(LoadedTex.GetTextureData());
+	LoadedTex->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	LoadedTex->SetGfxCache(this);
 
-	if (NewTex->CreateTexture(bUseSharedMemory))
+	if (LoadedTex->CreateTexture(bUseSharedMemory))
 	{
-		Texture2DPools.push_back(std::move(NewTex));
+		Texture2DPools.push_back(std::move(LoadedTex));
 		return Texture2DPools.back().get();
 	}
 
@@ -1148,25 +1145,20 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 }
 
 // light version of texture cube request, usually called when an existed asset is imported
-UHTextureCube* UHGraphic::RequestTextureCube(UHTextureCube& LoadedCube)
+UHTextureCube* UHGraphic::RequestTextureCube(UniquePtr<UHTextureCube>& LoadedCube)
 {
-	UniquePtr<UHTextureCube> NewCube = MakeUnique<UHTextureCube>(LoadedCube.GetName(), LoadedCube.GetExtent(), LoadedCube.GetFormat(), LoadedCube.GetTextureSettings());
-	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, *NewCube.get());
+	int32_t Idx = UHUtilities::FindIndex<UHTextureCube>(TextureCubePools, *LoadedCube.get());
 	if (Idx != UHINDEXNONE)
 	{
 		return TextureCubePools[Idx].get();
 	}
 
-	NewCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
-	NewCube->SetGfxCache(this);
-	for (int32_t Idx = 0; Idx < 6; Idx++)
-	{
-		NewCube->SetCubeData(LoadedCube.GetCubeData(Idx), Idx);
-	}
+	LoadedCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	LoadedCube->SetGfxCache(this);
 
-	if (NewCube->CreateCube())
+	if (LoadedCube->CreateCube())
 	{
-		TextureCubePools.push_back(std::move(NewCube));
+		TextureCubePools.push_back(std::move(LoadedCube));
 		return TextureCubePools.back().get();
 	}
 

@@ -32,9 +32,12 @@ public:
 	void OnEditorResize();
 	void OnMenuSelection(int32_t WmId);
 	void EvaluateEditorDelta(uint32_t& OutW, uint32_t& OutH);
+	void RefreshWorldDialog();
 
 private:
 	void SelectDebugViewModeMenu(int32_t WmId);
+	void OnSaveScene();
+	void OnLoadScene();
 
 	HINSTANCE HInstance;
 	HWND HWnd;

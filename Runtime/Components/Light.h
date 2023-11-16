@@ -21,8 +21,11 @@ protected:
 class UHDirectionalLightComponent : public UHLightBase
 {
 public:
+	STATIC_CLASS_ID(72086964)
 	UHDirectionalLightComponent();
 	virtual void Update() override;
+	virtual void OnSave(std::ofstream& OutStream) override;
+	virtual void OnLoad(std::ifstream& InStream) override;
 
 	UHDirectionalLightConstants GetConstants() const;
 #if WITH_EDITOR
@@ -36,8 +39,11 @@ public:
 class UHPointLightComponent : public UHLightBase
 {
 public:
+	STATIC_CLASS_ID(49002389)
 	UHPointLightComponent();
 	virtual void Update() override;
+	virtual void OnSave(std::ofstream& OutStream) override;
+	virtual void OnLoad(std::ifstream& InStream) override;
 
 	void SetRadius(float InRadius);
 	float GetRadius() const;
@@ -59,8 +65,11 @@ private:
 class UHSpotLightComponent : public UHLightBase
 {
 public:
+	STATIC_CLASS_ID(69402010)
 	UHSpotLightComponent();
 	virtual void Update() override;
+	virtual void OnSave(std::ofstream& OutStream) override;
+	virtual void OnLoad(std::ifstream& InStream) override;
 
 	void SetRadius(float InRadius);
 	float GetRadius() const;

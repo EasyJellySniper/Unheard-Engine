@@ -43,12 +43,10 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 		return false;
 	}
 
-	// read version and type
-	FileIn.read(reinterpret_cast<char*>(&TextureVersion), sizeof(TextureVersion));
-	FileIn.read(reinterpret_cast<char*>(&TextureType), sizeof(TextureType));
+	UHObject::OnLoad(FileIn);
 
-	// read texture name, source path
-	UHUtilities::ReadStringData(FileIn, Name);
+	// read type and source path
+	FileIn.read(reinterpret_cast<char*>(&TextureType), sizeof(TextureType));
 	UHUtilities::ReadStringData(FileIn, SourcePath);
 	UHUtilities::ReadStringData(FileIn, RawSourcePath);
 
@@ -220,13 +218,11 @@ void UHTexture2D::Export(std::filesystem::path InTexturePath)
 	// open UHTexture file
 	std::ofstream FileOut(InTexturePath.string() + GTextureAssetExtension, std::ios::out | std::ios::binary);
 
-	// write version and type
-	TextureVersion = static_cast<UHTextureVersion>(TextureVersionMax - 1);
-	FileOut.write(reinterpret_cast<const char*>(&TextureVersion), sizeof(TextureVersion));
-	FileOut.write(reinterpret_cast<const char*>(&TextureType), sizeof(TextureType));
+	Version = static_cast<UHTextureVersion>(TextureVersionMax - 1);
+	UHObject::OnSave(FileOut);
 
-	// write texture name, source path
-	UHUtilities::WriteStringData(FileOut, Name);
+	// write type and source path
+	FileOut.write(reinterpret_cast<const char*>(&TextureType), sizeof(TextureType));
 	UHUtilities::WriteStringData(FileOut, SourcePath);
 	UHUtilities::WriteStringData(FileOut, RawSourcePath);
 

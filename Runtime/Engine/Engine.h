@@ -66,6 +66,9 @@ public:
 	void BeginFPSLimiter();
 	void EndFPSLimiter();
 
+	void OnSaveScene(std::filesystem::path OutputPath);
+	void OnLoadScene(std::filesystem::path InputPath);
+
 #if WITH_EDITOR
 	UHEditor* GetEditor() const;
 	UHGraphic* GetGfx() const;
@@ -113,8 +116,7 @@ private:
 	UHProfiler MainThreadProfile;
 
 	// scene define
-	// @TODO: better scene management
-	UHScene DefaultScene;
+	UniquePtr<UHScene> CurrentScene;
 
 	// a flag which tells if the engine is initialized
 	bool bIsInitialized;

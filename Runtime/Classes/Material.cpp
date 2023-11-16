@@ -49,9 +49,7 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 		return false;
 	}
 
-	// load material data
-	FileIn.read(reinterpret_cast<char*>(&Version), sizeof(Version));
-	UHUtilities::ReadStringData(FileIn, Name);
+	UHObject::OnLoad(FileIn);
 
 	// load referenced texture file name, doesn't read file name for sky cube at the moment
 	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Opacity; Idx++)
@@ -209,14 +207,11 @@ void UHMaterial::Export()
 		std::filesystem::create_directories(GMaterialAssetPath);
 	}
 
+	std::ofstream FileOut(GMaterialAssetPath + Name + GMaterialAssetExtension, std::ios::out | std::ios::binary);
+
 	// get current version before saving
 	Version = static_cast<UHMaterialVersion>(MaterialVersionMax - 1);
-
-	std::ofstream FileOut(GMaterialAssetPath + Name + GMaterialAssetExtension, std::ios::out | std::ios::binary);
-	FileOut.write(reinterpret_cast<const char*>(&Version), sizeof(Version));
-
-	// write material name
-	UHUtilities::WriteStringData(FileOut, Name);
+	UHObject::OnSave(FileOut);
 
 	// write texture filename used, doesn't write file name for sky cube/metallic at the moment
 	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Opacity; Idx++)
@@ -510,11 +505,6 @@ bool UHMaterial::IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB)
 UHMaterialCompileFlag UHMaterial::GetCompileFlag() const
 {
 	return CompileFlag;
-}
-
-UHMaterialVersion UHMaterial::GetVersion() const
-{
-	return Version;
 }
 
 std::filesystem::path UHMaterial::GetPath() const

@@ -61,6 +61,23 @@ void UHTransformComponent::Update()
 	}
 }
 
+void UHTransformComponent::OnSave(std::ofstream& OutStream)
+{
+	OutStream.write(reinterpret_cast<const char*>(&Position), sizeof(Position));
+	OutStream.write(reinterpret_cast<const char*>(&RotationEuler), sizeof(RotationEuler));
+	OutStream.write(reinterpret_cast<const char*>(&Scale), sizeof(Scale));
+}
+
+void UHTransformComponent::OnLoad(std::ifstream& InStream)
+{
+	InStream.read(reinterpret_cast<char*>(&Position), sizeof(Position));
+	InStream.read(reinterpret_cast<char*>(&RotationEuler), sizeof(RotationEuler));
+	InStream.read(reinterpret_cast<char*>(&Scale), sizeof(Scale));
+
+	// to refresh the rotation matrix
+	SetRotation(RotationEuler);
+}
+
 void UHTransformComponent::Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace)
 {
 	const XMVECTOR Dx = XMVectorReplicate(InDelta.x);

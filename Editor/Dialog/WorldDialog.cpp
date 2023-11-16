@@ -6,6 +6,7 @@
 #include "../../Runtime/Classes/Types.h"
 #include "../../Runtime/Components/Transform.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "../../Runtime/Components/GameScript.h"
 
 UHWorldDialog::UHWorldDialog(HWND InParentWnd, UHDeferredShadingRenderer* InRenderer)
 	: UHDialog(nullptr, InParentWnd)
@@ -25,13 +26,15 @@ void UHWorldDialog::ShowDialog()
 	CurrentSelected = UHINDEXNONE;
 	ResetDialogWindow();
 
-	SceneObjects.clear();
-	const std::vector<UHComponent*>& Comps = GetComponents<UHComponent>();
-	for (UHComponent* Comp : Comps)
+	if (Renderer->GetCurrentScene())
 	{
-		if (Comp->IsEditable())
+		SceneObjects.clear();
+		for (UniquePtr<UHComponent>& Comp : Renderer->GetCurrentScene()->GetAllCompoments())
 		{
-			SceneObjects.push_back(Comp);
+			if (Comp->GetComponentClassId() != UHGameScript::ClassId)
+			{
+				SceneObjects.push_back(Comp.get());
+			}
 		}
 	}
 }

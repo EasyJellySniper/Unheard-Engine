@@ -1,8 +1,14 @@
 #include "MeshRenderer.h"
-#if WITH_EDITOR
 #include "../Engine/Asset.h"
+#if WITH_EDITOR
 #include "../Renderer/DeferredShadingRenderer.h"
 #endif
+
+UHMeshRendererComponent::UHMeshRendererComponent()
+	: UHMeshRendererComponent(nullptr, nullptr)
+{
+
+}
 
 UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InMaterial)
 	: MeshCache(InMesh)
@@ -12,9 +18,15 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 #if WITH_EDITOR
 	, bIsVisibleEditor(true)
 #endif
+	, MeshId(UUID())
+	, MaterialId(UUID())
 {
-	MaterialCache->AddReferenceObject(this);
+	if (MaterialCache)
+	{
+		MaterialCache->AddReferenceObject(this);
+	}
 	SetName("MeshRendererComponent" + std::to_string(GetId()));
+	ComponentClassIdInternal = ClassId;
 }
 
 void UHMeshRendererComponent::Update()
@@ -39,6 +51,81 @@ void UHMeshRendererComponent::Update()
 		const XMFLOAT4X4& World = GetWorldMatrix();
 		const XMMATRIX W = XMLoadFloat4x4(&World);
 		MeshBound.Transform(RendererBound, XMMatrixTranspose(W));
+	}
+}
+
+void UHMeshRendererComponent::OnSave(std::ofstream& OutStream)
+{
+	UHComponent::OnSave(OutStream);
+	UHTransformComponent::OnSave(OutStream);
+
+#if WITH_EDITOR
+	OutStream.write(reinterpret_cast<const char*>(&bIsVisibleEditor), sizeof(bIsVisibleEditor));
+#else
+	bool bDummy = true;
+	OutStream.write(reinterpret_cast<const char*>(&bDummy), sizeof(bDummy));
+#endif
+
+	// mesh cache
+	UUID Dummy{};
+	if (MeshCache != nullptr)
+	{
+		UUID Id = MeshCache->GetRuntimeGuid();
+		OutStream.write(reinterpret_cast<const char*>(&Id), sizeof(Id));
+	}
+	else
+	{
+		OutStream.write(reinterpret_cast<const char*>(&Dummy), sizeof(Dummy));
+	}
+
+	// material cache
+	if (MaterialCache != nullptr)
+	{
+		UUID Id = MaterialCache->GetRuntimeGuid();
+		OutStream.write(reinterpret_cast<const char*>(&Id), sizeof(Id));
+	}
+	else
+	{
+		OutStream.write(reinterpret_cast<const char*>(&Dummy), sizeof(Dummy));
+	}
+}
+
+void UHMeshRendererComponent::OnLoad(std::ifstream& InStream)
+{
+	UHComponent::OnLoad(InStream);
+	UHTransformComponent::OnLoad(InStream);
+
+#if WITH_EDITOR
+	InStream.read(reinterpret_cast<char*>(&bIsVisibleEditor), sizeof(bIsVisibleEditor));
+#else
+	bool bDummy;
+	InStream.read(reinterpret_cast<char*>(&bDummy), sizeof(bDummy));
+#endif
+
+	// mesh cache
+	InStream.read(reinterpret_cast<char*>(&MeshId), sizeof(MeshId));
+
+	// material cache
+	InStream.read(reinterpret_cast<char*>(&MaterialId), sizeof(MaterialId));
+}
+
+void UHMeshRendererComponent::OnPostLoad(UHAssetManager* InAssetMgr)
+{
+	MeshCache = (UHMesh*)InAssetMgr->GetAsset(MeshId);
+	MaterialCache = (UHMaterial*)InAssetMgr->GetAsset(MaterialId);
+}
+
+void UHMeshRendererComponent::SetMesh(UHMesh* InMesh)
+{
+	MeshCache = InMesh;
+}
+
+void UHMeshRendererComponent::SetMaterial(UHMaterial* InMaterial)
+{
+	MaterialCache = InMaterial;
+	if (MaterialCache)
+	{
+		MaterialCache->AddReferenceObject(this);
 	}
 }
 

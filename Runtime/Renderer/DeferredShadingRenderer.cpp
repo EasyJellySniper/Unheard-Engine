@@ -159,8 +159,6 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	if (!CurrentCamera)
 	{
-		// don't update without a camera
-		UHE_LOG(L"Camera is not set!\n");
 		return;
 	}
 
@@ -302,8 +300,6 @@ void UHDeferredShadingRenderer::FrustumCulling()
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	if (!CurrentCamera)
 	{
-		// don't cull without a camera
-		UHE_LOG(L"Camera is not set!\n");
 		return;
 	}
 
@@ -380,8 +376,6 @@ void UHDeferredShadingRenderer::SortRenderer()
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	if (!CurrentCamera)
 	{
-		// don't cull without a camera
-		UHE_LOG(L"Camera is not set!\n");
 		return;
 	}
 
@@ -472,7 +466,6 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	// Record a command buffer which draws the scene onto that image
 	// Submit the recorded command buffer
 	// Present the swap chain image
-	UHE_LOG(L"Render thread created.\n");
 
 	// hold a timer
 	UHGameTimer RTTimer;
@@ -616,7 +609,6 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 	// Specify the task id before wake it
 	// doing the task
 	// notify finished
-	UHE_LOG(L"Worker thread " + std::to_wstring(ThreadIdx) + L" created.\n");
 
 	while (true)
 	{

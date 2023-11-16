@@ -9,6 +9,8 @@
 #include "../../Runtime/Engine/Input.h"
 #include "Profiler.h"
 #include "../Classes/EditorUtils.h"
+#include "../../Runtime/Classes/AssetPath.h"
+#include "../Dialog/StatusDialog.h"
 
 UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
     , UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager, UHGraphic* InGfx)
@@ -86,6 +88,12 @@ void UHEditor::OnMenuSelection(int32_t WmId)
     case ID_WINDOW_CUBEMAPEDITOR:
         CubemapDialog->ShowDialog();
         break;
+    case ID_FILE_SAVESCENE:
+        OnSaveScene();
+        break;
+    case ID_FILE_LOADSCENE:
+        OnLoadScene();
+        break;
     default:
         break;
     } 
@@ -95,6 +103,11 @@ void UHEditor::EvaluateEditorDelta(uint32_t& OutW, uint32_t& OutH)
 {
     OutW += static_cast<uint32_t>(WorldDialog->GetWindowSize().x);
     OutH += static_cast<uint32_t>(InfoDialog->GetWindowSize().y);
+}
+
+void UHEditor::RefreshWorldDialog()
+{
+    WorldDialog->ShowDialog();
 }
 
 void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
@@ -122,6 +135,74 @@ void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
 
             break;
         }
+    }
+}
+
+void UHEditor::OnSaveScene()
+{
+    if (!std::filesystem::exists(GSceneAssetPath))
+    {
+        std::filesystem::create_directories(GSceneAssetPath);
+    }
+
+    std::wstring Ext = L"*" + UHUtilities::ToStringW(GSceneAssetExtension);
+    COMDLG_FILTERSPEC Filter{L"Unheard Engine Scene File", Ext.c_str() };
+
+    std::filesystem::path SceneAssetPath = GSceneAssetPath;
+    SceneAssetPath = std::filesystem::absolute(SceneAssetPath);
+    std::filesystem::path OutPath = UHEditorUtil::FileSelectSavePath(Filter, SceneAssetPath.wstring());
+    if (OutPath.string().length() == 0)
+    {
+        return;
+    }
+
+    if (!OutPath.has_extension())
+    {
+        OutPath += GSceneAssetExtension;
+    }
+
+    bool bIsValidOutputFolder = false;
+    bIsValidOutputFolder |= UHUtilities::StringFind(OutPath.string() + "\\", SceneAssetPath.string());
+    bIsValidOutputFolder |= UHUtilities::StringFind(SceneAssetPath.string(), OutPath.string() + "\\");
+
+    std::filesystem::path Temp = OutPath;
+    if (!std::filesystem::exists(Temp.remove_filename()) || !bIsValidOutputFolder)
+    {
+        MessageBoxA(nullptr, "Invalid output folder or it's not under the engine path Assets/Scenes!", "Scene save", MB_OK);
+        return;
+    }
+
+    Engine->OnSaveScene(OutPath);
+    MessageBoxA(nullptr, "Scene saved!", "UHE", MB_OK);
+}
+
+void UHEditor::OnLoadScene()
+{
+    if (!std::filesystem::exists(GSceneAssetPath))
+    {
+        std::filesystem::create_directories(GSceneAssetPath);
+    }
+
+    std::wstring Ext = L"*" + UHUtilities::ToStringW(GSceneAssetExtension);
+    COMDLG_FILTERSPEC Filter{ L"Unheard Engine Scene File", Ext.c_str() };
+
+    std::filesystem::path SceneAssetPath = GSceneAssetPath;
+    SceneAssetPath = std::filesystem::absolute(SceneAssetPath);
+    std::filesystem::path InputPath = UHEditorUtil::FileSelectInput(Filter, SceneAssetPath.wstring());
+    if (InputPath.string().length() == 0)
+    {
+        return;
+    }
+
+    if (!std::filesystem::exists(InputPath))
+    {
+        MessageBoxA(nullptr, "Invalid scene file!", "Scene load", MB_OK);
+        return;
+    }
+
+    {
+        UHStatusDialogScope Status("Loading...");
+        Engine->OnLoadScene(InputPath);
     }
 }
 

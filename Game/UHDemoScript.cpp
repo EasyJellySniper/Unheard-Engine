@@ -1,6 +1,7 @@
 #include "UHDemoScript.h"
 #include "../Runtime/Classes/Scene.h"
 #include "../Runtime/Engine/GameTimer.h"
+#include "../Runtime/Engine/Engine.h"
 #include <cmath>
 
 UHDemoScript DemoScript;
@@ -12,8 +13,28 @@ UHDemoScript::UHDemoScript()
 	, TimeSign(1)
 	, TestType(DayTest)
 	, PointLightTimeCounter(0.0f)
+	, DefaultCamera(nullptr)
+	, DefaultDirectionalLight(nullptr)
+	, SecondDirectionalLight(nullptr)
+	, DefaultSkyLight(nullptr)
 {
 	SetName("Demo Script Component");
+}
+
+void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
+{
+	if (TestType == DayTest)
+	{
+		InEngine->OnLoadScene("Assets/Scenes/VikingHouses.uhscene");
+	}
+	else if (TestType == PointLightNight)
+	{
+		InEngine->OnLoadScene("Assets/Scenes/VikingHouses_PointLightNight.uhscene");
+	}
+	else
+	{
+		InEngine->OnLoadScene("Assets/Scenes/VikingHouses_SpotLightNight.uhscene");
+	}
 }
 
 void UHDemoScript::OnEngineUpdate(float DeltaTime)
@@ -51,19 +72,19 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 	if (TestType == PointLightNight)
 	{
 		float MaxRadius = 15.0f;
-		for (int32_t Idx = 0; Idx < 27; Idx++)
+		for (int32_t Idx = 0; Idx < TestPointLights.size(); Idx++)
 		{
 			float NewIntensity = MathHelpers::Lerp(4.0f, 3.0f, PointLightTimeCounter);
 			TestPointLights[Idx]->SetIntensity(NewIntensity);
-			TestPointLights2[Idx]->SetIntensity(NewIntensity);
+			//TestPointLights2[Idx]->SetIntensity(NewIntensity);
 
 			XMFLOAT3 Pos = TestPointLightOrigin[Idx];
 			Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
 			TestPointLights[Idx]->SetPosition(Pos);
 
-			Pos = TestPointLightOrigin2[Idx];
-			Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
-			TestPointLights2[Idx]->SetPosition(Pos);
+			//Pos = TestPointLightOrigin2[Idx];
+			//Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
+			//TestPointLights2[Idx]->SetPosition(Pos);
 		}
 
 		PointLightTimeCounter += DeltaTime;
@@ -76,12 +97,12 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 	if (TestType == SpotLightNight)
 	{
 		LightRotSpd = 45.0f * DeltaTime;
-		for (UniquePtr<UHSpotLightComponent>& SpotLight : TestSpotLights)
+		for (UHSpotLightComponent* SpotLight : TestSpotLights)
 		{
 			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), World);
 		}
 
-		for (UniquePtr<UHSpotLightComponent>& SpotLight : TestSpotLights2)
+		for (UHSpotLightComponent* SpotLight : TestSpotLights2)
 		{
 			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), World);
 		}
@@ -90,11 +111,91 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 
 void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx)
 {
+	//ObsoleteInitialization(InScene, InAsset, InGfx);
+	//return;
+	std::vector<UniquePtr<UHComponent>>& SceneComponents = InScene->GetAllCompoments();
+
+	if (TestType == SpotLightNight)
+	{
+		for (UniquePtr<UHComponent>& Comp : SceneComponents)
+		{
+			if (Comp->GetComponentClassId() == UHSpotLightComponent::ClassId)
+			{
+				TestSpotLights.push_back((UHSpotLightComponent*)Comp.get());
+			}
+		}
+	}
+
+	if (TestType == PointLightNight)
+	{
+		for (UniquePtr<UHComponent>& Comp : SceneComponents)
+		{
+			if (Comp->GetComponentClassId() == UHPointLightComponent::ClassId)
+			{
+				TestPointLights.push_back((UHPointLightComponent*)Comp.get());
+				TestPointLightOrigin.push_back(((UHPointLightComponent*)Comp.get())->GetPosition());
+			}
+		}
+	}
+
+	for (UniquePtr<UHComponent>& Comp : SceneComponents)
+	{
+		if (Comp->GetComponentClassId() == UHMeshRendererComponent::ClassId)
+		{
+			UHMeshRendererComponent* MRC = (UHMeshRendererComponent*)Comp.get();
+			if (UHUtilities::StringFind(MRC->GetName(), "1893"))
+			{
+				Geo364Renderer = MRC;
+			}
+		}
+	}
+}
+
+// not used at the moment
+void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx)
+{
+	DefaultCamera = (UHCameraComponent*)InScene->RequestComponent(UHCameraComponent::ClassId);
+
 	// brutal test for renderers
 	float MarginX = 75.0f;
 	float MarginZ = 25.0f;
 	float OffsetX[] = { 0, -1,0,1,-1,1,-1,0,1 };
 	float OffsetZ[] = { 0, -1,-1,-1,0,0,1,1,1 };
+
+	// setup default light
+	DefaultDirectionalLight = (UHDirectionalLightComponent*)InScene->RequestComponent(UHDirectionalLightComponent::ClassId);
+	DefaultDirectionalLight->SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
+	DefaultDirectionalLight->SetIntensity(TestType != DayTest ? 0.2f : 4.5f);
+	DefaultDirectionalLight->SetRotation(XMFLOAT3(45, -120, 0));
+
+	// setup default sky light
+	DefaultSkyLight = (UHSkyLightComponent*)InScene->RequestComponent(UHSkyLightComponent::ClassId);
+	DefaultSkyLight->SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
+	DefaultSkyLight->SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
+	DefaultSkyLight->SetSkyIntensity(TestType != DayTest ? 0.15f : 2.0f);
+	DefaultSkyLight->SetGroundIntensity(TestType != DayTest ? 0.5f : 1.5f);
+
+	if (TestType == DayTest)
+	{
+		DefaultSkyLight->SetCubemap(InAsset->GetCubemapByName("table_mountain_1_puresky_4k_Cube"));
+	}
+	else
+	{
+		DefaultSkyLight->SetCubemap(InAsset->GetCubemapByName("kloppenheim_07_puresky_4k_Cube"));
+	}
+
+	// setup default camera
+	InScene->GetMainCamera()->SetPosition(XMFLOAT3(0, 2, -15));
+	InScene->GetMainCamera()->SetPosition(XMFLOAT3(138, 9, -25));
+	InScene->GetMainCamera()->SetRotation(XMFLOAT3(0, -70, 0));
+	InScene->GetMainCamera()->SetCullingDistance(1000.0f);
+
+	// secondary light test
+	SecondDirectionalLight = (UHDirectionalLightComponent*)InScene->RequestComponent(UHDirectionalLightComponent::ClassId);
+	SecondDirectionalLight->SetLightColor(XMFLOAT3(1.0f, 0.55f, 0.0f));
+	SecondDirectionalLight->SetIntensity(2.5f);
+	SecondDirectionalLight->SetRotation(XMFLOAT3(45, -30, 0));
+	SecondDirectionalLight->SetIsEnabled(false);
 
 	// add mesh renderer for all loaded meshes
 	std::vector<UHMesh*> LoadedMeshes = InAsset->GetUHMeshes();
@@ -109,53 +210,20 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				continue;
 			}
 
-			UHMeshRendererComponent* NewRenderer = InScene->AddMeshRenderer(LoadedMeshes[Idx], Mat);
+			UHMeshRendererComponent* NewRenderer = (UHMeshRendererComponent*)InScene->RequestComponent(UHMeshRendererComponent::ClassId);
 			if (LoadedMeshes[Idx]->GetName() == "Geo364" && Offset == 0)
 			{
 				Geo364Renderer = NewRenderer;
 				Geo364OriginPos = Geo364Renderer->GetPosition();
 			}
 
+			NewRenderer->SetMesh(LoadedMeshes[Idx]);
+			NewRenderer->SetMaterial(Mat);
+			NewRenderer->SetPosition(LoadedMeshes[Idx]->GetImportedTranslation());
+			NewRenderer->SetRotation(LoadedMeshes[Idx]->GetImportedRotation());
+			NewRenderer->SetScale(LoadedMeshes[Idx]->GetImportedScale());
 			NewRenderer->Translate(XMFLOAT3(MarginX * OffsetX[Offset], 0, MarginZ * OffsetZ[Offset]), UHTransformSpace::World);
 		}
-	}
-
-	// setup default light
-	DefaultDirectionalLight.SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
-	DefaultDirectionalLight.SetIntensity(TestType != DayTest ? 0.2f : 4.5f);
-	DefaultDirectionalLight.SetRotation(XMFLOAT3(45, -120, 0));
-	InScene->AddDirectionalLight(&DefaultDirectionalLight);
-
-	// setup default sky light
-	DefaultSkyLight.SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
-	DefaultSkyLight.SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
-	DefaultSkyLight.SetSkyIntensity(TestType != DayTest ? 0.15f : 2.0f);
-	DefaultSkyLight.SetGroundIntensity(TestType != DayTest ? 0.5f : 1.5f);
-
-	if (TestType == DayTest)
-	{
-		DefaultSkyLight.SetCubemap(InAsset->GetCubemapByName("table_mountain_1_puresky_4k_Cube"));
-	}
-	else
-	{
-		DefaultSkyLight.SetCubemap(InAsset->GetCubemapByName("kloppenheim_07_puresky_4k_Cube"));
-	}
-	InScene->SetSkyLight(&DefaultSkyLight);
-
-	// setup default camera
-	InScene->GetMainCamera()->SetPosition(XMFLOAT3(0, 2, -15));
-	InScene->GetMainCamera()->SetPosition(XMFLOAT3(138, 9, -25));
-	InScene->GetMainCamera()->SetRotation(XMFLOAT3(0, -70, 0));
-	InScene->GetMainCamera()->SetCullingDistance(1000.0f);
-
-	// secondary light test
-	SecondDirectionalLight.SetLightColor(XMFLOAT3(1.0f, 0.55f, 0.0f));
-	SecondDirectionalLight.SetIntensity(2.5f);
-	SecondDirectionalLight.SetRotation(XMFLOAT3(45, -30, 0));
-	SecondDirectionalLight.SetIsEnabled(false);
-	if (TestType == DayTest)
-	{
-		InScene->AddDirectionalLight(&SecondDirectionalLight);
 	}
 
 	if (TestType == PointLightNight)
@@ -172,13 +240,12 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
-				TestPointLights[LightIndex] = MakeUnique<UHPointLightComponent>();
+				TestPointLights[LightIndex] = (UHPointLightComponent*)InScene->RequestComponent(UHPointLightComponent::ClassId);
 				TestPointLights[LightIndex]->SetIntensity(1.5f);
 				TestPointLights[LightIndex]->SetRadius(10.0f);
 				TestPointLights[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
 				TestPointLights[LightIndex]->SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
 				TestPointLightOrigin[LightIndex] = TestPointLights[LightIndex]->GetPosition();
-				InScene->AddPointLight(TestPointLights[LightIndex].get());
 			}
 		}
 
@@ -192,13 +259,12 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
-				TestPointLights2[LightIndex] = MakeUnique<UHPointLightComponent>();
+				TestPointLights2[LightIndex] = (UHPointLightComponent*)InScene->RequestComponent(UHPointLightComponent::ClassId);
 				TestPointLights2[LightIndex]->SetIntensity(1.5f);
 				TestPointLights2[LightIndex]->SetRadius(10.0f);
 				TestPointLights2[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
 				TestPointLights2[LightIndex]->SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
 				TestPointLightOrigin2[LightIndex] = TestPointLights2[LightIndex]->GetPosition();
-				InScene->AddPointLight(TestPointLights2[LightIndex].get());
 			}
 		}
 	}
@@ -216,7 +282,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
-				TestSpotLights[LightIndex] = MakeUnique<UHSpotLightComponent>();
+				TestSpotLights[LightIndex] = (UHSpotLightComponent*)InScene->RequestComponent(UHSpotLightComponent::ClassId);
 				TestSpotLights[LightIndex]->SetIntensity(4.0f);
 				TestSpotLights[LightIndex]->SetRadius(20.0f);
 				TestSpotLights[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
@@ -225,7 +291,6 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 				const float RandX = MathHelpers::Lerp(-30.0f, 30.0f, MathHelpers::RandFloat());
 				TestSpotLights[LightIndex]->SetRotation(XMFLOAT3(90.0f + RandX, 0.0f, 0.0f));
-				InScene->AddSpotLight(TestSpotLights[LightIndex].get());
 			}
 		}
 
@@ -239,7 +304,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			for (int32_t Jdx = 0; Jdx < 9; Jdx++)
 			{
 				const int32_t LightIndex = Idx * 9 + Jdx;
-				TestSpotLights2[LightIndex] = MakeUnique<UHSpotLightComponent>();
+				TestSpotLights2[LightIndex] = (UHSpotLightComponent*)InScene->RequestComponent(UHSpotLightComponent::ClassId);
 				TestSpotLights2[LightIndex]->SetIntensity(4.0f);
 				TestSpotLights2[LightIndex]->SetRadius(20.0f);
 				TestSpotLights2[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
@@ -248,7 +313,6 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 				const float RandX = MathHelpers::Lerp(-30.0f, 30.0f, MathHelpers::RandFloat());
 				TestSpotLights2[LightIndex]->SetRotation(XMFLOAT3(90.0f + RandX, 0.0f, 0.0f));
-				InScene->AddSpotLight(TestSpotLights2[LightIndex].get());
 			}
 		}
 	}

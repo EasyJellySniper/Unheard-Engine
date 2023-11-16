@@ -9,6 +9,7 @@
 #include "../Classes/TextureNodeGUI.h"
 #include "../../Runtime/Classes/Material.h"
 #include "../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "StatusDialog.h"
 
 enum UHNodeMenuAction
 {
@@ -717,9 +718,12 @@ void UHMaterialDialog::ControlResaveMaterial()
         return;
     }
 
-    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
-    Mat->SetCompileFlag(FullCompileResave);
-    ResaveMaterial(MatIndex);
+    {
+        UHStatusDialogScope Status("Saving...");
+        UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+        Mat->SetCompileFlag(FullCompileResave);
+        ResaveMaterial(MatIndex);
+    }
     MessageBoxA(Dialog, "Current editing material is saved.", "Material Editor", MB_OK);
 }
 
@@ -833,10 +837,13 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
 
 void UHMaterialDialog::ResaveAllMaterials()
 {
-    for (int32_t Idx = 0; Idx < static_cast<int32_t>(AssetManager->GetMaterials().size()); Idx++)
     {
-        AssetManager->GetMaterials()[Idx]->SetCompileFlag(FullCompileResave);
-        ResaveMaterial(Idx);
+        UHStatusDialogScope Status("Saving...");
+        for (int32_t Idx = 0; Idx < static_cast<int32_t>(AssetManager->GetMaterials().size()); Idx++)
+        {
+            AssetManager->GetMaterials()[Idx]->SetCompileFlag(FullCompileResave);
+            ResaveMaterial(Idx);
+        }
     }
 
     MessageBoxA(Dialog, "All materials are saved.", "Material Editor", MB_OK);

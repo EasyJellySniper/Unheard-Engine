@@ -11,6 +11,8 @@
 #include <wincodec.h>
 #include "Runtime/Classes/Types.h"
 #include "Runtime/Classes/Utility.h"
+#include <thread>
+#include <mutex>
 
 #if WITH_EDITOR
 	#define LogMessage( str ) OutputDebugString( str );
@@ -35,6 +37,7 @@
 #include "ThirdParty/ImGui/imgui_impl_vulkan.h"
 
 inline std::vector<std::string> GLogBuffer;
+inline std::mutex GLogMutex;
 
 #endif
 
@@ -42,6 +45,8 @@ inline void UHE_LOG(std::wstring InString)
 {
 #if WITH_EDITOR
 	LogMessage(InString.c_str());
+
+	std::unique_lock<std::mutex> Lock(GLogMutex);
 	GLogBuffer.push_back(UHUtilities::ToStringA(InString));
 #endif
 }
@@ -50,6 +55,8 @@ inline void UHE_LOG(std::string InString)
 {
 #if WITH_EDITOR
 	LogMessage(std::filesystem::path(InString).wstring().c_str());
+
+	std::unique_lock<std::mutex> Lock(GLogMutex);
 	GLogBuffer.push_back(InString);
 #endif
 }

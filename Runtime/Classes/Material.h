@@ -110,7 +110,6 @@ public:
 	UHBlendMode GetBlendMode() const;
 	UHMaterialProperty GetMaterialProps() const;
 	UHMaterialCompileFlag GetCompileFlag() const;
-	UHMaterialVersion GetVersion() const;
 	std::filesystem::path GetPath() const;
 	bool IsSkybox() const;
 	bool IsOpaque() const;
@@ -135,8 +134,6 @@ public:
 #endif
 
 private:
-	UHMaterialVersion Version;
-	std::string Name;
 	std::vector<std::string> RegisteredTextureNames;
 	std::vector<int32_t> RegisteredTextureIndexes;
 

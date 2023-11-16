@@ -79,32 +79,45 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	UHEProfiler = UHProfiler(UHEGameTimer.get());
 	MainThreadProfile = UHProfiler(UHEGameTimer.get());
 
-	// init default scene after all assets are loaded
-	DefaultScene.Initialize(UHEAsset.get(), UHEGraphic.get(), UHEConfig.get(), UHERawInput.get(), UHEGameTimer.get());
-
 	// sync full screen state to graphic
 	UHEGraphic->ToggleFullScreen(PresentationSettings.bFullScreen);
 
-	// init renderer
+	// create scene instance, initialize anyway in case there are script-generated components
+	CurrentScene = MakeUnique<UHScene>();
+	CurrentScene->Initialize(UHEAsset.get(), UHEGraphic.get(), UHEConfig.get(), UHERawInput.get(), UHEGameTimer.get());
+
+	// create renderer
 	UHERenderer = MakeUnique<UHDeferredShadingRenderer>(UHEGraphic.get(), UHEAsset.get(), UHEConfig.get(), UHEGameTimer.get());
-	if (!UHERenderer->Initialize(&DefaultScene))
+	if (!UHERenderer->Initialize(CurrentScene.get()))
 	{
 		UHE_LOG(L"Can't initialize renderer class!\n");
-		return false;
 	}
-	UHERenderer->SetCurrentScene(&DefaultScene);
+	UHERenderer->SetCurrentScene(CurrentScene.get());
+
+#if WITH_EDITOR
+	// init editor instance
+	UHEEditor = MakeUnique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
+		, UHEAsset.get(), UHEGraphic.get());
+#endif
+
+	bIsInitialized = true;
+	for (const auto& Script : UHGameScripts)
+	{
+		Script.second->OnEngineInitialized(this);
+	}
 
 	// show window at the end of initialization
 	UHEConfig->ApplyPresentationSettings(UHEngineWindow);
 	UHEConfig->ApplyWindowStyle(UHWindowInstance, UHEngineWindow);
 
+	// @TODO: Think better release workflow
 #if WITH_RELEASE
 	// release all CPU data for texture/meshes for ship build
 	// they should be uploaded to GPU at this point
 	for (UHTexture2D* Tex : UHEAsset->GetTexture2Ds())
 	{
 		Tex->ReleaseCPUTextureData();
-	}
+}
 
 	for (UHTextureCube* Cube : UHEAsset->GetCubemaps())
 	{
@@ -117,13 +130,6 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	}
 #endif
 
-#if WITH_EDITOR
-	// init editor instance
-	UHEEditor = MakeUnique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
-		, UHEAsset.get(), UHEGraphic.get());
-#endif
-
-	bIsInitialized = true;
 	return true;
 }
 
@@ -132,7 +138,7 @@ void UHEngine::ReleaseEngine()
 	UH_SAFE_RELEASE(UHERenderer);
 	UHERenderer.reset();
 
-	DefaultScene.Release();
+	CurrentScene->Release();
 
 	UHERawInput.reset();
 	UHEGameTimer.reset();
@@ -192,7 +198,7 @@ void UHEngine::Update()
 	}
 
 	// update scene
-	DefaultScene.Update();
+	CurrentScene->Update();
 
 	// update renderer, reset if it's need to be reset (device lost..etc)
 #if WITH_RELEASE
@@ -293,6 +299,52 @@ void UHEngine::EndFPSLimiter()
 		int64_t WaitDuration = static_cast<int64_t>((DesiredDuration - Duration) / UHEGameTimer->GetSecondsPerCount());
 		while (UHEGameTimer->GetTime() <= WaitDuration + FrameEndTime);
 	}
+}
+
+void UHEngine::OnSaveScene(std::filesystem::path OutputPath)
+{
+	if (CurrentScene == nullptr)
+	{
+		return;
+	}
+
+	std::ofstream FileOut(OutputPath.string().c_str(), std::ios::out | std::ios::binary);
+	CurrentScene->OnSave(FileOut);
+	FileOut.close();
+}
+
+void UHEngine::OnLoadScene(std::filesystem::path InputPath)
+{
+	if (!std::filesystem::exists(InputPath))
+	{
+		UHE_LOG("Scene " + InputPath.string() + " not found!\n");
+		return;
+	}
+
+	// recreate scene when loading
+	UH_SAFE_RELEASE(CurrentScene);
+	CurrentScene = MakeUnique<UHScene>();
+
+	// load scene file
+	std::ifstream FileIn(InputPath.string().c_str(), std::ios::in | std::ios::binary);
+	CurrentScene->OnLoad(FileIn);
+	FileIn.close();
+
+	// post load behavior and init scene
+	CurrentScene->OnPostLoad(UHEAsset.get());
+	CurrentScene->Initialize(UHEAsset.get(), UHEGraphic.get(), UHEConfig.get(), UHERawInput.get(), UHEGameTimer.get());
+
+	// re-initialize renderer
+	UH_SAFE_RELEASE(UHERenderer);
+	if (!UHERenderer->Initialize(CurrentScene.get()))
+	{
+		UHE_LOG(L"Can't initialize renderer class!\n");
+	}
+	UHERenderer->SetCurrentScene(CurrentScene.get());
+
+#if WITH_EDITOR
+	UHEEditor->RefreshWorldDialog();
+#endif
 }
 
 #if WITH_EDITOR

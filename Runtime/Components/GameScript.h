@@ -15,9 +15,12 @@ class UHGameTimer;
 class UHGameScript : public UHComponent
 {
 public:
+	STATIC_CLASS_ID(14216117)
 	UHGameScript();
 	virtual ~UHGameScript() {}
+
 	virtual void Update() override {}
+	virtual void OnEngineInitialized(UHEngine* InEngine) {}
 	virtual void OnEngineUpdate(float DeltaTime) {}
 	virtual void OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx) {}
 

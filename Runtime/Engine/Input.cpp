@@ -125,10 +125,7 @@ RAWMOUSE UHRawInput::GetMouseData() const
 void UHRawInput::CacheKeyStates()
 {
 	// cache key states of current frame, this should be called at the end of update functions, or at least before any input checking
-	for (int32_t Idx = 0; Idx < 256; Idx++)
-	{
-		bPreviousKeyState[Idx] = bCurrentKeyState[Idx];
-	}
+	memcpy_s(bPreviousKeyState, sizeof(bool) * ARRAYSIZE(bPreviousKeyState), bCurrentKeyState, sizeof(bool) * ARRAYSIZE(bCurrentKeyState));
 	bPreviousLeftMousePressed = bIsLeftMousePressed;
 	bPreviousRightMousePressed = bIsRightMousePressed;
 

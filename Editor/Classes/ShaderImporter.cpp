@@ -388,7 +388,7 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		CompileCmd += " -D " + Define;
 	}
 
-	UHE_LOG("Compiling " + TempShaderPath + "...\n");
+	UHE_LOG("Compiling " + OutputShaderPath + "...\n");
 	bool bCompileResult = CompileShader(CompileCmd);
 
 	if (!std::filesystem::exists(OutputShaderPath) || !bCompileResult)

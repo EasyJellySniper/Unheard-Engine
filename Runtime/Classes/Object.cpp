@@ -6,11 +6,28 @@
 UHObject::UHObject()
 {
 	static uint32_t UniqueID = 0;
-	Uid = UniqueID++;
+	RuntimeId = UniqueID++;
 
 	assert(GObjectTable.find(GetId()) == GObjectTable.end());
 	GObjectTable[GetId()] = this;
 	Name = ENGINE_NAME_NONE;
+
+	UuidCreate(&RuntimeGuid);
+	Version = 0;
+}
+
+void UHObject::OnSave(std::ofstream& OutStream)
+{
+	OutStream.write(reinterpret_cast<const char*>(&RuntimeGuid), sizeof(RuntimeGuid));
+	OutStream.write(reinterpret_cast<const char*>(&Version), sizeof(Version));
+	UHUtilities::WriteStringData(OutStream, Name);
+}
+
+void UHObject::OnLoad(std::ifstream& InStream)
+{
+	InStream.read(reinterpret_cast<char*>(&RuntimeGuid), sizeof(RuntimeGuid));
+	InStream.read(reinterpret_cast<char*>(&Version), sizeof(Version));
+	UHUtilities::ReadStringData(InStream, Name);
 }
 
 UHObject::~UHObject()
@@ -70,7 +87,12 @@ std::vector<UHObject*> UHObject::GetReferenceObjects() const
 
 uint32_t UHObject::GetId() const
 {
-	return Uid;
+	return RuntimeId;
+}
+
+UUID UHObject::GetRuntimeGuid() const
+{
+	return RuntimeGuid;
 }
 
 std::string UHObject::GetName() const
@@ -80,5 +102,5 @@ std::string UHObject::GetName() const
 
 bool UHObject::operator==(const UHObject& InObj)
 {
-	return Uid == InObj.Uid;
+	return RuntimeId == InObj.RuntimeId;
 }

@@ -63,8 +63,6 @@ public:
 #endif
 
 private:
-	std::string Name;
-
 	std::string ImportedMaterialName;
 	XMFLOAT3 ImportedTranslation;
 	XMFLOAT3 ImportedRotation;

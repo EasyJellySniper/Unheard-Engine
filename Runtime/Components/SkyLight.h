@@ -2,12 +2,17 @@
 #include "../Classes/Types.h"
 #include "Transform.h"
 #include "../Classes/TextureCube.h"
+#include "../Engine/Asset.h"
 
 // UH Skylight component
 class UHSkyLightComponent : public UHTransformComponent
 {
 public:
+	STATIC_CLASS_ID(99222499)
 	UHSkyLightComponent();
+	virtual void OnSave(std::ofstream& OutStream) override;
+	virtual void OnLoad(std::ifstream& InStream) override;
+	virtual void OnPostLoad(UHAssetManager* InAssetMgr) override;
 
 	void SetSkyColor(XMFLOAT3 InColor);
 	void SetGroundColor(XMFLOAT3 InColor);
@@ -33,4 +38,5 @@ private:
 	float SkyIntensity;
 	float GroundIntensity;
 	UHTextureCube* CubemapCache;
+	UUID CubemapId;
 };

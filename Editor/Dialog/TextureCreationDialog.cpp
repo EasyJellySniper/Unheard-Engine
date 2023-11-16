@@ -405,7 +405,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
             const std::string SliceName = "CubemapCreationSlice" + std::to_string(Idx);
-            UHTexture2D Slice(SliceName, SliceName, OutputExtent, UncompressedFormat, Settings);
+            UniquePtr<UHTexture2D> Slice = MakeUnique<UHTexture2D>(SliceName, SliceName, OutputExtent, UncompressedFormat, Settings);
             Slices[Idx] = Gfx->RequestTexture2D(Slice, false);
 
             for (uint32_t MipIdx = 0; MipIdx < Slices[Idx]->GetMipMapCount(); MipIdx++)
@@ -569,7 +569,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             // request new slice and recreate with readback data
             const std::vector<uint8_t>& Data = CubemapRT[Idx]->ReadbackTextureData();
             const std::string SliceName = "CubemapCreationSlice" + std::to_string(Idx);
-            UHTexture2D Slice(SliceName, SliceName, Slices[Idx]->GetExtent(), Slices[Idx]->GetFormat(), Settings);
+            UniquePtr<UHTexture2D> Slice = MakeUnique<UHTexture2D>(SliceName, SliceName, Slices[Idx]->GetExtent(), Slices[Idx]->GetFormat(), Settings);
             Slices[Idx] = Gfx->RequestTexture2D(Slice, false);
             Slices[Idx]->SetTextureData(Data);
             Slices[Idx]->Recreate(false);

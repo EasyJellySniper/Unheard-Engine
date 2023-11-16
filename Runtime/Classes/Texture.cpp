@@ -10,8 +10,7 @@ UHTexture::UHTexture()
 }
 
 UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings)
-	: Name(InName)
-	, ImageFormat(InFormat)
+	: ImageFormat(InFormat)
 	, ImageExtent(InExtent)
 	, ImageSource(nullptr)
 	, ImageView(nullptr)
@@ -22,7 +21,6 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, bIsMipMapGenerated(false)
 	, TextureSettings(InSettings)
 	, MemoryOffset(~0)
-	, TextureVersion(InitialTexture)
 	, MipMapCount(1)
 	, TextureType(Texture2D)
 	, bCreatePerMipImageView(false)
@@ -33,6 +31,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 		CubemapImageView[Idx] = nullptr;
 	}
 #endif
+	Name = InName;
 }
 
 #if WITH_EDITOR

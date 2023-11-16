@@ -146,6 +146,32 @@ std::vector<uint8_t> UHTextureImporter::LoadTexture(std::filesystem::path Filena
 	return Texture;
 }
 
+void CompressionSettingToFormat(const UHTextureSettings& InSetting, UHTextureFormat& OutFormat)
+{
+	switch (InSetting.CompressionSetting)
+	{
+	case BC1:
+		OutFormat = (InSetting.bIsLinear) ? UH_FORMAT_BC1_UNORM : UH_FORMAT_BC1_SRGB;
+		break;
+
+	case BC3:
+		OutFormat = (InSetting.bIsLinear) ? UH_FORMAT_BC3_UNORM : UH_FORMAT_BC3_SRGB;
+		break;
+
+	case BC4:
+		OutFormat = UH_FORMAT_BC4;
+		break;
+
+	case BC5:
+		OutFormat = UH_FORMAT_BC5;
+		break;
+
+	case BC6H:
+		OutFormat = UH_FORMAT_BC6H;
+		break;
+	}
+}
+
 // import raw texture from a specified path, this should be called after something like open file dialog
 UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath, std::filesystem::path OutputFolder, UHTextureSettings InSettings)
 {
@@ -169,21 +195,22 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 
 	UHTextureFormat DesiredFormat = InSettings.bIsLinear ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
 	DesiredFormat = InSettings.bIsHDR ? UH_FORMAT_RGBA16F : DesiredFormat;
+	CompressionSettingToFormat(InSettings, DesiredFormat);
 
 	std::string OutputPathName = OutputFolder.string() + "/" + SourcePath.stem().string();
 	std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", "/");
 	SavedPathName = UHUtilities::StringReplace(SavedPathName, GTextureAssetFolder, "");
 
-	UHTexture2D NewTex(SourcePath.stem().string(), SavedPathName, Extent, DesiredFormat, InSettings);
-	NewTex.SetTextureData(TextureData);
-
+	UniquePtr<UHTexture2D> NewTex = MakeUnique<UHTexture2D>(SourcePath.stem().string(), SavedPathName, Extent, DesiredFormat, InSettings);
 	UHTexture2D* OutputTex = Gfx->RequestTexture2D(NewTex, true);
 	OutputTex->SetRawSourcePath(SourcePath.string());
+	OutputTex->SetTextureData(TextureData);
+
 	if (OutputTex != nullptr)
 	{
 		OutputTex->Recreate(true);
 		OutputTex->Export(OutputPathName);
-		MessageBoxA(nullptr, ("Import " + NewTex.GetName() + " successfully.").c_str(), "Texture Import", MB_OK);
+		MessageBoxA(nullptr, ("Import " + OutputTex->GetName() + " successfully.").c_str(), "Texture Import", MB_OK);
 	}
 
 	return OutputTex;

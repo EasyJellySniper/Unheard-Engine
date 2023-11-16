@@ -149,7 +149,6 @@ public:
 
 protected:
 	bool Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory);
-	std::string Name;
 	std::string SourcePath;
 	std::string RawSourcePath;
 
@@ -163,7 +162,6 @@ protected:
 	bool bCreatePerMipImageView;
 	UHTextureSettings TextureSettings;
 	uint64_t MemoryOffset;
-	UHTextureVersion TextureVersion;
 	UHTextureType TextureType;
 	uint32_t MipMapCount;
 

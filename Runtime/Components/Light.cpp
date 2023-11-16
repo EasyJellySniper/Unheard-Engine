@@ -26,6 +26,7 @@ void UHLightBase::SetIntensity(float InIntensity)
 UHDirectionalLightComponent::UHDirectionalLightComponent()
 {
 	SetName("DirectionalLightComponent" + std::to_string(GetId()));
+	ComponentClassIdInternal = ClassId;
 }
 
 void UHDirectionalLightComponent::Update()
@@ -43,6 +44,22 @@ void UHDirectionalLightComponent::Update()
 		SetRenderDirties(true);
 		bTransformChanged = false;
 	}
+}
+
+void UHDirectionalLightComponent::OnSave(std::ofstream& OutStream)
+{
+	UHComponent::OnSave(OutStream);
+	UHTransformComponent::OnSave(OutStream);
+	OutStream.write(reinterpret_cast<const char*>(&LightColor), sizeof(LightColor));
+	OutStream.write(reinterpret_cast<const char*>(&Intensity), sizeof(Intensity));
+}
+
+void UHDirectionalLightComponent::OnLoad(std::ifstream& InStream)
+{
+	UHComponent::OnLoad(InStream);
+	UHTransformComponent::OnLoad(InStream);
+	InStream.read(reinterpret_cast<char*>(&LightColor), sizeof(LightColor));
+	InStream.read(reinterpret_cast<char*>(&Intensity), sizeof(Intensity));
 }
 
 UHDirectionalLightConstants UHDirectionalLightComponent::GetConstants() const
@@ -95,6 +112,7 @@ UHPointLightComponent::UHPointLightComponent()
 	: Radius(50.0f)
 {
 	SetName("PointLightComponent" + std::to_string(GetId()));
+	ComponentClassIdInternal = ClassId;
 }
 
 void UHPointLightComponent::Update()
@@ -112,6 +130,24 @@ void UHPointLightComponent::Update()
 		SetRenderDirties(true);
 		bTransformChanged = false;
 	}
+}
+
+void UHPointLightComponent::OnSave(std::ofstream& OutStream)
+{
+	UHComponent::OnSave(OutStream);
+	UHTransformComponent::OnSave(OutStream);
+	OutStream.write(reinterpret_cast<const char*>(&LightColor), sizeof(LightColor));
+	OutStream.write(reinterpret_cast<const char*>(&Intensity), sizeof(Intensity));
+	OutStream.write(reinterpret_cast<const char*>(&Radius), sizeof(Radius));
+}
+
+void UHPointLightComponent::OnLoad(std::ifstream& InStream)
+{
+	UHComponent::OnLoad(InStream);
+	UHTransformComponent::OnLoad(InStream);
+	InStream.read(reinterpret_cast<char*>(&LightColor), sizeof(LightColor));
+	InStream.read(reinterpret_cast<char*>(&Intensity), sizeof(Intensity));
+	InStream.read(reinterpret_cast<char*>(&Radius), sizeof(Radius));
 }
 
 void UHPointLightComponent::SetRadius(float InRadius)
@@ -190,6 +226,7 @@ UHSpotLightComponent::UHSpotLightComponent()
 	, InnerAngle(90.0f * 0.9f)
 {
 	SetName("SpotLightComponent" + std::to_string(GetId()));
+	ComponentClassIdInternal = ClassId;
 }
 
 void UHSpotLightComponent::Update()
@@ -207,6 +244,29 @@ void UHSpotLightComponent::Update()
 		SetRenderDirties(true);
 		bTransformChanged = false;
 	}
+}
+
+void UHSpotLightComponent::OnSave(std::ofstream& OutStream)
+{
+	UHComponent::OnSave(OutStream);
+	UHTransformComponent::OnSave(OutStream);
+	OutStream.write(reinterpret_cast<const char*>(&LightColor), sizeof(LightColor));
+	OutStream.write(reinterpret_cast<const char*>(&Intensity), sizeof(Intensity));
+	OutStream.write(reinterpret_cast<const char*>(&Radius), sizeof(Radius));
+	OutStream.write(reinterpret_cast<const char*>(&Angle), sizeof(Angle));
+}
+
+void UHSpotLightComponent::OnLoad(std::ifstream& InStream)
+{
+	UHComponent::OnLoad(InStream);
+	UHTransformComponent::OnLoad(InStream);
+	InStream.read(reinterpret_cast<char*>(&LightColor), sizeof(LightColor));
+	InStream.read(reinterpret_cast<char*>(&Intensity), sizeof(Intensity));
+	InStream.read(reinterpret_cast<char*>(&Radius), sizeof(Radius));
+	InStream.read(reinterpret_cast<char*>(&Angle), sizeof(Angle));
+
+	// so it will update inner angle as well
+	SetAngle(Angle);
 }
 
 void UHSpotLightComponent::SetRadius(float InRadius)

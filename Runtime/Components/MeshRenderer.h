@@ -9,8 +9,16 @@
 class UHMeshRendererComponent : public UHTransformComponent, public UHRenderState
 {
 public:
+	STATIC_CLASS_ID(85533359)
+	UHMeshRendererComponent();
 	UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InMaterial);
 	virtual void Update() override;
+	virtual void OnSave(std::ofstream& OutStream) override;
+	virtual void OnLoad(std::ifstream& InStream) override;
+	virtual void OnPostLoad(UHAssetManager* InAssetMgr) override;
+
+	void SetMesh(UHMesh* InMesh);
+	void SetMaterial(UHMaterial* InMaterial);
 
 	UHMesh* GetMesh() const;
 	UHMaterial* GetMaterial() const;
@@ -29,7 +37,9 @@ public:
 
 private:
 	UHMesh* MeshCache;
+	UUID MeshId;
 	UHMaterial* MaterialCache;
+	UUID MaterialId;
 
 	bool bIsVisible;
 	BoundingBox RendererBound;

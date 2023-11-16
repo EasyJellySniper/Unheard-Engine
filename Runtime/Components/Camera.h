@@ -6,8 +6,11 @@
 class UHCameraComponent : public UHTransformComponent
 {
 public:
+	STATIC_CLASS_ID(99446654)
 	UHCameraComponent();
 	virtual void Update() override;
+	virtual void OnSave(std::ofstream& OutStream) override;
+	virtual void OnLoad(std::ifstream& InStream) override;
 
 	void SetNearPlane(float InNearZ);
 	void SetAspect(float InAspect);

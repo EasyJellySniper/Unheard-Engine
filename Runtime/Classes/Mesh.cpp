@@ -15,7 +15,6 @@ UHMesh::UHMesh(std::string InName)
 	: ImportedTranslation(0.0f, 0.0f, 0.0f)
 	, ImportedRotation(0.0f, 0.0f, 0.0f)
 	, ImportedScale(1.0f, 1.0f, 1.0f)
-	, Name(InName)
 	, ImportedMaterialName("NONE")
 	, VertexCount(0)
 	, IndiceCount(0)
@@ -31,7 +30,7 @@ UHMesh::UHMesh(std::string InName)
 	, bIndexBuffer32Bit(false)
 	, MeshBound(BoundingBox())
 {
-
+	Name = InName;
 }
 
 // call this function to build gpu buffer
@@ -296,8 +295,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 		return false;
 	}
 
-	// read mesh name
-	UHUtilities::ReadStringData(FileIn, Name);
+	UHObject::OnLoad(FileIn);
 
 	// read imported material name
 	UHUtilities::ReadStringData(FileIn, ImportedMaterialName);
@@ -429,7 +427,12 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 	}
 
 	// don't output again if file exists if it doesn't want to overwrite
-	std::filesystem::path OutPath = OutputFolder.string() + Name + GMeshAssetExtension;
+	std::filesystem::path OutPath = OutputFolder.string();
+	if (!OutPath.has_filename())
+	{
+		OutPath += Name + GMeshAssetExtension;
+	}
+
 	if (!bOverwrite && std::filesystem::exists(OutPath))
 	{
 		return;
@@ -438,8 +441,7 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 	// open UHMesh file
 	std::ofstream FileOut(OutPath.string(), std::ios::out | std::ios::binary);
 
-	// write mesh name
-	UHUtilities::WriteStringData(FileOut, Name);
+	UHObject::OnSave(FileOut);
 
 	// write imported material name
 	UHUtilities::WriteStringData(FileOut, ImportedMaterialName);

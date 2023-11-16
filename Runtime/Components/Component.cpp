@@ -2,11 +2,21 @@
 
 UHComponent::UHComponent()
 	: bIsEnabled(true)
-#if WITH_EDITOR
-	, bIsEditable(true)
-#endif
+	, ComponentClassIdInternal(0)
 {
 
+}
+
+void UHComponent::OnSave(std::ofstream& OutStream)
+{
+	UHObject::OnSave(OutStream);
+	OutStream.write(reinterpret_cast<const char*>(&bIsEnabled), sizeof(bIsEnabled));
+}
+
+void UHComponent::OnLoad(std::ifstream& InStream)
+{
+	UHObject::OnLoad(InStream);
+	InStream.read(reinterpret_cast<char*>(&bIsEnabled), sizeof(bIsEnabled));
 }
 
 void UHComponent::SetIsEnabled(bool bInFlag)
@@ -19,15 +29,15 @@ bool UHComponent::IsEnabled() const
 	return bIsEnabled;
 }
 
+uint32_t UHComponent::GetComponentClassId() const
+{
+	return ComponentClassIdInternal;
+}
+
 #if WITH_EDITOR
 void UHComponent::OnGenerateDetailView()
 {
 	ImGui::Text("------ Component ------");
 	ImGui::Checkbox("Enable", &bIsEnabled);
-}
-
-bool UHComponent::IsEditable() const
-{
-	return bIsEditable;
 }
 #endif

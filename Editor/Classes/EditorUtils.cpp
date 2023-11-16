@@ -27,12 +27,21 @@ namespace UHEditorUtil
         }
     }
 
-    std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter)
+    std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter, std::wstring InDefaultFolder)
     {
         std::wstring SelectedFile;
         IFileDialog* FileDialog;
         if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileDialog))))
         {
+            if (InDefaultFolder.size() > 0)
+            {
+                IShellItem* CurFolder = NULL;
+                if (SUCCEEDED(SHCreateItemFromParsingName(InDefaultFolder.c_str(), NULL, IID_PPV_ARGS(&CurFolder))))
+                {
+                    FileDialog->SetFolder(CurFolder);
+                    CurFolder->Release();
+                }
+            }
             FileDialog->SetFileTypes(1, &InFilter);
 
             if (SUCCEEDED(FileDialog->Show(nullptr)))
@@ -83,6 +92,48 @@ namespace UHEditorUtil
         }
 
         return OutputFolder;
+    }
+
+    std::wstring FileSelectSavePath(const COMDLG_FILTERSPEC& InFilter, std::wstring InDefaultFolder)
+    {
+        std::wstring OutputPath;
+        IFileDialog* FileDialog;
+        if (SUCCEEDED(CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileDialog))))
+        {
+            if (InDefaultFolder.size() > 0)
+            {
+                IShellItem* CurFolder = NULL;
+                if (SUCCEEDED(SHCreateItemFromParsingName(InDefaultFolder.c_str(), NULL, IID_PPV_ARGS(&CurFolder))))
+                {
+                    FileDialog->SetFolder(CurFolder);
+                    CurFolder->Release();
+                }
+            }
+            FileDialog->SetFileTypes(1, &InFilter);
+
+            DWORD Options;
+            if (SUCCEEDED(FileDialog->GetOptions(&Options)))
+            {
+                FileDialog->SetOptions(Options | FOS_OVERWRITEPROMPT);
+            }
+
+            if (SUCCEEDED(FileDialog->Show(nullptr)))
+            {
+                IShellItem* Result;
+                if (SUCCEEDED(FileDialog->GetResult(&Result)))
+                {
+                    wchar_t* Path;
+                    if (SUCCEEDED(Result->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &Path)))
+                    {
+                        OutputPath = Path;
+                    }
+                    Result->Release();
+                }
+            }
+            FileDialog->Release();
+        }
+
+        return OutputPath;
     }
 
     SIZE GetTextSize(HWND Hwnd, std::string InText)

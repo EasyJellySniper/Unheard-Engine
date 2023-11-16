@@ -211,11 +211,6 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	// create mesh buffer for all default lit renderers
 	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
 
-	if (Renderers.size() == 0)
-	{
-		return;
-	}
-
 	// needs the cmd buffer
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 
@@ -372,7 +367,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	}
 
 	// RT shaders
-	if (GraphicInterface->IsRayTracingEnabled())
+	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
 		// buffer for storing mesh vertex and indices
 		RTVertexTable = MakeUnique<UHRTVertexTable>(GraphicInterface, "RTVertexTable", RTInstanceCount);
@@ -667,13 +662,13 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
-		RTDefaultHitGroupShader->Release();
-		RTShadowShader->Release();
-		RTVertexTable->Release();
-		RTIndicesTable->Release();
-		RTIndicesTypeTable->Release();
-		RTMaterialDataTable->Release();
-		SoftRTShadowShader->Release();
+		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
+		UH_SAFE_RELEASE(RTShadowShader);
+		UH_SAFE_RELEASE(RTVertexTable);
+		UH_SAFE_RELEASE(RTIndicesTable);
+		UH_SAFE_RELEASE(RTIndicesTypeTable);
+		UH_SAFE_RELEASE(RTMaterialDataTable);
+		UH_SAFE_RELEASE(SoftRTShadowShader);
 	}
 
 	TextureTable->Release();
@@ -1140,7 +1135,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	}
 
 	// recreate shader if need to assign renderer group again
-	if (bNeedReassignRendererGroup)
+	if (bNeedReassignRendererGroup || CompileFlag == FullCompileResave)
 	{
 		for (UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
@@ -1218,7 +1213,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 	const int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const bool bReleaseDescriptorOnly = CompileFlag == RendererMaterialChanged;
 
-	if (bNeedReassignRendererGroup || CompileFlag == RendererMaterialChanged)
+	if (bNeedReassignRendererGroup || CompileFlag == RendererMaterialChanged || CompileFlag == FullCompileResave)
 	{
 		// release shaders if it's re-compiling
 		if (bEnableDepthPrePass)
@@ -1231,7 +1226,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 		SafeReleaseShaderPtr(MotionTranslucentShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 		SafeReleaseShaderPtr(TranslucentPassShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 	}
-	else if (CompileFlag == FullCompileTemporary || CompileFlag == FullCompileResave)
+	else if (CompileFlag == FullCompileTemporary)
 	{
 		// compile only
 		if (bIsOpaque)

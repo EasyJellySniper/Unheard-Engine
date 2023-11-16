@@ -29,6 +29,7 @@ UHCameraComponent::UHCameraComponent()
 #endif
 {
 	SetName("CameraComponent" + std::to_string(GetId()));
+	ComponentClassIdInternal = ClassId;
 }
 
 void UHCameraComponent::Update()
@@ -84,6 +85,40 @@ void UHCameraComponent::Update()
 	const XMFLOAT4X4& World = GetWorldMatrix();
 	const XMMATRIX W = XMLoadFloat4x4(&World);
 	CameraFrustum.Transform(CameraFrustum, XMMatrixTranspose(W));
+}
+
+void UHCameraComponent::OnSave(std::ofstream& OutStream)
+{
+	UHComponent::OnSave(OutStream);
+	UHTransformComponent::OnSave(OutStream);
+	OutStream.write(reinterpret_cast<const char*>(&NearPlane), sizeof(NearPlane));
+#if WITH_EDITOR
+	OutStream.write(reinterpret_cast<const char*>(&FovYDeg), sizeof(FovYDeg));
+#else
+	float Dummy = 60.0f;
+	OutStream.write(reinterpret_cast<const char*>(&Dummy), sizeof(Dummy));
+#endif
+	OutStream.write(reinterpret_cast<const char*>(&CullingDistance), sizeof(CullingDistance));
+	OutStream.write(reinterpret_cast<const char*>(&JitterScaleMin), sizeof(JitterScaleMin));
+	OutStream.write(reinterpret_cast<const char*>(&JitterScaleMax), sizeof(JitterScaleMax));
+	OutStream.write(reinterpret_cast<const char*>(&JitterEndDistance), sizeof(JitterEndDistance));
+}
+
+void UHCameraComponent::OnLoad(std::ifstream& InStream)
+{
+	UHComponent::OnLoad(InStream);
+	UHTransformComponent::OnLoad(InStream);
+	InStream.read(reinterpret_cast<char*>(&NearPlane), sizeof(NearPlane));
+#if WITH_EDITOR
+	InStream.read(reinterpret_cast<char*>(&FovYDeg), sizeof(FovYDeg));
+#else
+	float Dummy = 0.0f;
+	InStream.read(reinterpret_cast<char*>(&Dummy), sizeof(Dummy));
+#endif
+	InStream.read(reinterpret_cast<char*>(&CullingDistance), sizeof(CullingDistance));
+	InStream.read(reinterpret_cast<char*>(&JitterScaleMin), sizeof(JitterScaleMin));
+	InStream.read(reinterpret_cast<char*>(&JitterScaleMax), sizeof(JitterScaleMax));
+	InStream.read(reinterpret_cast<char*>(&JitterEndDistance), sizeof(JitterEndDistance));
 }
 
 void UHCameraComponent::SetNearPlane(float InNearZ)
