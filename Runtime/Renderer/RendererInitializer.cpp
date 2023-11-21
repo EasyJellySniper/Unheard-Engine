@@ -148,6 +148,7 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		// create render pass stuffs
 		CreateRenderingBuffers();
 		CreateRenderPasses();
+		CreateRenderFrameBuffers();
 		PrepareRenderingShaders();
 
 		// create data buffers
@@ -809,9 +810,10 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(TranslucentMotionTextures
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
+}
 
-
-	// -------------------------------------------------------- Createing frame buffer after render pass is done -------------------------------------------------------- //
+void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
+{
 	// collect image views for creaing one frame buffer
 	std::vector<VkImageView> Views;
 	Views.push_back(GSceneDiffuse->GetImageView());

@@ -130,6 +130,7 @@ private:
 
 	// create render passes
 	void CreateRenderPasses();
+	void CreateRenderFrameBuffers();
 
 	// release render pass objects
 	void ReleaseRenderPassObjects(bool bFrameBufferOnly = false);

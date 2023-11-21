@@ -31,6 +31,7 @@ void UHDeferredShadingRenderer::Resize()
 	ReleaseRenderPassObjects(true);
 	RelaseRenderingBuffers();
 	CreateRenderingBuffers();
+	CreateRenderFrameBuffers();
 
 	// need to rewrite descriptors after resize
 	UpdateDescriptors();
