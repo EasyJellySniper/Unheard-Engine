@@ -9,6 +9,12 @@
 #include "../../UnheardEngine.h"
 #include "AccelerationStructure.h"
 
+enum UHMeshVersion
+{
+	StoreSourcePath = 1,
+	MeshVersionMax
+};
+
 class UHGraphic;
 
 // Mesh class of unheard engine
@@ -29,6 +35,7 @@ public:
 	void SetIndicesData(std::vector<uint32_t> InIndicesData);
 
 	std::string GetName() const;
+	std::string GetSourcePath() const;
 	std::vector<uint32_t> GetIndicesData() const;
 	std::vector<uint16_t> GetIndicesData16() const;
 
@@ -58,15 +65,21 @@ public:
 #if WITH_EDITOR
 	void SetImportedTransform(XMFLOAT3 InTranslation, XMFLOAT3 InRotation, XMFLOAT3 InScale);
 	void SetImportedMaterialName(std::string InName);
+	void SetSourcePath(const std::string InPath);
 	void ApplyUnitScale();
 	void Export(std::filesystem::path OutputFolder, bool bOverwrite = true);
 #endif
 
+	bool operator==(const UHMesh& InMesh);
+
 private:
+	void CheckAndConvertToIndices16();
+
 	std::string ImportedMaterialName;
 	XMFLOAT3 ImportedTranslation;
 	XMFLOAT3 ImportedRotation;
 	XMFLOAT3 ImportedScale;
+	std::string SourcePath;
 
 	std::vector<XMFLOAT3> PositionData;
 	std::vector<XMFLOAT2> UV0Data;

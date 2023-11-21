@@ -3,42 +3,45 @@
 
 #if WITH_EDITOR
 #include "../../Runtime/Engine/Graphic.h"
-#include "../../Runtime/Renderer/ShaderClass/PostProcessing/DebugViewShader.h"
+#include "../../Runtime/Renderer/ShaderClass/MeshPreviewShader.h"
+#include "../../Runtime/Components/Camera.h"
 
 enum UHPreviewSceneType
 {
-	TexturePreview
+	MeshPreview,
 };
 
 // preview scene class for editor use, this basically create another set of surface/swap chain from gfx
 class UHPreviewScene
 {
 public:
-	UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InGraphic, UHPreviewSceneType InType);
+	UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType);
 	void Release();
-	void Render();
+	void Render(bool bIsActive);
 
-	void SetPreviewTexture(UHTexture* InTexture);
-	void SetPreviewMip(uint32_t InMip);
+	void SetMesh(UHMesh* InMesh);
+	UHRenderTexture* GetPreviewRT() const;
 
 private:
-	HWND TargetWindow;
+	void UpdateCamera();
+
 	UHGraphic* Gfx;
-	VkSurfaceKHR MainSurface;
-	VkSwapchainKHR SwapChain;
-	std::vector<UHRenderTexture*> SwapChainRT;
-	std::vector<VkFramebuffer> SwapChainFrameBuffer;
-	VkRenderPass SwapChainRenderPass;
-	VkExtent2D SwapChainExtent;
-	VkSemaphore SwapChainSemaphore;
+	UHRenderTexture* PreviewRT;
+	UHRenderTexture* PreviewDepth;
+	VkFramebuffer PreviewFrameBuffer;
+	UHRenderPassObject PreviewRenderPass;
+	VkExtent2D PreviewExtent;
 	UHPreviewSceneType PreviewSceneType;
 
 	// shaders
-	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
-	UniquePtr<UHDebugViewShader> DebugViewShader;
-	uint32_t CurrentMip;
+	UniquePtr<UHMeshPreviewShader> MeshPreviewShader;
+	UniquePtr<UHCameraComponent> PreviewCamera;
+	UniquePtr<UHRenderBuffer<float>> MeshPreviewData;
 
-	uint32_t CurrentFrame;
+	UHMesh* CurrentMesh;
+	ImVec2 CurrentMousePos;
+	ImVec2 LastMousePos;
+	float PreviewCameraSpeed;
 };
 
 #endif

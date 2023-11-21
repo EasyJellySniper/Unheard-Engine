@@ -30,7 +30,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.FlushResourceBarrier();
 
 		VkClearValue Clear = { 0,0,0,0 };
-		RenderBuilder.BeginRenderPass(MotionCameraPassObj.RenderPass, MotionCameraPassObj.FrameBuffer, RenderResolution, Clear);
+		RenderBuilder.BeginRenderPass(MotionCameraPassObj, RenderResolution, Clear);
 
 		RenderBuilder.SetViewport(RenderResolution);
 		RenderBuilder.SetScissor(RenderResolution);
@@ -54,11 +54,11 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			// begin for secondary cmd
 			if (bParallelSubmissionRT)
 			{
-				RenderBuilder.BeginRenderPass(MotionOpaquePassObj.RenderPass, MotionOpaquePassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 			}
 			else
 			{
-				RenderBuilder.BeginRenderPass(MotionOpaquePassObj.RenderPass, MotionOpaquePassObj.FrameBuffer, RenderResolution);
+				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution);
 			}
 
 			if (bParallelSubmissionRT)
@@ -151,11 +151,11 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 			if (bParallelSubmissionRT)
 			{
-				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj.RenderPass, MotionTranslucentPassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 			}
 			else
 			{
-				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj.RenderPass, MotionTranslucentPassObj.FrameBuffer, RenderResolution);
+				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution);
 			}
 
 			if (bParallelSubmissionRT)

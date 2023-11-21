@@ -12,6 +12,7 @@
 #include "../Dialog/WorldDialog.h"
 #include "../Dialog/CubemapDialog.h"
 #include "../Dialog/InfoDialog.h"
+#include "../Dialog/MeshDialog.h"
 
 class UHEngine;
 class UHGraphic;
@@ -59,6 +60,7 @@ private:
 	UniquePtr<UHMaterialDialog> MaterialDialog;
 	UniquePtr<UHCubemapDialog> CubemapDialog;
 	UniquePtr<UHInfoDialog> InfoDialog;
+	UniquePtr<UHMeshDialog> MeshDialog;
 };
 
 #endif

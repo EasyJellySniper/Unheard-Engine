@@ -77,6 +77,8 @@ XMFLOAT3 operator+(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
 // operator for XMFLOAT3 subtraction
 XMFLOAT3 operator-(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
 
+bool operator==(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
+
 struct UHColorRGB
 {
     UHColorRGB();

@@ -27,7 +27,7 @@ namespace UHEditorUtil
         }
     }
 
-    std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter, std::wstring InDefaultFolder)
+    std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter, const std::wstring InDefaultFolder)
     {
         std::wstring SelectedFile;
         IFileDialog* FileDialog;
@@ -44,7 +44,7 @@ namespace UHEditorUtil
             }
             FileDialog->SetFileTypes(1, &InFilter);
 
-            if (SUCCEEDED(FileDialog->Show(nullptr)))
+            if (SUCCEEDED(FileDialog->Show(GetActiveWindow())))
             {
                 IShellItem* Result;
                 if (SUCCEEDED(FileDialog->GetResult(&Result)))
@@ -63,19 +63,29 @@ namespace UHEditorUtil
         return SelectedFile;
     }
 
-    std::wstring FileSelectOutputFolder()
+    std::wstring FileSelectOutputFolder(const std::wstring InDefaultFolder)
     {
         std::wstring OutputFolder;
         IFileDialog* FileDialog;
         if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&FileDialog))))
         {
+            if (InDefaultFolder.size() > 0)
+            {
+                IShellItem* CurFolder = NULL;
+                if (SUCCEEDED(SHCreateItemFromParsingName(InDefaultFolder.c_str(), NULL, IID_PPV_ARGS(&CurFolder))))
+                {
+                    FileDialog->SetFolder(CurFolder);
+                    CurFolder->Release();
+                }
+            }
+
             DWORD Options;
             if (SUCCEEDED(FileDialog->GetOptions(&Options)))
             {
                 FileDialog->SetOptions(Options | FOS_PICKFOLDERS);
             }
 
-            if (SUCCEEDED(FileDialog->Show(nullptr)))
+            if (SUCCEEDED(FileDialog->Show(GetActiveWindow())))
             {
                 IShellItem* Result;
                 if (SUCCEEDED(FileDialog->GetResult(&Result)))
@@ -94,7 +104,7 @@ namespace UHEditorUtil
         return OutputFolder;
     }
 
-    std::wstring FileSelectSavePath(const COMDLG_FILTERSPEC& InFilter, std::wstring InDefaultFolder)
+    std::wstring FileSelectSavePath(const COMDLG_FILTERSPEC& InFilter, const std::wstring InDefaultFolder)
     {
         std::wstring OutputPath;
         IFileDialog* FileDialog;
@@ -117,7 +127,7 @@ namespace UHEditorUtil
                 FileDialog->SetOptions(Options | FOS_OVERWRITEPROMPT);
             }
 
-            if (SUCCEEDED(FileDialog->Show(nullptr)))
+            if (SUCCEEDED(FileDialog->Show(GetActiveWindow())))
             {
                 IShellItem* Result;
                 if (SUCCEEDED(FileDialog->GetResult(&Result)))

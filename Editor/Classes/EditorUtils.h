@@ -14,9 +14,9 @@ namespace UHEditorUtil
 	void GetWindowSize(HWND Hwnd, RECT& OutRect, HWND ParentWnd);
 
 	// file dialog
-	std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter, std::wstring InDefaultFolder = L"");
-	std::wstring FileSelectOutputFolder();
-	std::wstring FileSelectSavePath(const COMDLG_FILTERSPEC& InFilter, std::wstring InDefaultFolder = L"");
+	std::wstring FileSelectInput(const COMDLG_FILTERSPEC& InFilter, const std::wstring InDefaultFolder = L"");
+	std::wstring FileSelectOutputFolder(const std::wstring InDefaultFolder = L"");
+	std::wstring FileSelectSavePath(const COMDLG_FILTERSPEC& InFilter, const std::wstring InDefaultFolder = L"");
 
 	// text size
 	SIZE GetTextSize(HWND Hwnd, std::string InText);

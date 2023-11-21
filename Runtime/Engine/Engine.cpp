@@ -309,6 +309,7 @@ void UHEngine::OnSaveScene(std::filesystem::path OutputPath)
 	}
 
 	std::ofstream FileOut(OutputPath.string().c_str(), std::ios::out | std::ios::binary);
+	CurrentScene->SetName(OutputPath.filename().stem().string());
 	CurrentScene->OnSave(FileOut);
 	FileOut.close();
 }

@@ -168,7 +168,7 @@ void UHMaterialDialog::Init()
     const std::vector<UHMaterial*>& Materials = AssetManager->GetMaterials();
     for (const UHMaterial* Mat : Materials)
     {
-        MaterialListGUI->AddItem(Mat->GetName());
+        MaterialListGUI->AddItem(Mat->GetSourcePath());
     }
 
     CompileButtonGUI = MakeUnique<UHButton>(GetDlgItem(Wnd, IDC_MATERIALCOMPILE), UHGUIProperty().SetAutoMove(AutoMoveY));

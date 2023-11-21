@@ -5,7 +5,6 @@
 #include "../Classes/TextureCube.h"
 
 #if WITH_EDITOR
-#include "../../Editor/Classes/FbxImporter.h"
 #include "../../Editor/Classes/ShaderImporter.h"
 #include "../../Editor/Classes/MaterialImporter.h"
 #endif
@@ -46,9 +45,12 @@ public:
 
 	// general function for getting an asset, caller is responsible for type cast
 	UHObject* GetAsset(UUID InAssetUuid) const;
+	void AddImportedMaterial(UHGraphic* InGfx, std::filesystem::path InPath);
 
 #if WITH_EDITOR
 	void AddTexture2D(UHTexture2D* InTexture2D);
+	void AddImportedMesh(UniquePtr<UHMesh>& InMesh);
+
 	static UHAssetManager* GetAssetMgrEditor();
 	static UHTexture2D* GetTexture2DByPathEditor(std::string InName);
 	static std::string FindTexturePathName(std::string InName);
@@ -67,9 +69,6 @@ private:
 	std::vector<UHMesh*> UHMeshesCache;
 
 #if WITH_EDITOR
-	// fbx importer class, only import raw mesh in debug mode
-	UniquePtr<UHFbxImporter> UHFbxImporterInterface;
-
 	// shader importer, only compile shader in debug mode
 	UniquePtr<UHShaderImporter> UHShaderImporterInterface;
 

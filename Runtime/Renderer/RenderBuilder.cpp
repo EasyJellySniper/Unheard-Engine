@@ -95,22 +95,22 @@ void UHRenderBuilder::EndCommandBuffer()
 }
 
 // begin a pass
-void UHRenderBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, VkClearValue InClearValue
+void UHRenderBuilder::BeginRenderPass(const UHRenderPassObject& InRenderPassObj, VkExtent2D InExtent, VkClearValue InClearValue
 	, VkSubpassContents InSubPassContent)
 {
 	std::vector<VkClearValue> ClearValue{ InClearValue };
-	BeginRenderPass(InRenderPass, InFramebuffer, InExtent, ClearValue, InSubPassContent);
+	BeginRenderPass(InRenderPassObj, InExtent, ClearValue, InSubPassContent);
 }
 
 // begin a pass
-void UHRenderBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue
+void UHRenderBuilder::BeginRenderPass(const UHRenderPassObject& InRenderPassObj, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue
 	, VkSubpassContents InSubPassContent)
 {
 	// begin render pass
 	VkRenderPassBeginInfo RenderPassInfo{};
 	RenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	RenderPassInfo.renderPass = InRenderPass;
-	RenderPassInfo.framebuffer = InFramebuffer;
+	RenderPassInfo.renderPass = InRenderPassObj.RenderPass;
+	RenderPassInfo.framebuffer = InRenderPassObj.FrameBuffer;
 	RenderPassInfo.renderArea.offset = { 0, 0 };
 	RenderPassInfo.renderArea.extent = InExtent;
 	RenderPassInfo.clearValueCount = static_cast<uint32_t>(InClearValue.size());
@@ -118,14 +118,25 @@ void UHRenderBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer I
 
 	// this should be just clearing the buffer
 	vkCmdBeginRenderPass(CmdList, &RenderPassInfo, InSubPassContent);
+
+	// set to new layout
+	for (UHTexture* Tex : InRenderPassObj.ColorTextures)
+	{
+		Tex->SetImageLayout(InRenderPassObj.FinalLayout);
+	}
+
+	if (InRenderPassObj.DepthTexture)
+	{
+		InRenderPassObj.DepthTexture->SetImageLayout(InRenderPassObj.FinalDepthLayout);
+	}
 }
 
 // begin a pass (without clearing)
-void UHRenderBuilder::BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent
+void UHRenderBuilder::BeginRenderPass(const UHRenderPassObject& InRenderPassObj, VkExtent2D InExtent
 	, VkSubpassContents InSubPassContent)
 {
 	std::vector<VkClearValue> ClearValue{};
-	BeginRenderPass(InRenderPass, InFramebuffer, InExtent, ClearValue, InSubPassContent);
+	BeginRenderPass(InRenderPassObj, InExtent, ClearValue, InSubPassContent);
 }
 
 // end a pass
@@ -411,6 +422,7 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 		Barrier.dstAccessMask = LayoutToAccessFlags[NewLayout];
 
 		Barriers[Idx] = Barrier;
+		InTextures[Idx]->SetImageLayout(NewLayout);
 	}
 
 	VkPipelineStageFlags SourceStage = LayoutToStageFlags[OldLayout];
@@ -428,12 +440,20 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 // ResourceBarrier: Can push different textures and layouts at once
 void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
 {
+	// for amd integrated gpu, vkCmdPipelineBarrier2 won't work well
+	// fallback to old transition method in such circumstance
+	if (Gfx->IsAMDIntegratedGPU())
+	{
+		ResourceBarrier(InBarrier.Texture, InBarrier.Texture->GetImageLayout(), InBarrier.NewLayout, InBarrier.BaseMipLevel);
+		return;
+	}
+
 	ImageBarriers.push_back(InBarrier);
 }
 
 void UHRenderBuilder::FlushResourceBarrier()
 {
-	if (ImageBarriers.size() == 0)
+	if (ImageBarriers.size() == 0 || Gfx->IsAMDIntegratedGPU())
 	{
 		return;
 	}
@@ -465,6 +485,7 @@ void UHRenderBuilder::FlushResourceBarrier()
 		TempBarrier.subresourceRange.levelCount = 1;
 		TempBarrier.subresourceRange.layerCount = 1;
 
+		ImageBarriers[Idx].Texture->SetImageLayout(TempBarrier.newLayout);
 		Barriers[Idx] = std::move(TempBarrier);
 	}
 	DependencyInfo.pImageMemoryBarriers = Barriers.data();

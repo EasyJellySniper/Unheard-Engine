@@ -318,11 +318,12 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 MipExtent.width >>= MipIdx;
                 MipExtent.height >>= MipIdx;
 
-                VkRenderPass SphereToCubemapRenderPass = Gfx->CreateRenderPass(UncompressedFormat, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_GENERAL));
-                VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx]->GetImageView(MipIdx), SphereToCubemapRenderPass, MipExtent);
+                UHRenderPassObject SphereToCubemapRenderPass = Gfx->CreateRenderPass(CubemapRT[Idx], UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_GENERAL));
+                VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx]->GetImageView(MipIdx), SphereToCubemapRenderPass.RenderPass, MipExtent);
+                SphereToCubemapRenderPass.FrameBuffer = SphereToCubemapFrameBuffer;
 
                 // setup shader
-                UniquePtr<UHPanoramaToCubemapShader> SphereToCubemapShader = MakeUnique<UHPanoramaToCubemapShader>(Gfx, "SphereToCubemap", SphereToCubemapRenderPass);
+                UniquePtr<UHPanoramaToCubemapShader> SphereToCubemapShader = MakeUnique<UHPanoramaToCubemapShader>(Gfx, "SphereToCubemap", SphereToCubemapRenderPass.RenderPass);
 
                 // setup uniform data
                 UHPanoramaData Data{};
@@ -348,7 +349,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                     InputTexture->UploadToGPU(Gfx, RenderBuilder);
                 }
 
-                RenderBuilder.BeginRenderPass(SphereToCubemapRenderPass, SphereToCubemapFrameBuffer, MipExtent, VkClearValue{ {0,0,0,0} });
+                RenderBuilder.BeginRenderPass(SphereToCubemapRenderPass, MipExtent, VkClearValue{ {0,0,0,0} });
                 RenderBuilder.SetViewport(MipExtent);
                 RenderBuilder.SetScissor(MipExtent);
 
@@ -366,7 +367,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
                 UH_SAFE_RELEASE(SphereToCubemapShader);
                 vkDestroyFramebuffer(Gfx->GetLogicalDevice(), SphereToCubemapFrameBuffer, nullptr);
-                vkDestroyRenderPass(Gfx->GetLogicalDevice(), SphereToCubemapRenderPass, nullptr);
+                vkDestroyRenderPass(Gfx->GetLogicalDevice(), SphereToCubemapRenderPass.RenderPass, nullptr);
                 UH_SAFE_RELEASE(ShaderData);
             }
         }

@@ -18,11 +18,11 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 
 		if (bParallelSubmissionRT)
 		{
-			RenderBuilder.BeginRenderPass(TranslucentPassObj.RenderPass, TranslucentPassObj.FrameBuffer, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+			RenderBuilder.BeginRenderPass(TranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 		}
 		else
 		{
-			RenderBuilder.BeginRenderPass(TranslucentPassObj.RenderPass, TranslucentPassObj.FrameBuffer, RenderResolution);
+			RenderBuilder.BeginRenderPass(TranslucentPassObj, RenderResolution);
 		}
 
 		if (bParallelSubmissionRT)

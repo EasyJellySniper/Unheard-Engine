@@ -244,6 +244,7 @@
     <ClInclude Include="Editor\Controls\TextBox.h" />
     <ClInclude Include="Editor\Dialog\CubemapDialog.h" />
     <ClInclude Include="Editor\Dialog\InfoDialog.h" />
+    <ClInclude Include="Editor\Dialog\MeshDialog.h" />
     <ClInclude Include="Editor\Dialog\StatusDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureCreationDialog.h" />
     <ClInclude Include="Editor\Dialog\TextureDialog.h" />
@@ -319,6 +320,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightCullingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
@@ -367,6 +369,7 @@
     <ClCompile Include="Editor\Controls\TextBox.cpp" />
     <ClCompile Include="Editor\Dialog\CubemapDialog.cpp" />
     <ClCompile Include="Editor\Dialog\InfoDialog.cpp" />
+    <ClCompile Include="Editor\Dialog\MeshDialog.cpp" />
     <ClCompile Include="Editor\Dialog\StatusDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureCreationDialog.cpp" />
     <ClCompile Include="Editor\Dialog\TextureDialog.cpp" />
@@ -444,6 +447,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\BasePassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\DepthPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\MotionPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
@@ -614,6 +618,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\BlockCompressionNewShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\MeshPreviewShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -80,6 +80,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, DrawCalls(0)
 	, EditorWidthDelta(0)
 	, EditorHeightDelta(0)
+	, bDrawDebugViewRT(true)
 #endif
 {
 	// init static array pointers
@@ -145,8 +146,8 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	if (bIsRendererSuccess)
 	{
 		// create render pass stuffs
-		CreateRenderPasses();
 		CreateRenderingBuffers();
+		CreateRenderPasses();
 		PrepareRenderingShaders();
 
 		// create data buffers
@@ -238,6 +239,7 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
+		UH_SAFE_RELEASE(TopLevelAS[Idx]);
 		TopLevelAS[Idx] = GraphicInterface->RequestAccelerationStructure();
 		RTInstanceCount = TopLevelAS[Idx]->CreateTopAS(Renderers, CreationCmd);
 	}
@@ -369,31 +371,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		// buffer for storing mesh vertex and indices
-		RTVertexTable = MakeUnique<UHRTVertexTable>(GraphicInterface, "RTVertexTable", RTInstanceCount);
-		RTIndicesTable = MakeUnique<UHRTIndicesTable>(GraphicInterface, "RTIndicesTable", RTInstanceCount);
-
-		// buffer for storing index type, used in hit group shader
-		RTIndicesTypeTable = MakeUnique<UHRTIndicesTypeTable>(GraphicInterface, "RTIndicesTypeTable");
-		IndicesTypeBuffer = GraphicInterface->RequestRenderBuffer<int32_t>();
-		IndicesTypeBuffer->CreateBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-		// buffer for storing texture index
-		RTMaterialDataTable = MakeUnique<UHRTMaterialDataTable>(GraphicInterface, "RTIndicesTypeTable", static_cast<uint32_t>(CurrentScene->GetMaterialCount()));
-
-		RTDefaultHitGroupShader = MakeUnique<UHRTDefaultHitGroupShader>(GraphicInterface, "RTDefaultHitGroupShader", CurrentScene->GetMaterials());
-
-		// also send texture & VB/IB layout to RT shadow shader
-		const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable->GetDescriptorSetLayout()
-			, SamplerTable->GetDescriptorSetLayout()
-			, RTVertexTable->GetDescriptorSetLayout()
-			, RTIndicesTable->GetDescriptorSetLayout()
-			, RTIndicesTypeTable->GetDescriptorSetLayout()
-			, RTMaterialDataTable->GetDescriptorSetLayout()};
-
-		// shadow shader
-		RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
-			, Layouts);
+		RecreateRTShaders(nullptr, true);
 
 		// soft rt shadow shader
 		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
@@ -739,46 +717,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat, true);
 	}
 
-	// collect image views for creaing one frame buffer
-	std::vector<VkImageView> Views;
-	Views.push_back(GSceneDiffuse->GetImageView());
-	Views.push_back(GSceneNormal->GetImageView());
-	Views.push_back(GSceneMaterial->GetImageView());
-	Views.push_back(GSceneResult->GetImageView());
-	Views.push_back(GSceneMip->GetImageView());
-	Views.push_back(GSceneVertexNormal->GetImageView());
-	Views.push_back(GSceneDepth->GetImageView());
-
-	// depth frame buffer
-	if (bEnableDepthPrePass)
-	{
-		DepthPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth->GetImageView(), DepthPassObj.RenderPass, RenderResolution);
-	}
-
-	// create frame buffer, some of them can be shared, especially when the output target is the same
-	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
-
-	// sky pass need depth
-	Views = { GSceneResult->GetImageView() , GSceneDepth->GetImageView() };
-	SkyboxPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, SkyboxPassObj.RenderPass, RenderResolution);
-
-	// translucent pass can share the same frame buffer as skybox pass
-	TranslucentPassObj.FrameBuffer = SkyboxPassObj.FrameBuffer;
-
-	// post process pass, use two buffer and blit each other
-	PostProcessPassObj[0].FrameBuffer = GraphicInterface->CreateFrameBuffer(GPostProcessRT->GetImageView(), PostProcessPassObj[0].RenderPass, RenderResolution);
-	PostProcessPassObj[1].FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneResult->GetImageView(), PostProcessPassObj[1].RenderPass, RenderResolution);
-
-	// motion pass framebuffer
-	MotionCameraPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GMotionVectorRT->GetImageView(), MotionCameraPassObj.RenderPass, RenderResolution);
-
-	// the opaque depth will be copied to translucent depth before motion opaque pass kicks off
-	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentDepth->GetImageView() };
-	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionOpaquePassObj.RenderPass, RenderResolution);
-
-	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentVertexNormal->GetImageView(), GSceneTranslucentDepth->GetImageView() };
-	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
-
 	// create light culling tile buffer
 	uint32_t TileCountX, TileCountY;
 	GetLightCullingTileCount(TileCountX, TileCountY);
@@ -829,47 +767,90 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 
 void UHDeferredShadingRenderer::CreateRenderPasses()
 {
-	std::vector<UHTextureFormat> GBufferFormats;
-	GBufferFormats.push_back(DiffuseFormat);
-	GBufferFormats.push_back(NormalFormat);
-	GBufferFormats.push_back(SpecularFormat);
-	GBufferFormats.push_back(SceneResultFormat);
-	GBufferFormats.push_back(SceneMipFormat);
-	GBufferFormats.push_back(NormalFormat);
+	// -------------------------------------------------------- Createing render pass after render pass is done -------------------------------------------------------- //
+	std::vector<UHTexture*> GBufferTextures;
+	GBufferTextures.push_back(GSceneDiffuse);
+	GBufferTextures.push_back(GSceneNormal);
+	GBufferTextures.push_back(GSceneMaterial);
+	GBufferTextures.push_back(GSceneResult);
+	GBufferTextures.push_back(GSceneMip);
+	GBufferTextures.push_back(GSceneVertexNormal);
 
 	// depth prepass
 	if (bEnableDepthPrePass)
 	{
-		DepthPassObj.RenderPass = GraphicInterface->CreateRenderPass(UHTransitionInfo(), DepthFormat);
+		DepthPassObj = GraphicInterface->CreateRenderPass(UHTransitionInfo(), GSceneDepth);
 	}
 
 	// create render pass based on output RT, render pass can be shared sometimes
-	BasePassObj.RenderPass = GraphicInterface->CreateRenderPass(GBufferFormats, UHTransitionInfo(bEnableDepthPrePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
-		, DepthFormat);
+	BasePassObj = GraphicInterface->CreateRenderPass(GBufferTextures, UHTransitionInfo(bEnableDepthPrePass ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
+		, GSceneDepth);
 
 	// sky need depth
-	SkyboxPassObj.RenderPass = GraphicInterface->CreateRenderPass(SceneResultFormat
+	SkyboxPassObj = GraphicInterface->CreateRenderPass(GSceneResult
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		, DepthFormat);
+		, GSceneDepth);
 
 	// translucent pass can share the same render pass obj as skybox pass
-	TranslucentPassObj.RenderPass = SkyboxPassObj.RenderPass;
+	TranslucentPassObj = SkyboxPassObj;
 
 	// post processing render pass
-	PostProcessPassObj[0].RenderPass = GraphicInterface->CreateRenderPass(SceneResultFormat
+	PostProcessPassObj[0] = GraphicInterface->CreateRenderPass(GSceneResult
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-	PostProcessPassObj[1].RenderPass = PostProcessPassObj[0].RenderPass;
+	PostProcessPassObj[1] = PostProcessPassObj[0];
 
 	// motion pass, opaque and translucent can share the same RenderPass
-	MotionCameraPassObj.RenderPass = GraphicInterface->CreateRenderPass(MotionFormat, UHTransitionInfo());
-	MotionOpaquePassObj.RenderPass = GraphicInterface->CreateRenderPass(MotionFormat
+	MotionCameraPassObj = GraphicInterface->CreateRenderPass(GMotionVectorRT, UHTransitionInfo());
+	MotionOpaquePassObj = GraphicInterface->CreateRenderPass(GMotionVectorRT
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		, DepthFormat);
+		, GSceneDepth);
 
-	std::vector<UHTextureFormat> TranslucentMotionFormats = { MotionFormat , NormalFormat };
-	MotionTranslucentPassObj.RenderPass = GraphicInterface->CreateRenderPass(TranslucentMotionFormats
+	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT , GSceneNormal };
+	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(TranslucentMotionTextures
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		, DepthFormat);
+		, GSceneDepth);
+
+
+	// -------------------------------------------------------- Createing frame buffer after render pass is done -------------------------------------------------------- //
+	// collect image views for creaing one frame buffer
+	std::vector<VkImageView> Views;
+	Views.push_back(GSceneDiffuse->GetImageView());
+	Views.push_back(GSceneNormal->GetImageView());
+	Views.push_back(GSceneMaterial->GetImageView());
+	Views.push_back(GSceneResult->GetImageView());
+	Views.push_back(GSceneMip->GetImageView());
+	Views.push_back(GSceneVertexNormal->GetImageView());
+	Views.push_back(GSceneDepth->GetImageView());
+
+	// depth frame buffer
+	if (bEnableDepthPrePass)
+	{
+		DepthPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth->GetImageView(), DepthPassObj.RenderPass, RenderResolution);
+	}
+
+	// create frame buffer, some of them can be shared, especially when the output target is the same
+	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
+
+	// sky pass need depth
+	Views = { GSceneResult->GetImageView() , GSceneDepth->GetImageView() };
+	SkyboxPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, SkyboxPassObj.RenderPass, RenderResolution);
+
+	// translucent pass can share the same frame buffer as skybox pass
+	TranslucentPassObj.FrameBuffer = SkyboxPassObj.FrameBuffer;
+
+	// post process pass, use two buffer and blit each other
+	PostProcessPassObj[0].FrameBuffer = GraphicInterface->CreateFrameBuffer(GPostProcessRT->GetImageView(), PostProcessPassObj[0].RenderPass, RenderResolution);
+	PostProcessPassObj[1].FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneResult->GetImageView(), PostProcessPassObj[1].RenderPass, RenderResolution);
+
+	// motion pass framebuffer
+	MotionCameraPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GMotionVectorRT->GetImageView(), MotionCameraPassObj.RenderPass, RenderResolution);
+
+	// the opaque depth will be copied to translucent depth before motion opaque pass kicks off
+	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentDepth->GetImageView() };
+	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionOpaquePassObj.RenderPass, RenderResolution);
+
+	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentVertexNormal->GetImageView(), GSceneTranslucentDepth->GetImageView() };
+	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 
 void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
@@ -930,8 +911,15 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		GSystemConstantBuffer[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
 		GObjectConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>();
-		GObjectConstantBuffer[Idx]->CreateBuffer(CurrentScene->GetAllRendererCount(), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-		ObjectConstantsCPU.resize(CurrentScene->GetAllRendererCount());
+
+		// create twice large buffer in editor intentionally, so appending more renderers don't need a re-allocation that fast
+#if WITH_EDITOR
+		const size_t RendererCount = CurrentScene->GetAllRendererCount() * 2;
+#else
+		const size_t RendererCount = CurrentScene->GetAllRendererCount();
+#endif
+		GObjectConstantBuffer[Idx]->CreateBuffer(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		ObjectConstantsCPU.resize(RendererCount);
 
 		GDirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>();
 		GDirectionalLightBuffer[Idx]->CreateBuffer(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
@@ -1149,7 +1137,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	// update hit group shader as well
 	if (GraphicInterface->IsRayTracingEnabled() && CompileFlag != BindOnly && CompileFlag != StateChangedOnly)
 	{
-		RecreateRTShaders(Mat);
+		RecreateRTShaders(Mat, false);
 	}
 
 	Mat->SetCompileFlag(UpToDate);
@@ -1299,20 +1287,44 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 	InMeshRenderer->SetRayTracingDirties(true);
 }
 
-void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat)
+void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRendererComponent*> InRenderers)
 {
-	RTShadowShader->Release();
-	RTDefaultHitGroupShader->UpdateHitShader(GraphicInterface, InMat);
+	GraphicInterface->WaitGPU();
+	for (UHMeshRendererComponent* MeshRenderer : InRenderers)
+	{
+		CurrentScene->AddMeshRenderer(MeshRenderer);
+	}
 
-	const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable->GetDescriptorSetLayout()
-		, SamplerTable->GetDescriptorSetLayout()
-		, RTVertexTable->GetDescriptorSetLayout()
-		, RTIndicesTable->GetDescriptorSetLayout()
-		, RTIndicesTypeTable->GetDescriptorSetLayout()
-		, RTMaterialDataTable->GetDescriptorSetLayout() };
+	// data buffer recreating
+	if (CurrentScene->GetAllRendererCount() > ObjectConstantsCPU.size())
+	{
+		const size_t RendererCount = CurrentScene->GetAllRendererCount() * 2;
+		ObjectConstantsCPU.resize(RendererCount);
+		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			UH_SAFE_RELEASE(GObjectConstantBuffer[Idx]);
+			GObjectConstantBuffer[Idx]->CreateBuffer(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		}
+	}
 
-	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
-		, Layouts);
+	// do the same as initialization
+	PrepareMeshes();
+	PrepareTextures();
+
+	for (UHMeshRendererComponent* Renderer : InRenderers)
+	{
+		UHMaterial* Mat = Renderer->GetMaterial();
+		if (Mat && !Mat->IsSkybox())
+		{
+			RecreateMaterialShaders(Renderer, Mat);
+		}
+	}
+
+	if (GraphicInterface->IsRayTracingEnabled())
+	{
+		RecreateRTShaders(nullptr, true);
+	}
+	UpdateDescriptors();
 }
 
 #endif
@@ -1349,4 +1361,48 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 	}
 
 	InMeshRenderer->SetRayTracingDirties(true);
+}
+
+void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat, bool bRecreateTable)
+{
+	if (bRecreateTable)
+	{
+		// buffer for storing mesh vertex and indices
+		UH_SAFE_RELEASE(RTVertexTable);
+		RTVertexTable = MakeUnique<UHRTVertexTable>(GraphicInterface, "RTVertexTable", RTInstanceCount);
+
+		UH_SAFE_RELEASE(RTIndicesTable);
+		RTIndicesTable = MakeUnique<UHRTIndicesTable>(GraphicInterface, "RTIndicesTable", RTInstanceCount);
+
+		// buffer for storing index type, used in hit group shader
+		UH_SAFE_RELEASE(RTIndicesTypeTable);
+		RTIndicesTypeTable = MakeUnique<UHRTIndicesTypeTable>(GraphicInterface, "RTIndicesTypeTable");
+
+		UH_SAFE_RELEASE(IndicesTypeBuffer);
+		IndicesTypeBuffer = GraphicInterface->RequestRenderBuffer<int32_t>();
+		IndicesTypeBuffer->CreateBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+		// buffer for storing texture index
+		UH_SAFE_RELEASE(RTMaterialDataTable);
+		RTMaterialDataTable = MakeUnique<UHRTMaterialDataTable>(GraphicInterface, "RTIndicesTypeTable", static_cast<uint32_t>(CurrentScene->GetMaterialCount()));
+
+		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
+		RTDefaultHitGroupShader = MakeUnique<UHRTDefaultHitGroupShader>(GraphicInterface, "RTDefaultHitGroupShader", CurrentScene->GetMaterials());
+	}
+
+	if (InMat)
+	{
+		RTDefaultHitGroupShader->UpdateHitShader(GraphicInterface, InMat);
+	}
+
+	const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable->GetDescriptorSetLayout()
+		, SamplerTable->GetDescriptorSetLayout()
+		, RTVertexTable->GetDescriptorSetLayout()
+		, RTIndicesTable->GetDescriptorSetLayout()
+		, RTIndicesTypeTable->GetDescriptorSetLayout()
+		, RTMaterialDataTable->GetDescriptorSetLayout() };
+
+	UH_SAFE_RELEASE(RTShadowShader);
+	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+		, Layouts);
 }

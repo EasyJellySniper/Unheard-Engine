@@ -90,9 +90,10 @@ public:
 	void OnRendererMaterialChanged(UHMeshRendererComponent* InRenderer, UHMaterial* OldMat, UHMaterial* NewMat);
 
 	void ResetMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup);
-	void RecreateRTShaders(UHMaterial* InMat);
+	void AppendMeshRenderers(const std::vector<UHMeshRendererComponent*> InRenderers);
 #endif
 	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
+	void RecreateRTShaders(UHMaterial* InMat, bool bRecreateTable);
 
 private:
 	/************************************************ functions ************************************************/
@@ -339,6 +340,7 @@ private:
 	uint32_t EditorHeightDelta;
 
 	static UHDeferredShadingRenderer* SceneRendererEditorOnly;
+	bool bDrawDebugViewRT;
 #endif
 	UHGPUQuery* GPUTimeQueries[UHRenderPassTypes::UHRenderPassMax];
 

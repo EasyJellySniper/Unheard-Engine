@@ -33,6 +33,7 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
     CubemapDialog = MakeUnique<UHCubemapDialog>(AssetManager, InGfx, InRenderer);
     InfoDialog = MakeUnique<UHInfoDialog>(HWnd, WorldDialog.get());
+    MeshDialog = MakeUnique<UHMeshDialog>(AssetManager, InGfx, InRenderer, InInput);
 
     // always showing world / info dialog after initialization
     WorldDialog->ShowDialog();
@@ -41,18 +42,23 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConf
 
 void UHEditor::OnEditorUpdate()
 {
+    bool bIsDialogActive = false;
+    Input->SetInputEnabled(true);
     ProfileTimer.Tick();
     SettingDialog->Update();
     ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config);
     TextureDialog->Update();
     MaterialDialog->Update();
     CubemapDialog->Update();
+    bIsDialogActive |= MeshDialog->Update();
 
     if (!Config->PresentationSetting().bFullScreen)
     {
         WorldDialog->Update();
         InfoDialog->Update();
     }
+
+    Input->SetInputEnabled(!bIsDialogActive);
 }
 
 void UHEditor::OnEditorMove()
@@ -87,6 +93,9 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         break;
     case ID_WINDOW_CUBEMAPEDITOR:
         CubemapDialog->ShowDialog();
+        break;
+    case ID_WINDOW_MESHEDITOR:
+        MeshDialog->ShowDialog();
         break;
     case ID_FILE_SAVESCENE:
         OnSaveScene();

@@ -81,6 +81,10 @@ void UHInfoDialog::ResetDialogWindow()
 
 ImVec2 UHInfoDialog::GetWindowSize() const
 {
+	if (!DialogSize.has_value())
+	{
+		return ImVec2();
+	}
 	return DialogSize.value();
 }
 

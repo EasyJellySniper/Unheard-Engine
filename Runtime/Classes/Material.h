@@ -12,6 +12,7 @@ enum UHMaterialVersion
 {
 	Initial,
 	GoingBindless,
+	AddRoughnessTexture,
 	MaterialVersionMax
 };
 
@@ -88,9 +89,8 @@ public:
 	void SetBlendMode(UHBlendMode InBlendMode);
 
 	void SetTexFileName(UHMaterialInputs TexType, std::string InName);
-	std::string GetTexFileName(UHMaterialInputs InType) const;
 	void SetMaterialBufferSize(size_t InSize);
-	void Export();
+	void Export(const std::filesystem::path InPath = "");
 	void ExportGraphData(std::ofstream& FileOut);
 	std::string GetCBufferDefineCode(size_t& OutSize);
 	std::string GetMaterialInputCode(UHMaterialCompileData InData);
@@ -106,6 +106,7 @@ public:
 	void UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex, const UHTextureCube* InEnvCube);
 
 	std::string GetName() const;
+	std::string GetSourcePath() const;
 	UHCullMode GetCullMode() const;
 	UHBlendMode GetBlendMode() const;
 	UHMaterialProperty GetMaterialProps() const;
@@ -131,11 +132,13 @@ public:
 	std::vector<POINT>& GetGUIRelativePos();
 	void SetDefaultMaterialNodePos(POINT InPos);
 	POINT GetDefaultMaterialNodePos();
+	void SetSourcePath(const std::string InPath);
 #endif
 
 private:
 	std::vector<std::string> RegisteredTextureNames;
 	std::vector<int32_t> RegisteredTextureIndexes;
+	std::string SourcePath;
 
 	// material state variables
 	UHCullMode CullMode;

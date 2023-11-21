@@ -156,6 +156,7 @@ struct UHRenderPassInfo
 	VkPipelineLayout PipelineLayout;
 
 	bool bDrawLine;
+	bool bDrawWireFrame;
 };
 
 // compute pass info for setup compute states
@@ -188,6 +189,7 @@ struct UHRayTracingInfo
 };
 
 // structure for managing render pass
+class UHTexture;
 struct UHRenderPassObject
 {
 	UHRenderPassObject();
@@ -197,6 +199,10 @@ struct UHRenderPassObject
 
 	VkFramebuffer FrameBuffer;
 	VkRenderPass RenderPass;
+	std::vector<UHTexture*> ColorTextures;
+	UHTexture* DepthTexture;
+	VkImageLayout FinalLayout;
+	VkImageLayout FinalDepthLayout;
 };
 
 // class for recording render states (is dirty or something else?)

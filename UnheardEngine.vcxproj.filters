@@ -381,6 +381,12 @@
     <ClInclude Include="Editor\Dialog\InfoDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Editor\Dialog\MeshDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -722,6 +728,12 @@
     <ClCompile Include="Editor\Dialog\InfoDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Editor\Dialog\MeshDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -769,5 +781,6 @@
     <None Include="Shaders\SmoothCubemapComputeShader.hlsl" />
     <None Include="Shaders\BlockCompressionOldShader.hlsl" />
     <None Include="Shaders\BlockCompressionNewShader.hlsl" />
+    <None Include="Shaders\MeshPreviewShader.hlsl" />
   </ItemGroup>
 </Project>

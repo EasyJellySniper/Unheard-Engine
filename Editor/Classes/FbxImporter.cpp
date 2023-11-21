@@ -9,9 +9,6 @@ UHFbxImporter::UHFbxImporter()
 {
 	// create fbx manager
 	FbxSDKManager = FbxManager::Create();
-
-	// load mesh caches
-	LoadCaches();
 }
 
 UHFbxImporter::~UHFbxImporter()
@@ -21,97 +18,50 @@ UHFbxImporter::~UHFbxImporter()
 	FbxSDKManager = nullptr;
 }
 
-void UHFbxImporter::ImportRawFbx(std::vector<UniquePtr<UHMaterial>>& InMatVector)
+void UHFbxImporter::ImportRawFbx(std::filesystem::path InPath
+	, std::filesystem::path InTextureRefPath
+	, std::vector<UniquePtr<UHMesh>>& ImportedMesh
+	, std::vector<UniquePtr<UHMaterial>>& ImportedMaterial)
 {
 	// IO settings initialization
 	FbxIOSettings* FbxSDKIOSettings = FbxIOSettings::Create(FbxSDKManager, IOSROOT);
 	FbxSDKManager->SetIOSettings(FbxSDKIOSettings);
-
-	// check raw asset folder
-	if (!std::filesystem::exists(GRawMeshAssetPath))
-	{
-		std::filesystem::create_directories(GRawMeshAssetPath);
-		UHE_LOG(L"Empty mesh asset folder, please put some FBX files.\n");
-	}
-
 	ImportedMaterialNames.clear();
 
-	// importer initialization
-	for (std::filesystem::recursive_directory_iterator Idx(GRawMeshAssetPath.c_str()), end; Idx != end; Idx++)
+	// importer initialization, create fbx importer
+	FbxImporter* FbxSDKImporter = FbxImporter::Create(FbxSDKManager, "UHFbxImporter");
+	if (!FbxSDKImporter->Initialize(InPath.string().c_str(), -1, FbxSDKManager->GetIOSettings()))
 	{
-		if (std::filesystem::is_directory(Idx->path()) || IsCached(Idx->path()) || !UHAssetPath::IsTheSameExtension(Idx->path(), GRawMeshAssetExtension))
-		{
-			// skip directory or cached raw assets
-			continue;
-		}
-
-		// create fbx importer
-		FbxImporter* FbxSDKImporter = FbxImporter::Create(FbxSDKManager, "UHFbxImporter");
-		if (!FbxSDKImporter->Initialize(Idx->path().string().c_str(), -1, FbxSDKManager->GetIOSettings()))
-		{
-			// it could be here if non-fbx file was found
-			UHE_LOG(L"Failed to load " + Idx->path().wstring() + L"\n");
-			continue;
-		}
-
-		UHE_LOG(L"Success to initialize " + Idx->path().wstring() + L"\n");
-
-		// prepare mesh cache, cache the source path, and modified time
-		// the system will decide if to import based on the modified time
-		UHRawMeshAssetCache Cache{};
-		Cache.SourcePath = Idx->path();
-		Cache.SourcLastModifiedTime = std::filesystem::last_write_time(Idx->path()).time_since_epoch().count();
-
-		// Import the contents of the file into the scene.
-		FbxScene* Scene = FbxScene::Create(FbxSDKManager, "UHFbxScene");
-		if (FbxSDKImporter->Import(Scene))
-		{
-			// force cm
-			FbxSystemUnit::cm.ConvertScene(Scene);
-
-			// force Y up
-			FbxAxisSystem::MayaYUp.ConvertScene(Scene);
-
-			// force breaking into single mesh
-			FbxGeometryConverter GeoConverter(FbxSDKManager);
-			GeoConverter.SplitMeshesPerMaterial(Scene, true);
-
-			// create UHMeshes after importing
-			CreateUHMeshes(Scene->GetRootNode(), Idx->path(), InMatVector, Cache);
-		}
-
-		FbxSDKImporter->Destroy();
-		Scene->Destroy();
-
-		AddRawMeshAssetCache(Cache);
+		// it could be here if non-fbx file was found
+		UHE_LOG(L"Failed to load " + InPath.wstring() + L"\n");
+		return;
 	}
+
+	// Import the contents of the file into the scene.
+	FbxScene* Scene = FbxScene::Create(FbxSDKManager, "UHFbxScene");
+	if (FbxSDKImporter->Import(Scene))
+	{
+		// force as meter
+		FbxSystemUnit::m.ConvertScene(Scene);
+
+		// force Y up
+		FbxAxisSystem::MayaYUp.ConvertScene(Scene);
+
+		// force breaking into single mesh
+		FbxGeometryConverter GeoConverter(FbxSDKManager);
+		GeoConverter.SplitMeshesPerMaterial(Scene, true);
+
+		// create UHMeshes after importing
+		CreateUHMeshes(Scene->GetRootNode(), InPath, InTextureRefPath, ImportedMesh, ImportedMaterial);
+	}
+
+	FbxSDKImporter->Destroy();
+	Scene->Destroy();
 
 	// finish importing, destroy them
 	FbxSDKIOSettings->Destroy();
 	FbxSDKIOSettings = nullptr;
 	ImportedMaterialNames.clear();
-
-	// output added caches
-	OutputCaches();
-}
-
-bool UHFbxImporter::IsUHMeshCached(std::filesystem::path InUHMeshAssetPath)
-{
-	for (const UHRawMeshAssetCache& MeshCahe : MeshAssetCaches)
-	{
-		if (std::filesystem::exists(MeshCahe.SourcePath))
-		{
-			for (size_t Jdx = 0; Jdx < MeshCahe.UHMeshesPath.size(); Jdx++)
-			{
-				if (MeshCahe.UHMeshesPath[Jdx] == InUHMeshAssetPath)
-				{
-					return true;
-				}
-			}
-		}
-	}
-
-	return false;
 }
 
 // reav vertices and indices based on element UV index array
@@ -352,7 +302,8 @@ std::vector<XMFLOAT4> ReadTangents(FbxMesh* InMesh, int32_t VertexCount, bool bM
 	if (!TangentElement)
 	{
 		// try creating Tangents if there isn't
-		TangentElement = InMesh->CreateElementTangent();
+		InMesh->GenerateTangentsDataForAllUVSets(true);
+		TangentElement = InMesh->GetElementTangent(0);
 	}
 
 	if (TangentElement->GetMappingMode() != FbxGeometryElement::eByPolygonVertex && TangentElement->GetMappingMode() != FbxGeometryElement::eByControlPoint)
@@ -424,7 +375,7 @@ std::vector<XMFLOAT4> ReadTangents(FbxMesh* InMesh, int32_t VertexCount, bool bM
 }
 
 // mirror from FBX example: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_material_8cxx_example_html
-UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode)
+UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTextureRefPath)
 {
 	UniquePtr<UHMaterial> UHMat = MakeUnique<UHMaterial>();
 	int32_t MatCount = InNode->GetMaterialCount();
@@ -512,7 +463,7 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode)
 
 		if (MatCount > 1)
 		{
-			UHE_LOG(L"Multiple materials detect: " + MatName + L". Only first material will be used.\n");
+			UHE_LOG(L"Multiple materials detect: " + MatName + L". Only the first material will be used for now.\n");
 		}
 
 		UHMat->SetMaterialProps(MatProps);
@@ -531,12 +482,10 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode)
 					FbxLayeredTexture* LayeredTexture = Property.GetSrcObject<FbxLayeredTexture>(Idx);
 					if (LayeredTexture)
 					{
-						UHE_LOG(L"Layered texture is detected. It's currently not supported by UH.\n");
 						continue;
 					}
 
 					// get regular texture info
-					// @TODO: Set texture file name with path instead the name only
 					FbxTexture* Texture = Property.GetSrcObject<FbxTexture>(Idx);
 					if (Texture)
 					{
@@ -544,32 +493,41 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode)
 						std::string TexType = Property.GetNameAsCStr();
 						FbxFileTexture* FileTexture = FbxCast<FbxFileTexture>(Texture);
 						std::filesystem::path TexFileName = FileTexture->GetFileName();
+						TexFileName = InTextureRefPath.string() + "/" + TexFileName.stem().string();
+						TexFileName = std::filesystem::relative(TexFileName, GTextureAssetFolder);
+						std::string TexFileNameString = TexFileName.string();
+						TexFileNameString = UHUtilities::StringReplace(TexFileNameString, "\\", "/");
 						
 						if (TexType == "DiffuseColor")
 						{
-							UHMat->SetTexFileName(UHMaterialInputs::Diffuse, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Diffuse, TexFileNameString);
 						}
 						else if (TexType == "DiffuseFactor")
 						{
 							// treat diffuse factor map as AO map
-							UHMat->SetTexFileName(UHMaterialInputs::Occlusion, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Occlusion, TexFileNameString);
 						}
 						else if (TexType == "SpecularColor")
 						{
-							UHMat->SetTexFileName(UHMaterialInputs::Specular, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Specular, TexFileNameString);
 						}
 						else if (TexType == "NormalMap" || TexType == "Bump")
 						{
 							// old Bump map (gray) will be used as normal in UH
 							// always ask artists use Normal map
-							UHMat->SetTexFileName(UHMaterialInputs::Normal, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Normal, TexFileNameString);
 						}
 						else if (TexType == "TransparentColor")
 						{
-							UHMat->SetTexFileName(UHMaterialInputs::Opacity, TexFileName.stem().string());
+							UHMat->SetTexFileName(UHMaterialInputs::Opacity, TexFileNameString);
 
 							// default to masked object if it contains opacity texture
 							UHMat->SetBlendMode(UHBlendMode::Masked);
+						}
+						else if (TexType == "ShininessExponent")
+						{
+							// roughness texture setting
+							UHMat->SetTexFileName(UHMaterialInputs::Roughness, TexFileNameString);
 						}
 						else
 						{
@@ -584,7 +542,10 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode)
 	return UHMat;
 }
 
-void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath, std::vector<UniquePtr<UHMaterial>>& InMatVector, UHRawMeshAssetCache& Cache)
+void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
+	, std::filesystem::path InTextureRefPath
+	, std::vector<UniquePtr<UHMesh>>& ImportedMesh
+	, std::vector<UniquePtr<UHMaterial>>& ImportedMaterial)
 {
 	// model loading here is straight forward, I only load what I need at the moment
 	// if normal/tangent data is missing, I'd rely on Fbx's generation only
@@ -602,7 +563,7 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		}
 	}
 
-	if (bIsMeshNode)
+	if (bIsMeshNode && InNode->GetMesh()->GetControlPointsCount() > 0)
 	{
 		std::wstring NodeNameW = UHUtilities::ToStringW(InNode->GetName());
 		FbxMesh* InMesh = InNode->GetMesh();
@@ -647,7 +608,7 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		FbxVector4 FinalScale = FinalMatrix.GetS();
 
 		// only create UH mesh if it's mesh node and valid transform
-		UHMesh NewMesh(InNode->GetName());
+		UniquePtr<UHMesh> NewMesh = MakeUnique<UHMesh>(InNode->GetName());
 
 		// prepare vertex data
 		int32_t VertexCount = InMesh->GetControlPointsCount();
@@ -679,7 +640,7 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		
 		// try read VB/IB again for some special cases, e.g. Having 81 control points but having 102 UVs? Need to reconstruct the VB/IB based on UV.
 		bool bIsReconstruct = ReconstructVerticesAndIndices(InMesh, MeshVertices, MeshIndices);
-		NewMesh.SetIndicesData(MeshIndices);
+		NewMesh->SetIndicesData(MeshIndices);
 		VertexCount = static_cast<int32_t>(MeshVertices.size());
 
 		// get UV
@@ -709,148 +670,31 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 		XMFLOAT3 Pos = XMFLOAT3(static_cast<float>(FinalPos[0]), static_cast<float>(FinalPos[1]), static_cast<float>(FinalPos[2]));
 		XMFLOAT3 Rot = XMFLOAT3(static_cast<float>(FinalRot[0]), static_cast<float>(FinalRot[1]), static_cast<float>(FinalRot[2]));
 		XMFLOAT3 Scale = XMFLOAT3(static_cast<float>(FinalScale[0]), static_cast<float>(FinalScale[1]), static_cast<float>(FinalScale[2]));
-		NewMesh.SetImportedTransform(Pos, Rot, Scale);
+		NewMesh->SetImportedTransform(Pos, Rot, Scale);
 
 		// set data to UHMesh class
-		NewMesh.SetPositionData(MeshVertices);
-		NewMesh.SetUV0Data(MeshUV0);
-		NewMesh.SetNormalData(MeshNormal);
-		NewMesh.SetTangentData(MeshTangent);
+		NewMesh->SetPositionData(MeshVertices);
+		NewMesh->SetUV0Data(MeshUV0);
+		NewMesh->SetNormalData(MeshNormal);
+		NewMesh->SetTangentData(MeshTangent);
 
 		// at last, try to import material as well
-		UniquePtr<UHMaterial> NewMat = ImportMaterial(InNode);
-		NewMesh.SetImportedMaterialName(NewMat->GetName());
+		UniquePtr<UHMaterial> NewMat = ImportMaterial(InNode, InTextureRefPath);
+		NewMesh->SetImportedMaterialName(NewMat->GetName());
 		if (!UHUtilities::FindByElement(ImportedMaterialNames, NewMat->GetName()))
 		{
 			ImportedMaterialNames.push_back(NewMat->GetName());
-			InMatVector.push_back(std::move(NewMat));
+			ImportedMaterial.push_back(std::move(NewMat));
 		}
 
-		// export to as UH mesh
-		std::string OriginSubpath = UHAssetPath::GetMeshOriginSubpath(InPath);
-
-		NewMesh.Export(GMeshAssetFolder + OriginSubpath);
-
-		// add cache record
-		Cache.UHMeshesPath.push_back(GMeshAssetFolder + OriginSubpath + InNode->GetName() + GMeshAssetExtension);
-	}
-	else
-	{
-		UHE_LOG(UHUtilities::ToStringW(InNode->GetName()) + L" is not a triangle mesh. This mesh won't be loaded.\n");
+		ImportedMesh.push_back(std::move(NewMesh));
 	}
 
 	// continue to process child node if there is any
 	for (int32_t Idx = 0; Idx < InNode->GetChildCount(); Idx++)
 	{
-		CreateUHMeshes(InNode->GetChild(Idx), InPath, InMatVector, Cache);
+		CreateUHMeshes(InNode->GetChild(Idx), InPath, InTextureRefPath, ImportedMesh, ImportedMaterial);
 	}
-}
-
-void UHFbxImporter::AddRawMeshAssetCache(UHRawMeshAssetCache InAssetCache)
-{
-	// add non-duplicate cache to list
-	if (!UHUtilities::FindByElement(MeshAssetCaches, InAssetCache))
-	{
-		MeshAssetCaches.push_back(InAssetCache);
-	}
-}
-
-void UHFbxImporter::LoadCaches()
-{
-	// check cache folder
-	if (!std::filesystem::exists(GMeshAssetCachePath))
-	{
-		std::filesystem::create_directories(GMeshAssetCachePath);
-	}
-
-	for (std::filesystem::recursive_directory_iterator Idx(GMeshAssetCachePath.c_str()), end; Idx != end; Idx++)
-	{
-		if (std::filesystem::is_directory(Idx->path()) || !UHAssetPath::IsTheSameExtension(Idx->path(), GMeshAssetCacheExtension))
-		{
-			continue;
-		}
-
-		std::ifstream FileIn(Idx->path().string().c_str(), std::ios::in | std::ios::binary);
-
-		// load cache
-		UHRawMeshAssetCache Cache;
-
-		// load source path
-		std::string TempString;
-		UHUtilities::ReadStringData(FileIn, TempString);
-		Cache.SourcePath = TempString;
-
-		// load last modified time of source
-		FileIn.read(reinterpret_cast<char*>(&Cache.SourcLastModifiedTime), sizeof(Cache.SourcLastModifiedTime));
-
-		// load UHMeshes dependency
-		size_t NumAssetDependency;
-		FileIn.read(reinterpret_cast<char*>(&NumAssetDependency), sizeof(NumAssetDependency));
-
-		for (size_t Jdx = 0; Jdx < NumAssetDependency; Jdx++)
-		{
-			UHUtilities::ReadStringData(FileIn, TempString);
-			Cache.UHMeshesPath.push_back(TempString);
-		}
-
-		FileIn.close();
-
-		AddRawMeshAssetCache(Cache);
-	}
-}
-
-void UHFbxImporter::OutputCaches()
-{
-	// check cache folder
-	if (!std::filesystem::exists(GMeshAssetCachePath))
-	{
-		std::filesystem::create_directories(GMeshAssetCachePath);
-	}
-
-	// open cache files
-	for (const UHRawMeshAssetCache& MeshCache : MeshAssetCaches)
-	{
-		// find origin path and try to preserve file structure
-		std::string OriginSubpath = UHAssetPath::GetMeshOriginSubpath(MeshCache.SourcePath);
-
-		std::string CacheName = MeshCache.SourcePath.stem().string();
-		std::ofstream FileOut(GMeshAssetCachePath + OriginSubpath + CacheName + GMeshAssetCacheExtension, std::ios::out | std::ios::binary);
-
-		// output necessary data
-		UHUtilities::WriteStringData(FileOut, MeshCache.SourcePath.string());
-		FileOut.write(reinterpret_cast<const char*>(&MeshCache.SourcLastModifiedTime), sizeof(&MeshCache.SourcLastModifiedTime));
-
-		size_t NumAssetDependency = MeshCache.UHMeshesPath.size();
-		FileOut.write(reinterpret_cast<const char*>(&NumAssetDependency), sizeof(NumAssetDependency));
-
-		for (size_t Jdx = 0; Jdx < NumAssetDependency; Jdx++)
-		{
-			UHUtilities::WriteStringData(FileOut, MeshCache.UHMeshesPath[Jdx].string());
-		}
-
-		FileOut.close();
-	}
-}
-
-bool UHFbxImporter::IsCached(std::filesystem::path InRawAssetPath)
-{
-	bool bResult = false;
-	for (size_t Idx = 0; Idx < MeshAssetCaches.size() && !bResult; Idx++)
-	{
-		bool bIsPathEqual = MeshAssetCaches[Idx].SourcePath == InRawAssetPath;
-		bool bIsModifiedTimeEqual = MeshAssetCaches[Idx].SourcLastModifiedTime == std::filesystem::last_write_time(InRawAssetPath).time_since_epoch().count();
-
-		bool bAreUHMeshesExist = true;
-		for (size_t Jdx = 0; Jdx < MeshAssetCaches[Idx].UHMeshesPath.size(); Jdx++)
-		{
-			bAreUHMeshesExist &= std::filesystem::exists(MeshAssetCaches[Idx].UHMeshesPath[Jdx]);
-		}
-
-		// consider a raw asset is cached if source path, last modified time, and all UHMeshes referenced it are valid
-		bResult = bIsPathEqual && bIsModifiedTimeEqual && bAreUHMeshesExist;
-	}
-
-	return bResult;
 }
 
 #endif

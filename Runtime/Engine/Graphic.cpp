@@ -827,31 +827,32 @@ void UHGraphic::WaitGPU()
 }
 
 // create render pass, imageless
-VkRenderPass UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo) const
+UHRenderPassObject UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo) const
 {
-	std::vector<UHTextureFormat> Format{};
-	return CreateRenderPass(Format, InTransitionInfo);
+	std::vector<UHTexture*> Texture{};
+	return CreateRenderPass(Texture, InTransitionInfo);
 }
 
-// create render pass, single format
-VkRenderPass UHGraphic::CreateRenderPass(UHTextureFormat InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const
+// create render pass, single Texture
+UHRenderPassObject UHGraphic::CreateRenderPass(UHTexture* InTexture, UHTransitionInfo InTransitionInfo, UHTexture* InDepth) const
 {
-	std::vector<UHTextureFormat> Format{ InFormat };
-	return CreateRenderPass(Format, InTransitionInfo, InDepthFormat);
+	std::vector<UHTexture*> Texture{ InTexture };
+	return CreateRenderPass(Texture, InTransitionInfo, InDepth);
 }
 
 // create render pass, depth only
-VkRenderPass UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const
+UHRenderPassObject UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTexture* InDepthTexture) const
 {
-	return CreateRenderPass(std::vector<UHTextureFormat>(), InTransitionInfo, InDepthFormat);
+	return CreateRenderPass(std::vector<UHTexture*>(), InTransitionInfo, InDepthTexture);
 }
 
 // create render pass, multiple formats are possible
-VkRenderPass UHGraphic::CreateRenderPass(std::vector<UHTextureFormat> InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const
+UHRenderPassObject UHGraphic::CreateRenderPass(std::vector<UHTexture*> InTextures, UHTransitionInfo InTransitionInfo, UHTexture* InDepth) const
 {
+	UHRenderPassObject ResultRenderPass{};
 	VkRenderPass NewRenderPass = nullptr;
-	uint32_t RTCount = static_cast<uint32_t>(InFormat.size());
-	bool bHasDepthAttachment = (InDepthFormat != VK_FORMAT_UNDEFINED);
+	uint32_t RTCount = static_cast<uint32_t>(InTextures.size());
+	bool bHasDepthAttachment = (InDepth != nullptr);
 
 	std::vector<VkAttachmentDescription> ColorAttachments;
 	std::vector<VkAttachmentReference> ColorAttachmentRefs;
@@ -865,7 +866,7 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<UHTextureFormat> InFormat, 
 		{
 			// create color attachment, this part desides how RT is going to be used
 			VkAttachmentDescription ColorAttachment{};
-			ColorAttachment.format = GetVulkanFormat(InFormat[Idx]);
+			ColorAttachment.format = GetVulkanFormat(InTextures[Idx]->GetFormat());
 			ColorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			ColorAttachment.loadOp = InTransitionInfo.LoadOp;
 			ColorAttachment.storeOp = InTransitionInfo.StoreOp;
@@ -880,6 +881,7 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<UHTextureFormat> InFormat, 
 			ColorAttachmentRef.attachment = static_cast<uint32_t>(Idx);
 			ColorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			ColorAttachmentRefs[Idx] = ColorAttachmentRef;
+			ResultRenderPass.ColorTextures.push_back(InTextures[Idx]);
 		}
 	}
 
@@ -894,7 +896,7 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<UHTextureFormat> InFormat, 
 	VkAttachmentReference DepthAttachmentRef{};
 	if (bHasDepthAttachment)
 	{
-		DepthAttachment.format = GetVulkanFormat(InDepthFormat);
+		DepthAttachment.format = GetVulkanFormat(InDepth->GetFormat());
 		DepthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		DepthAttachment.loadOp = InTransitionInfo.DepthLoadOp;
 		DepthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -908,6 +910,8 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<UHTextureFormat> InFormat, 
 
 		Subpass.pDepthStencilAttachment = &DepthAttachmentRef;
 		ColorAttachments.push_back(DepthAttachment);
+		ResultRenderPass.DepthTexture = InDepth;
+		ResultRenderPass.FinalDepthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	}
 
 	// setup subpass dependency, similar to resource transition
@@ -942,7 +946,10 @@ VkRenderPass UHGraphic::CreateRenderPass(std::vector<UHTextureFormat> InFormat, 
 		UHE_LOG(L"Failed to create render pass\n");
 	}
 
-	return NewRenderPass;
+	ResultRenderPass.RenderPass = NewRenderPass;
+	ResultRenderPass.FinalLayout = InTransitionInfo.FinalLayout;
+
+	return ResultRenderPass;
 }
 
 VkFramebuffer UHGraphic::CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D InExtent) const
@@ -1295,7 +1302,8 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
 
 	UHMaterial* InMat = InData.MaterialCache;
-	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetName(), InShaderName, MacroHashName);
+	const std::string OriginSubpath = UHAssetPath::GetMaterialOriginSubpath(InData.MaterialCache->GetPath());
+	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetSourcePath(), InShaderName, MacroHashName);
 	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OutName + GShaderAssetExtension;
 
 	// if it's a release build, and there is no material shader for it, use a fallback one
@@ -1817,7 +1825,6 @@ bool UHGraphic::CreateSwapChain()
 	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
 	UHTransitionInfo SwapChainTransition(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	UHTextureFormat TargetFormat = IsHDRAvailable() ? UH_FORMAT_ABGR2101010 : UH_FORMAT_BGRA8_SRGB;
-	SwapChainRenderPass = CreateRenderPass(TargetFormat, SwapChainTransition);
 
 	// create swap chain RTs
 	SwapChainRT.resize(ImageCount);
@@ -1825,6 +1832,11 @@ bool UHGraphic::CreateSwapChain()
 	for (size_t Idx = 0; Idx < ImageCount; Idx++)
 	{
 		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, TargetFormat);
+	}
+	SwapChainRenderPass = CreateRenderPass(SwapChainRT[0], SwapChainTransition).RenderPass;
+
+	for (size_t Idx = 0; Idx < ImageCount; Idx++)
+	{
 		SwapChainFrameBuffer[Idx] = CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
 	}
 

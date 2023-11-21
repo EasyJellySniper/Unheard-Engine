@@ -10,6 +10,7 @@ UHRawInput::UHRawInput()
 	, bIsRightMousePressed(false)
 	, bPreviousLeftMousePressed(false)
 	, bPreviousRightMousePressed(false)
+	, bEnableInput(true)
 {
 
 }
@@ -27,6 +28,11 @@ bool UHRawInput::InitRawInput()
 	RawInputDevice[InputDeviceType::Keyboard].hwndTarget = 0;
 
 	return RegisterRawInputDevices(RawInputDevice, 2, sizeof(RawInputDevice[0]));
+}
+
+void UHRawInput::SetInputEnabled(bool bInFlag)
+{
+	bEnableInput = bInFlag;
 }
 
 void UHRawInput::ParseInputData(LPARAM LParam)
@@ -165,46 +171,46 @@ bool UHRawInput::IsKeyUp(char CharKey) const
 
 bool UHRawInput::IsKeyHold(int32_t VkKey) const
 {
-	return bCurrentKeyState[VkKey] && bPreviousKeyState[VkKey];
+	return bCurrentKeyState[VkKey] && bPreviousKeyState[VkKey] && bEnableInput;
 }
 
 bool UHRawInput::IsKeyDown(int32_t VkKey) const
 {
-	return bCurrentKeyState[VkKey] && !bPreviousKeyState[VkKey];
+	return bCurrentKeyState[VkKey] && !bPreviousKeyState[VkKey] && bEnableInput;
 }
 
 bool UHRawInput::IsKeyUp(int32_t VkKey) const
 {
-	return !bCurrentKeyState[VkKey] && bPreviousKeyState[VkKey];
+	return !bCurrentKeyState[VkKey] && bPreviousKeyState[VkKey] && bEnableInput;
 }
 
 bool UHRawInput::IsLeftMouseHold() const
 {
-	return bIsLeftMousePressed && bPreviousLeftMousePressed;
+	return bIsLeftMousePressed && bPreviousLeftMousePressed && bEnableInput;
 }
 
 bool UHRawInput::IsRightMouseHold() const
 {
-	return bIsRightMousePressed && bPreviousRightMousePressed;
+	return bIsRightMousePressed && bPreviousRightMousePressed && bEnableInput;
 }
 
 bool UHRawInput::IsLeftMouseDown() const
 {
-	return bIsLeftMousePressed && !bPreviousLeftMousePressed;
+	return bIsLeftMousePressed && !bPreviousLeftMousePressed && bEnableInput;
 }
 
 bool UHRawInput::IsRightMouseDown() const
 {
-	return bIsRightMousePressed && !bPreviousRightMousePressed;
+	return bIsRightMousePressed && !bPreviousRightMousePressed && bEnableInput;
 }
 
 bool UHRawInput::IsLeftMouseUp() const
 {
-	return !bIsLeftMousePressed && bPreviousLeftMousePressed;
+	return !bIsLeftMousePressed && bPreviousLeftMousePressed && bEnableInput;
 }
 
 bool UHRawInput::IsRightMouseUp() const
 {
-	return !bIsRightMousePressed && bPreviousRightMousePressed;
+	return !bIsRightMousePressed && bPreviousRightMousePressed && bEnableInput;
 }
 

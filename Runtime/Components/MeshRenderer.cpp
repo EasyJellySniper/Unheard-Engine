@@ -21,10 +21,7 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 	, MeshId(UUID())
 	, MaterialId(UUID())
 {
-	if (MaterialCache)
-	{
-		MaterialCache->AddReferenceObject(this);
-	}
+	SetMaterial(MaterialCache);
 	SetName("MeshRendererComponent" + std::to_string(GetId()));
 	ComponentClassIdInternal = ClassId;
 }
@@ -111,8 +108,8 @@ void UHMeshRendererComponent::OnLoad(std::ifstream& InStream)
 
 void UHMeshRendererComponent::OnPostLoad(UHAssetManager* InAssetMgr)
 {
-	MeshCache = (UHMesh*)InAssetMgr->GetAsset(MeshId);
-	MaterialCache = (UHMaterial*)InAssetMgr->GetAsset(MaterialId);
+	SetMesh((UHMesh*)InAssetMgr->GetAsset(MeshId));
+	SetMaterial((UHMaterial*)InAssetMgr->GetAsset(MaterialId));
 }
 
 void UHMeshRendererComponent::SetMesh(UHMesh* InMesh)

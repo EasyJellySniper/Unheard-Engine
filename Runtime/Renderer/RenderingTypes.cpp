@@ -36,6 +36,7 @@ UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDept
 	, RTCount(InRTCount)
 	, PipelineLayout(InPipelineLayout)
 	, bDrawLine(false)
+	, bDrawWireFrame(false)
 {
 
 }
@@ -58,7 +59,9 @@ bool UHRenderPassInfo::operator==(const UHRenderPassInfo& InInfo)
 		&& bPSEqual
 		&& bGSEqual
 		&& InInfo.RTCount == RTCount
-		&& InInfo.PipelineLayout == PipelineLayout;
+		&& InInfo.PipelineLayout == PipelineLayout
+		&& InInfo.bDrawLine == bDrawLine
+		&& InInfo.bDrawWireFrame == bDrawWireFrame;
 }
 
 
@@ -151,6 +154,9 @@ bool UHRayTracingInfo::operator==(const UHRayTracingInfo& InInfo)
 UHRenderPassObject::UHRenderPassObject()
 	: FrameBuffer(VK_NULL_HANDLE)
 	, RenderPass(VK_NULL_HANDLE)
+	, FinalLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+	, FinalDepthLayout(VK_IMAGE_LAYOUT_UNDEFINED)
+	, DepthTexture(nullptr)
 {
 
 }

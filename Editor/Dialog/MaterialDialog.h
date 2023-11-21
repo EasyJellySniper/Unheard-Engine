@@ -35,7 +35,7 @@ public:
 	~UHMaterialDialog();
 
 	virtual void ShowDialog() override;
-	virtual void Update() override;
+	void Update();
 
 	void Init();
 	void CreateWorkAreaMemDC(int32_t Width, int32_t Height);

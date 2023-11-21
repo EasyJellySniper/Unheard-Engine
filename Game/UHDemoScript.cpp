@@ -25,7 +25,7 @@ void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 {
 	if (TestType == DayTest)
 	{
-		InEngine->OnLoadScene("Assets/Scenes/VikingHouses.uhscene");
+		InEngine->OnLoadScene("Assets/Scenes/VikingWithStones.uhscene");
 	}
 	else if (TestType == PointLightNight)
 	{
@@ -35,6 +35,9 @@ void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 	{
 		InEngine->OnLoadScene("Assets/Scenes/VikingHouses_SpotLightNight.uhscene");
 	}
+
+	//ObsoleteInitialization(InScene, InAsset, InGfx);
+	//return;
 }
 
 void UHDemoScript::OnEngineUpdate(float DeltaTime)
@@ -111,11 +114,9 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 
 void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx)
 {
-	//ObsoleteInitialization(InScene, InAsset, InGfx);
-	//return;
 	std::vector<UniquePtr<UHComponent>>& SceneComponents = InScene->GetAllCompoments();
 
-	if (TestType == SpotLightNight)
+	if (UHUtilities::StringFind(InScene->GetName(), "SpotLightNight"))
 	{
 		for (UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
@@ -124,9 +125,10 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				TestSpotLights.push_back((UHSpotLightComponent*)Comp.get());
 			}
 		}
+		TestType = SpotLightNight;
 	}
 
-	if (TestType == PointLightNight)
+	if (UHUtilities::StringFind(InScene->GetName(), "PointLightNight"))
 	{
 		for (UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
@@ -136,6 +138,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				TestPointLightOrigin.push_back(((UHPointLightComponent*)Comp.get())->GetPosition());
 			}
 		}
+		TestType = PointLightNight;
 	}
 
 	for (UniquePtr<UHComponent>& Comp : SceneComponents)

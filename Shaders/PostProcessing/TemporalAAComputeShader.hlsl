@@ -11,7 +11,7 @@ SamplerState LinearSampler : register(s7);
 
 static const float GHistoryWeightMin = 0.65f;
 static const float GHistoryWeightMax = 0.8f;
-static const float GMotionDiffScale = 100.0f;
+static const float GMotionDiffScale = 1000.0f;
 
 // group optimization, use 1D array for the best perf
 groupshared float GDepthCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];
@@ -42,7 +42,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	// motion rejection
 	float MotionDiff = length(Motion - HistoryMotion);
 	MotionDiff = saturate(MotionDiff * GMotionDiffScale);
-	Weight = lerp(Weight, 0, saturate(MotionDiff * 10.0f));
+	Weight = lerp(Weight, 0, saturate(MotionDiff));
 
 	// if history UV is outside of the screen use the sample from current frame
 	Weight = lerp(Weight, 0, HistoryUV.x != saturate(HistoryUV.x) || HistoryUV.y != saturate(HistoryUV.y));

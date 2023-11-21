@@ -25,7 +25,18 @@ void UHWorldDialog::ShowDialog()
 	UHDialog::ShowDialog();
 	CurrentSelected = UHINDEXNONE;
 	ResetDialogWindow();
+}
 
+void UHWorldDialog::Update()
+{
+	if (bResetWindow && DialogSize.has_value())
+	{
+		ImGui::SetNextWindowPos(ImVec2(WindowPos.x - DialogSize.value().x, WindowPos.y));
+		ImGui::SetNextWindowSize(ImVec2(DialogSize.value().x, WindowHeight));
+		bResetWindow = false;
+	}
+
+	// collect objects
 	if (Renderer->GetCurrentScene())
 	{
 		SceneObjects.clear();
@@ -36,16 +47,6 @@ void UHWorldDialog::ShowDialog()
 				SceneObjects.push_back(Comp.get());
 			}
 		}
-	}
-}
-
-void UHWorldDialog::Update()
-{
-	if (bResetWindow && DialogSize.has_value())
-	{
-		ImGui::SetNextWindowPos(ImVec2(WindowPos.x - DialogSize.value().x, WindowPos.y));
-		ImGui::SetNextWindowSize(ImVec2(DialogSize.value().x, WindowHeight));
-		bResetWindow = false;
 	}
 
 	const std::string WndName = "World Objects";
@@ -113,6 +114,10 @@ void UHWorldDialog::ResetDialogWindow()
 
 ImVec2 UHWorldDialog::GetWindowSize() const
 {
+	if (!DialogSize.has_value())
+	{
+		return ImVec2();
+	}
 	return DialogSize.value();
 }
 

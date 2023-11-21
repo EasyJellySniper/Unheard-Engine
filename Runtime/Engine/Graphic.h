@@ -122,10 +122,10 @@ public:
 	void WaitGPU();
 
 	// create render pass object, allow imageless and both multiple and single creation
-	VkRenderPass CreateRenderPass(UHTransitionInfo InTransitionInfo) const;
-	VkRenderPass CreateRenderPass(UHTextureFormat InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat = UH_FORMAT_NONE) const;
-	VkRenderPass CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat) const;
-	VkRenderPass CreateRenderPass(std::vector<UHTextureFormat> InFormat, UHTransitionInfo InTransitionInfo, UHTextureFormat InDepthFormat = UH_FORMAT_NONE) const;
+	UHRenderPassObject CreateRenderPass(UHTransitionInfo InTransitionInfo) const;
+	UHRenderPassObject CreateRenderPass(UHTexture* InFormat, UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat = nullptr) const;
+	UHRenderPassObject CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat) const;
+	UHRenderPassObject CreateRenderPass(std::vector<UHTexture*> InFormat, UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat = nullptr) const;
 
 	// create frame buffer, imageless/single/multiple
 	VkFramebuffer CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D InExtent) const;

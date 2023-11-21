@@ -24,6 +24,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, MipMapCount(1)
 	, TextureType(Texture2D)
 	, bCreatePerMipImageView(false)
+	, ImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 {
 #if WITH_EDITOR
 	for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -88,6 +89,11 @@ void UHTexture::Release()
 void UHTexture::SetImage(VkImage InImage)
 {
 	ImageSource = InImage;
+}
+
+void UHTexture::SetImageLayout(VkImageLayout InLayout)
+{
+	ImageLayout = InLayout;
 }
 
 bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
@@ -321,6 +327,11 @@ VkExtent2D UHTexture::GetExtent() const
 VkImage UHTexture::GetImage() const
 {
 	return ImageSource;
+}
+
+VkImageLayout UHTexture::GetImageLayout() const
+{
+	return ImageLayout;
 }
 
 VkImageView UHTexture::GetImageView() const

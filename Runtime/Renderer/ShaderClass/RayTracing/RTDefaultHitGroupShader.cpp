@@ -36,7 +36,11 @@ void UHRTDefaultHitGroupShader::UpdateHitShader(UHGraphic* InGfx, UHMaterial* In
 		return;
 	}
 
-	int32_t Index = UHUtilities::FindIndex(AllMaterials, InMat);
+	const int32_t Index = UHUtilities::FindIndex(AllMaterials, InMat);
+	if (Index == UHINDEXNONE)
+	{
+		return;
+	}
 
 	UHMaterialCompileData Data{};
 	Data.bIsHitGroup = true;

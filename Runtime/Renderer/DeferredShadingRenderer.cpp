@@ -126,8 +126,16 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			DebugViewShader->BindConstant(DebugViewData, 0, Idx);
 		}
 
+		bDrawDebugViewRT = true;
 		UHRenderTexture* Buffers[] = { nullptr, GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth, GMotionVectorRT, GSceneMip, GRTShadowResult };
-		DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
+		if (Buffers[DebugViewIndex] != nullptr)
+		{
+			DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
+		}
+		else
+		{
+			bDrawDebugViewRT = false;
+		}
 	}
 }
 
@@ -565,9 +573,9 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			// wait the previous async queue is done (that means async compute queue always advanced one frame more than graphic)
 			// also needs to wait the swap chain is ready
 			std::vector<VkSemaphore> WaitSemaphore = { SceneRenderQueue.WaitingSemaphores[CurrentFrameRT] };
-			if (bIsPresentedPreviously && bEnableAsyncComputeRT)
+			if (bEnableAsyncComputeRT)
 			{
-				WaitSemaphore.push_back(AsyncComputeQueue.FinishedSemaphores[1 - CurrentFrameRT]);
+				WaitSemaphore.push_back(AsyncComputeQueue.FinishedSemaphores[CurrentFrameRT]);
 			}
 
 			std::vector<VkPipelineStageFlags> WaitStages = { VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };

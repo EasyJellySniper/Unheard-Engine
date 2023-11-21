@@ -3,170 +3,165 @@
 #if WITH_EDITOR
 #include "../../Runtime/Renderer/RenderBuilder.h"
 
-UHPreviewScene::UHPreviewScene(HINSTANCE InInstance, HWND InHwnd, UHGraphic* InGraphic, UHPreviewSceneType InType)
-	: TargetWindow(InHwnd)
-	, Gfx(InGraphic)
-	, MainSurface(nullptr)
-	, SwapChain(nullptr)
-	, SwapChainRenderPass(nullptr)
-	, SwapChainExtent(VkExtent2D())
-	, SwapChainSemaphore(nullptr)
+UHPreviewScene::UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType)
+	: Gfx(InGraphic)
+	, LastMousePos(ImVec2())
+	, CurrentMousePos(ImVec2())
+	, PreviewRT(nullptr)
+	, PreviewExtent(VkExtent2D())
+	, PreviewFrameBuffer(nullptr)
 	, PreviewSceneType(InType)
-	, CurrentFrame(0)
-	, CurrentMip(0)
+	, CurrentMesh(nullptr)
+	, PreviewCameraSpeed(5.0f)
 {
-	// pass window handle and create surface
-	VkWin32SurfaceCreateInfoKHR Win32CreateInfo{};
-	Win32CreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	Win32CreateInfo.hwnd = InHwnd;
-	Win32CreateInfo.hinstance = InInstance;
-	if (vkCreateWin32SurfaceKHR(InGraphic->GetInstance(), &Win32CreateInfo, nullptr, &MainSurface) != VK_SUCCESS)
+	if (InType == MeshPreview)
 	{
-		UHE_LOG(L"Failed to create preview scene surface!.\n");
+		PreviewExtent.width = 512;
+		PreviewExtent.height = 512;
 	}
 
-	// setup format and present mode for swap chain
-	UHSwapChainDetails SwapChainSupport = Gfx->QuerySwapChainSupport(Gfx->PhysicalDevice);
-	VkSurfaceFormatKHR Format{ VK_FORMAT_B8G8R8A8_SRGB , VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-	VkPresentModeKHR PresentMode = VK_PRESENT_MODE_FIFO_KHR;
+	// create preview RT
+	PreviewRT = Gfx->RequestRenderTexture("PreviewRT", PreviewExtent, UH_FORMAT_RGBA8_SRGB);
+	PreviewDepth = Gfx->RequestRenderTexture("PreviewDepthRT", PreviewExtent, UH_FORMAT_D32F);
 
-	RECT R;
-	GetClientRect(TargetWindow, &R);
-	VkExtent2D Extent{ static_cast<uint32_t>(R.right - R.left), static_cast<uint32_t>(R.bottom - R.top) };
-	SwapChainExtent = Extent;
+	UHTransitionInfo Transition = UHTransitionInfo();
+	Transition.FinalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	PreviewRenderPass = Gfx->CreateRenderPass(PreviewRT, Transition, PreviewDepth);
 
-	// create info for swap chain
-	VkSwapchainCreateInfoKHR CreateInfo{};
-	CreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	CreateInfo.surface = MainSurface;
-	CreateInfo.minImageCount = 2;
-	CreateInfo.imageFormat = Format.format;
-	CreateInfo.imageColorSpace = Format.colorSpace;
-	CreateInfo.imageExtent = Extent;
-	CreateInfo.imageArrayLayers = 1;
-	CreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	CreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	CreateInfo.queueFamilyIndexCount = 0;
-	CreateInfo.pQueueFamilyIndices = nullptr;
-	CreateInfo.preTransform = SwapChainSupport.Capabilities2.surfaceCapabilities.currentTransform;
-	CreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	CreateInfo.presentMode = PresentMode;
-	CreateInfo.clipped = VK_TRUE;
-	CreateInfo.oldSwapchain = nullptr;
-
-	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
-	if (vkCreateSwapchainKHR(LogicalDevice, &CreateInfo, nullptr, &SwapChain) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to create preview scene swap chain!\n");
-	}
-
-	// store swap chain image
-	vkGetSwapchainImagesKHR(LogicalDevice, SwapChain, &CreateInfo.minImageCount, nullptr);
-
-	std::vector<VkImage> SwapChainImages;
-	SwapChainImages.resize(CreateInfo.minImageCount);
-	vkGetSwapchainImagesKHR(LogicalDevice, SwapChain, &CreateInfo.minImageCount, SwapChainImages.data());
-
-	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
-	SwapChainRenderPass = Gfx->CreateRenderPass(UH_FORMAT_RGBA8_SRGB, UHTransitionInfo());
-
-	// create swap chain RTs
-	SwapChainRT.resize(CreateInfo.minImageCount);
-	SwapChainFrameBuffer.resize(CreateInfo.minImageCount);
-	for (size_t Idx = 0; Idx < CreateInfo.minImageCount; Idx++)
-	{
-		SwapChainRT[Idx] = Gfx->RequestRenderTexture("PreviewSceneSwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, UH_FORMAT_BGRA8_SRGB);
-		SwapChainFrameBuffer[Idx] = Gfx->CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
-	}
-
-	VkSemaphoreCreateInfo SemaphoreInfo{};
-	SemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	if (vkCreateSemaphore(LogicalDevice, &SemaphoreInfo, nullptr, &SwapChainSemaphore) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to allocate preview scene semaphore!\n");
-	}
+	std::vector<VkImageView> PreviewViews = { PreviewRT->GetImageView(), PreviewDepth->GetImageView() };
+	PreviewFrameBuffer = Gfx->CreateFrameBuffer(PreviewViews, PreviewRenderPass.RenderPass, PreviewExtent);
+	PreviewRenderPass.FrameBuffer = PreviewFrameBuffer;
 
 	// init debug view shaders
-	DebugViewShader = MakeUnique<UHDebugViewShader>(Gfx, "PreviewSceneDebugViewShader", SwapChainRenderPass);
-	DebugViewData = Gfx->RequestRenderBuffer<uint32_t>();
-	DebugViewData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	MeshPreviewShader = MakeUnique<UHMeshPreviewShader>(Gfx, "MeshPreviewShader", PreviewRenderPass.RenderPass);
+	PreviewCamera = MakeUnique<UHCameraComponent>();
+	PreviewCamera->Update();
 
-	UHSamplerInfo PointClampedInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-	PointClampedInfo.MaxAnisotropy = 1;
-	PointClampedInfo.MipBias = 0;
-	UHSampler* PointSampler = Gfx->RequestTextureSampler(PointClampedInfo);
-	DebugViewShader->BindSampler(PointSampler, 2);
+	MeshPreviewData = Gfx->RequestRenderBuffer<float>();
+	MeshPreviewData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0);
 }
 
 void UHPreviewScene::Release()
 {
-	UH_SAFE_RELEASE(DebugViewData);
-	DebugViewData.reset();
-	DebugViewShader->Release();
+	MeshPreviewShader->Release();
+	MeshPreviewData->Release();
+
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
-
-	for (size_t Idx = 0; Idx < SwapChainFrameBuffer.size(); Idx++)
-	{
-		Gfx->RequestReleaseRT(SwapChainRT[Idx]);
-		vkDestroyFramebuffer(LogicalDevice, SwapChainFrameBuffer[Idx], nullptr);
-	}
-
-	vkDestroySemaphore(LogicalDevice, SwapChainSemaphore, nullptr);
-	vkDestroyRenderPass(LogicalDevice, SwapChainRenderPass, nullptr);
-	vkDestroySwapchainKHR(LogicalDevice, SwapChain, nullptr);
-	SwapChainRT.clear();
-	SwapChainFrameBuffer.clear();
-	vkDestroySurfaceKHR(Gfx->GetInstance(), MainSurface, nullptr);
+	Gfx->RequestReleaseRT(PreviewRT);
+	Gfx->RequestReleaseRT(PreviewDepth);
+	vkDestroyFramebuffer(LogicalDevice, PreviewFrameBuffer, nullptr);
+	vkDestroyRenderPass(LogicalDevice, PreviewRenderPass.RenderPass, nullptr);
 }
 
-void UHPreviewScene::Render()
+void UHPreviewScene::Render(bool bIsActive)
 {
+	if (PreviewSceneType == MeshPreview && CurrentMesh == nullptr)
+	{
+		return;
+	}
+
+	CurrentMousePos = ImGui::GetMousePos();
+	if (bIsActive)
+	{
+		UpdateCamera();
+	}
+
+	XMFLOAT4X4 ViewProj = PreviewCamera->GetViewProjMatrixNonJittered();
+	MeshPreviewData->UploadData(&ViewProj, 0);
+	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0);
+
 	VkCommandBuffer PreviewCmd = Gfx->BeginOneTimeCmd();
 	UHRenderBuilder PreviewBuilder(Gfx, PreviewCmd);
 
-	uint32_t ImageIndex;
-	vkAcquireNextImageKHR(Gfx->GetLogicalDevice(), SwapChain, UINT64_MAX, SwapChainSemaphore, nullptr, &ImageIndex);
+	Gfx->BeginCmdDebug(PreviewCmd, "Drawing preview mesh");
 
-	VkClearValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
-	PreviewBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainFrameBuffer[ImageIndex], SwapChainExtent, ClearColor);
+	VkClearValue ClearColor = { {0.0f,0.0f,0.8f,1.0f} };
+	VkClearValue ClearDepth = { 0.0f,0 };
+	const std::vector<VkClearValue> ClearValues = { ClearColor , ClearDepth };
+	PreviewBuilder.BeginRenderPass(PreviewRenderPass, PreviewExtent, ClearValues);
 
 	// render based on the preview scene type
-	if (PreviewSceneType == TexturePreview)
-	{
-		PreviewBuilder.SetViewport(SwapChainExtent);
-		PreviewBuilder.SetScissor(SwapChainExtent);
-		PreviewBuilder.BindVertexBuffer(nullptr);
+	PreviewBuilder.SetViewport(PreviewExtent);
+	PreviewBuilder.SetScissor(PreviewExtent);
+	PreviewBuilder.BindVertexBuffer(CurrentMesh->GetPositionBuffer()->GetBuffer());
+	PreviewBuilder.BindIndexBuffer(CurrentMesh);
+	PreviewBuilder.BindDescriptorSet(MeshPreviewShader->GetPipelineLayout(), MeshPreviewShader->GetDescriptorSet(0));
 
-		UHGraphicState* State = DebugViewShader->GetState();
-		PreviewBuilder.BindGraphicState(State);
-		PreviewBuilder.BindDescriptorSet(DebugViewShader->GetPipelineLayout(), DebugViewShader->GetDescriptorSet(CurrentFrame));
-		PreviewBuilder.DrawFullScreenQuad();
-	}
+	UHGraphicState* State = MeshPreviewShader->GetState();
+	PreviewBuilder.BindGraphicState(State);
+	PreviewBuilder.DrawIndexed(CurrentMesh->GetIndicesCount());
 
 	PreviewBuilder.EndRenderPass();
 
-	PreviewBuilder.ResourceBarrier(SwapChainRT[ImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	Gfx->EndCmdDebug(PreviewCmd);
 	Gfx->EndOneTimeCmd(PreviewCmd);
 
-	PreviewBuilder.Present(SwapChain, Gfx->GetGraphicsQueue(), nullptr, ImageIndex, -1);
-	CurrentFrame = (CurrentFrame + 1) % GMaxFrameInFlight;
+	LastMousePos = CurrentMousePos;
 }
 
-void UHPreviewScene::SetPreviewTexture(UHTexture* InTexture)
+void UHPreviewScene::SetMesh(UHMesh* InMesh)
 {
-	Gfx->WaitGPU();
-	DebugViewShader->BindImage(InTexture, 1);
+	CurrentMesh = InMesh;
+	CurrentMesh->CreateGPUBuffers(Gfx);
+
+	// make camera in front of mesh's center
+	PreviewCamera->SetRotation(XMFLOAT3(0, 0, 0));
+	PreviewCamera->SetPosition(CurrentMesh->GetMeshCenter() - PreviewCamera->GetForward() * 5);
 }
 
-void UHPreviewScene::SetPreviewMip(uint32_t InMip)
+UHRenderTexture* UHPreviewScene::GetPreviewRT() const
 {
-	Gfx->WaitGPU();
-	CurrentMip = InMip;
-	DebugViewData->UploadAllData(&CurrentMip);
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	return PreviewRT;
+}
+
+void UHPreviewScene::UpdateCamera()
+{
+	// set aspect ratio of default camera
+	PreviewCamera->SetAspect(PreviewExtent.width / static_cast<float>(PreviewExtent.height));
+	const float CameraMoveSpd = PreviewCameraSpeed * ImGui::GetIO().DeltaTime;
+	const float MouseRotSpeed = CameraMoveSpd;
+
+	if (ImGui::IsKeyDown(ImGuiKey_W))
 	{
-		DebugViewShader->BindConstant(DebugViewData, 0, Idx);
+		PreviewCamera->Translate(XMFLOAT3(0, 0, CameraMoveSpd));
 	}
+
+	if (ImGui::IsKeyDown(ImGuiKey_S))
+	{
+		PreviewCamera->Translate(XMFLOAT3(0, 0, -CameraMoveSpd));
+	}
+
+	if (ImGui::IsKeyDown(ImGuiKey_A))
+	{
+		PreviewCamera->Translate(XMFLOAT3(-CameraMoveSpd, 0, 0));
+	}
+
+	if (ImGui::IsKeyDown(ImGuiKey_D))
+	{
+		PreviewCamera->Translate(XMFLOAT3(CameraMoveSpd, 0, 0));
+	}
+
+	if (ImGui::IsKeyDown(ImGuiKey_E))
+	{
+		PreviewCamera->Translate(XMFLOAT3(0, CameraMoveSpd, 0));
+	}
+
+	if (ImGui::IsKeyDown(ImGuiKey_Q))
+	{
+		PreviewCamera->Translate(XMFLOAT3(0, -CameraMoveSpd, 0));
+	}
+
+	if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
+	{
+		const float X = static_cast<float>(CurrentMousePos.x - LastMousePos.x) * MouseRotSpeed;
+		const float Y = static_cast<float>(CurrentMousePos.y - LastMousePos.y) * MouseRotSpeed;
+
+		PreviewCamera->Rotate(XMFLOAT3(Y, 0, 0));
+		PreviewCamera->Rotate(XMFLOAT3(0, X, 0), UHTransformSpace::World);
+	}
+
+	PreviewCamera->Update();
 }
 
 #endif

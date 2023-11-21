@@ -43,6 +43,21 @@ namespace UHUtilities
 		return false;
 	}
 
+	// find an element in a vector, pointer version
+	template<class T>
+	inline bool FindByElement(const std::vector<T*>& InVector, const T& InElement)
+	{
+		for (auto& Element : InVector)
+		{
+			if (*Element == InElement)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	// find element in a vector, unique pointer version
 	template<class T>
 	inline bool FindByElement(const std::vector<std::unique_ptr<T>>& InVector, const T& InElement)

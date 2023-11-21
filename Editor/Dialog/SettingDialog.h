@@ -13,7 +13,7 @@ class UHSettingDialog : public UHDialog
 {
 public:
 	UHSettingDialog(UHConfigManager* InConfig, UHEngine* InEngine, UHDeferredShadingRenderer* InRenderer);
-	virtual void Update() override;
+	void Update();
 
 private:
 	UHConfigManager* Config;

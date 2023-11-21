@@ -37,11 +37,11 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 		// begin render pass based on flag
 		if (bParallelSubmissionRT)
 		{
-			RenderBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+			RenderBuilder.BeginRenderPass(BasePassObj, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 		}
 		else
 		{
-			RenderBuilder.BeginRenderPass(BasePassObj.RenderPass, BasePassObj.FrameBuffer, RenderResolution, ClearValues);
+			RenderBuilder.BeginRenderPass(BasePassObj, RenderResolution, ClearValues);
 		}
 
 		if (bParallelSubmissionRT)

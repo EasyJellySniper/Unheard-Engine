@@ -15,6 +15,7 @@ public:
 	UHRawInput();
 
 	bool InitRawInput();
+	void SetInputEnabled(bool bInFlag);
 	void ParseInputData(LPARAM LParam);
 	void ResetMouseData();
 	void ResetMouseState();
@@ -54,6 +55,7 @@ private:
 	bool bIsRightMousePressed;
 	bool bPreviousLeftMousePressed;
 	bool bPreviousRightMousePressed;
+	bool bEnableInput;
 
 	POINT LastMousePos;
 };

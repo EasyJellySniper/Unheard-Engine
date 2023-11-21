@@ -56,7 +56,7 @@ void UHMaterialImporter::WriteMaterialCache(UHMaterial* InMat, std::string InSha
 	// macro hash
 	size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
 	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
-	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath(OriginSubpath, InMat->GetName(), InShaderName, MacroHashName);
+	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InMat->GetSourcePath(), InShaderName, MacroHashName);
 
 	std::ofstream FileOut(GMaterialCachePath + OutName + GMaterialCacheExtension, std::ios::out | std::ios::binary);
 
@@ -83,7 +83,8 @@ bool UHMaterialImporter::IsMaterialCached(UHMaterial* InMat, std::string InShade
 	// macro hash
 	size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
 	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
-	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InMat->GetName(), InShaderName, MacroHashName);
+	const std::string OriginSubpath = UHAssetPath::GetMaterialOriginSubpath(InMat->GetPath());
+	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InMat->GetSourcePath(), InShaderName, MacroHashName);
 
 	UHMaterialAssetCache Cache;
 	Cache.SourcePath = InMat->GetPath();

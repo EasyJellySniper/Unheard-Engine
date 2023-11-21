@@ -105,6 +105,7 @@ public:
 
 	// set image
 	void SetImage(VkImage InImage);
+	void SetImageLayout(VkImageLayout InLayout);
 
 	// get name
 	std::string GetName() const;
@@ -123,6 +124,7 @@ public:
 
 	// get image
 	VkImage GetImage() const;
+	VkImageLayout GetImageLayout() const;
 
 	// get image view
 	VkImageView GetImageView() const;
@@ -176,6 +178,7 @@ private:
 	std::vector<VkImageView> ImageViewPerMip;
 	VkImageViewCreateInfo ImageViewInfo;
 	UHTextureInfo TextureInfo;
+	VkImageLayout ImageLayout;
 
 #if WITH_EDITOR
 	// individual face image view for editor use

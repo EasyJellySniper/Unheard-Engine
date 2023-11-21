@@ -51,8 +51,14 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 
 	UHObject::OnLoad(FileIn);
 
+	if (Version >= AddRoughnessTexture)
+	{
+		UHUtilities::ReadStringData(FileIn, SourcePath);
+	}
+
 	// load referenced texture file name, doesn't read file name for sky cube at the moment
-	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Opacity; Idx++)
+	const int32_t HighestTexture = Version < AddRoughnessTexture ? Opacity : Roughness;
+	for (int32_t Idx = 0; Idx <= HighestTexture; Idx++)
 	{
 		UHUtilities::ReadStringData(FileIn, TexFileNames[Idx]);
 	}
@@ -73,7 +79,6 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	}
 
 	FileIn.close();
-
 	MaterialPath = InMatPath;
 	return true;
 }
@@ -85,11 +90,20 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 	FileIn.read(reinterpret_cast<char*>(&NumMaterialInputs), sizeof(NumMaterialInputs));
 
 	std::vector<int32_t> MaterialInputConnections;
+	std::vector<int32_t> MaterialInputPinOutputIndex;
 	for (size_t Idx = 0; Idx < NumMaterialInputs; Idx++)
 	{
 		int32_t NodeIdx;
 		FileIn.read(reinterpret_cast<char*>(&NodeIdx), sizeof(NodeIdx));
+
+		int32_t OutputIdx = 0;
+		if (Version >= AddRoughnessTexture)
+		{
+			FileIn.read(reinterpret_cast<char*>(&OutputIdx), sizeof(OutputIdx));
+		}
+
 		MaterialInputConnections.push_back(NodeIdx);
+		MaterialInputPinOutputIndex.push_back(OutputIdx);
 	}
 
 	size_t NumEditNodes;
@@ -118,9 +132,15 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 			int32_t NodeIdx;
 			FileIn.read(reinterpret_cast<char*>(&NodeIdx), sizeof(NodeIdx));
 
+			int32_t OutputIdx = 0;
+			if (Version >= AddRoughnessTexture)
+			{
+				FileIn.read(reinterpret_cast<char*>(&OutputIdx), sizeof(OutputIdx));
+			}
+
 			if (NodeIdx != UHINDEXNONE)
 			{
-				Inputs[Jdx]->ConnectFrom(EditNodes[NodeIdx]->GetOutputs()[0].get());
+				Inputs[Jdx]->ConnectFrom(EditNodes[NodeIdx]->GetOutputs()[OutputIdx].get());
 			}
 		}
 	}
@@ -133,7 +153,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 
 		if (NodeIdx != UHINDEXNONE)
 		{
-			MaterialInputs[Idx]->ConnectFrom(EditNodes[NodeIdx]->GetOutputs()[0].get());
+			MaterialInputs[Idx]->ConnectFrom(EditNodes[NodeIdx]->GetOutputs()[MaterialInputPinOutputIndex[Idx]].get());
 		}
 	}
 
@@ -150,6 +170,11 @@ void UHMaterial::PostImport()
 	// the material node is still needed for copy parameters
 	EditGUIRelativePos.clear();
 #endif
+
+	if (Version < AddRoughnessTexture)
+	{
+		SourcePath = Name;
+	}
 
 #if WITH_EDITOR
 	// evaluate material constant buffer size for the old assets
@@ -184,11 +209,6 @@ void UHMaterial::SetTexFileName(UHMaterialInputs TexType, std::string InName)
 	TexFileNames[TexType] = InName;
 }
 
-std::string UHMaterial::GetTexFileName(UHMaterialInputs InType) const
-{
-	return TexFileNames[InType];
-}
-
 void UHMaterial::SetMaterialBufferSize(size_t InSize)
 {
 	if (MaterialBufferSize != InSize)
@@ -197,7 +217,7 @@ void UHMaterial::SetMaterialBufferSize(size_t InSize)
 	}
 }
 
-void UHMaterial::Export()
+void UHMaterial::Export(const std::filesystem::path InPath)
 {
 	// export UH Material
 	// 
@@ -207,14 +227,17 @@ void UHMaterial::Export()
 		std::filesystem::create_directories(GMaterialAssetPath);
 	}
 
-	std::ofstream FileOut(GMaterialAssetPath + Name + GMaterialAssetExtension, std::ios::out | std::ios::binary);
+	const std::string OutPath = InPath.empty() ? GMaterialAssetPath + SourcePath + GMaterialAssetExtension : InPath.string();
+	std::ofstream FileOut(OutPath, std::ios::out | std::ios::binary);
 
 	// get current version before saving
 	Version = static_cast<UHMaterialVersion>(MaterialVersionMax - 1);
 	UHObject::OnSave(FileOut);
 
+	UHUtilities::WriteStringData(FileOut, SourcePath);
+
 	// write texture filename used, doesn't write file name for sky cube/metallic at the moment
-	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Opacity; Idx++)
+	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Roughness; Idx++)
 	{
 		UHUtilities::WriteStringData(FileOut, TexFileNames[Idx]);
 	}
@@ -252,9 +275,10 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	//   = The value of the Node
 	// 3 & 4 are separated since it needs initalize the node first before setting connection states
 
-	auto FindEditNodeIndex = [this](UHGraphPin* InPin)
+	auto FindEditNodeIndex = [this](UHGraphPin* InPin, int32_t &OutputIdx)
 	{
 		int32_t NodeIdx = UHINDEXNONE;
+		OutputIdx = 0;
 
 		if (InPin)
 		{
@@ -262,6 +286,14 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 			{
 				if (InPin->GetOriginNode()->GetId() == EditNodes[Idx]->GetId())
 				{
+					for (const UniquePtr<UHGraphPin>& Output : EditNodes[Idx]->GetOutputs())
+					{
+						if (Output.get() == InPin)
+						{
+							break;
+						}
+						OutputIdx++;
+					}
 					NodeIdx = static_cast<int32_t>(Idx);
 					break;
 				}
@@ -278,8 +310,10 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 
 	for (size_t Idx = 0; Idx < NumMaterialInputs; Idx++)
 	{
-		int32_t NodeIdx = FindEditNodeIndex(Inputs[Idx]->GetSrcPin());
+		int32_t OutputIdx;
+		int32_t NodeIdx = FindEditNodeIndex(Inputs[Idx]->GetSrcPin(), OutputIdx);
 		FileOut.write(reinterpret_cast<const char*>(&NodeIdx), sizeof(NodeIdx));
+		FileOut.write(reinterpret_cast<const char*>(&OutputIdx), sizeof(OutputIdx));
 	}
 
 	// 3
@@ -302,8 +336,10 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 		const std::vector<UniquePtr<UHGraphPin>>& NodeInputs = EditNodes[Idx]->GetInputs();
 		for (size_t Jdx = 0; Jdx < NumInputs; Jdx++)
 		{
-			int32_t NodeIdx = FindEditNodeIndex(NodeInputs[Jdx]->GetSrcPin());
+			int32_t OutputIdx;
+			int32_t NodeIdx = FindEditNodeIndex(NodeInputs[Jdx]->GetSrcPin(), OutputIdx);
 			FileOut.write(reinterpret_cast<const char*>(&NodeIdx), sizeof(NodeIdx));
+			FileOut.write(reinterpret_cast<const char*>(&OutputIdx), sizeof(OutputIdx));
 		}
 	}
 
@@ -470,6 +506,11 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 std::string UHMaterial::GetName() const
 {
 	return Name;
+}
+
+std::string UHMaterial::GetSourcePath() const
+{
+	return SourcePath;
 }
 
 UHCullMode UHMaterial::GetCullMode() const
@@ -787,6 +828,17 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(OpacityTexPin);
 	}
 
+	// add roughness
+	if (!TexFileNames[Roughness].empty())
+	{
+		// Roughness = Roughness
+		Pos.x = -GUIToFurtherLeft;
+		Pos.y += GUIStepYLarger;
+		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Roughness], Pos);
+		UHGraphPin* RoughnessTexPin = NewTex->GetOutputs()[1].get();
+		MaterialPins[UHMaterialInputs::Roughness]->ConnectFrom(RoughnessTexPin);
+	}
+
 	if (EditGUIRelativePos.size() != EditNodes.size())
 	{
 		UHE_LOG("Material: Mismatched EditNodes and EditGUIRelativePos size.\n");
@@ -798,6 +850,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	}
 
 	GetRegisteredTextureNames();
+	GetCBufferDefineCode(MaterialBufferSize);
 }
 
 UniquePtr<UHMaterialNode>& UHMaterial::GetMaterialNode()
@@ -828,6 +881,11 @@ void UHMaterial::SetDefaultMaterialNodePos(POINT InPos)
 POINT UHMaterial::GetDefaultMaterialNodePos()
 {
 	return DefaultMaterialNodePos;
+}
+
+void UHMaterial::SetSourcePath(const std::string InPath)
+{
+	SourcePath = InPath;
 }
 
 #endif

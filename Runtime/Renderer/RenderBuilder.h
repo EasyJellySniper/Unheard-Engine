@@ -45,15 +45,15 @@ public:
 	void EndCommandBuffer();
 
 	// begin a pass
-	void BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, VkClearValue InClearValue
+	void BeginRenderPass(const UHRenderPassObject& InRenderPassObj, VkExtent2D InExtent, VkClearValue InClearValue
 		, VkSubpassContents InSubPassContent = VK_SUBPASS_CONTENTS_INLINE);
 
 	// begin a pass (multiple RTs)
-	void BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue
+	void BeginRenderPass(const UHRenderPassObject& InRenderPassObj, VkExtent2D InExtent, const std::vector<VkClearValue>& InClearValue
 		, VkSubpassContents InSubPassContent = VK_SUBPASS_CONTENTS_INLINE);
 
 	// begin a pass (without clearing)
-	void BeginRenderPass(VkRenderPass InRenderPass, VkFramebuffer InFramebuffer, VkExtent2D InExtent
+	void BeginRenderPass(const UHRenderPassObject& InRenderPassObj, VkExtent2D InExtent
 		, VkSubpassContents InSubPassContent = VK_SUBPASS_CONTENTS_INLINE);
 
 	// end a pass

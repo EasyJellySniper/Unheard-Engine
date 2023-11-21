@@ -8,7 +8,6 @@
 
 class UHAssetManager;
 class UHTexture2D;
-class UHPreviewScene;
 class UHGraphic;
 class UHDeferredShadingRenderer;
 

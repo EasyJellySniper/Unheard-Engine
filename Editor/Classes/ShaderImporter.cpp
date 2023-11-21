@@ -355,12 +355,12 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 	}
 
 	// macro hash
-	size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
-	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
-	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetName(), InShaderName, MacroHashName);
+	const size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
+	const std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
+	const std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetSourcePath(), InShaderName, MacroHashName);
 
 	// output temp shader file
-	std::string TempShaderPath = GTempFilePath + InShaderName + "_" + InData.MaterialCache->GetName() + MacroHashName;
+	const std::string TempShaderPath = GTempFilePath + OutName;
 
 	std::ofstream FileOut((TempShaderPath + GRawShaderExtension).c_str(), std::ios::out);
 	FileOut << ShaderCode;

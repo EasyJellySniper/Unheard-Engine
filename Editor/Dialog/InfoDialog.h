@@ -12,7 +12,7 @@ public:
 	UHInfoDialog(HWND ParentWnd, UHWorldDialog* InWorldDialog);
 
 	virtual void ShowDialog() override;
-	virtual void Update() override;
+	void Update();
 
 	void ResetDialogWindow();
 	ImVec2 GetWindowSize() const;

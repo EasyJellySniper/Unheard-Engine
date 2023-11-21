@@ -5,7 +5,7 @@ void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHRenderBu
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Render " + InName);
 
 	RenderBuilder.ResourceBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	RenderBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
+	RenderBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx], RenderResolution);
 
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);
@@ -100,11 +100,15 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 #if WITH_EDITOR
 	if (DebugViewIndex > 0)
 	{
-		if (DebugViewIndex == 7)
+		if (DebugViewIndex == 7 && GRTShadowResult)
 		{
 			RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
-		RenderEffect(DebugViewShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Debug View");
+
+		if (bDrawDebugViewRT)
+		{
+			RenderEffect(DebugViewShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Debug View");
+		}
 	}
 
 	RenderComponentBounds(RenderBuilder, 1 - CurrentPostProcessRTIndex);
@@ -173,7 +177,10 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& Rend
 #if WITH_EDITOR
 		// editor ImGui rendering
 		SwapChainExtent = GraphicInterface->GetSwapChainExtent();
-		RenderBuilder.BeginRenderPass(SwapChainRenderPass, SwapChainBuffer, SwapChainExtent);
+		UHRenderPassObject Obj;
+		Obj.RenderPass = SwapChainRenderPass;
+		Obj.FrameBuffer = SwapChainBuffer;
+		RenderBuilder.BeginRenderPass(Obj, SwapChainExtent);
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), RenderBuilder.GetCmdList(), GraphicInterface->GetImGuiPipeline());
 		RenderBuilder.EndRenderPass();
 #endif
@@ -212,7 +219,7 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHRenderBuilder& RenderBui
 	DebugBoundShader->BindConstant(DebugBoundData[CurrentFrameRT], 1, CurrentFrameRT);
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Draw Component Bounds");
-	RenderBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx].RenderPass, PostProcessPassObj[PostProcessIdx].FrameBuffer, RenderResolution);
+	RenderBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx], RenderResolution);
 
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);

@@ -253,6 +253,11 @@ XMFLOAT3 operator-(const XMFLOAT3& InVector, const XMFLOAT3& InVector2)
     return OutVector;
 }
 
+bool operator==(const XMFLOAT3& InVector, const XMFLOAT3& InVector2)
+{
+    return InVector.x == InVector2.x && InVector.y == InVector2.y && InVector.z == InVector2.z;
+}
+
 // UHColorRGB
 UHColorRGB::UHColorRGB()
     : R(0)

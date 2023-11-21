@@ -74,8 +74,10 @@ namespace UHAssetPath
 		return SrcExt == DstExt;
 	}
 
-	inline std::string FormatMaterialShaderOutputPath(std::string OriginSubpath, std::string MaterialName, std::string ShaderName, std::string MacroHash)
+	inline std::string FormatMaterialShaderOutputPath(std::string OriginSubpath, std::string MaterialPathName, std::string ShaderName, std::string MacroHash)
 	{
-		return OriginSubpath + MaterialName + "_" + ShaderName + MacroHash;
+		MaterialPathName = UHUtilities::StringReplace(MaterialPathName, "/", "_");
+		MaterialPathName = UHUtilities::StringReplace(MaterialPathName, "\\", "_");
+		return OriginSubpath + MaterialPathName + "_" + ShaderName + MacroHash;
 	}
 }

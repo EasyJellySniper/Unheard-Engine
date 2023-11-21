@@ -55,11 +55,11 @@ public:
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight() const;
 
+	void AddMeshRenderer(UHMeshRendererComponent* InRenderer);
 private:
 	void AddDirectionalLight(UHDirectionalLightComponent* InLight);
 	void AddPointLight(UHPointLightComponent* InLight);
 	void AddSpotLight(UHSpotLightComponent* InLight);
-	void AddMeshRenderer(UHMeshRendererComponent* InRenderer);
 	void UpdateCamera();
 
 	UHConfigManager* ConfigCache;

@@ -208,7 +208,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	Rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	Rasterizer.depthClampEnable = VK_FALSE;
 	Rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	Rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	Rasterizer.polygonMode = (InInfo.bDrawWireFrame) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
 	Rasterizer.lineWidth = 1.0f;
 	Rasterizer.cullMode = RenderPassInfo.CullMode;
 	Rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;

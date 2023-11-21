@@ -451,3 +451,16 @@ Did a few refactorings in UHScene class, it's ready for save/load implementation
 16-11-2023: Kicked off scene load feature. Made mesh asset store the UHObject stuff too.
 Started removing all request function that takes a variable directly, it's dangerous and not consistent.
 Scene load feature is done. But whole workflow could be improved.
+
+17-11-2023: Started the mesh editor implemenation. The preview scene needs to be refined.
+18-11-2023: Refactored resource barrier and begin render pass function so that they can store the latest image layout in texture class.
+This makes auto-transition behavior easier. Addressed a few more issues for low-end PC too.
+
+19-11-2023: Fixed the async compute bug for RTX 3000 series GPU. Minor object reference fix in mesh renderer.
+Finished adding mesh preview rendering.
+20-11-2023: Added fbx import workflow in mesh editor. But I need to deal with the overwriting behavior.
+Added roughness texture import too (ShininessExponent texture type in FBX import).
+Finished fbx import editor. But auto generating mesh renderer has not done yet.
+
+21-11-2023: Finished adding auto generation of mesh renderer after import a fbx.
+Enchanced the material shader naming and compiling safety.

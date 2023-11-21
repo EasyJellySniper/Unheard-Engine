@@ -163,6 +163,7 @@ void UHMesh::Release()
 void UHMesh::SetPositionData(std::vector<XMFLOAT3> InData)
 {
 	PositionData = InData;
+	VertexCount = static_cast<uint32_t>(PositionData.size());
 }
 
 void UHMesh::SetUV0Data(std::vector<XMFLOAT2> InData)
@@ -183,11 +184,18 @@ void UHMesh::SetTangentData(std::vector<XMFLOAT4> InData)
 void UHMesh::SetIndicesData(std::vector<uint32_t> InIndicesData)
 {
 	IndicesData = InIndicesData;
+	IndiceCount = static_cast<uint32_t>(IndicesData.size());
+	CheckAndConvertToIndices16();
 }
 
 std::string UHMesh::GetName() const
 {
 	return Name;
+}
+
+std::string UHMesh::GetSourcePath() const
+{
+	return SourcePath;
 }
 
 std::vector<uint32_t> UHMesh::GetIndicesData() const
@@ -297,6 +305,11 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 
 	UHObject::OnLoad(FileIn);
 
+	if (Version >= StoreSourcePath)
+	{
+		UHUtilities::ReadStringData(FileIn, SourcePath);
+	}
+
 	// read imported material name
 	UHUtilities::ReadStringData(FileIn, ImportedMaterialName);
 
@@ -334,27 +347,10 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	XMFLOAT3 MeshExtent = (MaxPoint - MinPoint) * 0.5f;
 	MeshBound = BoundingBox(MeshCenter, MeshExtent);
 
-	// find the highest indice in the index buffer
-	HighestIndex = UHINDEXNONE;
-	for (const int32_t& Index : IndicesData)
+	CheckAndConvertToIndices16();
+	if (Version < StoreSourcePath)
 	{
-		HighestIndex = (std::max)(Index, HighestIndex);
-	}
-
-	// decide the index format with HighestIndex
-	if (HighestIndex >= static_cast<int32_t>(std::numeric_limits<uint16_t>::max()))
-	{
-		bIndexBuffer32Bit = true;
-	}
-
-	if (!bIndexBuffer32Bit)
-	{
-		// prepare 16-bit index data
-		IndicesData16.resize(IndiceCount);
-		for (uint32_t Idx = 0; Idx < IndiceCount; Idx++)
-		{
-			IndicesData16[Idx] = static_cast<uint16_t>(IndicesData[Idx]);
-		}
+		SourcePath = Name;
 	}
 
 	return true;
@@ -389,6 +385,11 @@ void UHMesh::SetImportedMaterialName(std::string InName)
 	ImportedMaterialName = InName;
 }
 
+void UHMesh::SetSourcePath(const std::string InPath)
+{
+	SourcePath = InPath;
+}
+
 void UHMesh::ApplyUnitScale()
 {
 	// apply unit scale to imported mesh
@@ -421,7 +422,7 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 	// (2) mesh data
 
 	// create folder if it's not existed
-	if (!std::filesystem::exists(OutputFolder))
+	if (std::filesystem::is_directory(OutputFolder) && !std::filesystem::exists(OutputFolder))
 	{
 		std::filesystem::create_directories(OutputFolder);
 	}
@@ -440,8 +441,10 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 
 	// open UHMesh file
 	std::ofstream FileOut(OutPath.string(), std::ios::out | std::ios::binary);
-
+	Version = UHMeshVersion::MeshVersionMax - 1;
 	UHObject::OnSave(FileOut);
+
+	UHUtilities::WriteStringData(FileOut, SourcePath);
 
 	// write imported material name
 	UHUtilities::WriteStringData(FileOut, ImportedMaterialName);
@@ -466,3 +469,42 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 	IndiceCount = static_cast<uint32_t>(IndicesData.size());
 }
 #endif
+
+bool UHMesh::operator==(const UHMesh& InMesh)
+{
+	return InMesh.Name == Name
+		&& InMesh.ImportedMaterialName == ImportedMaterialName
+		&& InMesh.ImportedTranslation == ImportedTranslation
+		&& InMesh.ImportedRotation == ImportedRotation
+		&& InMesh.ImportedScale == ImportedScale
+		&& InMesh.VertexCount == VertexCount
+		&& InMesh.IndiceCount == IndiceCount;
+}
+
+void UHMesh::CheckAndConvertToIndices16()
+{
+	// check if it's necessary to convert as 16-bit indices
+
+	// find the highest indice in the index buffer
+	HighestIndex = UHINDEXNONE;
+	for (const int32_t& Index : IndicesData)
+	{
+		HighestIndex = (std::max)(Index, HighestIndex);
+	}
+
+	// decide the index format with HighestIndex
+	if (HighestIndex >= static_cast<int32_t>(std::numeric_limits<uint16_t>::max()))
+	{
+		bIndexBuffer32Bit = true;
+	}
+
+	if (!bIndexBuffer32Bit)
+	{
+		// prepare 16-bit index data
+		IndicesData16.resize(IndiceCount);
+		for (uint32_t Idx = 0; Idx < IndiceCount; Idx++)
+		{
+			IndicesData16[Idx] = static_cast<uint16_t>(IndicesData[Idx]);
+		}
+	}
+}
