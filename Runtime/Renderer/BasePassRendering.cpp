@@ -3,6 +3,7 @@
 // implementation of RenderBasePass(), this pass is a deferred rendering with GBuffers and depth buffer
 void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
 	if (CurrentScene == nullptr)
 	{
 		return;
@@ -28,8 +29,6 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Base Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
-
 		// setup viewport and scissor
 		RenderBuilder.SetViewport(RenderResolution);
 		RenderBuilder.SetScissor(RenderResolution);

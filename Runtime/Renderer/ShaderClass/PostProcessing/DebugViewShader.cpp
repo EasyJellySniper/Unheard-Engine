@@ -1,6 +1,8 @@
 #include "DebugViewShader.h"
 
 #if WITH_EDITOR
+#include "../../RendererShared.h"
+
 UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
 	: UHShaderClass(InGfx, Name, typeid(UHDebugViewShader), nullptr, InRenderPass)
 {
@@ -10,6 +12,14 @@ UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRende
 
 	CreateDescriptor();
 	OnCompile();
+
+	DebugViewData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+}
+
+void UHDebugViewShader::Release(bool bDescriptorOnly)
+{
+	UHShaderClass::Release(bDescriptorOnly);
+	UH_SAFE_RELEASE(DebugViewData);
 }
 
 void UHDebugViewShader::OnCompile()
@@ -28,4 +38,24 @@ void UHDebugViewShader::OnCompile()
 
 	CreateGraphicState(Info);
 }
+
+void UHDebugViewShader::BindParameters()
+{
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		BindConstant(DebugViewData, 0, Idx);
+	}
+
+	if (Gfx->IsRayTracingEnabled())
+	{
+		BindImage(GRTShadowResult, 1);
+	}
+	BindSampler(GPointClampedSampler, 2);
+}
+
+UHRenderBuffer<uint32_t>* UHDebugViewShader::GetDebugViewData() const
+{
+	return DebugViewData.get();
+}
+
 #endif

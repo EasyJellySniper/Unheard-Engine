@@ -6,6 +6,13 @@ class UHDebugViewShader : public UHShaderClass
 {
 public:
 	UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass);
+	virtual void Release(bool bDescriptorOnly = false) override;
 	virtual void OnCompile() override;
+
+	void BindParameters();
+	UHRenderBuffer<uint32_t>* GetDebugViewData() const;
+
+private:
+	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
 };
 #endif

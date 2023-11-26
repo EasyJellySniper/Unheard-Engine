@@ -2,6 +2,7 @@
 
 void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightCulling]);
 	if (CurrentScene == nullptr || (CurrentScene->GetPointLightCount() == 0 && CurrentScene->GetSpotLightCount() == 0))
 	{
 		return;
@@ -9,8 +10,6 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuil
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Light Culling");
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightCulling]);
-
 		// clear the point light/spot light list buffer
 		RenderBuilder.ClearUAVBuffer(GPointLightListBuffer->GetBuffer(), 0);
 		RenderBuilder.ClearUAVBuffer(GPointLightListTransBuffer->GetBuffer(), 0);
@@ -34,6 +33,7 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuil
 
 void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightPass]);
 	if (CurrentScene == nullptr || (CurrentScene->GetDirLightCount() == 0 && CurrentScene->GetPointLightCount() && CurrentScene->GetSpotLightCount()))
 	{
 		return;
@@ -41,8 +41,6 @@ void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Light Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::LightPass]);
-
 		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 		// bind state

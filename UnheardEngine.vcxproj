@@ -103,6 +103,7 @@
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <TargetName>$(ProjectName)_Debug</TargetName>
     <OutDir>$(SolutionDir)</OutDir>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
@@ -113,6 +114,7 @@
     <ExecutablePath>$(ExecutablePath)</ExecutablePath>
     <TargetName>$(ProjectName)_ReleaseEditor</TargetName>
     <OutDir>$(SolutionDir)</OutDir>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -171,12 +173,15 @@
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <StructMemberAlignment>Default</StructMemberAlignment>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\lib\vs2017\x64\release;$(SolutionDir)ThirdParty\Vulkan\1.3.224.1\Lib;$(SolutionDir)ThirdParty\OpenEXR\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;libfbxsdk.lib;libfbxsdk-md.lib;OpenEXR-3_2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
     <FxCompile>
       <ShaderModel>6.0</ShaderModel>
@@ -216,6 +221,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\include;$(SolutionDir)ThirdParty\Vulkan\1.3.224.1\Include;$(SolutionDir)ThirdParty\OpenEXR\cmake;$(SolutionDir)ThirdParty\OpenEXR\Iex;$(SolutionDir)ThirdParty\OpenEXR\IlmThread;$(SolutionDir)ThirdParty\OpenEXR\Imath;$(SolutionDir)ThirdParty\OpenEXR\OpenEXR;$(SolutionDir)ThirdParty\OpenEXR\OpenEXRCore;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <StructMemberAlignment>Default</StructMemberAlignment>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -334,6 +340,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\ShaderClass.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SkyPassShader.h" />
@@ -431,6 +438,7 @@
     <ClCompile Include="Runtime\Classes\Shader.cpp" />
     <ClCompile Include="Runtime\Components\Transform.cpp" />
     <ClCompile Include="Runtime\Classes\Scene.cpp" />
+    <ClCompile Include="Runtime\Renderer\RenderShared.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightCullingShader.cpp" />
     <ClCompile Include="Runtime\Renderer\LightPassRendering.cpp" />
@@ -458,6 +466,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\SkyPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.cpp" />
     <ClCompile Include="Runtime\Renderer\TranslucentRendering.cpp" />
@@ -486,6 +495,8 @@
     <None Include="Shaders\UHInputs.hlsli">
       <FileType>Document</FileType>
     </None>
+    <None Include="Shaders\UHLightCommon.hlsli" />
+    <None Include="Shaders\UHSphericalHamonricCommon.hlsli" />
     <None Include="ThirdParty\ImGui\backends\vulkan\generate_spv.sh" />
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.frag" />
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.vert" />
@@ -623,6 +634,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\MeshPreviewShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\SphericalHarmonicComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

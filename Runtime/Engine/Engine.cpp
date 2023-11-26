@@ -398,7 +398,7 @@ void UHEngine::EndProfile()
 	Stats.TextureCount = static_cast<int32_t>(UHEGraphic->Texture2DPools.size());
 	Stats.TextureCubeCount = static_cast<int32_t>(UHEGraphic->TextureCubePools.size());
 	Stats.MateralCount = static_cast<int32_t>(UHEGraphic->MaterialPools.size());
-	Stats.GPUTimes = UHERenderer->GetGPUTimes();
+	Stats.SetGPUTimes(UHERenderer->GetGPUTimes());
 }
 
 #endif

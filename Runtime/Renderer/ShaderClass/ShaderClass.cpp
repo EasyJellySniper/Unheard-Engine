@@ -35,7 +35,13 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 void UHShaderClass::Release(bool bDescriptorOnly)
 {
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
-	vkDestroyDescriptorPool(LogicalDevice, DescriptorPool, nullptr);
+
+	if (DescriptorPool)
+	{
+		vkDestroyDescriptorPool(LogicalDevice, DescriptorPool, nullptr);
+		DescriptorPool = nullptr;
+	}
+
 	if (bDescriptorOnly)
 	{
 		return;
@@ -459,7 +465,6 @@ void UHShaderClass::CreateMaterialDescriptor(std::vector<VkDescriptorSetLayout> 
 	AllocInfo.descriptorPool = DescriptorPool;
 	AllocInfo.descriptorSetCount = GMaxFrameInFlight;
 	AllocInfo.pSetLayouts = SetLayouts.data();
-
 	if (vkAllocateDescriptorSets(LogicalDevice, &AllocInfo, DescriptorSets.data()) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create descriptor sets for shader: " + UHUtilities::ToStringW(Name) + L"\n");
@@ -505,8 +510,7 @@ void UHShaderClass::InitRayGenTable()
 		UHE_LOG(L"Failed to get ray gen group handle!\n");
 	}
 
-	RayGenTable = Gfx->RequestRenderBuffer<UHShaderRecord>();
-	RayGenTable->CreateBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	RayGenTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	RayGenTable->UploadAllData(TempData.data());
 }
 
@@ -521,8 +525,7 @@ void UHShaderClass::InitMissTable()
 	}
 
 	// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group
-	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>();
-	MissTable->CreateBuffer(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	MissTable->UploadAllData(TempData.data());
 }
 
@@ -532,8 +535,7 @@ void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 
 	// get data for HG as well
 	// create HG buffer
-	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>();
-	HitGroupTable->CreateBuffer(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
 	for (size_t Idx = 0; Idx < NumMaterials; Idx++)
 	{

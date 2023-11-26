@@ -121,11 +121,8 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 		GraphicInterface->WaitGPU();
 
 		uint32_t ViewMipLevel = 0;
-		DebugViewData->UploadAllData(&ViewMipLevel);
-		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-		{
-			DebugViewShader->BindConstant(DebugViewData, 0, Idx);
-		}
+		DebugViewShader->GetDebugViewData()->UploadAllData(&ViewMipLevel);
+		DebugViewShader->BindParameters();
 
 		bDrawDebugViewRT = true;
 		UHRenderTexture* Buffers[] = { nullptr, GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth, GMotionVectorRT, GSceneMip, GRTShadowResult };
@@ -156,9 +153,9 @@ int32_t UHDeferredShadingRenderer::GetDrawCallCount() const
 	return DrawCalls;
 }
 
-std::array<float, UHRenderPassTypes::UHRenderPassMax> UHDeferredShadingRenderer::GetGPUTimes() const
+float* UHDeferredShadingRenderer::GetGPUTimes()
 {
-	return GPUTimes;
+	return &GPUTimes[0];
 }
 
 #endif
@@ -299,9 +296,15 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		GSpotLightBuffer[CurrentFrameGT]->UploadAllData(SpotLightConstantsCPU.data());
 	}
 
+	// upload SH9 data, for now use the 4th mip slice in it
+	UHSphericalHarmonicConstants SH9Constant{};
+	SH9Constant.MipLevel = 4;
+	SH9Constant.Weight = 4.0f * G_PI / 64.0f;
+	SH9Shader->GetSH9Constants(CurrentFrameGT)->UploadAllData(&SH9Constant);
+
 	// upload tone map data
 	uint32_t IsHDR = GraphicInterface->IsHDRAvailable();
-	ToneMapData[CurrentFrameGT]->UploadAllData(&IsHDR);
+	ToneMapShader->GetToneMapData(CurrentFrameGT)->UploadAllData(&IsHDR);
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
@@ -523,6 +526,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				if (bIsRenderingEnabledRT)
 				{
 					BuildTopLevelAS(AsyncComputeBuilder);
+					GenerateSH9Pass(AsyncComputeBuilder);
 				}
 
 				GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
@@ -548,6 +552,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				if (!bEnableAsyncComputeRT)
 				{
 					BuildTopLevelAS(SceneRenderBuilder);
+					GenerateSH9Pass(SceneRenderBuilder);
 				}
 				DispatchLightCulling(SceneRenderBuilder);
 				DispatchRayShadowPass(SceneRenderBuilder);
@@ -579,7 +584,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				WaitSemaphore.push_back(AsyncComputeQueue.FinishedSemaphores[CurrentFrameRT]);
 			}
 
-			std::vector<VkPipelineStageFlags> WaitStages = { VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+			std::vector<VkPipelineStageFlags> WaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR };
 			SceneRenderBuilder.ExecuteCmd(SceneRenderQueue.Queue, SceneRenderQueue.Fences[CurrentFrameRT], WaitSemaphore, WaitStages, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT]);
 			// ****************************** end scene rendering
 		}

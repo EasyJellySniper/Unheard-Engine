@@ -3,13 +3,17 @@
 #define UHSPOTLIGHT_BIND t8
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
+#include "../Shaders/UHLightCommon.hlsli"
+
+#define SH9_BIND t12
+#include "../Shaders/UHSphericalHamonricCommon.hlsli"
 
 Texture2D RTShadow : register(t9);
 ByteAddressBuffer PointLightListTrans : register(t10);
 ByteAddressBuffer SpotLightListTrans : register(t11);
-SamplerState LinearClamppedSampler : register(s12);
-TextureCube EnvCube : register(t13);
-SamplerState EnvSampler : register(s14);
+SamplerState LinearClamppedSampler : register(s13);
+TextureCube EnvCube : register(t14);
+SamplerState EnvSampler : register(s15);
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -179,7 +183,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     }
 
 	// indirect light accumulation
-	Result += LightIndirect(BaseColor, BumpNormal, Occlusion);
+	Result += ShadeSH9(BaseColor, float4(BumpNormal, 1.0f), Occlusion);
 	Result += MaterialInput.Emissive.rgb + IndirectSpecular;
 
 	// output result with opacity

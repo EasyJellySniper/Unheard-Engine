@@ -418,11 +418,9 @@ void UHMaterial::AllocateMaterialBuffer()
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		MaterialConstantsGPU[Idx] = GfxCache->RequestRenderBuffer<uint8_t>();
-
 		// the buffer size will be aligned to 256, check how many element it actually needs
 		size_t ElementCount = (MaterialBufferSize + 256) / 256;
-		MaterialConstantsGPU[Idx]->CreateBuffer(ElementCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		MaterialConstantsGPU[Idx] = GfxCache->RequestRenderBuffer<uint8_t>(ElementCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 	}
 }
 
@@ -434,8 +432,7 @@ void UHMaterial::AllocateRTMaterialBuffer()
 		UH_SAFE_RELEASE(MaterialRTDataGPU[Idx]);
 		MaterialRTDataGPU[Idx].reset();
 
-		MaterialRTDataGPU[Idx] = GfxCache->RequestRenderBuffer<UHRTMaterialData>();
-		MaterialRTDataGPU[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		MaterialRTDataGPU[Idx] = GfxCache->RequestRenderBuffer<UHRTMaterialData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	}
 }
 

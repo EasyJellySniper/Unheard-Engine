@@ -39,15 +39,12 @@ namespace UHTextureCompressor
 		UHRenderBuilder RenderBuilder(InGfx, InGfx->BeginOneTimeCmd());
 
 		// prepare data buffer and bind
-		UniquePtr<UHRenderBuffer<UHColorRGB>> InputData = InGfx->RequestRenderBuffer<UHColorRGB>();
-		InputData->CreateBuffer(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<UHColorRGB>> InputData = InGfx->RequestRenderBuffer<UHColorRGB>(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		InputData->UploadAllData(RGB888.data());
 
-		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>();
-		OutputData->CreateBuffer(OutputSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>(OutputSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
-		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>();
-		Constants->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		UHCompressionConstant Consts;
 		Consts.Width = Width;
 		Consts.Height = Height;
@@ -90,15 +87,12 @@ namespace UHTextureCompressor
 		UHRenderBuilder RenderBuilder(InGfx, InGfx->BeginOneTimeCmd());
 
 		// prepare data buffer and bind
-		UniquePtr<UHRenderBuffer<uint32_t>> InputData = InGfx->RequestRenderBuffer<uint32_t>();
-		InputData->CreateBuffer(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<uint32_t>> InputData = InGfx->RequestRenderBuffer<uint32_t>(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		InputData->UploadAllData(Alpha8.data());
 
-		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>();
-		OutputData->CreateBuffer(OutputSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>(OutputSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
-		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>();
-		Constants->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		UHCompressionConstant Consts;
 		Consts.Width = Width;
 		Consts.Height = Height;
@@ -235,15 +229,11 @@ namespace UHTextureCompressor
 		UHRenderBuilder RenderBuilder(InGfx, InGfx->BeginOneTimeCmd());
 
 		// prepare data buffer and bind
-		UniquePtr<UHRenderBuffer<UHColorRGBInt>> InputData = InGfx->RequestRenderBuffer<UHColorRGBInt>();
-		InputData->CreateBuffer(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<UHColorRGBInt>> InputData = InGfx->RequestRenderBuffer<UHColorRGBInt>(Width * Height, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		InputData->UploadAllData(RGBInt.data());
 
-		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>();
-		OutputData->CreateBuffer(OutputSize * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>();
-		Constants->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<uint64_t>> OutputData = InGfx->RequestRenderBuffer<uint64_t>(OutputSize * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		UniquePtr<UHRenderBuffer<UHCompressionConstant>> Constants = InGfx->RequestRenderBuffer<UHCompressionConstant>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		UHCompressionConstant Consts;
 		Consts.Width = Width;
 		Consts.Height = Height;

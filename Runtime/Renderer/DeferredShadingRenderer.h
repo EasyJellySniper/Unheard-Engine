@@ -34,6 +34,7 @@
 #include "ShaderClass/RayTracing/RTMeshTable.h"
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 #include "ShaderClass/RayTracing/SoftRTShadowShader.h"
+#include "ShaderClass/SphericalHarmonicShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -82,7 +83,7 @@ public:
 
 	float GetRenderThreadTime() const;
 	int32_t GetDrawCallCount() const;
-	std::array<float, UHRenderPassTypes::UHRenderPassMax> GetGPUTimes() const;
+	float* GetGPUTimes();
 
 	static UHDeferredShadingRenderer* GetRendererEditorOnly();
 	void RefreshSkyLight(bool bNeedRecompile);
@@ -170,6 +171,7 @@ private:
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
 	void RenderLightPass(UHRenderBuilder& RenderBuilder);
+	void GenerateSH9Pass(UHRenderBuilder& RenderBuilder);
 	void RenderSkyPass(UHRenderBuilder& RenderBuilder);
 	void RenderMotionPass(UHRenderBuilder& RenderBuilder);
 	void RenderTranslucentPass(UHRenderBuilder& RenderBuilder);
@@ -233,6 +235,7 @@ private:
 	bool bIsSwapChainResetRT;
 	bool bIsRenderingEnabledRT;
 	bool bIsSkyLightEnabledRT;
+	bool bNeedGenerateSH9RT;
 
 	// current scene
 	UHScene* CurrentScene;
@@ -287,6 +290,8 @@ private:
 
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
 	UniquePtr<UHSkyPassShader> SkyPassShader;
+	UniquePtr<UHSphericalHarmonicShader> SH9Shader;
+
 	UHRenderPassObject SkyboxPassObj;
 	UHMesh* SkyMeshRT;
 
@@ -315,8 +320,6 @@ private:
 	UHRenderTexture* PostProcessResults[NumOfPostProcessRT];
 
 	UniquePtr<UHToneMappingShader> ToneMapShader;
-	UniquePtr<UHRenderBuffer<uint32_t>> ToneMapData[NumOfPostProcessRT];
-
 	UniquePtr<UHTemporalAAShader> TemporalAAShader;
 	bool bIsTemporalReset;
 
@@ -324,17 +327,15 @@ private:
 	// debug view shader
 	UniquePtr<UHDebugViewShader> DebugViewShader;
 	int32_t DebugViewIndex;
-	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
 
 	// debug bound shader
 	UniquePtr<UHDebugBoundShader> DebugBoundShader;
-	UniquePtr<UHRenderBuffer<UHDebugBoundConstant>> DebugBoundData[GMaxFrameInFlight];
 
 	// profiles
 	float RenderThreadTime;
 	int32_t DrawCalls;
 	std::vector<int32_t> ThreadDrawCalls;
-	std::array<float, UHRenderPassTypes::UHRenderPassMax> GPUTimes;
+	float GPUTimes[UHRenderPassTypes::UHRenderPassMax];
 
 	// GUI
 	uint32_t EditorWidthDelta;

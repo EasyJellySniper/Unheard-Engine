@@ -27,11 +27,19 @@ public:
 		}
 	}
 
+	void SetGPUTimes(float* InTime)
+	{
+		for (int32_t Idx = 0; Idx < UHRenderPassTypes::UHRenderPassMax; Idx++)
+		{
+			GPUTimes[Idx] = InTime[Idx];
+		}
+	}
+
 	float MainThreadTime;
 	float RenderThreadTime;
 	float TotalTime;
 	float FPS;
-	std::array<float, UHRenderPassTypes::UHRenderPassMax> GPUTimes;
+	float GPUTimes[UHRenderPassTypes::UHRenderPassMax];
 
 	int32_t DrawCallCount;
 	int32_t PSOCount;

@@ -27,6 +27,7 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	// Bind envcube and sampler
@@ -94,9 +95,10 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 	}
 	BindStorage(GPointLightListTransBuffer.get(), 10, 0, true);
 	BindStorage(GSpotLightListTransBuffer.get(), 11, 0, true);
-	BindSampler(GLinearClampedSampler, 12);
+	BindStorage(GSH9Data.get(), 12, 0, true);
+	BindSampler(GLinearClampedSampler, 13);
 
 	// write textures/samplers when they are available
-	BindImage(GSkyLightCube, 13);
-	BindSampler(GSkyCubeSampler, 14);
+	BindImage(GSkyLightCube, 14);
+	BindSampler(GSkyCubeSampler, 15);
 }

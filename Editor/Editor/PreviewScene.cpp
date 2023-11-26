@@ -37,8 +37,7 @@ UHPreviewScene::UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType)
 	PreviewCamera = MakeUnique<UHCameraComponent>();
 	PreviewCamera->Update();
 
-	MeshPreviewData = Gfx->RequestRenderBuffer<float>();
-	MeshPreviewData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	MeshPreviewData = Gfx->RequestRenderBuffer<float>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0);
 }
 

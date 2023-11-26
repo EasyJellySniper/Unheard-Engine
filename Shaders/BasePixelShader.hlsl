@@ -1,5 +1,6 @@
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
+#include "../Shaders/UHLightCommon.hlsli"
 
 TextureCube EnvCube : register(t6);
 SamplerState EnvSampler : register(s7);

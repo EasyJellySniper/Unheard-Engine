@@ -2,6 +2,8 @@
 #include "RenderingTypes.h"
 #include "../Classes/RenderBuffer.h"
 #include "../Classes/RenderTexture.h"
+#include "../Classes/Sampler.h"
+#include "../Classes/TextureCube.h"
 
 // define shared resource in renderer, the goal is to reduce parameter sending between renderer and shader
 extern UniquePtr<UHRenderBuffer<UHSystemConstants>> GSystemConstantBuffer[GMaxFrameInFlight];
@@ -43,3 +45,6 @@ extern UHSampler* GPointClampedSampler;
 extern UHSampler* GLinearClampedSampler;
 extern UHSampler* GAnisoClampedSampler;
 extern UHSampler* GSkyCubeSampler;
+
+// SH9 data
+extern UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;

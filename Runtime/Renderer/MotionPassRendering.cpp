@@ -2,6 +2,7 @@
 
 void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::MotionPass]);
 	if (CurrentScene == nullptr)
 	{
 		return;
@@ -9,8 +10,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Motion Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::MotionPass]);
-
 		// copy result to history velocity before rendering a new one
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GPrevMotionVectorRT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));

@@ -2,6 +2,7 @@
 #define UHSPOTLIGHT_BIND t2
 #include "UHInputs.hlsli"
 #include "UHCommon.hlsli"
+#include "UHLightCommon.hlsli"
 
 // output results, one for opaque objects, another for translucent objects
 // the list will be reset every frame before this shader gets called

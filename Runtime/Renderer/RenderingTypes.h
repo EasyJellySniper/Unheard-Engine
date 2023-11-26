@@ -9,6 +9,7 @@
 
 // let cpu be advanced a few more frame, 2 seems a sweetpot, going futher brings latency and extra memory consumption
 const uint32_t GMaxFrameInFlight = 2;
+const uint32_t GNumOfPostProcessRT = 2;
 
 // gbuffer counts, not including scene result
 const uint32_t GNumOfGBuffers = 6;
@@ -26,6 +27,7 @@ const uint32_t GRayGenTableSlot = 0;
 const uint32_t GMissTableSlot = 1;
 const uint32_t GHitGroupTableSlot = 2;
 const uint32_t GHitGroupShaderPerSlot = 2;
+const float G_PI = 3.141592653589793f;
 
 struct UHSystemConstants
 {
@@ -100,11 +102,29 @@ struct UHSpotLightConstants
 	int32_t IsEnabled = 1;
 };
 
+struct UHSphericalHarmonicData
+{
+	XMFLOAT4 cAr;
+	XMFLOAT4 cAg;
+	XMFLOAT4 cAb;
+	XMFLOAT4 cBr;
+	XMFLOAT4 cBg;
+	XMFLOAT4 cBb;
+	XMFLOAT4 cC;
+};
+
+struct UHSphericalHarmonicConstants
+{
+	uint32_t MipLevel;
+	float Weight; // this should be set as 4.0f * PI / SampleCount in C++ side
+};
+
 enum UHRenderPassTypes
 {
 	DepthPrePass = 0,
 	BasePass,
 	UpdateTopLevelAS,
+	GenerateSH9,
 	RayTracingShadow,
 	LightCulling,
 	LightPass,

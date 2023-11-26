@@ -44,6 +44,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         std::string GPUStatStrings[UHRenderPassMax] = { "Depth Pre Pass"
             , "Base Pass"
             , "Update Top Level AS"
+            , "GenerateSH9"
             , "Ray Tracing Shadow"
             , "Light Culling"
             , "Light Pass"

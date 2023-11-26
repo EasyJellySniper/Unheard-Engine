@@ -29,6 +29,7 @@ public:
 	// termination control
 	void SetTerminate(bool InFlag);
 	bool IsTermindate() const;
+	std::mutex& GetThreadMutex();
 
 private:
 	std::thread ThreadObj;

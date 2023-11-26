@@ -88,8 +88,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 	GVkGetAccelerationStructureBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &MaxPrimitiveCounts, &SizeInfo);
 
 	// build bottom-level AS after getting proper sizes
-	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	AccelerationStructureBuffer->CreateBuffer(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
 
 	VkAccelerationStructureCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -103,8 +102,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 	}
 
 	// allocate scratch buffer as well, this buffer is for initialization
-	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	ScratchBuffer->CreateBuffer(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	GeometryInfo.scratchData.deviceAddress = GetDeviceAddress(ScratchBuffer->GetBuffer());
 
 	// actually build AS, this needs to push command
@@ -183,8 +181,8 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	}
 	
 	// create instance KHR buffer for later use
-	ASInstanceBuffer = GfxCache->RequestRenderBuffer<VkAccelerationStructureInstanceKHR>();
-	ASInstanceBuffer->CreateBuffer(InstanceCount, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	ASInstanceBuffer = GfxCache->RequestRenderBuffer<VkAccelerationStructureInstanceKHR>(InstanceCount
+		, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	ASInstanceBuffer->UploadAllData(InstanceKHRs.data());
 
 	// setup instance type
@@ -210,8 +208,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	GVkGetAccelerationStructureBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &InstanceCount, &SizeInfo);
 
 	// build bottom-level AS after getting proper sizes
-	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	AccelerationStructureBuffer->CreateBuffer(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
+	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR);
 
 	VkAccelerationStructureCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
@@ -225,8 +222,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	}
 
 	// allocate scratch buffer as well, this buffer is for initialization
-	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>();
-	ScratchBuffer->CreateBuffer(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 	GeometryInfo.scratchData.deviceAddress = GetDeviceAddress(ScratchBuffer->GetBuffer());
 
 	// actually build AS, this needs to push command, primitive count is used as instance count in Vulkan spec if it's VK_GEOMETRY_TYPE_INSTANCES_KHR
@@ -304,15 +300,14 @@ void UHAccelerationStructure::Release()
     if (GfxCache->IsRayTracingEnabled())
     {
 		UH_SAFE_RELEASE(ScratchBuffer);
-		ScratchBuffer.reset();
-
 		UH_SAFE_RELEASE(ASInstanceBuffer);
-		ASInstanceBuffer.reset();
-
 		UH_SAFE_RELEASE(AccelerationStructureBuffer);
-		AccelerationStructureBuffer.reset();
 
-		GVkDestroyAccelerationStructureKHR(LogicalDevice, AccelerationStructure, nullptr);
+		if (AccelerationStructure)
+		{
+			GVkDestroyAccelerationStructureKHR(LogicalDevice, AccelerationStructure, nullptr);
+			AccelerationStructure = nullptr;
+		}
     }
 }
 
@@ -322,11 +317,8 @@ void UHAccelerationStructure::ReleaseScratch()
 	if (GfxCache->IsRayTracingEnabled())
 	{
 		UH_SAFE_RELEASE(ScratchBuffer);
-		ScratchBuffer.reset();
-
 		// release temp AS instance buffer as well
 		UH_SAFE_RELEASE(ASInstanceBuffer);
-		ASInstanceBuffer.reset();
 	}
 }
 

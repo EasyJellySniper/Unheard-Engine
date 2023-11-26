@@ -387,6 +387,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -734,6 +737,12 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\RenderShared.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -782,5 +791,8 @@
     <None Include="Shaders\BlockCompressionOldShader.hlsl" />
     <None Include="Shaders\BlockCompressionNewShader.hlsl" />
     <None Include="Shaders\MeshPreviewShader.hlsl" />
+    <None Include="Shaders\UHLightCommon.hlsli" />
+    <None Include="Shaders\SphericalHarmonicComputeShader.hlsl" />
+    <None Include="Shaders\UHSphericalHamonricCommon.hlsli" />
   </ItemGroup>
 </Project>

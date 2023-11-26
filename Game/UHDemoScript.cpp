@@ -115,6 +115,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx)
 {
 	std::vector<UniquePtr<UHComponent>>& SceneComponents = InScene->GetAllCompoments();
+	TestType = DayTest;
 
 	if (UHUtilities::StringFind(InScene->GetName(), "SpotLightNight"))
 	{

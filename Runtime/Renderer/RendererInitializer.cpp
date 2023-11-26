@@ -6,40 +6,6 @@
 UHDeferredShadingRenderer* UHDeferredShadingRenderer::SceneRendererEditorOnly = nullptr;
 #endif
 
-UniquePtr<UHRenderBuffer<UHSystemConstants>> GSystemConstantBuffer[GMaxFrameInFlight];
-UniquePtr<UHRenderBuffer<UHObjectConstants>> GObjectConstantBuffer[GMaxFrameInFlight];
-UniquePtr<UHRenderBuffer<UHDirectionalLightConstants>> GDirectionalLightBuffer[GMaxFrameInFlight];
-UniquePtr<UHRenderBuffer<UHPointLightConstants>> GPointLightBuffer[GMaxFrameInFlight];
-UniquePtr<UHRenderBuffer<UHSpotLightConstants>> GSpotLightBuffer[GMaxFrameInFlight];
-
-UniquePtr<UHRenderBuffer<uint32_t>> GPointLightListBuffer;
-UniquePtr<UHRenderBuffer<uint32_t>> GPointLightListTransBuffer;
-UniquePtr<UHRenderBuffer<uint32_t>> GSpotLightListBuffer;
-UniquePtr<UHRenderBuffer<uint32_t>> GSpotLightListTransBuffer;
-
-UHRenderTexture* GSceneDiffuse;
-UHRenderTexture* GSceneNormal;
-UHRenderTexture* GSceneMaterial;
-UHRenderTexture* GSceneResult;
-UHRenderTexture* GSceneMip;
-UHRenderTexture* GSceneDepth;
-UHRenderTexture* GSceneTranslucentDepth;
-UHRenderTexture* GSceneVertexNormal;
-UHRenderTexture* GSceneTranslucentVertexNormal;
-UHRenderTexture* GMotionVectorRT;
-UHRenderTexture* GPrevMotionVectorRT;
-UHRenderTexture* GPostProcessRT;
-UHRenderTexture* GPreviousSceneResult;
-UHRenderTexture* GRTShadowResult;
-UHRenderTexture* GRTSharedTextureRG16F;
-
-UHTextureCube* GSkyLightCube;
-
-UHSampler* GPointClampedSampler;
-UHSampler* GLinearClampedSampler;
-UHSampler* GAnisoClampedSampler;
-UHSampler* GSkyCubeSampler;
-
 UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAssetManager* InAssetManager, UHConfigManager* InConfig, UHGameTimer* InTimer)
 	: GraphicInterface(InGraphic)
 	, AssetManagerInterface(InAssetManager)
@@ -70,6 +36,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bIsSwapChainResetRT(false)
 	, bIsRenderingEnabledRT(true)
 	, bIsSkyLightEnabledRT(true)
+	, bNeedGenerateSH9RT(true)
 	, ParallelTask(UHParallelTask::None)
 	, LightCullingTileSize(16)
 	, MaxPointLightPerTile(32)
@@ -83,16 +50,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bDrawDebugViewRT(true)
 #endif
 {
-	// init static array pointers
-	for (size_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		TopLevelAS[Idx] = nullptr;
-		ToneMapData[Idx] = nullptr;
-#if WITH_EDITOR
-		DebugBoundData[Idx] = nullptr;
-#endif
-	}
-
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
 		PostProcessResults[Idx] = nullptr;
@@ -161,8 +118,8 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		CreateThreadObjects();
 
 		// reserve enough space for renderers, save the allocation time
-		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
-		TranslucentsToRender.reserve(CurrentScene->GetTranslucentRenderers().size());
+		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size() * 2);
+		TranslucentsToRender.reserve(CurrentScene->GetTranslucentRenderers().size() * 2);
 	}
 
 	return bIsRendererSuccess;
@@ -178,21 +135,14 @@ void UHDeferredShadingRenderer::Release()
 	// end render thread
 	RenderThread->WaitTask();
 	RenderThread->EndThread();
-	RenderThread.reset();
 	for (auto& WorkerThread : WorkerThreads)
 	{
 		WorkerThread->EndThread();
-		WorkerThread.reset();
 	}
 	WorkerThreads.clear();
 
-	// release GBuffers
 	RelaseRenderingBuffers();
-
-	// release data buffers
 	ReleaseDataBuffers();
-
-	// release descriptors & render pass stuffs
 	ReleaseRenderPassObjects();
 	ReleaseShaders();
 
@@ -271,7 +221,6 @@ void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
 	}
 
 	AssetManagerInterface->MapTextureIndex(InMat);
-
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 }
 
@@ -291,14 +240,9 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	UHRenderBuilder RenderBuilder(GraphicInterface, CreationCmd);
 
 	// Step2: Build all cubemaps in use
-	const UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
-	if (SkyLight)
+	if (UHTextureCube* Cube = GetCurrentSkyCube())
 	{
-		UHTextureCube* Cube = SkyLight->GetCubemap();
-		if (Cube)
-		{
-			Cube->Build(GraphicInterface, RenderBuilder);
-		}
+		Cube->Build(GraphicInterface, RenderBuilder);
 	}
 
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
@@ -352,6 +296,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 	// sky pass shader
 	SkyPassShader = MakeUnique<UHSkyPassShader>(GraphicInterface, "SkyPassShader", SkyboxPassObj.RenderPass);
+	SH9Shader = MakeUnique<UHSphericalHarmonicShader>(GraphicInterface, "SH9Shader");
 
 	// motion pass shader
 	MotionCameraShader = MakeUnique<UHMotionCameraPassShader>(GraphicInterface, "MotionCameraPassShader", MotionCameraPassObj.RenderPass);
@@ -363,32 +308,17 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// post processing shaders
 	TemporalAAShader = MakeUnique<UHTemporalAAShader>(GraphicInterface, "TemporalAAShader");
 	ToneMapShader = MakeUnique<UHToneMappingShader>(GraphicInterface, "ToneMapShader", PostProcessPassObj[0].RenderPass);
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		ToneMapData[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>();
-		ToneMapData[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	}
 
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
 		RecreateRTShaders(nullptr, true);
-
-		// soft rt shadow shader
 		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
 	}
 
 #if WITH_EDITOR
 	DebugViewShader = MakeUnique<UHDebugViewShader>(GraphicInterface, "DebugViewShader", PostProcessPassObj[0].RenderPass);
-	DebugViewData = GraphicInterface->RequestRenderBuffer<uint32_t>();
-	DebugViewData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
 	DebugBoundShader = MakeUnique<UHDebugBoundShader>(GraphicInterface, "DebugBoundShader", PostProcessPassObj[0].RenderPass);
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		DebugBoundData[Idx] = GraphicInterface->RequestRenderBuffer<UHDebugBoundConstant>();
-		DebugBoundData[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	}
 #endif
 }
 
@@ -419,15 +349,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	{
 		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 		{
-	#if WITH_EDITOR
-			if (DepthPassShaders.find(Renderer->GetBufferDataIndex()) == DepthPassShaders.end())
-			{
-				// unlikely to happen, but printing a message for debug
-				UHE_LOG(L"[UpdateDescriptors] Can't find depth pass shader for renderer\n");
-				continue;
-			}
-	#endif
-
+			assert(DepthPassShaders.find(Renderer->GetBufferDataIndex()) != DepthPassShaders.end());
 			DepthPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 		}
 	}
@@ -435,15 +357,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// ------------------------------------------------ Base pass descriptor update
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 	{
-	#if WITH_EDITOR
-		if (BasePassShaders.find(Renderer->GetBufferDataIndex()) == BasePassShaders.end())
-		{
-			// unlikely to happen, but printing a message for debug
-			UHE_LOG(L"[UpdateDescriptors] Can't find base pass shader for renderer\n");
-			continue;
-		}
-	#endif
-
+		assert(BasePassShaders.find(Renderer->GetBufferDataIndex()) != BasePassShaders.end());
 		BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 	}
 
@@ -454,6 +368,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	LightPassShader->BindParameters();
 
 	// ------------------------------------------------ sky pass descriptor update
+	SH9Shader->BindParameters();
 	SkyPassShader->BindParameters();
 
 	// ------------------------------------------------ motion pass descriptor update
@@ -475,24 +390,12 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
 		if (bIsOpaque)
 		{
-			if (MotionOpaqueShaders.find(RendererIdx) == MotionOpaqueShaders.end())
-			{
-				// unlikely to happen, but printing a message for debug
-				UHE_LOG(L"[UpdateDescriptors] Can't find motion opaque pass shader for renderer\n");
-				continue;
-			}
-
+			assert(MotionOpaqueShaders.find(RendererIdx) != MotionOpaqueShaders.end());
 			MotionOpaqueShaders[RendererIdx]->BindParameters(Renderer);
 		}
 		else
 		{
-			if (MotionTranslucentShaders.find(RendererIdx) == MotionTranslucentShaders.end())
-			{
-				// unlikely to happen, but printing a message for debug
-				UHE_LOG(L"[UpdateDescriptors] Can't find motion translucent pass shader for renderer\n");
-				continue;
-			}
-
+			assert(MotionTranslucentShaders.find(RendererIdx) != MotionTranslucentShaders.end());
 			MotionTranslucentShaders[RendererIdx]->BindParameters(Renderer);
 		}
 	}
@@ -500,24 +403,14 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// ------------------------------------------------ translucent pass descriptor update
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetTranslucentRenderers())
 	{
-#if WITH_EDITOR
-		if (TranslucentPassShaders.find(Renderer->GetBufferDataIndex()) == TranslucentPassShaders.end())
-		{
-			// unlikely to happen, but printing a message for debug
-			UHE_LOG(L"[UpdateDescriptors] Can't find base pass shader for renderer\n");
-			continue;
-		}
-#endif
-
+		assert(TranslucentPassShaders.find(Renderer->GetBufferDataIndex()) != TranslucentPassShaders.end());
 		TranslucentPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 	}
 
 	// ------------------------------------------------ post process pass descriptor update
 	// when binding post processing input, be sure to bind it alternately, the two RT will keep bliting to each other
 	// the post process RT binding will be in PostProcessRendering.cpp
-	ToneMapShader->BindSampler(GLinearClampedSampler, 1);
-	ToneMapShader->BindConstant(ToneMapData, 2);
-
+	ToneMapShader->BindParameters();
 	TemporalAAShader->BindParameters();
 
 	// ------------------------------------------------ ray tracing pass descriptor update
@@ -577,22 +470,14 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			RTMaterialDataTable->BindStorage(RTMaterialData, 0);
 		}
 
-		// bind RT shadow parameters
 		RTShadowShader->BindParameters();
-
-		// bind soft shadow parameters
 		SoftRTShadowShader->BindParameters();
 	}
 
 	// ------------------------------------------------ debug passes descriptor update
 #if WITH_EDITOR
-	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
-	{
-		DebugViewShader->BindImage(GRTShadowResult, 1);
-	}
-	DebugViewShader->BindSampler(GPointClampedSampler, 2);
-
-	DebugBoundShader->BindConstant(GSystemConstantBuffer, 0);
+	DebugViewShader->BindParameters();
+	DebugBoundShader->BindParameters();
 #endif
 }
 
@@ -600,40 +485,41 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 {
 	if (bEnableDepthPrePass)
 	{
-		for (auto& DepthShader : DepthPassShaders)
+		for (auto& Shader : DepthPassShaders)
 		{
-			DepthShader.second->Release();
+			Shader.second->Release();
 		}
 		DepthPassShaders.clear();
 	}
 
-	for (auto& BaseShader : BasePassShaders)
+	for (auto& Shader : BasePassShaders)
 	{
-		BaseShader.second->Release();
+		Shader.second->Release();
 	}
 	BasePassShaders.clear();
 
-	for (auto& MotionShader : MotionOpaqueShaders)
+	for (auto& Shader : MotionOpaqueShaders)
 	{
-		MotionShader.second->Release();
+		Shader.second->Release();
 	}
 	MotionOpaqueShaders.clear();
 
-	for (auto& MotionShader : MotionTranslucentShaders)
+	for (auto& Shader : MotionTranslucentShaders)
 	{
-		MotionShader.second->Release();
+		Shader.second->Release();
 	}
 	MotionTranslucentShaders.clear();
 
-	for (auto& TranslucentShader : TranslucentPassShaders)
+	for (auto& Shader : TranslucentPassShaders)
 	{
-		TranslucentShader.second->Release();
+		Shader.second->Release();
 	}
 	TranslucentPassShaders.clear();
 
 	LightCullingShader->Release();
 	LightPassShader->Release();
 	SkyPassShader->Release();
+	SH9Shader->Release();
 	MotionCameraShader->Release();
 	UH_SAFE_RELEASE(MotionCameraWorkaroundShader);
 	TemporalAAShader->Release();
@@ -653,21 +539,9 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	TextureTable->Release();
 	SamplerTable->Release();
 
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		UH_SAFE_RELEASE(ToneMapData[Idx]);
-	}
-
 #if WITH_EDITOR
 	DebugViewShader->Release();
-	UH_SAFE_RELEASE(DebugViewData);
-	DebugViewData.reset();
-
 	DebugBoundShader->Release();
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		UH_SAFE_RELEASE(DebugBoundData[Idx]);
-	}
 #endif
 }
 
@@ -677,19 +551,11 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	RenderResolution.width = ConfigInterface->RenderingSetting().RenderWidth;
 	RenderResolution.height = ConfigInterface->RenderingSetting().RenderHeight;
 
-	// color buffer (A channel as AO)
+	// GBuffers, see shader usage for each of them
 	GSceneDiffuse = GraphicInterface->RequestRenderTexture("GBufferA", RenderResolution, DiffuseFormat);
-
-	// normal buffer
 	GSceneNormal = GraphicInterface->RequestRenderTexture("GBufferB", RenderResolution, NormalFormat);
-
-	// material buffer (M/R/S)
 	GSceneMaterial = GraphicInterface->RequestRenderTexture("GBufferC", RenderResolution, SpecularFormat);
-
-	// scene result in HDR
 	GSceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, true);
-
-	// uv grad buffer
 	GSceneMip = GraphicInterface->RequestRenderTexture("SceneMip", RenderResolution, SceneMipFormat);
 
 	// depth buffer, also needs another depth buffer with translucent
@@ -724,17 +590,11 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// data size per tile: (MaxPointLightPerTile + 1), the extra one is for the number of lights in this tile
 	// so it's TileCountX * TileCountY * (MaxPointLightPerTile + 1) in total
-	GPointLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
-	GPointLightListBuffer->CreateBuffer(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	GPointLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	GPointLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
-	GPointLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
-	GPointLightListTransBuffer->CreateBuffer(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-	GSpotLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
-	GSpotLightListBuffer->CreateBuffer(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-	GSpotLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>();
-	GSpotLightListTransBuffer->CreateBuffer(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	GSpotLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	GSpotLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
 void UHDeferredShadingRenderer::RelaseRenderingBuffers()
@@ -769,13 +629,7 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 void UHDeferredShadingRenderer::CreateRenderPasses()
 {
 	// -------------------------------------------------------- Createing render pass after render pass is done -------------------------------------------------------- //
-	std::vector<UHTexture*> GBufferTextures;
-	GBufferTextures.push_back(GSceneDiffuse);
-	GBufferTextures.push_back(GSceneNormal);
-	GBufferTextures.push_back(GSceneMaterial);
-	GBufferTextures.push_back(GSceneResult);
-	GBufferTextures.push_back(GSceneMip);
-	GBufferTextures.push_back(GSceneVertexNormal);
+	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse ,GSceneNormal ,GSceneMaterial ,GSceneResult ,GSceneMip,GSceneVertexNormal };
 
 	// depth prepass
 	if (bEnableDepthPrePass)
@@ -909,10 +763,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 	// create constants and buffers
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		GSystemConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSystemConstants>();
-		GSystemConstantBuffer[Idx]->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-		GObjectConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>();
+		GSystemConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSystemConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
 		// create twice large buffer in editor intentionally, so appending more renderers don't need a re-allocation that fast
 #if WITH_EDITOR
@@ -920,21 +771,20 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 #else
 		const size_t RendererCount = CurrentScene->GetAllRendererCount();
 #endif
-		GObjectConstantBuffer[Idx]->CreateBuffer(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		GObjectConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 		ObjectConstantsCPU.resize(RendererCount);
 
-		GDirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>();
-		GDirectionalLightBuffer[Idx]->CreateBuffer(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GDirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		DirLightConstantsCPU.resize(CurrentScene->GetDirLightCount());
 
-		GPointLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHPointLightConstants>();
-		GPointLightBuffer[Idx]->CreateBuffer(CurrentScene->GetPointLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GPointLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHPointLightConstants>(CurrentScene->GetPointLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		PointLightConstantsCPU.resize(CurrentScene->GetPointLightCount());
 
-		GSpotLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSpotLightConstants>();
-		GSpotLightBuffer[Idx]->CreateBuffer(CurrentScene->GetSpotLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GSpotLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSpotLightConstants>(CurrentScene->GetSpotLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		SpotLightConstantsCPU.resize(CurrentScene->GetSpotLightCount());
 	}
+
+	GSH9Data = GraphicInterface->RequestRenderBuffer<UHSphericalHarmonicData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
 void UHDeferredShadingRenderer::CreateThreadObjects()
@@ -972,48 +822,19 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		UH_SAFE_RELEASE(GSystemConstantBuffer[Idx]);
-		GSystemConstantBuffer[Idx].reset();
-
 		UH_SAFE_RELEASE(GObjectConstantBuffer[Idx]);
-		GObjectConstantBuffer[Idx].reset();
-
 		UH_SAFE_RELEASE(GDirectionalLightBuffer[Idx]);
-		GDirectionalLightBuffer[Idx].reset();
-
 		UH_SAFE_RELEASE(GPointLightBuffer[Idx]);
-		GPointLightBuffer[Idx].reset();
-
 		UH_SAFE_RELEASE(GSpotLightBuffer[Idx]);
-		GSpotLightBuffer[Idx].reset();
 
 		if (GraphicInterface->IsRayTracingEnabled())
 		{
 			UH_SAFE_RELEASE(TopLevelAS[Idx]);
-			TopLevelAS[Idx].reset();
 		}
 	}
 
 	UH_SAFE_RELEASE(IndicesTypeBuffer);
-	IndicesTypeBuffer.reset();
-}
-
-void UHDeferredShadingRenderer::ResizeRayTracingBuffers()
-{
-	if (GraphicInterface->IsRayTracingEnabled())
-	{
-		GraphicInterface->WaitGPU();
-		GraphicInterface->RequestReleaseRT(GRTShadowResult);
-		GraphicInterface->RequestReleaseRT(GRTSharedTextureRG16F);
-
-		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
-		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
-		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat);
-		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat);
-
-		// need to rewrite descriptors after resize
-		UpdateDescriptors();
-	}
+	UH_SAFE_RELEASE(GSH9Data);
 }
 
 void UHDeferredShadingRenderer::UpdateTextureDescriptors()
@@ -1061,45 +882,6 @@ void SafeReleaseShaderPtr(std::unordered_map<int32_t, T>& InMap, const int32_t I
 UHDeferredShadingRenderer* UHDeferredShadingRenderer::GetRendererEditorOnly()
 {
 	return SceneRendererEditorOnly;
-}
-
-void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
-{
-	GSkyLightCube = GetCurrentSkyCube();
-	if (GSkyLightCube && !GSkyLightCube->IsBuilt())
-	{
-		VkCommandBuffer Cmd = GraphicInterface->BeginOneTimeCmd();
-		UHRenderBuilder Builder(GraphicInterface, Cmd);
-		GSkyLightCube->Build(GraphicInterface, Builder);
-		GraphicInterface->EndOneTimeCmd(Cmd);
-	}
-
-	GraphicInterface->WaitGPU();
-	SkyPassShader->BindImage(GSkyLightCube, 1);
-
-	if (bNeedRecompile)
-	{
-		// recompiling all base and translucent shaders
-		for (auto& BaseShader : BasePassShaders)
-		{
-			BaseShader.second->OnCompile();
-		}
-
-		for (auto& TransShader : TranslucentPassShaders)
-		{
-			TransShader.second->OnCompile();
-		}
-	}
-
-	for (auto& BaseShader : BasePassShaders)
-	{
-		BaseShader.second->BindImage(GSkyLightCube, 6);
-	}
-
-	for (auto& TransShader : TranslucentPassShaders)
-	{
-		TransShader.second->BindImage(GSkyLightCube, 13);
-	}
 }
 
 void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNeedReassignRendererGroup)
@@ -1195,7 +977,9 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 		ResetMaterialShaders(InRenderer, RendererMaterialChanged, OldMat->IsOpaque(), true);
 		RecreateMaterialShaders(InRenderer, NewMat);
 	}
+
 	NewMat->AddReferenceObject(InRenderer);
+	UpdateDescriptors();
 }
 
 void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup)
@@ -1227,7 +1011,6 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 			}
 
 			BasePassShaders[RendererBufferIndex]->OnCompile();
-
 			MotionOpaqueShaders[RendererBufferIndex]->OnCompile();
 		}
 		else
@@ -1247,7 +1030,6 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 			}
 
 			BasePassShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
-
 			MotionOpaqueShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
 		}
 		else
@@ -1342,24 +1124,18 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 		if (bEnableDepthPrePass)
 		{
 			DepthPassShaders[RendererBufferIndex] = MakeUnique<UHDepthPassShader>(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
-			DepthPassShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
 		}
 
 		BasePassShaders[RendererBufferIndex] = MakeUnique<UHBasePassShader>(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, InMat, bEnableDepthPrePass
 			, bHasEnvCube, BindlessLayouts);
-		BasePassShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
 
 		MotionOpaqueShaders[RendererBufferIndex] = MakeUnique<UHMotionObjectPassShader>(GraphicInterface, "MotionObjectShader", MotionOpaquePassObj.RenderPass, InMat, bEnableDepthPrePass, BindlessLayouts);
-		MotionOpaqueShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
 	}
 	else
 	{
 		MotionTranslucentShaders[RendererBufferIndex] = MakeUnique<UHMotionObjectPassShader>(GraphicInterface, "MotionObjectShader", MotionTranslucentPassObj.RenderPass, InMat, bEnableDepthPrePass, BindlessLayouts);
-		MotionTranslucentShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
-
 		TranslucentPassShaders[RendererBufferIndex]
 			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, bHasEnvCube, BindlessLayouts);
-		TranslucentPassShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
 	}
 
 	InMeshRenderer->SetRayTracingDirties(true);
@@ -1381,8 +1157,7 @@ void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat, bool bRecre
 		RTIndicesTypeTable = MakeUnique<UHRTIndicesTypeTable>(GraphicInterface, "RTIndicesTypeTable");
 
 		UH_SAFE_RELEASE(IndicesTypeBuffer);
-		IndicesTypeBuffer = GraphicInterface->RequestRenderBuffer<int32_t>();
-		IndicesTypeBuffer->CreateBuffer(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		IndicesTypeBuffer = GraphicInterface->RequestRenderBuffer<int32_t>(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
 		// buffer for storing texture index
 		UH_SAFE_RELEASE(RTMaterialDataTable);

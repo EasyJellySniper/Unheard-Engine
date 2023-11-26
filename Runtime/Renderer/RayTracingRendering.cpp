@@ -1,8 +1,28 @@
 #pragma once
 #include "DeferredShadingRenderer.h"
 
+void UHDeferredShadingRenderer::ResizeRayTracingBuffers()
+{
+	if (GraphicInterface->IsRayTracingEnabled())
+	{
+		GraphicInterface->WaitGPU();
+		GraphicInterface->RequestReleaseRT(GRTShadowResult);
+		GraphicInterface->RequestReleaseRT(GRTSharedTextureRG16F);
+
+		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
+		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
+		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
+		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat);
+		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat);
+
+		// need to rewrite descriptors after resize
+		UpdateDescriptors();
+	}
+}
+
 void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::UpdateTopLevelAS]);
 	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
 	{
 		return;
@@ -11,20 +31,16 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 	// https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#general-tips-for-building-acceleration-structures
 	// From Microsoft tips: Rebuild top-level acceleration structure every frame
 	// but I still choose to update AS instead of rebuilding, FPS is higher with updating
-
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::UpdateTopLevelAS]);
-
 	TopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT);
 }
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingShadow]);
 	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
 	{
 		return;
 	}
-
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingShadow]);
 
 	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
 	RenderBuilder.ResourceBarrier(GRTSharedTextureRG16F, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);

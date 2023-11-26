@@ -2,6 +2,7 @@
 
 void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::DepthPrePass]);
 	if (CurrentScene == nullptr || !bEnableDepthPrePass)
 	{
 		return;
@@ -9,8 +10,6 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Depth Pre Pass");
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::DepthPrePass]);
-
 		VkClearValue DepthClearValue;
 		DepthClearValue.depthStencil.depth = 0.0f;
 		DepthClearValue.depthStencil.stencil = 0;

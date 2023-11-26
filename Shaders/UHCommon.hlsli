@@ -6,17 +6,6 @@
 #define UH_FLOAT_MAX 3.402823466e+38F
 #define UH_PI 3.141592653589793f
 
-struct UHLightInfo
-{
-    float3 LightColor;
-    float3 LightDir;
-    float3 Diffuse;
-    float4 Specular;
-    float3 Normal;
-    float3 WorldPos;
-    float ShadowMask;
-};
-
 float3 ComputeWorldPositionFromDeviceZ(float2 ScreenPos, float Depth, bool bNonJittered = false)
 {
 	// build NDC space position
@@ -110,68 +99,6 @@ float4x4 GetDistanceScaledJitterMatrix(float Dist)
 	return JitterMatrix;
 }
 
-float3 SchlickFresnel(float3 SpecColor, float LdotH)
-{
-	float CosIncidentAngle = LdotH;
-
-	// pow5 F0 is used
-	float F0 = 1.0f - CosIncidentAngle;
-	float3 ReflectPercent = SpecColor + (1.0f - SpecColor) * (F0 * F0 * F0 * F0 * F0);
-
-	return ReflectPercent;
-}
-
-// blinn phong
-float BlinnPhong(float M, float NdotH)
-{
-    M = max(M, 0.01f);
-    M *= 256.0f;
-    float N = (M + 64.0f) / 64.0f;
-
-	return pow(NdotH, M) * N;
-}
-
-float3 LightBRDF(UHLightInfo LightInfo)
-{
-    float3 LightColor = LightInfo.LightColor * LightInfo.ShadowMask;
-    float3 LightDir = -LightInfo.LightDir;
-    float3 ViewDir = -normalize(LightInfo.WorldPos - UHCameraPos);
-
-	// Diffuse = N dot L
-    float NdotL = saturate(dot(LightInfo.Normal, LightDir));
-	float3 LightDiffuse = LightColor * NdotL;
-
-	// Specular = SchlickFresnel * BlinnPhong * N dot L * 0.25
-	// safe normalize half dir
-	float3 HalfDir = (ViewDir + LightDir) / (length(ViewDir + LightDir) + UH_FLOAT_EPSILON);
-	float LdotH = saturate(dot(LightDir, HalfDir));
-    float NdotH = saturate(dot(LightInfo.Normal, HalfDir));
-
-	// inverse roughness to smoothness
-    float Smoothness = 1.0f - saturate(LightInfo.Specular.a);
-    float3 LightSpecular = LightColor * SchlickFresnel(LightInfo.Specular.rgb, LdotH) * BlinnPhong(Smoothness, NdotH) * NdotL;
-
-    return LightInfo.Diffuse * LightDiffuse + LightSpecular;
-}
-
-float3 LightIndirect(float3 Diffuse, float3 Normal, float Occlusion)
-{
-	float Up = Normal.y;
-	float3 IndirectDiffuse = UHAmbientGround + saturate(Up * UHAmbientSky);
-
-	return Diffuse * IndirectDiffuse * Occlusion;
-}
-
-uint GetPointLightOffset(uint InIndex)
-{
-    return InIndex * (UHMaxPointLightPerTile * 4 + 4);
-}
-
-uint GetSpotLightOffset(uint InIndex)
-{
-    return InIndex * (UHMaxSpotLightPerTile * 4 + 4);
-}
-
 // box-sphere intersection from Graphics Gems 2 by Jim Arvo
 bool BoxIntersectsSphere(float3 BoxMin, float3 BoxMax, float3 SphereCenter, float SphereRadius)
 {
@@ -262,6 +189,29 @@ float GetAttenuationNoise(float2 InCoord)
 {
     float Offset = 0.03f;
     return lerp(-Offset, Offset, CoordinateToHash(InCoord));
+}
+
+float3 ConvertUVToSpherePos(float2 UV)
+{
+	// convert to sphere coordinate based on https://en.wikipedia.org/wiki/Spherical_coordinate_system definition
+	// x = sin(theta * v) * cos(phi * u)
+	// y = sin(theta * v) * sin(phi * u)
+	// z = cos(theta * v)
+	// theta = [0, PI], and phi = [0, 2PI]
+	float Theta = UH_PI;
+	float Phi = UH_PI * 2.0f;
+
+	// assume input UV is [0,1], simply convert y in [-1,1] as cos theta and calculate sin theta, which can reduce the sin/cos call below
+	float CosTheta = 1.0f - 2.0f * UV.y;
+	float SinTheta = sqrt(1.0f - CosTheta * CosTheta);
+
+	float3 Pos;
+	Pos.x = SinTheta * cos(UV.x * Phi);
+	Pos.y = SinTheta * sin(UV.x * Phi);
+	Pos.z = CosTheta;
+
+	// flip the result to matach hardward implementation
+	return float3(Pos.y, Pos.z, -Pos.x);
 }
 
 #endif

@@ -18,8 +18,8 @@ class UHShaderClass : public UHObject
 {
 public:
 	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType, UHMaterial* InMat = nullptr, VkRenderPass InRenderPass = nullptr);
-	void Release(bool bDescriptorOnly = false);
 
+	virtual void Release(bool bDescriptorOnly = false);
 	virtual void OnCompile() = 0;
 
 	template <typename T>

@@ -24,12 +24,12 @@ public:
 
     }
 
-	void CreateBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage)
+	bool CreateBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage)
 	{
         // skip creaetion if it's empty
         if (InElementCount == 0)
         {
-            return;
+            return false;
         }
 
         ElementCount = InElementCount;
@@ -110,6 +110,8 @@ public:
                 UHE_LOG(L"Failed to map upload buffer to GPU!\n");
             }
         }
+
+        return true;
 	}
 
     bool CreateBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage, UHGPUMemory* SharedMemory)
@@ -188,7 +190,7 @@ public:
     void Release()
     {
         // an upload buffer will be mapped when initialization, unmap it before destroy
-        if (bIsUploadBuffer)
+        if (bIsUploadBuffer && BufferMemory)
         {
             vkUnmapMemory(LogicalDevice, BufferMemory);
         }

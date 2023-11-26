@@ -10,8 +10,8 @@ Texture2D DepthTexture : register(t6);
 SamplerState LinearSampler : register(s7);
 
 static const float GHistoryWeightMin = 0.65f;
-static const float GHistoryWeightMax = 0.8f;
-static const float GMotionDiffScale = 1000.0f;
+static const float GHistoryWeightMax = 0.85f;
+static const float GMotionDiffScale = 1.0f;
 
 // group optimization, use 1D array for the best perf
 groupshared float GDepthCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];
@@ -39,10 +39,10 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	float WeightBlend = 1.0f - saturate(length(Motion) * GMotionDiffScale);
 	float Weight = lerp(GHistoryWeightMin, GHistoryWeightMax, WeightBlend * WeightBlend);
 
-	// motion rejection
-	float MotionDiff = length(Motion - HistoryMotion);
+	// motion rejection, multiply motion difference by resolution
+	float MotionDiff = length(Motion * UHResolution.xy - HistoryMotion * UHResolution.xy);
 	MotionDiff = saturate(MotionDiff * GMotionDiffScale);
-	Weight = lerp(Weight, 0, saturate(MotionDiff));
+	Weight = lerp(Weight, 0, MotionDiff);
 
 	// if history UV is outside of the screen use the sample from current frame
 	Weight = lerp(Weight, 0, HistoryUV.x != saturate(HistoryUV.x) || HistoryUV.y != saturate(HistoryUV.y));
@@ -50,7 +50,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	float3 Result = SceneTexture.SampleLevel(LinearSampler, UV, 0).rgb;
 	float3 HistoryResult = HistoryTexture.SampleLevel(LinearSampler, HistoryUV, 0).rgb;
 
-	// cache the color sampling
+	// cache the depth sampling
     GDepthCache[GTid.x + GTid.y * UHTHREAD_GROUP2D_X] = DepthTexture.SampleLevel(LinearSampler, UV, 0).r;
 	GroupMemoryBarrierWithGroupSync();
 
@@ -65,8 +65,8 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 			int2 Pos = min(int2(GTid.xy) + int2(Idx, Jdx), int2(UHTHREAD_GROUP2D_X - 1, UHTHREAD_GROUP2D_Y - 1));
 			Pos = max(Pos, 0);
 
-            float Color = GDepthCache[Pos.x + Pos.y * UHTHREAD_GROUP2D_X];
-            ValidCount = lerp(ValidCount, ValidCount + 1, Color > 0.0f);
+            float Depth = GDepthCache[Pos.x + Pos.y * UHTHREAD_GROUP2D_X];
+            ValidCount = lerp(ValidCount, ValidCount + 1, Depth > 0.0f);
         }
 	}
     Weight = lerp(Weight, 0, ValidCount == 0);

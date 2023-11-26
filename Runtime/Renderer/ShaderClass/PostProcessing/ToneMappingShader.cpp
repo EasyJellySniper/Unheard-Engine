@@ -1,4 +1,5 @@
 #include "ToneMappingShader.h"
+#include "../../RendererShared.h"
 
 UHToneMappingShader::UHToneMappingShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
 	: UHShaderClass(InGfx, Name, typeid(UHToneMappingShader), nullptr, InRenderPass)
@@ -10,6 +11,21 @@ UHToneMappingShader::UHToneMappingShader(UHGraphic* InGfx, std::string Name, VkR
 
 	CreateDescriptor();
 	OnCompile();
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		ToneMapData[Idx] = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	}
+}
+
+void UHToneMappingShader::Release(bool bDescriptorOnly)
+{
+	UHShaderClass::Release(bDescriptorOnly);
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(ToneMapData[Idx]);
+	}
 }
 
 void UHToneMappingShader::OnCompile()
@@ -27,4 +43,15 @@ void UHToneMappingShader::OnCompile()
 		, PipelineLayout);
 
 	CreateGraphicState(Info);
+}
+
+void UHToneMappingShader::BindParameters()
+{
+	BindSampler(GLinearClampedSampler, 1);
+	BindConstant(ToneMapData, 2);
+}
+
+UHRenderBuffer<uint32_t>* UHToneMappingShader::GetToneMapData(int32_t FrameIdx) const
+{
+	return ToneMapData[FrameIdx].get();
 }

@@ -464,3 +464,11 @@ Finished fbx import editor. But auto generating mesh renderer has not done yet.
 
 21-11-2023: Finished adding auto generation of mesh renderer after import a fbx.
 Enchanced the material shader naming and compiling safety.
+23-11-2023: Organized a few defines in new UHLightCommon.hlsli. It's not a good idea to put all defines in the same file after all.
+Refactored request render buffer funtion, it now creates resource at the same time when requesting it.
+Tweaked TAA again. Prevented duplicated destroy of descriptor pool in shader class.
+
+24-11-2023: Refactored a few release workflow and removed a few .reset() calls. Added SH9 generation pass to rendering pipeline.
+Next is to actually apply it to rendering.
+26-11-2023: Applied SH9 lighting to object pass. Which works great! Reverted dtor release behavior, that's dangerous.
+Moved all GPU time scope to the top of function, made it more sense.

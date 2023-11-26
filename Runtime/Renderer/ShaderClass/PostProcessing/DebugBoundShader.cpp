@@ -1,6 +1,8 @@
 #include "DebugBoundShader.h"
 
 #if WITH_EDITOR
+#include "../../RendererShared.h"
+
 UHDebugBoundShader::UHDebugBoundShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
 	: UHShaderClass(InGfx, Name, typeid(UHDebugBoundShader), nullptr, InRenderPass)
 {
@@ -9,6 +11,20 @@ UHDebugBoundShader::UHDebugBoundShader(UHGraphic* InGfx, std::string Name, VkRen
 
 	CreateDescriptor();
 	OnCompile();
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		DebugBoundData[Idx] = Gfx->RequestRenderBuffer<UHDebugBoundConstant>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	}
+}
+
+void UHDebugBoundShader::Release(bool bDescriptorOnly)
+{
+	UHShaderClass::Release(bDescriptorOnly);
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(DebugBoundData[Idx]);
+	}
 }
 
 void UHDebugBoundShader::OnCompile()
@@ -27,6 +43,17 @@ void UHDebugBoundShader::OnCompile()
 	Info.bDrawLine = true;
 
 	CreateGraphicState(Info);
+}
+
+void UHDebugBoundShader::BindParameters()
+{
+	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(DebugBoundData, 1);
+}
+
+UHRenderBuffer<UHDebugBoundConstant>* UHDebugBoundShader::GetDebugBoundData(const int32_t FrameIdx) const
+{
+	return DebugBoundData[FrameIdx].get();
 }
 
 #endif

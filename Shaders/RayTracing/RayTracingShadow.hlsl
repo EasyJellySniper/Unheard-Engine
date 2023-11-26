@@ -3,6 +3,7 @@
 #define UHSPOTLIGHT_BIND t5
 #include "../UHInputs.hlsli"
 #include "UHRTCommon.hlsli"
+#include "../UHLightCommon.hlsli"
 
 RaytracingAccelerationStructure TLAS : register(t1);
 

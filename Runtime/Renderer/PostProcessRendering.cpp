@@ -122,12 +122,11 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder)
 {
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Scene to SwapChain Pass");
 
 	uint32_t ImageIndex;
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
-
 		VkRenderPass SwapChainRenderPass = GraphicInterface->GetSwapChainRenderPass();
 		VkFramebuffer SwapChainBuffer = RenderBuilder.GetCurrentSwapChainBuffer(SceneRenderQueue.WaitingSemaphores[CurrentFrameRT], ImageIndex);
 		UHRenderTexture* SwapChainRT = GraphicInterface->GetSwapChainRT(ImageIndex);
@@ -215,8 +214,7 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHRenderBuilder& RenderBui
 		return;
 	}
 
-	DebugBoundData[CurrentFrameRT]->UploadAllData(&BoundConstant);
-	DebugBoundShader->BindConstant(DebugBoundData[CurrentFrameRT], 1, CurrentFrameRT);
+	DebugBoundShader->GetDebugBoundData(CurrentFrameRT)->UploadAllData(&BoundConstant);
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Draw Component Bounds");
 	RenderBuilder.BeginRenderPass(PostProcessPassObj[PostProcessIdx], RenderResolution);

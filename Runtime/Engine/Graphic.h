@@ -155,10 +155,20 @@ public:
 
 	// request a unique render buffer, due to the template, this can not be managed by Graphic class
 	template<typename T>
-	UniquePtr<UHRenderBuffer<T>> RequestRenderBuffer() const
+	UniquePtr<UHRenderBuffer<T>> RequestRenderBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage, UHGPUMemory* SharedMemory = nullptr) const
 	{
 		UniquePtr<UHRenderBuffer<T>> NewBuffer = MakeUnique<UHRenderBuffer<T>>();
 		NewBuffer->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+
+		if (SharedMemory != nullptr)
+		{
+			NewBuffer->CreateBuffer(InElementCount, InUsage, SharedMemory);
+		}
+		else
+		{
+			NewBuffer->CreateBuffer(InElementCount, InUsage);
+		}
+
 		return std::move(NewBuffer);
 	}
 

@@ -76,3 +76,8 @@ bool UHThread::IsTermindate() const
 {
 	return bIsThreadTerminated;
 }
+
+std::mutex& UHThread::GetThreadMutex()
+{
+	return ThreadMutex;
+}

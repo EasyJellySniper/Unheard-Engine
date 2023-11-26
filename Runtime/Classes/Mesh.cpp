@@ -46,21 +46,6 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 		return;
 	}
 
-	PositionBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>();
-	UV0Buffer = InGfx->RequestRenderBuffer<XMFLOAT2>();
-	NormalBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>();
-	TangentBuffer = InGfx->RequestRenderBuffer<XMFLOAT4>();
-
-	// consider 32 or 16 bit index buffer
-	if (bIndexBuffer32Bit)
-	{
-		IndexBuffer = InGfx->RequestRenderBuffer<uint32_t>();
-	}
-	else
-	{
-		IndexBuffer16 = InGfx->RequestRenderBuffer<uint16_t>();
-	}
-
 	// create mesh buffer
 	// VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT is necessary for buffer address access
 	VkBufferUsageFlags VBFlags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -74,19 +59,34 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 
 	UHGPUMemory* SharedMemory = InGfx->GetMeshSharedMemory();
 
-	bool bValid = true;
-	bValid &= PositionBuffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
-	bValid &= UV0Buffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
-	bValid &= NormalBuffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
-	bValid &= TangentBuffer->CreateBuffer(VertexCount, VBFlags, SharedMemory);
+	PositionBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, SharedMemory);
+	UV0Buffer = InGfx->RequestRenderBuffer<XMFLOAT2>(VertexCount, VBFlags, SharedMemory);
+	NormalBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, SharedMemory);
+	TangentBuffer = InGfx->RequestRenderBuffer<XMFLOAT4>(VertexCount, VBFlags, SharedMemory);
 
+	// consider 32 or 16 bit index buffer
 	if (bIndexBuffer32Bit)
 	{
-		bValid &= IndexBuffer->CreateBuffer(GetIndicesCount(), IBFlags, SharedMemory);
+		IndexBuffer = InGfx->RequestRenderBuffer<uint32_t>(GetIndicesCount(), IBFlags, SharedMemory);
 	}
 	else
 	{
-		bValid &= IndexBuffer16->CreateBuffer(GetIndicesCount(), IBFlags, SharedMemory);
+		IndexBuffer16 = InGfx->RequestRenderBuffer<uint16_t>(GetIndicesCount(), IBFlags, SharedMemory);
+	}
+
+	bool bValid = true;
+	bValid &= PositionBuffer != nullptr;
+	bValid &= UV0Buffer != nullptr;
+	bValid &= NormalBuffer != nullptr;
+	bValid &= TangentBuffer != nullptr;
+
+	if (bIndexBuffer32Bit)
+	{
+		bValid &= IndexBuffer != nullptr;
+	}
+	else
+	{
+		bValid &= IndexBuffer16 != nullptr;
 	}
 
 	// don't upload to GPU if buffer is failed during initialization

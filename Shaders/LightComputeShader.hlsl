@@ -5,12 +5,16 @@
 #include "UHInputs.hlsli"
 #include "UHCommon.hlsli"
 #include "RayTracing/UHRTCommon.hlsli"
+#include "UHLightCommon.hlsli"
+
+#define SH9_BIND t9
+#include "UHSphericalHamonricCommon.hlsli"
 
 RWTexture2D<float4> SceneResult : register(u5);
 Texture2D RTShadow : register(t6);
 ByteAddressBuffer PointLightList : register(t7);
 ByteAddressBuffer SpotLightList : register(t8);
-SamplerState LinearClampped : register(s9);
+SamplerState LinearClampped : register(s10);
 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
@@ -150,7 +154,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     }
 
 	// indirect light accumulation
-    Result += LightIndirect(Diffuse.rgb, Normal, Diffuse.a);
+    Result += ShadeSH9(Diffuse.rgb, float4(Normal, 1.0f), Diffuse.a);
 
     SceneResult[DTid.xy] = float4(CurrSceneColor + Result, 0);
 }

@@ -330,8 +330,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 Data.FaceIndex = Idx;
                 Data.MipIndex = MipIdx;
 
-                UniquePtr<UHRenderBuffer<UHPanoramaData>> ShaderData = Gfx->RequestRenderBuffer<UHPanoramaData>();
-                ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+                UniquePtr<UHRenderBuffer<UHPanoramaData>> ShaderData = Gfx->RequestRenderBuffer<UHPanoramaData>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
                 ShaderData->UploadData(&Data, 0);
 
                 // non biased sampler
@@ -383,8 +382,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             {
                 SmoothCubemap->BindRWImage(CubemapRT[Idx], Idx, MipIdx);
             }
-            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>();
-            ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
             uint32_t MipSize = Size >> MipIdx;
             ShaderData->UploadData(&MipSize, 0);
             SmoothCubemap->BindConstant(ShaderData, 6, 0);
@@ -540,8 +539,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             {
                 SmoothCubemap->BindRWImage(CubemapRT[Idx], Idx, MipIdx);
             }
-            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>();
-            ShaderData->CreateBuffer(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
             uint32_t MipSize = Size >> MipIdx;
             ShaderData->UploadData(&MipSize, 0);
             SmoothCubemap->BindConstant(ShaderData, 6, 0);
