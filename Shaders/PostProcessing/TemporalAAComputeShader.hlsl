@@ -40,7 +40,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	float Weight = lerp(GHistoryWeightMin, GHistoryWeightMax, WeightBlend * WeightBlend);
 
 	// motion rejection, multiply motion difference by resolution
-	float MotionDiff = length(Motion * UHResolution.xy - HistoryMotion * UHResolution.xy);
+	float MotionDiff = length((Motion - HistoryMotion) * UHResolution.xy);
 	MotionDiff = saturate(MotionDiff * GMotionDiffScale);
 	Weight = lerp(Weight, 0, MotionDiff);
 

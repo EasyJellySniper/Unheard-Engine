@@ -100,11 +100,6 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 #if WITH_EDITOR
 	if (DebugViewIndex > 0)
 	{
-		if (DebugViewIndex == 7 && GRTShadowResult)
-		{
-			RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		}
-
 		if (bDrawDebugViewRT)
 		{
 			RenderEffect(DebugViewShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Debug View");

@@ -12,8 +12,8 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers()
 		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat);
-		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat);
+		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true);
+		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat, true);
 
 		// need to rewrite descriptors after resize
 		UpdateDescriptors();

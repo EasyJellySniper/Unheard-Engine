@@ -491,6 +491,7 @@ void UHRenderBuilder::FlushResourceBarrier()
 	DependencyInfo.pImageMemoryBarriers = Barriers.data();
 
 	vkCmdPipelineBarrier2(CmdList, &DependencyInfo);
+	ImageBarriers.clear();
 }
 
 void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkFilter InFilter)

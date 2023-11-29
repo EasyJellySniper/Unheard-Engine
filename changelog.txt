@@ -472,3 +472,6 @@ Tweaked TAA again. Prevented duplicated destroy of descriptor pool in shader cla
 Next is to actually apply it to rendering.
 26-11-2023: Applied SH9 lighting to object pass. Which works great! Reverted dtor release behavior, that's dangerous.
 Moved all GPU time scope to the top of function, made it more sense.
+
+29-11-2023: Minor fix for resource barrier, I forgot clearing the list after calling flush resource barrier!
+Fixed async compute issue again by adding compute shader bit for the wait semaphore.
