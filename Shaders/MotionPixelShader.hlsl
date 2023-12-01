@@ -34,13 +34,11 @@ void MotionObjectPS(MotionVertexOutput Vin
 #endif
 
 	// calc current/prev clip pos and return motion
-	float4 PrevNDCPos = mul(float4(Vin.PrevWorldPos, 1.0f), UHPrevViewProj_NonJittered);
-	PrevNDCPos /= PrevNDCPos.w;
-	float2 PrevScreenPos = (PrevNDCPos.xy * 0.5f + 0.5f);
+	Vin.PrevPos /= Vin.PrevPos.w;
+	float2 PrevScreenPos = (Vin.PrevPos.xy * 0.5f + 0.5f);
 
-	float4 CurrNDCPos = mul(float4(Vin.WorldPos, 1.0f), UHViewProj_NonJittered);
-	CurrNDCPos /= CurrNDCPos.w;
-	float2 CurrScreenPos = (CurrNDCPos.xy * 0.5f + 0.5f);
+	Vin.CurrPos /= Vin.CurrPos.w;
+	float2 CurrScreenPos = (Vin.CurrPos.xy * 0.5f + 0.5f);
 
 	OutVelocity = float4(CurrScreenPos.xy - PrevScreenPos.xy, 0, 1);
 

@@ -46,7 +46,14 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 	// Motion pass: constants + opacity image for cutoff (if there is any)
 	for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
 	{
-		AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		if (Idx != UHConstantTypes::Material)
+		{
+			AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		}
+		else
+		{
+			AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		}
 	}
 
 	// UV0/normal Buffer

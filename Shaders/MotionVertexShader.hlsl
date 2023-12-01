@@ -16,10 +16,11 @@ MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_Vert
 
 	// pass through the vertex data
 	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
+	Vout.CurrPos = Vout.Position;
+	Vout.PrevPos = mul(float4(PrevWorldPos, 1.0f), UHPrevViewProj_NonJittered);
+
 	Vout.Position = mul(Vout.Position, JitterMatrix);
 	Vout.UV0 = UV0Buffer[Vid];
-	Vout.WorldPos = WorldPos;
-	Vout.PrevWorldPos = PrevWorldPos;
 	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
 
 	return Vout;

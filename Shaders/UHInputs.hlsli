@@ -71,8 +71,8 @@ struct MotionVertexOutput
 {
 	float4 Position : SV_POSITION;
 	float2 UV0 : TEXCOORD0;
-	float3 WorldPos : TEXCOORD1;
-	float3 PrevWorldPos : TEXCOORD2;
+	float4 CurrPos : TEXCOORD1;
+	float4 PrevPos : TEXCOORD2;
 	float3 Normal : NORMAL;
 };
 

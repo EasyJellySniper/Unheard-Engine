@@ -578,14 +578,17 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 			// wait the previous async queue is done (that means async compute queue always advanced one frame more than graphic)
 			// also needs to wait the swap chain is ready
-			std::vector<VkSemaphore> WaitSemaphore = { SceneRenderQueue.WaitingSemaphores[CurrentFrameRT] };
+			std::vector<VkSemaphore> WaitSemaphore;
+			std::vector<VkPipelineStageFlags> WaitStages;
+
 			if (bEnableAsyncComputeRT)
 			{
 				WaitSemaphore.push_back(AsyncComputeQueue.FinishedSemaphores[CurrentFrameRT]);
+				WaitStages.push_back(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 			}
+			WaitSemaphore.push_back(SceneRenderQueue.WaitingSemaphores[CurrentFrameRT]);
+			WaitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-			std::vector<VkPipelineStageFlags> WaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-				, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
 			SceneRenderBuilder.ExecuteCmd(SceneRenderQueue.Queue, SceneRenderQueue.Fences[CurrentFrameRT], WaitSemaphore, WaitStages, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT]);
 			// ****************************** end scene rendering
 		}

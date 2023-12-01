@@ -70,7 +70,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	RTShadowFormat = UH_FORMAT_R8_UNORM;
 
 	// mip rate format
-	SceneMipFormat = UH_FORMAT_R16F;
+	SceneMipFormat = UH_FORMAT_R16_UNORM;
 
 	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
 	{
