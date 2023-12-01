@@ -475,6 +475,8 @@ Moved all GPU time scope to the top of function, made it more sense.
 
 29-11-2023: Minor fix for resource barrier, I forgot clearing the list after calling flush resource barrier!
 Fixed async compute issue again by adding compute shader bit for the wait semaphore.
+
 01-12-2023: Minor improvements that includes using _UNORM for miprate instead, moving velocity calculation to vertex shader
 , and enhanced async compute again (start thinking it could be driver issue).
 Removed jitter distance scale calculation in vertex shader. Improved TAA again by an adaptive method.
+Drop history buffer format as R11G11B10 for performance. Fixed a minor issue when switching material blend mode.

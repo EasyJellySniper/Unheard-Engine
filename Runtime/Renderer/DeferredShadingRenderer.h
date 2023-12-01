@@ -271,6 +271,7 @@ private:
 	UHTextureFormat NormalFormat;
 	UHTextureFormat SpecularFormat;
 	UHTextureFormat SceneResultFormat;
+	UHTextureFormat HistoryResultFormat;
 	UHTextureFormat SceneMipFormat;
 	UHTextureFormat DepthFormat;
 	UHTextureFormat HDRFormat;

@@ -230,7 +230,8 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 void RTShadowRayGen() 
 {
 	uint2 PixelCoord = DispatchRaysIndex().xy;
-    OutShadowResult[PixelCoord] = 0;
+    // clear attenuation as 1.0f in case of black edge
+    OutShadowResult[PixelCoord] = float2(0.0f, 1.0f);
 	
 	// early return if no lights
 	UHBRANCH

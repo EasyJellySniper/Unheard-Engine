@@ -51,7 +51,7 @@ void UHDepthPassShader::OnCompile()
 		, 1
 		, PipelineLayout);
 
-	CreateMaterialState(MaterialPassInfo);
+	RecreateMaterialState();
 }
 
 void UHDepthPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)

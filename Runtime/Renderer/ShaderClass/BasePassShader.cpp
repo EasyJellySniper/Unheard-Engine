@@ -54,6 +54,7 @@ void UHBasePassShader::OnCompile()
 	Data.MaterialCache = MaterialCache;
 	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, MatDefines);
 
+	
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
 		// adjust depth info based on depth pre pass setting
@@ -65,7 +66,7 @@ void UHBasePassShader::OnCompile()
 		, GNumOfGBuffers
 		, PipelineLayout);
 
-	CreateMaterialState(MaterialPassInfo);
+	RecreateMaterialState();
 }
 
 void UHBasePassShader::BindParameters(const UHMeshRendererComponent* InRenderer)

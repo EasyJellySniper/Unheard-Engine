@@ -57,9 +57,10 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 
 	// init formats
 	DiffuseFormat = UH_FORMAT_RGBA8_SRGB;
-	NormalFormat = UH_FORMAT_ARGB2101010;
+	NormalFormat = UH_FORMAT_A2R10G10B10;
 	SpecularFormat = UH_FORMAT_RGBA8_UNORM;
 	SceneResultFormat = UH_FORMAT_RGBA16F;
+	HistoryResultFormat = UH_FORMAT_R11G11B10;
 	DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UH_FORMAT_X8_D24 : UH_FORMAT_D32F;
 	HDRFormat = UH_FORMAT_RGBA16F;
 
@@ -568,7 +569,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// post process buffer, use the same format as scene result
 	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
-	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, UH_FORMAT_RGBA8_UNORM, true);
+	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, HistoryResultFormat, true);
 
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);

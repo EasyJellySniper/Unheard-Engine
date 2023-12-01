@@ -91,7 +91,7 @@ void UHMotionObjectPassShader::OnCompile()
 		, bIsTranslucent ? 2 : 1
 		, PipelineLayout);
 
-	CreateMaterialState(MaterialPassInfo);
+	RecreateMaterialState();
 }
 
 void UHMotionObjectPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)

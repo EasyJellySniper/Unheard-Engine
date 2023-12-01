@@ -77,7 +77,7 @@ void UHTranslucentPassShader::OnCompile()
 		, 1
 		, PipelineLayout);
 
-	CreateMaterialState(MaterialPassInfo);
+	RecreateMaterialState();
 }
 
 void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
