@@ -477,3 +477,4 @@ Moved all GPU time scope to the top of function, made it more sense.
 Fixed async compute issue again by adding compute shader bit for the wait semaphore.
 01-12-2023: Minor improvements that includes using _UNORM for miprate instead, moving velocity calculation to vertex shader
 , and enhanced async compute again (start thinking it could be driver issue).
+Removed jitter distance scale calculation in vertex shader. Improved TAA again by an adaptive method.

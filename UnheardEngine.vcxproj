@@ -230,6 +230,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\lib\vs2017\x64\release;$(SolutionDir)ThirdParty\Vulkan\1.3.224.1\Lib;$(SolutionDir)ThirdParty\OpenEXR\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;libfbxsdk.lib;libfbxsdk-md.lib;OpenEXR-3_2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration>
+      </LinkTimeCodeGeneration>
     </Link>
     <FxCompile>
       <ShaderModel>6.0</ShaderModel>

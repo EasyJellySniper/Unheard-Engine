@@ -396,20 +396,17 @@ void UHDeferredShadingRenderer::SortRenderer()
 		return;
 	}
 
-	// wake sorting opaque task
-	ParallelTask = UHParallelTask::SortingOpaqueTask;
-	for (int32_t I = 0; I < NumWorkerThreads; I++)
-	{
-		WorkerThreads[I]->WakeThread();
-	}
+	// sort front-to-back
+	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
+	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+		{
+			XMFLOAT3 ZA = A->GetRendererBound().Center;
+			XMFLOAT3 ZB = B->GetRendererBound().Center;
 
-	for (int32_t I = 0; I < NumWorkerThreads; I++)
-	{
-		WorkerThreads[I]->WaitTask();
-	}
+			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) < MathHelpers::VectorDistanceSqr(ZB, CameraPos);
+		});
 
 	// sort back-to-front for translucents, this unfortunately can't be parallel unless going OIT
-	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
 	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
 			XMFLOAT3 ZA = A->GetRendererBound().Center;
@@ -438,36 +435,6 @@ UHTextureCube* UHDeferredShadingRenderer::GetCurrentSkyCube() const
 	}
 
 	return CurrSkyCube;
-}
-
-void UHDeferredShadingRenderer::SortingOpaqueTask(int32_t ThreadIdx)
-{
-	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
-	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
-
-	// sort opaques first
-	const int32_t MaxCount = static_cast<int32_t>(OpaquesToRender.size());
-	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
-	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
-	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
-
-	std::sort(OpaquesToRender.begin() + StartIdx, OpaquesToRender.begin() + EndIdx, [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
-		{
-			// sort front-to-back for opaque, rough z sort first
-			XMFLOAT3 ZA = A->GetRendererBound().Center;
-			XMFLOAT3 ZB = B->GetRendererBound().Center;
-
-			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) < MathHelpers::VectorDistanceSqr(ZB, CameraPos);
-		});
-
-	std::sort(OpaquesToRender.begin() + StartIdx, OpaquesToRender.begin() + EndIdx, [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
-		{
-			// then sort by material id to reduce state change
-			return A->GetMaterial()->GetId() < B->GetMaterial()->GetId();
-		});
-
-	// so this task simply divides opaque list to a few group and sort them
-	// this is a tradeoff, I lose the perfect sorting but gaining perf
 }
 
 void UHDeferredShadingRenderer::RenderThreadLoop()
@@ -641,10 +608,6 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 		{
 		case UHParallelTask::FrustumCullingTask:
 			FrustumCullingTask(ThreadIdx);
-			break;
-
-		case UHParallelTask::SortingOpaqueTask:
-			SortingOpaqueTask(ThreadIdx);
 			break;
 
 		case UHParallelTask::DepthPassTask:

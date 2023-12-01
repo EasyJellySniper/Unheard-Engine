@@ -442,7 +442,8 @@ void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
 {
 	// for amd integrated gpu, vkCmdPipelineBarrier2 won't work well
 	// fallback to old transition method in such circumstance
-	if (Gfx->IsAMDIntegratedGPU())
+	const bool bFallbackToOldResourceBarrier = false;
+	if (Gfx->IsAMDIntegratedGPU() || bFallbackToOldResourceBarrier)
 	{
 		ResourceBarrier(InBarrier.Texture, InBarrier.Texture->GetImageLayout(), InBarrier.NewLayout, InBarrier.BaseMipLevel);
 		return;

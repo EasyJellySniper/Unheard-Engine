@@ -85,17 +85,17 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 				DispatchEffect(TemporalAAShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Temporal AA");
 			}
 
-			// copy to TAA history
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
-			RenderBuilder.FlushResourceBarrier();
-
-			RenderBuilder.CopyTexture(PostProcessResults[1 - CurrentPostProcessRTIndex], GPreviousSceneResult);
-			RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
 			bIsTemporalReset = false;
 		}
 	}
+
+	// copy to scene history
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
+
+	RenderBuilder.Blit(PostProcessResults[1 - CurrentPostProcessRTIndex], GPreviousSceneResult);
+	RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 #if WITH_EDITOR
 	if (DebugViewIndex > 0)

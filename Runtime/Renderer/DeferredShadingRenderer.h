@@ -46,7 +46,6 @@ enum UHParallelTask
 {
 	None = -1,
 	FrustumCullingTask,
-	SortingOpaqueTask,
 	DepthPassTask,
 	BasePassTask,
 	MotionOpaqueTask,
@@ -188,7 +187,6 @@ private:
 	/************************************************ parallel task functions ************************************************/
 	// based on the scatter and gather method
 	void FrustumCullingTask(int32_t ThreadIdx);
-	void SortingOpaqueTask(int32_t ThreadIdx);
 	void DepthPassTask(int32_t ThreadIdx);
 	void BasePassTask(int32_t ThreadIdx);
 	void MotionOpaqueTask(int32_t ThreadIdx);
