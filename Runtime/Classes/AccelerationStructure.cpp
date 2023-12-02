@@ -236,6 +236,12 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	GeometryKHRCache = GeometryKHR;
 	GeometryInfoCache = GeometryInfo;
 	RangeInfoCache = RangeInfo;
+
+	// set geometry info as mode update for later use
+	GeometryInfoCache.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+	GeometryInfoCache.srcAccelerationStructure = GeometryInfoCache.dstAccelerationStructure;
+	GeometryInfoCache.pGeometries = &GeometryKHRCache;
+
 	return InstanceCount;
 }
 
@@ -286,11 +292,7 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t Curr
 	if (bNeedUpdate)
 	{
 		// update it 
-		GeometryInfoCache.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
-		GeometryInfoCache.srcAccelerationStructure = GeometryInfoCache.dstAccelerationStructure;
-		GeometryInfoCache.pGeometries = &GeometryKHRCache;
 		const VkAccelerationStructureBuildRangeInfoKHR* RangeInfos[1] = { &RangeInfoCache };
-
 		GVkCmdBuildAccelerationStructuresKHR(InBuffer, 1, &GeometryInfoCache, RangeInfos);
 	}
 }

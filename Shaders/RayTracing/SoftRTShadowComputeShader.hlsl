@@ -41,7 +41,7 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
 
 	// lower the penumbra based on mip level, don't apply high penumbra at distant pixels
 	float MipWeight = saturate(MipRate * RT_MIPRATESCALE);
-    Penumbra = lerp(Penumbra, 0.5f, pow(MipWeight, 0.5f));
+    Penumbra = lerp(Penumbra, 1.0f, pow(MipWeight, 0.5f));
 
 	// actually sampling
 	float Atten = 0.0f;

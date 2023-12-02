@@ -22,6 +22,8 @@ Texture2D VertexNormalTexture : register(t13);
 Texture2D TranslucentVertexNormalTexture : register(t14);
 SamplerState LinearSampler : register(s15);
 
+static const float GTranslucentShadowCutoff = 0.2f;
+
 // both opaque and translucent shadow are traced in this function
 void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float MipRate, float MipLevel, bool bIsTranslucent)
 {
@@ -35,7 +37,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
     float TranslucentDepth = bIsTranslucent ? TranslucentDepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r : 0.0f;
 
 	UHBRANCH
-    if (abs(OpaqueDepth - TranslucentDepth) < 0.001f && bIsTranslucent)
+    if (abs(OpaqueDepth - TranslucentDepth) < GTranslucentShadowCutoff && bIsTranslucent)
     {
 		// when opaque and translucent depth are close, considering this pixel contains no translucent object, simply share the result from opaque and return
         return;
@@ -63,6 +65,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
     float Gap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
 	float MaxDist = 0;
 	float Atten = 0.0f;
+    bool bAlreadyHasShadow = false;
 
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
 	{
@@ -82,16 +85,20 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 		ShadowRay.TMax = float(1 << 20);
 
 		UHDefaultPayload Payload = (UHDefaultPayload)0;
-		Payload.MipLevel = MipLevel;
-		TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+        if (!bAlreadyHasShadow)
+        {
+            Payload.MipLevel = MipLevel;
+            TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+        }
 
 		// store the max hit T to the result, system will perform PCSS later
 		// also output shadow attenuation, hit alpha and ndotl are considered
         float NdotL = saturate(dot(-DirLight.Dir, WorldNormal)) * saturate(DirLight.Color.a);
-		if (Payload.IsHit())
+		if (Payload.IsHit() && !bAlreadyHasShadow)
 		{
 			MaxDist = max(MaxDist, Payload.HitT);
             Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+            bAlreadyHasShadow = true;
         }
 		else
         {
@@ -146,11 +153,14 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         LightAtten *= LightAtten;
         
         UHDefaultPayload Payload = (UHDefaultPayload)0;
-        Payload.MipLevel = MipLevel;
-        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+        if (!bAlreadyHasShadow)
+        {
+            Payload.MipLevel = MipLevel;
+            TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+        }
 		
         float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal)) * saturate(PointLight.Color.a) * LightAtten;
-        if (Payload.IsHit())
+        if (Payload.IsHit() && !bAlreadyHasShadow)
         {
             MaxDist = max(MaxDist, Payload.HitT);
             Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
@@ -196,8 +206,11 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         }
 		
         UHDefaultPayload Payload = (UHDefaultPayload) 0;
-        Payload.MipLevel = MipLevel;
-        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+        if (!bAlreadyHasShadow)
+        {
+            Payload.MipLevel = MipLevel;
+            TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+        }
         
         // calc light attenuation for this point light
         LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + AttenNoise);
@@ -209,7 +222,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
         LightAtten *= SpotFactor * SpotFactor;
 		
         float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal)) * saturate(SpotLight.Color.a) * LightAtten;
-        if (Payload.IsHit())
+        if (Payload.IsHit() && !bAlreadyHasShadow)
         {
             MaxDist = max(MaxDist, Payload.HitT);
             Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);

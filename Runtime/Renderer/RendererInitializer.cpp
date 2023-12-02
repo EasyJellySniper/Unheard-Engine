@@ -71,7 +71,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	RTShadowFormat = UH_FORMAT_R8_UNORM;
 
 	// mip rate format
-	SceneMipFormat = UH_FORMAT_R16_UNORM;
+	SceneMipFormat = UH_FORMAT_R8_UNORM;
 
 	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
 	{
@@ -573,7 +573,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
-	GPrevMotionVectorRT = GraphicInterface->RequestRenderTexture("PrevMotionVectorRT", RenderResolution, MotionFormat);
 
 	// rt shadows buffer
 	if (GraphicInterface->IsRayTracingEnabled())
@@ -612,7 +611,6 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GPostProcessRT);
 	GraphicInterface->RequestReleaseRT(GPreviousSceneResult);
 	GraphicInterface->RequestReleaseRT(GMotionVectorRT);
-	GraphicInterface->RequestReleaseRT(GPrevMotionVectorRT);
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{

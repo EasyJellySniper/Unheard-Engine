@@ -21,7 +21,6 @@ UHRenderTexture* GSceneTranslucentDepth;
 UHRenderTexture* GSceneVertexNormal;
 UHRenderTexture* GSceneTranslucentVertexNormal;
 UHRenderTexture* GMotionVectorRT;
-UHRenderTexture* GPrevMotionVectorRT;
 UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;
 UHRenderTexture* GRTShadowResult;

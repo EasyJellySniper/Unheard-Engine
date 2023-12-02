@@ -480,3 +480,6 @@ Fixed async compute issue again by adding compute shader bit for the wait semaph
 , and enhanced async compute again (start thinking it could be driver issue).
 Removed jitter distance scale calculation in vertex shader. Improved TAA again by an adaptive method.
 Drop history buffer format as R11G11B10 for performance. Fixed a minor issue when switching material blend mode.
+
+02-12-2023: Minor optimizations for RT shadow. If it's already hitting a blocker, skip all other TraceRay() call. This gives extra performance save!
+Raised the lowest penumbra as 1.0f instead of 0.5f. TAA reverted to color clamping method, I forgot the case that object is moving but it doesn't output motion. (E.g. Spot light.)

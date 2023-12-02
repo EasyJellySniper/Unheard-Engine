@@ -29,7 +29,6 @@ extern UHRenderTexture* GSceneTranslucentDepth;
 extern UHRenderTexture* GSceneVertexNormal;
 extern UHRenderTexture* GSceneTranslucentVertexNormal;
 extern UHRenderTexture* GMotionVectorRT;
-extern UHRenderTexture* GPrevMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
 
