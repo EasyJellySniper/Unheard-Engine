@@ -93,7 +93,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     float4x4 UHProjInv_NonJittered;
     float4x4 UHView;
 	float4 UHResolution;		// xy for resolution, zw for 1/resolution
-	float4 UHShadowResolution; // xy for resolution, zw for 1/resolution
+	float4 RTShadowResolution; // xy for resolution, zw for 1/resolution
 	float3 UHCameraPos;
 	uint UHNumDirLights;
 
@@ -113,6 +113,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     uint UHMaxPointLightPerTile;
     uint UHNumSpotLights;
     uint UHMaxSpotLightPerTile;
+	uint UHFrameNumber;
 }
 
 // IT means inverse-transposed

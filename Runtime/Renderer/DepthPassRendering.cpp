@@ -164,3 +164,29 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif
 }
+
+void UHDeferredShadingRenderer::DownsampleDepthPass(UHRenderBuilder& RenderBuilder)
+{
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::DownsampleDepthPass]);
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Downsample Depth Pass");
+	{
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GHalfDepth, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GHalfTranslucentDepth, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.FlushResourceBarrier();
+
+		RenderBuilder.BindComputeState(DownsampleDepthShader->GetComputeState());
+		RenderBuilder.BindDescriptorSetCompute(DownsampleDepthShader->GetPipelineLayout(), DownsampleDepthShader->GetDescriptorSet(CurrentFrameRT));
+
+		VkExtent2D DownsampleDepthResolution;
+		DownsampleDepthResolution.width = RenderResolution.width >> 1;
+		DownsampleDepthResolution.height = RenderResolution.height >> 1;
+		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(DownsampleDepthResolution.width, GThreadGroup2D_X)
+			, MathHelpers::RoundUpDivide(DownsampleDepthResolution.height, GThreadGroup2D_Y), 1);
+
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GHalfDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GHalfTranslucentDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+	}
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}

@@ -51,7 +51,8 @@ void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.BindDescriptorSetCompute(LightPassShader->GetPipelineLayout(), LightPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// dispatch
-		RenderBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
+		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
 
 		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	}

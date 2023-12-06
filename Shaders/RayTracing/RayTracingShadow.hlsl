@@ -20,7 +20,8 @@ Texture2D DepthTexture : register(t11);
 Texture2D TranslucentDepthTexture : register(t12);
 Texture2D VertexNormalTexture : register(t13);
 Texture2D TranslucentVertexNormalTexture : register(t14);
-SamplerState LinearSampler : register(s15);
+SamplerState PointSampler : register(s15);
+SamplerState LinearSampler : register(s16);
 
 static const float GTranslucentShadowCutoff = 0.2f;
 
@@ -34,10 +35,10 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 		return;
 	}
 	
-    float TranslucentDepth = bIsTranslucent ? TranslucentDepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r : 0.0f;
+    float TranslucentDepth = bIsTranslucent ? TranslucentDepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r : 0.0f;
 
 	UHBRANCH
-    if (abs(OpaqueDepth - TranslucentDepth) < GTranslucentShadowCutoff && bIsTranslucent)
+    if (abs(OpaqueDepth - TranslucentDepth) < GTranslucentShadowCutoff && bIsTranslucent && OpaqueDepth != 0.0f)
     {
 		// when opaque and translucent depth are close, considering this pixel contains no translucent object, simply share the result from opaque and return
         return;
@@ -55,8 +56,8 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
     float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
 
 	// reconstruct normal, simply sample from the texture
-    float3 WorldNormal = bIsTranslucent ? DecodeNormal(TranslucentVertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz)
-		: DecodeNormal(VertexNormalTexture.SampleLevel(LinearSampler, ScreenUV, 0).xyz);
+    float3 WorldNormal = bIsTranslucent ? DecodeNormal(TranslucentVertexNormalTexture.SampleLevel(PointSampler, ScreenUV, 0).xyz)
+		: DecodeNormal(VertexNormalTexture.SampleLevel(PointSampler, ScreenUV, 0).xyz);
 
 	
 	// ------------------------------------------------------------------------------------------ Directional Light Tracing
@@ -109,7 +110,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 	
 	
 	// ------------------------------------------------------------------------------------------ Point Light Tracing
-    uint2 TileCoordinate = PixelCoord.xy * UHResolution.xy * UHShadowResolution.zw;
+    uint2 TileCoordinate = PixelCoord.xy;
     uint TileX = TileCoordinate.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileY = TileCoordinate.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileIndex = TileX + TileY * UHLightTileCountX;
@@ -242,20 +243,21 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 [shader("raygeneration")]
 void RTShadowRayGen() 
 {
-	uint2 PixelCoord = DispatchRaysIndex().xy;
-    // clear attenuation as 1.0f in case of black edge
+    // the tracing could be half-sized, but now the buffer is always the same resolution as rendering
+    // so need to calculate proper pixel coordinate here
+	uint2 PixelCoord = DispatchRaysIndex().xy * UHResolution.xy * RTShadowResolution.zw;
     OutShadowResult[PixelCoord] = float2(0.0f, 1.0f);
 	
 	// early return if no lights
 	UHBRANCH
-	if (UHNumDirLights == 0 && UHNumPointLights == 0)
+	if (!HasLighting())
 	{
 		return;
 	}
 
 	// to UV and get depth
-	float2 ScreenUV = (PixelCoord + 0.5f) * UHShadowResolution.zw;
-	float OpaqueDepth = DepthTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
+	float2 ScreenUV = (PixelCoord + 0.5f) * UHResolution.zw;
+    float OpaqueDepth = DepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r;
 
 	// calculate mip level before ray tracing kicks off
 	float MipRate = MipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
@@ -264,6 +266,19 @@ void RTShadowRayGen()
 	// trace for translucent objs after opaque, the second OpaqueDepth isn't wrong since it will be compared in translucent function
 	TraceShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel, false);
 	TraceShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel, true);
+
+    // if it's half-sized tracing, fill the empty pixels on right and bottom
+    if (UHResolution.x != RTShadowResolution.x)
+    {
+        int Dx[3] = { 1,0,1 };
+        int Dy[3] = { 0,1,1 };
+        for (int I = 0; I < 3; I++)
+        {
+            int2 Pos = PixelCoord + int2(Dx[I], Dy[I]);
+            Pos = min(Pos, UHResolution.xy - 1);
+            OutShadowResult[Pos] = OutShadowResult[PixelCoord];
+        }
+    }
 }
 
 [shader("miss")]

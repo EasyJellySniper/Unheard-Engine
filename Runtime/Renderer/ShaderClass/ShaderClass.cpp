@@ -7,6 +7,7 @@ static std::unordered_map<uint32_t, std::unordered_map<std::type_index, VkPipeli
 std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
 std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> GMaterialStateTable;
 std::unordered_map<uint32_t, UHComputeState*> GComputeStateTable;
+#define CLEAR_EMPTY_MAPENTRY(x, y) if (x[y].size() == 0) x.erase(y);
 
 UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_index InType, UHMaterial* InMat, VkRenderPass InRenderPass)
 	: Gfx(InGfx)
@@ -50,13 +51,14 @@ void UHShaderClass::Release(bool bDescriptorOnly)
 	// release layout depending on type
 	if (MaterialCache != nullptr)
 	{
-		uint32_t MaterialID = MaterialCache->GetId();
+		const uint32_t MaterialID = MaterialCache->GetId();
 		if (GMaterialSetLayoutTable.find(MaterialID) != GMaterialSetLayoutTable.end())
 		{
 			if (GMaterialSetLayoutTable[MaterialID].find(TypeIndexCache) != GMaterialSetLayoutTable[MaterialID].end())
 			{
 				vkDestroyDescriptorSetLayout(LogicalDevice, GMaterialSetLayoutTable[MaterialID][TypeIndexCache], nullptr);
 				GMaterialSetLayoutTable[MaterialID].erase(TypeIndexCache);
+				CLEAR_EMPTY_MAPENTRY(GMaterialSetLayoutTable, MaterialID);
 			}
 		}
 
@@ -66,6 +68,7 @@ void UHShaderClass::Release(bool bDescriptorOnly)
 			{
 				vkDestroyPipelineLayout(LogicalDevice, GMaterialPipelineLayoutTable[MaterialID][TypeIndexCache], nullptr);
 				GMaterialPipelineLayoutTable[MaterialID].erase(TypeIndexCache);
+				CLEAR_EMPTY_MAPENTRY(GMaterialPipelineLayoutTable, MaterialID);
 			}
 		}
 
@@ -76,36 +79,54 @@ void UHShaderClass::Release(bool bDescriptorOnly)
 			{
 				Gfx->RequestReleaseGraphicState(GMaterialStateTable[MaterialID][TypeIndexCache]);
 				GMaterialStateTable[MaterialID].erase(TypeIndexCache);
+				CLEAR_EMPTY_MAPENTRY(GMaterialStateTable, MaterialID);
 			}
 		}
 
 		// release pixel shader
 		Gfx->RequestReleaseShader(ShaderPS);
+		MaterialCache = nullptr;
 	}
 	else
 	{
-		if (GSetLayoutTable.find(GetId()) != GSetLayoutTable.end())
+		const uint32_t ShaderID = GetId();
+		if (GSetLayoutTable.find(ShaderID) != GSetLayoutTable.end())
 		{
-			if (GSetLayoutTable[GetId()].find(TypeIndexCache) != GSetLayoutTable[GetId()].end())
+			if (GSetLayoutTable[ShaderID].find(TypeIndexCache) != GSetLayoutTable[ShaderID].end())
 			{
-				vkDestroyDescriptorSetLayout(LogicalDevice, GSetLayoutTable[GetId()][TypeIndexCache], nullptr);
-				GSetLayoutTable[GetId()].erase(TypeIndexCache);
+				vkDestroyDescriptorSetLayout(LogicalDevice, GSetLayoutTable[ShaderID][TypeIndexCache], nullptr);
+				GSetLayoutTable[ShaderID].erase(TypeIndexCache);
+				CLEAR_EMPTY_MAPENTRY(GSetLayoutTable, ShaderID);
 			}
 		}
 
-		if (GPipelineLayoutTable.find(GetId()) != GPipelineLayoutTable.end())
+		if (GPipelineLayoutTable.find(ShaderID) != GPipelineLayoutTable.end())
 		{
-			if (GPipelineLayoutTable[GetId()].find(TypeIndexCache) != GPipelineLayoutTable[GetId()].end())
+			if (GPipelineLayoutTable[ShaderID].find(TypeIndexCache) != GPipelineLayoutTable[ShaderID].end())
 			{
-				vkDestroyPipelineLayout(LogicalDevice, GPipelineLayoutTable[GetId()][TypeIndexCache], nullptr);
-				GPipelineLayoutTable[GetId()].erase(TypeIndexCache);
+				vkDestroyPipelineLayout(LogicalDevice, GPipelineLayoutTable[ShaderID][TypeIndexCache], nullptr);
+				GPipelineLayoutTable[ShaderID].erase(TypeIndexCache);
+				CLEAR_EMPTY_MAPENTRY(GPipelineLayoutTable, ShaderID);
 			}
+		}
+
+		if (GGraphicStateTable.find(ShaderID) != GGraphicStateTable.end())
+		{
+			Gfx->RequestReleaseGraphicState(GGraphicStateTable[ShaderID]);
+			GGraphicStateTable.erase(ShaderID);
+		}
+
+		if (GComputeStateTable.find(ShaderID) != GComputeStateTable.end())
+		{
+			Gfx->RequestReleaseGraphicState(GComputeStateTable[ShaderID]);
+			GComputeStateTable.erase(ShaderID);
 		}
 	}
 
 	if (RTState != nullptr)
 	{
 		Gfx->RequestReleaseGraphicState(RTState);
+		RTState = nullptr;
 	}
 
 	UH_SAFE_RELEASE(RayGenTable);

@@ -94,7 +94,7 @@ void UHSettingDialog::Update()
     }
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
 
-    std::vector<std::string> ShadowQualities = { "Full", "Half", "Quarter" };
+    std::vector<std::string> ShadowQualities = { "Full", "Half" };
     if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", ShadowQualities[RenderingSettings.RTDirectionalShadowQuality].c_str()))
     {
         for (size_t Idx = 0; Idx < ShadowQualities.size(); Idx++)
@@ -103,7 +103,7 @@ void UHSettingDialog::Update()
             if (ImGui::Selectable(ShadowQualities[Idx].c_str(), bIsSelected))
             {
                 RenderingSettings.RTDirectionalShadowQuality = static_cast<int32_t>(Idx);
-                DeferredRenderer->ResizeRayTracingBuffers();
+                DeferredRenderer->ResizeRayTracingBuffers(false);
                 break;
             }
         }

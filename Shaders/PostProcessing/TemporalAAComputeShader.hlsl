@@ -5,7 +5,8 @@ RWTexture2D<float4> SceneResult : register(u1);
 Texture2D SceneTexture : register(t2);
 Texture2D HistoryTexture : register(t3);
 Texture2D MotionTexture : register(t4);
-SamplerState LinearSampler : register(s5);
+SamplerState PointSampler : register(s5);
+SamplerState LinearSampler : register(s6);
 
 static const float GHistoryWeightMin = 0.7f;
 static const float GHistoryWeightMax = 0.9f;
@@ -25,7 +26,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	float2 UV = float2(DTid.xy + 0.5f) * UHResolution.zw;
 
 	// sampling history is needed for ghosting
-	float2 Motion = MotionTexture.SampleLevel(LinearSampler, UV, 0).rg;
+	float2 Motion = MotionTexture.SampleLevel(PointSampler, UV, 0).rg;
 	float2 HistoryUV = UV - Motion;
 	float MotionLength = length(Motion);
 
@@ -36,7 +37,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	// if history UV is outside of the screen use the sample from current frame
 	Weight = lerp(Weight, 0, HistoryUV.x != saturate(HistoryUV.x) || HistoryUV.y != saturate(HistoryUV.y));
 
-	float3 Result = SceneTexture.SampleLevel(LinearSampler, UV, 0).rgb;
+	float3 Result = SceneTexture.SampleLevel(PointSampler, UV, 0).rgb;
 	float3 HistoryResult = HistoryTexture.SampleLevel(LinearSampler, HistoryUV, 0).rgb;
 
 	// cache the depth sampling

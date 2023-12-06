@@ -62,3 +62,8 @@ uint GetSpotLightOffset(uint InIndex)
 {
     return InIndex * (UHMaxSpotLightPerTile * 4 + 4);
 }
+
+bool HasLighting()
+{
+    return UHNumDirLights > 0 || UHNumPointLights > 0 || UHNumSpotLights > 0;
+}

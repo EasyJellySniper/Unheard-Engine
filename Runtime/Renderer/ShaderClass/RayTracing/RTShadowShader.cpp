@@ -30,6 +30,7 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor(ExtraLayouts);
 
@@ -62,7 +63,7 @@ void UHRTShadowShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0);
 
-	// TLAS will be bound on the fly
+	// TLAS will be bound on fly (slot 1)
 
 	BindRWImage(GRTSharedTextureRG16F, 2);
 	BindStorage(GDirectionalLightBuffer, 3, 0, true);
@@ -77,5 +78,6 @@ void UHRTShadowShader::BindParameters()
 	BindImage(GSceneTranslucentDepth, 12);
 	BindImage(GSceneVertexNormal, 13);
 	BindImage(GSceneTranslucentVertexNormal, 14);
-	BindSampler(GLinearClampedSampler, 15);
+	BindSampler(GPointClampedSampler, 15);
+	BindSampler(GLinearClampedSampler, 16);
 }

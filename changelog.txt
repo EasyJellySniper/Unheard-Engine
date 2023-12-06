@@ -483,3 +483,10 @@ Drop history buffer format as R11G11B10 for performance. Fixed a minor issue whe
 
 02-12-2023: Minor optimizations for RT shadow. If it's already hitting a blocker, skip all other TraceRay() call. This gives extra performance save!
 Raised the lowest penumbra as 1.0f instead of 0.5f. TAA reverted to color clamping method, I forgot the case that object is moving but it doesn't output motion. (E.g. Spot light.)
+03-12-2023: Tested temporal RT method, doesn't work well IMO. A few RT shadows improvments.
+
+05-12-2023: Set proper sampler to use during rendering. If it's a 1:1 ratio with resolution, point sampling should suffice.
+Added half-sized depth buffer.
+06-12-2023: Applied half-sized depth to RT shaders as well. Improved half-size RT shadow quality!
+Reverted ambient ground lighting calculation, it will just be added to the pixel.
+Fixed a minor bug of world dialog too. Fixed shader state table issues in debug build.

@@ -77,7 +77,7 @@ float3 ShadeSH9(float3 Diffuse, float4 Normal, float Occlusion)
 	float VC = Normal.x * Normal.x - Normal.y * Normal.y;
 	X3 = SH9Data[0].cC.rgb * VC;
 
-	float3 IndirectDiffuse = (X1 + X2 + X3) * UHAmbientSky + lerp(UHAmbientGround, 0, Normal.y * 0.5f + 0.5f);
+	float3 IndirectDiffuse = (X1 + X2 + X3) * UHAmbientSky + UHAmbientGround;
 	return Diffuse * IndirectDiffuse * Occlusion;
 }
 

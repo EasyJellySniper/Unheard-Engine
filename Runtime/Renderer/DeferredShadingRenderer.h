@@ -35,6 +35,7 @@
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 #include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 #include "ShaderClass/SphericalHarmonicShader.h"
+#include "ShaderClass/DownsampleDepthShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -73,7 +74,7 @@ public:
 	void WaitPreviousRenderTask();
 
 	// only resize RT buffers
-	void ResizeRayTracingBuffers();
+	void ResizeRayTracingBuffers(bool bInitOnly);
 	void UpdateTextureDescriptors();
 
 #if WITH_EDITOR
@@ -166,6 +167,7 @@ private:
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
 	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
+	void DownsampleDepthPass(UHRenderBuilder& RenderBuilder);
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
@@ -195,7 +197,6 @@ private:
 
 
 	/************************************************ variables ************************************************/
-
 	UHGraphic* GraphicInterface;
 	UHAssetManager* AssetManagerInterface;
 	UHConfigManager* ConfigInterface;
@@ -260,22 +261,12 @@ private:
 	/************************************************ Render Pass stuffs ************************************************/
 
 	// -------------------------------------------- Depth Pass -------------------------------------------- //
+	UniquePtr<UHDownsampleDepthShader> DownsampleDepthShader;
 	std::unordered_map<int32_t, UniquePtr<UHDepthPassShader>> DepthPassShaders;
 	UHRenderPassObject DepthPassObj;
 	bool bEnableDepthPrePass;
 
 	// -------------------------------------------- Base Pass -------------------------------------------- //
-
-	// GBuffers
-	UHTextureFormat DiffuseFormat;
-	UHTextureFormat NormalFormat;
-	UHTextureFormat SpecularFormat;
-	UHTextureFormat SceneResultFormat;
-	UHTextureFormat HistoryResultFormat;
-	UHTextureFormat SceneMipFormat;
-	UHTextureFormat DepthFormat;
-	UHTextureFormat HDRFormat;
-
 	// store different base pass object, the id is renderer data index
 	std::unordered_map<int32_t, UniquePtr<UHBasePassShader>> BasePassShaders;
 	UHRenderPassObject BasePassObj;
@@ -295,7 +286,6 @@ private:
 	UHMesh* SkyMeshRT;
 
 	// -------------------------------------------- Motion vector Pass -------------------------------------------- //
-	UHTextureFormat MotionFormat;
 	UHRenderPassObject MotionCameraPassObj;
 	UniquePtr<UHMotionCameraPassShader> MotionCameraShader;
 	UniquePtr<UHMotionCameraPassShader> MotionCameraWorkaroundShader;
@@ -346,7 +336,6 @@ private:
 	UHGPUQuery* GPUTimeQueries[UHRenderPassTypes::UHRenderPassMax];
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
-	UHTextureFormat RTShadowFormat;
 	UniquePtr<UHAccelerationStructure> TopLevelAS[GMaxFrameInFlight];
 
 	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;

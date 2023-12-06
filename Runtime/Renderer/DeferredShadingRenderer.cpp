@@ -213,12 +213,13 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.UHAmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
 	SystemConstantsCPU.UHAmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
 
-	SystemConstantsCPU.UHShadowResolution.x = static_cast<float>(RTShadowExtent.width);
-	SystemConstantsCPU.UHShadowResolution.y = static_cast<float>(RTShadowExtent.height);
-	SystemConstantsCPU.UHShadowResolution.z = 1.0f / SystemConstantsCPU.UHShadowResolution.x;
-	SystemConstantsCPU.UHShadowResolution.w = 1.0f / SystemConstantsCPU.UHShadowResolution.y;
+	SystemConstantsCPU.RTShadowResolution.x = static_cast<float>(RTShadowExtent.width);
+	SystemConstantsCPU.RTShadowResolution.y = static_cast<float>(RTShadowExtent.height);
+	SystemConstantsCPU.RTShadowResolution.z = 1.0f / SystemConstantsCPU.RTShadowResolution.x;
+	SystemConstantsCPU.RTShadowResolution.w = 1.0f / SystemConstantsCPU.RTShadowResolution.y;
 
 	SystemConstantsCPU.UHNumRTInstances = RTInstanceCount;
+	SystemConstantsCPU.UHFrameNumber = GFrameNumber;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -516,6 +517,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
+				DownsampleDepthPass(SceneRenderBuilder);
 				if (!bEnableAsyncComputeRT)
 				{
 					BuildTopLevelAS(SceneRenderBuilder);

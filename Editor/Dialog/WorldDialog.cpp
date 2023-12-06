@@ -25,6 +25,7 @@ void UHWorldDialog::ShowDialog()
 	UHDialog::ShowDialog();
 	CurrentSelected = UHINDEXNONE;
 	ResetDialogWindow();
+	RefreshObjectList();
 }
 
 void UHWorldDialog::Update()
@@ -34,19 +35,6 @@ void UHWorldDialog::Update()
 		ImGui::SetNextWindowPos(ImVec2(WindowPos.x - DialogSize.value().x, WindowPos.y));
 		ImGui::SetNextWindowSize(ImVec2(DialogSize.value().x, WindowHeight));
 		bResetWindow = false;
-	}
-
-	// collect objects
-	if (Renderer->GetCurrentScene())
-	{
-		SceneObjects.clear();
-		for (UniquePtr<UHComponent>& Comp : Renderer->GetCurrentScene()->GetAllCompoments())
-		{
-			if (Comp->GetComponentClassId() != UHGameScript::ClassId)
-			{
-				SceneObjects.push_back(Comp.get());
-			}
-		}
 	}
 
 	const std::string WndName = "World Objects";
@@ -124,6 +112,24 @@ ImVec2 UHWorldDialog::GetWindowSize() const
 bool UHWorldDialog::IsDialogSizeChanged() const
 {
 	return bIsSizeChanged;
+}
+
+void UHWorldDialog::RefreshObjectList()
+{
+	// collect objects
+	if (UHScene* Scene = Renderer->GetCurrentScene())
+	{
+		SceneObjects.clear();
+		for (UniquePtr<UHComponent>& Comp : Renderer->GetCurrentScene()->GetAllCompoments())
+		{
+			if (Comp->GetComponentClassId() != UHGameScript::ClassId)
+			{
+				SceneObjects.push_back(Comp.get());
+			}
+		}
+		Scene->SetCurrentSelectedComponent(nullptr);
+		CurrComponent = nullptr;
+	}
 }
 
 void UHWorldDialog::ControlSceneObjectSelect()

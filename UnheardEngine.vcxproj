@@ -325,6 +325,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\BasePassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightCullingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.h" />
@@ -441,6 +442,7 @@
     <ClCompile Include="Runtime\Classes\Scene.cpp" />
     <ClCompile Include="Runtime\Renderer\RenderShared.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightCullingShader.cpp" />
     <ClCompile Include="Runtime\Renderer\LightPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\MotionPassRendering.cpp" />
@@ -640,6 +642,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\SphericalHarmonicComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\DownsampleDepth.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

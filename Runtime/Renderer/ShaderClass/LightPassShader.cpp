@@ -22,6 +22,7 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor();
 	OnCompile();
@@ -62,5 +63,6 @@ void UHLightPassShader::BindParameters()
 	BindStorage(GPointLightListBuffer.get(), 7, 0, true);
 	BindStorage(GSpotLightListBuffer.get(), 8, 0, true);
 	BindStorage(GSH9Data.get(), 9, 0, true);
-	BindSampler(GLinearClampedSampler, 10);
+	BindSampler(GPointClampedSampler, 10);
+	BindSampler(GLinearClampedSampler, 11);
 }

@@ -18,7 +18,7 @@ UHDepthInfo::UHDepthInfo(bool bInEnableDepthTest, bool bInEnableDepthWrite, VkCo
 
 // ---------------------------------------------------- UHRenderPassInfo
 UHRenderPassInfo::UHRenderPassInfo()
-	: UHRenderPassInfo(VK_NULL_HANDLE, UHDepthInfo(), UHCullMode::CullNone, UHBlendMode::Opaque, -1, -1, 1, VK_NULL_HANDLE)
+	: UHRenderPassInfo(nullptr, UHDepthInfo(), UHCullMode::CullNone, UHBlendMode::Opaque, -1, -1, 1, nullptr)
 {
 
 }
@@ -68,7 +68,7 @@ bool UHRenderPassInfo::operator==(const UHRenderPassInfo& InInfo)
 // ---------------------------------------------------- UHComputePassInfo
 UHComputePassInfo::UHComputePassInfo()
 	: CS(-1)
-	, PipelineLayout(VK_NULL_HANDLE)
+	, PipelineLayout(nullptr)
 {
 
 }
@@ -91,7 +91,7 @@ bool UHComputePassInfo::operator==(const UHComputePassInfo& InInfo)
 
 // ---------------------------------------------------- UHRayTracingInfo
 UHRayTracingInfo::UHRayTracingInfo()
-	: PipelineLayout(VK_NULL_HANDLE)
+	: PipelineLayout(nullptr)
 	, MaxRecursionDepth(1)
 	, RayGenShader(-1)
 	, MissShader(-1)
@@ -152,8 +152,8 @@ bool UHRayTracingInfo::operator==(const UHRayTracingInfo& InInfo)
 
 // ---------------------------------------------------- UHRenderPassObject
 UHRenderPassObject::UHRenderPassObject()
-	: FrameBuffer(VK_NULL_HANDLE)
-	, RenderPass(VK_NULL_HANDLE)
+	: FrameBuffer(nullptr)
+	, RenderPass(nullptr)
 	, FinalLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 	, FinalDepthLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 	, DepthTexture(nullptr)
@@ -165,17 +165,21 @@ void UHRenderPassObject::Release(VkDevice LogicalDevice)
 {
 	vkDestroyFramebuffer(LogicalDevice, FrameBuffer, nullptr);
 	vkDestroyRenderPass(LogicalDevice, RenderPass, nullptr);
+	FrameBuffer = nullptr;
+	RenderPass = nullptr;
 }
 
 void UHRenderPassObject::ReleaseRenderPass(VkDevice LogicalDevice)
 {
 	vkDestroyRenderPass(LogicalDevice, RenderPass, nullptr);
+	RenderPass = nullptr;
 }
 
 void UHRenderPassObject::ReleaseFrameBuffer(VkDevice LogicalDevice)
 {
 	// release frame buffer only, used for resizing
 	vkDestroyFramebuffer(LogicalDevice, FrameBuffer, nullptr);
+	FrameBuffer = nullptr;
 }
 
 

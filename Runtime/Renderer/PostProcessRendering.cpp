@@ -43,7 +43,8 @@ void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHRender
 	RenderBuilder.BindDescriptorSetCompute(InShader->GetPipelineLayout(), InShader->GetDescriptorSet(CurrentFrameRT));
 
 	// dispatch compute
-	RenderBuilder.Dispatch((RenderResolution.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RenderResolution.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
+	RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+		, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
 
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[PostProcessIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));

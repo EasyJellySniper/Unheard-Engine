@@ -47,7 +47,7 @@ void UHToneMappingShader::OnCompile()
 
 void UHToneMappingShader::BindParameters()
 {
-	BindSampler(GLinearClampedSampler, 1);
+	BindSampler(GPointClampedSampler, 1);
 	BindConstant(ToneMapData, 2);
 }
 

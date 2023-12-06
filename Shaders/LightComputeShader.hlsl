@@ -14,7 +14,8 @@ RWTexture2D<float4> SceneResult : register(u5);
 Texture2D RTShadow : register(t6);
 ByteAddressBuffer PointLightList : register(t7);
 ByteAddressBuffer SpotLightList : register(t8);
-SamplerState LinearClampped : register(s10);
+SamplerState PointClampped : register(s10);
+SamplerState LinearClampped : register(s11);
 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
@@ -25,12 +26,12 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	}
 
     float2 UV = (DTid.xy + 0.5f) * UHResolution.zw;
-	float Depth = SceneBuffers[3].SampleLevel(LinearClampped, UV, 0).r;
+	float Depth = SceneBuffers[3].SampleLevel(PointClampped, UV, 0).r;
     float3 CurrSceneColor = SceneResult[DTid.xy].rgb;
 
 	// don't apply lighting to empty pixels or there is no light
 	UHBRANCH
-    if (Depth == 0.0f || (UHNumDirLights == 0 && UHNumPointLights == 0))
+    if (Depth == 0.0f || !HasLighting())
 	{
 		return;
 	}
@@ -39,13 +40,13 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     float3 WorldPos = ComputeWorldPositionFromDeviceZ(float2(DTid.xy + 0.5f), Depth);
 
 	// get diffuse color, a is occlusion
-	float4 Diffuse = SceneBuffers[0].SampleLevel(LinearClampped, UV, 0);
+	float4 Diffuse = SceneBuffers[0].SampleLevel(PointClampped, UV, 0);
 
 	// unpack normal from [0,1] to [-1,1]
-    float3 Normal = DecodeNormal(SceneBuffers[1].SampleLevel(LinearClampped, UV, 0).xyz);
+    float3 Normal = DecodeNormal(SceneBuffers[1].SampleLevel(PointClampped, UV, 0).xyz);
 
 	// get specular color, a is roughness
-	float4 Specular = SceneBuffers[2].SampleLevel(LinearClampped, UV, 0);
+	float4 Specular = SceneBuffers[2].SampleLevel(PointClampped, UV, 0);
     
 	float3 Result = 0;
 

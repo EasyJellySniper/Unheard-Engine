@@ -237,7 +237,7 @@ void UHEngine::Update()
 	UHERawInput->ResetMouseData();
 	UHERawInput->CacheKeyStates();
 
-	GFrameNumber++;
+	GFrameNumber = (GFrameNumber + 1) % std::numeric_limits<uint32_t>::max();
 }
 
 // engine render loop
@@ -321,6 +321,10 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 		UHE_LOG("Scene " + InputPath.string() + " not found!\n");
 		return;
 	}
+
+	// wait all previous rendering done
+	UHERenderer->WaitPreviousRenderTask();
+	UHEGraphic->WaitGPU();
 
 	// recreate scene when loading
 	UH_SAFE_RELEASE(CurrentScene);

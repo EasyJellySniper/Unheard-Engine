@@ -40,7 +40,7 @@ struct UHSystemConstants
 	XMFLOAT4X4 UHProjInv_NonJittered;
 	XMFLOAT4X4 UHView;
 	XMFLOAT4 UHResolution;
-	XMFLOAT4 UHShadowResolution;
+	XMFLOAT4 RTShadowResolution;
 	XMFLOAT3 UHCameraPos;
 	uint32_t UHNumDirLights;
 
@@ -60,6 +60,7 @@ struct UHSystemConstants
 	uint32_t UHMaxPointLightPerTile;
 	uint32_t UHNumSpotLights;
 	uint32_t UHMaxSpotLightPerTile;
+	uint32_t UHFrameNumber;
 };
 
 struct UHObjectConstants
@@ -130,6 +131,7 @@ enum UHRenderPassTypes
 	LightPass,
 	SkyPass,
 	MotionPass,
+	DownsampleDepthPass,
 	TranslucentPass,
 	ToneMappingPass,
 	TemporalAAPass,

@@ -12,7 +12,10 @@ RWByteAddressBuffer OutSpotLightList : register(u5);
 RWByteAddressBuffer OutSpotLightListTrans : register(u6);
 Texture2D DepthTexture : register(t7);
 Texture2D TransDepthTexture : register(t8);
-SamplerState LinearClampped : register(s9);
+
+// note that the point sampling is used for depth despite it's half resolution culling
+// the input depths are down-sized as well
+SamplerState PointClampped : register(s9);
 
 groupshared uint GMinDepth;
 groupshared uint GMaxDepth;
@@ -324,8 +327,8 @@ void LightCullingCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, ui
     
     // calc UV
     float2 UV = (DTid.xy * UHLIGHTCULLING_UPSCALE + 0.5f) * UHResolution.zw;
-    float Depth = DepthTexture.SampleLevel(LinearClampped, UV, 0).r;
-    float TransDepth = TransDepthTexture.SampleLevel(LinearClampped, UV, 0).r;
+    float Depth = DepthTexture.SampleLevel(PointClampped, UV, 0).r;
+    float TransDepth = TransDepthTexture.SampleLevel(PointClampped, UV, 0).r;
     
     // cull point light for both opaque and translucent objects
     // point light culling uses a box-sphere test method, although it's not as precise as sphere-frustum test but faster

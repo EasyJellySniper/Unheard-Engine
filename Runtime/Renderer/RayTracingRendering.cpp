@@ -1,22 +1,29 @@
 #pragma once
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::ResizeRayTracingBuffers()
+void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 {
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
-		GraphicInterface->WaitGPU();
-		GraphicInterface->RequestReleaseRT(GRTShadowResult);
-		GraphicInterface->RequestReleaseRT(GRTSharedTextureRG16F);
+		if (!bInitOnly)
+		{
+			GraphicInterface->WaitGPU();
+			GraphicInterface->RequestReleaseRT(GRTShadowResult);
+			GraphicInterface->RequestReleaseRT(GRTSharedTextureRG16F);
+		}
 
-		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
+		const int32_t ShadowQuality = ConfigInterface->RenderingSetting().RTDirectionalShadowQuality;
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true);
-		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat, true);
 
-		// need to rewrite descriptors after resize
-		UpdateDescriptors();
+		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, UH_FORMAT_R8_UNORM, true);
+		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RenderResolution, UH_FORMAT_RG16F, true);
+
+		if (!bInitOnly)
+		{
+			// need to rewrite descriptors after resize
+			UpdateDescriptors();
+		}
 	}
 }
 
@@ -72,7 +79,8 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 	UHComputeState* State = SoftRTShadowShader->GetComputeState();
 	RenderBuilder.BindComputeState(State);
 	RenderBuilder.BindDescriptorSetCompute(SoftRTShadowShader->GetPipelineLayout(), SoftRTShadowShader->GetDescriptorSet(CurrentFrameRT));
-	RenderBuilder.Dispatch((RTShadowExtent.width + GThreadGroup2D_X) / GThreadGroup2D_X, (RTShadowExtent.height + GThreadGroup2D_Y) / GThreadGroup2D_Y, 1);
+	RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RTShadowExtent.width, GThreadGroup2D_X)
+		, MathHelpers::RoundUpDivide(RTShadowExtent.height, GThreadGroup2D_Y), 1);
 
 	// finally, transition to shader read only
 	RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

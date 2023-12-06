@@ -25,6 +25,8 @@ UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;
 UHRenderTexture* GRTShadowResult;
 UHRenderTexture* GRTSharedTextureRG16F;
+UHRenderTexture* GHalfDepth;
+UHRenderTexture* GHalfTranslucentDepth;
 
 UHTextureCube* GSkyLightCube;
 

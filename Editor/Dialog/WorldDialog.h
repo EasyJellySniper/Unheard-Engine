@@ -20,6 +20,7 @@ public:
 	bool IsDialogSizeChanged() const;
 
 private:
+	void RefreshObjectList();
 	void ControlSceneObjectSelect();
 	void ControlSceneObjectDoubleClick();
 

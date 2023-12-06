@@ -55,24 +55,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 		PostProcessResults[Idx] = nullptr;
 	}
 
-	// init formats
-	DiffuseFormat = UH_FORMAT_RGBA8_SRGB;
-	NormalFormat = UH_FORMAT_A2R10G10B10;
-	SpecularFormat = UH_FORMAT_RGBA8_UNORM;
-	SceneResultFormat = UH_FORMAT_RGBA16F;
-	HistoryResultFormat = UH_FORMAT_R11G11B10;
-	DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UH_FORMAT_X8_D24 : UH_FORMAT_D32F;
-	HDRFormat = UH_FORMAT_RGBA16F;
-
-	// half precision for motion vector
-	MotionFormat = UH_FORMAT_RG16F;
-
-	// RT result format, store soften mask
-	RTShadowFormat = UH_FORMAT_R8_UNORM;
-
-	// mip rate format
-	SceneMipFormat = UH_FORMAT_R16_UNORM;
-
 	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
 	{
 		GPUTimeQueries[Idx] = nullptr;
@@ -291,6 +273,9 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		}
 	}
 
+	// down sample depth shader
+	DownsampleDepthShader = MakeUnique<UHDownsampleDepthShader>(GraphicInterface, "DownsampleDepthShader");
+
 	// light culling and pass shaders
 	LightCullingShader = MakeUnique<UHLightCullingShader>(GraphicInterface, "LightCullingShader");
 	LightPassShader = MakeUnique<UHLightPassShader>(GraphicInterface, "LightPassShader", RTInstanceCount);
@@ -354,6 +339,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			DepthPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 		}
 	}
+	DownsampleDepthShader->BindParameters();
 
 	// ------------------------------------------------ Base pass descriptor update
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
@@ -473,6 +459,17 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		RTShadowShader->BindParameters();
 		SoftRTShadowShader->BindParameters();
+
+		if (ConfigInterface->RenderingSetting().RTDirectionalShadowQuality == 0)
+		{
+			SoftRTShadowShader->BindImage(GSceneDepth, 3);
+			SoftRTShadowShader->BindImage(GSceneTranslucentDepth, 4);
+		}
+		else
+		{
+			SoftRTShadowShader->BindImage(GHalfDepth, 3);
+			SoftRTShadowShader->BindImage(GHalfTranslucentDepth, 4);
+		}
 	}
 
 	// ------------------------------------------------ debug passes descriptor update
@@ -492,6 +489,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		}
 		DepthPassShaders.clear();
 	}
+	DownsampleDepthShader->Release();
 
 	for (auto& Shader : BasePassShaders)
 	{
@@ -548,6 +546,18 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 
 void UHDeferredShadingRenderer::CreateRenderingBuffers()
 {
+	// init formats
+	const UHTextureFormat DiffuseFormat = UH_FORMAT_RGBA8_SRGB;
+	const UHTextureFormat NormalFormat = UH_FORMAT_A2R10G10B10;
+	const UHTextureFormat SpecularFormat = UH_FORMAT_RGBA8_UNORM;
+	const UHTextureFormat SceneResultFormat = UH_FORMAT_RGBA16F;
+	const UHTextureFormat HistoryResultFormat = UH_FORMAT_R11G11B10;
+	const UHTextureFormat SceneMipFormat = UH_FORMAT_R16_UNORM;
+	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UH_FORMAT_X8_D24 : UH_FORMAT_D32F;
+	const UHTextureFormat HDRFormat = UH_FORMAT_RGBA16F;
+	const UHTextureFormat MotionFormat = UH_FORMAT_RG16F;
+	const UHTextureFormat HalfDepthFormat = UH_FORMAT_R32F;
+
 	// create GBuffer
 	RenderResolution.width = ConfigInterface->RenderingSetting().RenderWidth;
 	RenderResolution.height = ConfigInterface->RenderingSetting().RenderHeight;
@@ -563,6 +573,13 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GSceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat);
 	GSceneTranslucentDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat);
 
+	// half res depth buffer
+	VkExtent2D HalfDepthResolution;
+	HalfDepthResolution.width = RenderResolution.width >> 1;
+	HalfDepthResolution.height = RenderResolution.height >> 1;
+	GHalfDepth = GraphicInterface->RequestRenderTexture("HalfDepth", HalfDepthResolution, HalfDepthFormat, true);
+	GHalfTranslucentDepth = GraphicInterface->RequestRenderTexture("HalfTranslucentDepth", HalfDepthResolution, HalfDepthFormat, true);
+
 	// vertex normal buffer for saving the "search ray" in RT shadows
 	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat);
 	GSceneTranslucentVertexNormal = GraphicInterface->RequestRenderTexture("SceneTranslucentVertexNormal", RenderResolution, NormalFormat);
@@ -575,14 +592,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
 
 	// rt shadows buffer
-	if (GraphicInterface->IsRayTracingEnabled())
-	{
-		int32_t ShadowQuality = std::clamp(ConfigInterface->RenderingSetting().RTDirectionalShadowQuality, 0, 2);
-		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
-		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, RTShadowFormat, true);
-		GRTSharedTextureRG16F = GraphicInterface->RequestRenderTexture("RTSharedTextureRG16F", RTShadowExtent, MotionFormat, true);
-	}
+	ResizeRayTracingBuffers(true);
 
 	// create light culling tile buffer
 	uint32_t TileCountX, TileCountY;
@@ -606,6 +616,8 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GSceneMip);
 	GraphicInterface->RequestReleaseRT(GSceneDepth);
 	GraphicInterface->RequestReleaseRT(GSceneTranslucentDepth);
+	GraphicInterface->RequestReleaseRT(GHalfDepth);
+	GraphicInterface->RequestReleaseRT(GHalfTranslucentDepth);
 	GraphicInterface->RequestReleaseRT(GSceneVertexNormal);
 	GraphicInterface->RequestReleaseRT(GSceneTranslucentVertexNormal);
 	GraphicInterface->RequestReleaseRT(GPostProcessRT);

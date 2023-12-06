@@ -31,6 +31,8 @@ extern UHRenderTexture* GSceneTranslucentVertexNormal;
 extern UHRenderTexture* GMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
+extern UHRenderTexture* GHalfDepth;
+extern UHRenderTexture* GHalfTranslucentDepth;
 
 // ray-tracing textures
 extern UHRenderTexture* GRTShadowResult;

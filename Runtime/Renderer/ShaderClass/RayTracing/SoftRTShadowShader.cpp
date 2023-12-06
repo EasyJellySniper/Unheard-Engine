@@ -11,6 +11,7 @@ UHSoftRTShadowShader::UHSoftRTShadowShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor();
 	OnCompile();
@@ -32,8 +33,10 @@ void UHSoftRTShadowShader::BindParameters()
 	BindConstant(GSystemConstantBuffer, 0);
 	BindRWImage(GRTShadowResult, 1);
 	BindImage(GRTSharedTextureRG16F, 2);
-	BindImage(GSceneDepth, 3);
-	BindImage(GSceneTranslucentDepth, 4);
+
+	// scene depth will be bound on fly
+
 	BindImage(GSceneMip, 5);
-	BindSampler(GLinearClampedSampler, 6);
+	BindSampler(GPointClampedSampler, 6);
+	BindSampler(GLinearClampedSampler, 7);
 }

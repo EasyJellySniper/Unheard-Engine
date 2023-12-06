@@ -40,7 +40,7 @@ void UHLightCullingShader::BindParameters()
 	BindStorage(GPointLightListTransBuffer.get(), 4, 0, true);
 	BindStorage(GSpotLightListBuffer.get(), 5, 0, true);
 	BindStorage(GSpotLightListTransBuffer.get(), 6, 0, true);
-	BindImage(GSceneDepth, 7);
-	BindImage(GSceneTranslucentDepth, 8);
-	BindSampler(GLinearClampedSampler, 9);
+	BindImage(GHalfDepth, 7);
+	BindImage(GHalfTranslucentDepth, 8);
+	BindSampler(GPointClampedSampler, 9);
 }
