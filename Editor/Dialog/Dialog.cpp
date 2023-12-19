@@ -180,6 +180,21 @@ INT_PTR CALLBACK GDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
         }
         return (INT_PTR)TRUE;
 
+     case WM_MOVE:
+         for (auto It = GActiveDialogTable.begin(); It != GActiveDialogTable.end(); )
+         {
+             if (It->second->GetDialog() == hDlg)
+             {
+                 for (auto& Callback : It->second->OnMoved)
+                 {
+                     Callback();
+                 }
+                 break;
+             }
+             It++;
+         }
+         return (INT_PTR)TRUE;
+
     case WM_LBUTTONDOWN:
         SetCapture(hDlg);
         for (auto It = GActiveDialogTable.begin(); It != GActiveDialogTable.end(); )

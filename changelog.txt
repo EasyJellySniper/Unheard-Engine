@@ -490,3 +490,6 @@ Added half-sized depth buffer.
 06-12-2023: Applied half-sized depth to RT shaders as well. Improved half-size RT shadow quality!
 Reverted ambient ground lighting calculation, it will just be added to the pixel.
 Fixed a minor bug of world dialog too. Fixed shader state table issues in debug build.
+
+18-12-2023: Start porting material editor with ImGui.
+19-12-2023: Made the left part of material editor with ImGui. For the graph part I need more investigation for the capable of ImGui.

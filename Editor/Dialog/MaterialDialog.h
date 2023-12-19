@@ -11,6 +11,7 @@
 #include "../Controls/GroupBox.h"
 #include "../Controls/Label.h"
 #include "../Controls/ComboBox.h"
+#include <optional>
 
 // for drawing lines
 #include <gdiplus.h>
@@ -23,6 +24,10 @@ class UHMaterial;
 
 class UHMaterialNodeGUI : public UHGraphNodeGUI
 {
+public:
+	virtual void Update() override {}
+
+private:
 	virtual void PreAddingPins() override {}
 	virtual void PostAddingPins() override {}
 };
@@ -36,6 +41,7 @@ public:
 
 	virtual void ShowDialog() override;
 	void Update();
+	void ResetDialogWindow();
 
 	void Init();
 	void CreateWorkAreaMemDC(int32_t Width, int32_t Height);
@@ -61,21 +67,13 @@ private:
 	void DrawPinConnectionLine(bool bIsErasing = false);
 
 	// controls
-	UniquePtr<UHListBox> MaterialListGUI;
-	UniquePtr<UHButton> CompileButtonGUI;
-	UniquePtr<UHButton> SaveButtonGUI;
-	UniquePtr<UHButton> SaveAllButtonGUI;
-	UniquePtr<UHLabel> CullTextGUI;
-	UniquePtr<UHLabel> BlendTextGUI;
-	UniquePtr<UHComboBox> CullModeGUI;
-	UniquePtr<UHComboBox> BlendModeGUI;
 	UniquePtr<UHGroupBox> WorkAreaGUI;
 
 	void ControlRecompileMaterial();
 	void ControlResaveMaterial();
 	void ControlResaveAllMaterials();
-	void ControlCullMode();
-	void ControlBlendMode();
+	void ControlCullMode(const int32_t Idx);
+	void ControlBlendMode(const int32_t Idx);
 
 	// all node GUI, the first element is material GUI
 	std::vector<UniquePtr<UHGraphNodeGUI>> EditNodeGUIs;
@@ -100,6 +98,12 @@ private:
 	POINT PrevMousePos;
 	bool bIsUpdatingDragLine;
 	RECT DragRect;
+
+	ImVec2 WindowPos;
+	std::optional<ImVec2> DialogSize;
+	float WindowWidth;
+	float WindowHeight;
+	bool bResetWindow;
 
 	UHAssetManager* AssetManager;
 	UHDeferredShadingRenderer* Renderer;

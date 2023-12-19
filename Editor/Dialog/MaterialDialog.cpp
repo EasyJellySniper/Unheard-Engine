@@ -44,6 +44,10 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , WorkAreaMemDC(nullptr)
     , bIsUpdatingDragLine(false)
     , DragRect(RECT())
+    , WindowPos(ImVec2())
+    , WindowWidth(0.0f)
+    , WindowHeight(0.0f)
+    , bResetWindow(false)
 {
     // create popup menu for node functions, only do these in construction time
     ParameterMenu.InsertOption("Float", UHGraphNodeType::FloatNode);
@@ -67,6 +71,7 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     OnMenuClicked.push_back(StdBind(&UHMaterialDialog::OnMenuHit, this, std::placeholders::_1));
     OnPaint.push_back(StdBind(&UHMaterialDialog::OnDrawing, this, std::placeholders::_1));
     OnResized.push_back(StdBind(&UHMaterialDialog::OnResizing, this));
+    OnMoved.push_back(StdBind(&UHMaterialDialog::ResetDialogWindow, this));
 }
 
 UHMaterialDialog::~UHMaterialDialog()
@@ -96,6 +101,7 @@ void UHMaterialDialog::ShowDialog()
     {
         Init();
         ShowWindow(Dialog, SW_SHOW);
+        ResetDialogWindow();
     }
 }
 
@@ -106,11 +112,94 @@ void UHMaterialDialog::Update()
         return;
     }
 
-    // call the update function of all GUI nodes
-    for (const UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
+    if (bResetWindow && DialogSize.has_value())
     {
-        GUI->Update();
+        ImGui::SetNextWindowPos(ImVec2(WindowPos.x - WindowWidth, WindowPos.y));
+        ImGui::SetNextWindowSize(ImVec2(WindowWidth, WindowHeight));
+        bResetWindow = false;
     }
+
+    ImGui::Begin("Material Editor", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar
+        | ImGuiWindowFlags_HorizontalScrollbar| ImGuiWindowFlags_NoMove);
+    const ImVec2 WndSize = ImGui::GetWindowSize();
+    ImGui::Text("Select the material to edit");
+
+    // Material list
+    if (ImGui::BeginListBox("##", ImVec2(-FLT_MIN, WndSize.y * 0.8f)))
+    {
+        const std::vector<UHMaterial*>& Materials = AssetManager->GetMaterials();
+        for (int32_t Idx = 0; Idx < static_cast<int32_t>(Materials.size()); Idx++)
+        {
+            bool bIsSelected = (CurrentMaterialIndex == Idx);
+            if (ImGui::Selectable(Materials[Idx]->GetSourcePath().c_str(), &bIsSelected))
+            {
+                SelectMaterial(Idx);
+                CurrentMaterialIndex = Idx;
+                bNeedRepaint = true;
+            }
+        }
+        ImGui::EndListBox();
+    }
+    ImGui::NewLine();
+
+    if (ImGui::Button("Compile"))
+    {
+        ControlRecompileMaterial();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Save"))
+    {
+        ControlResaveMaterial();
+    }
+
+    if (ImGui::Button("Save All"))
+    {
+        ControlResaveAllMaterials();
+    }
+    ImGui::NewLine();
+
+    // Cull mode list
+    if (CurrentMaterial)
+    {
+        const std::string CurrCullModeText = UHUtilities::ToStringA(GCullModeNames[CurrentMaterial->GetCullMode()]);
+        if (ImGui::BeginCombo("Cull Mode", CurrCullModeText.c_str()))
+        {
+            for (int32_t Idx = 0; Idx < static_cast<int32_t>(GCullModeNames.size()); Idx++)
+            {
+                const bool bIsSelected = (CurrentMaterial->GetCullMode() == Idx);
+                std::string CullModeText = UHUtilities::ToStringA(GCullModeNames[Idx]);
+                if (ImGui::Selectable(CullModeText.c_str(), bIsSelected))
+                {
+                    ControlCullMode(Idx);
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    // Blend mode list
+    if (CurrentMaterial)
+    {
+        const std::string CurrBlendModeText = UHUtilities::ToStringA(GBlendModeNames[CurrentMaterial->GetBlendMode()]);
+        if (ImGui::BeginCombo("Blend Mode", CurrBlendModeText.c_str()))
+        {
+            if (CurrentMaterial)
+            {
+                for (int32_t Idx = 0; Idx < static_cast<int32_t>(GBlendModeNames.size()); Idx++)
+                {
+                    const bool bIsSelected = (CurrentMaterial->GetBlendMode() == Idx);
+                    std::string BlendModeText = UHUtilities::ToStringA(GBlendModeNames[Idx]);
+                    if (ImGui::Selectable(BlendModeText.c_str(), bIsSelected))
+                    {
+                        ControlBlendMode(Idx);
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+    DialogSize = ImGui::GetWindowSize();
+    ImGui::End();
 
     // store mouse states
     GetCursorPos(&MousePos);
@@ -119,14 +208,10 @@ void UHMaterialDialog::Update()
         MousePosWhenRightDown = MousePos;
     }
 
-    // get current selected material index
-    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex != CurrentMaterialIndex)
+    // Edit GUI nodes
+    for (const UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
     {
-        // select material
-        SelectMaterial(MatIndex);
-        CurrentMaterialIndex = MatIndex;
-        bNeedRepaint = true;
+        GUI->Update();
     }
 
     // force a invalidate if it needs repainting
@@ -138,7 +223,7 @@ void UHMaterialDialog::Update()
     }
 
     // only do node operation when a material is selected
-    if (MatIndex > -1)
+    if (CurrentMaterialIndex > -1)
     {
         TryAddNodes();
         TryDeleteNodes();
@@ -153,6 +238,20 @@ void UHMaterialDialog::Update()
     RawInput.CacheKeyStates();
 }
 
+void UHMaterialDialog::ResetDialogWindow()
+{
+    // always put the dialog on the right side of main window
+    RECT MainWndRect;
+    GetClientRect(Dialog, &MainWndRect);
+    ClientToScreen(Dialog, (POINT*)&MainWndRect.left);
+    ClientToScreen(Dialog, (POINT*)&MainWndRect.right);
+
+    WindowPos = ImVec2((float)MainWndRect.left, (float)MainWndRect.top);
+    WindowWidth = 250.0f;
+    WindowHeight = static_cast<float>(MainWndRect.bottom - MainWndRect.top);
+    bResetWindow = true;
+}
+
 void UHMaterialDialog::Init()
 {
     Dialog = CreateDialog(Instance, MAKEINTRESOURCE(IDD_MATERIAL), ParentWindow, (DLGPROC)GDialogProc);
@@ -162,33 +261,6 @@ void UHMaterialDialog::Init()
 
     HWND Wnd = Dialog;
     RegisterUniqueActiveDialog(IDD_MATERIAL, this);
-
-    // controls init
-    MaterialListGUI = MakeUnique<UHListBox>(GetDlgItem(Wnd, IDC_MATERIAL_LIST), UHGUIProperty().SetAutoSize(AutoSizeY));
-    const std::vector<UHMaterial*>& Materials = AssetManager->GetMaterials();
-    for (const UHMaterial* Mat : Materials)
-    {
-        MaterialListGUI->AddItem(Mat->GetSourcePath());
-    }
-
-    CompileButtonGUI = MakeUnique<UHButton>(GetDlgItem(Wnd, IDC_MATERIALCOMPILE), UHGUIProperty().SetAutoMove(AutoMoveY));
-    CompileButtonGUI->OnClicked.push_back(StdBind(&UHMaterialDialog::ControlRecompileMaterial, this));
-
-    SaveButtonGUI = MakeUnique<UHButton>(GetDlgItem(Wnd, IDC_MATERIALSAVE), UHGUIProperty().SetAutoMove(AutoMoveY));
-    SaveButtonGUI->OnClicked.push_back(StdBind(&UHMaterialDialog::ControlResaveMaterial, this));
-
-    SaveAllButtonGUI = MakeUnique<UHButton>(GetDlgItem(Wnd, IDC_MATERIALSAVEALL), UHGUIProperty().SetAutoMove(AutoMoveY));
-    SaveAllButtonGUI->OnClicked.push_back(StdBind(&UHMaterialDialog::ControlResaveAllMaterials, this));
-
-    CullTextGUI = MakeUnique<UHLabel>(GetDlgItem(Wnd, IDC_CULLTEXT), UHGUIProperty().SetAutoMove(AutoMoveY));
-    CullModeGUI = MakeUnique<UHComboBox>(GetDlgItem(Wnd, IDC_MATERIAL_CULLMODE), UHGUIProperty().SetAutoMove(AutoMoveY));
-    CullModeGUI->Init(L"None", GCullModeNames);
-    CullModeGUI->OnSelected.push_back(StdBind(&UHMaterialDialog::ControlCullMode, this));
-
-    BlendTextGUI = MakeUnique<UHLabel>(GetDlgItem(Wnd, IDC_BLENDTEXT), UHGUIProperty().SetAutoMove(AutoMoveY));
-    BlendModeGUI = MakeUnique<UHComboBox>(GetDlgItem(Wnd, IDC_MATERIAL_BLENDMODE), UHGUIProperty().SetAutoMove(AutoMoveY));
-    BlendModeGUI->Init(L"Opaque", GBlendModeNames);
-    BlendModeGUI->OnSelected.push_back(StdBind(&UHMaterialDialog::ControlBlendMode, this));
 
     WorkAreaGUI = MakeUnique<UHGroupBox>(GetDlgItem(Wnd, IDC_MATERIAL_GRAPHAREA), UHGUIProperty().SetAutoSize(AutoSizeBoth));
     RECT R = WorkAreaGUI->GetCurrentRelativeRect();
@@ -221,6 +293,7 @@ void UHMaterialDialog::OnResizing()
     CreateWorkAreaMemDC((int32_t)(R.right - R.left), (int32_t)(R.bottom - R.top));
 
     bNeedRepaint = true;
+    ResetDialogWindow();
 }
 
 void UHMaterialDialog::OnDrawing(HDC Hdc)
@@ -276,10 +349,6 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
             }
         }
     }
-
-    // select cull mode and blend mode
-    CullModeGUI->Select(GCullModeNames[CurrentMaterial->GetCullMode()]);
-    BlendModeGUI->Select(GBlendModeNames[CurrentMaterial->GetBlendMode()]);
 }
 
 void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
@@ -699,30 +768,28 @@ void UHMaterialDialog::DrawPinConnectionLine(bool bIsErasing)
 
 void UHMaterialDialog::ControlRecompileMaterial()
 {
-    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == UHINDEXNONE)
+    if (CurrentMaterialIndex == UHINDEXNONE)
     {
         return;
     }
 
-    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+    UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
     Mat->SetCompileFlag(FullCompileTemporary);
-    RecompileMaterial(MatIndex);
+    RecompileMaterial(CurrentMaterialIndex);
 }
 
 void UHMaterialDialog::ControlResaveMaterial()
 {
-    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == UHINDEXNONE)
+    if (CurrentMaterialIndex == UHINDEXNONE)
     {
         return;
     }
 
     {
         UHStatusDialogScope Status("Saving...");
-        UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+        UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
         Mat->SetCompileFlag(FullCompileResave);
-        ResaveMaterial(MatIndex);
+        ResaveMaterial(CurrentMaterialIndex);
     }
     MessageBoxA(Dialog, "Current editing material is saved.", "Material Editor", MB_OK);
 }
@@ -732,38 +799,34 @@ void UHMaterialDialog::ControlResaveAllMaterials()
     ResaveAllMaterials();
 }
 
-void UHMaterialDialog::ControlCullMode()
+void UHMaterialDialog::ControlCullMode(const int32_t InCullMode)
 {
-    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == UHINDEXNONE)
+    if (CurrentMaterialIndex == UHINDEXNONE)
     {
         return;
     }
 
-    const int32_t SelectedCullMode = CullModeGUI->GetSelectedIndex();
-    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
-    Mat->SetCullMode(static_cast<UHCullMode>(SelectedCullMode));
+    UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
+    Mat->SetCullMode(static_cast<UHCullMode>(InCullMode));
 
     // changing cull mode doesn't need a recompiling, just refresh the material shader so they will recreate graphic state
     Mat->SetCompileFlag(StateChangedOnly);
     Renderer->RefreshMaterialShaders(Mat);
 }
 
-void UHMaterialDialog::ControlBlendMode()
+void UHMaterialDialog::ControlBlendMode(const int32_t InBlendMode)
 {
-    const int32_t MatIndex = MaterialListGUI->GetSelectedIndex();
-    if (MatIndex == UHINDEXNONE)
+    if (CurrentMaterialIndex == UHINDEXNONE)
     {
         return;
     }
 
     // toggling blend mode does a little more than cull mode. it not only needs re-compiling, but also the renderer list refactoring
     // for example: when an object goes alpha blend from masked object, it needs to be in TranslucentRenderer list instead of OpaqueRenderer list
-    const int32_t SelectedBlendMode = BlendModeGUI->GetSelectedIndex();
-    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+    UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
 
     const UHBlendMode OldMode = Mat->GetBlendMode();
-    const UHBlendMode NewMode = static_cast<UHBlendMode>(SelectedBlendMode);
+    const UHBlendMode NewMode = static_cast<UHBlendMode>(InBlendMode);
 
     Mat->SetBlendMode(NewMode);
     bool bRenderGroupChanged = false;

@@ -20,6 +20,7 @@ public:
 	std::vector<std::function<void()>> OnDestroy;
 	std::vector<std::function<void(uint32_t)>> OnMenuClicked;
 	std::vector<std::function<void()>> OnResized;
+	std::vector<std::function<void()>> OnMoved;
 	std::vector<std::function<void(HDC)>> OnPaint;
 
 	UHRawInput RawInput;
