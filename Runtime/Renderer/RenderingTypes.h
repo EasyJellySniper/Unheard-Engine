@@ -17,6 +17,7 @@ const uint32_t GNumOfGBuffers = 6;
 // thread group number
 const uint32_t GThreadGroup2D_X = 8;
 const uint32_t GThreadGroup2D_Y = 8;
+const uint32_t GThreadGroup1D = 64;
 
 // descriptor set space number
 const uint32_t GTextureTableSpace = 1;
@@ -132,9 +133,11 @@ enum UHRenderPassTypes
 	SkyPass,
 	MotionPass,
 	DownsampleDepthPass,
+	PreTranslucentPass,
 	TranslucentPass,
 	ToneMappingPass,
 	TemporalAAPass,
+	HistoryCopyingPass,
 	PresentToSwapChain,
 	UHRenderPassMax
 };

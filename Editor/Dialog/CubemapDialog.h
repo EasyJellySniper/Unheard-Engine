@@ -18,7 +18,7 @@ public:
 
 	virtual void ShowDialog() override;
 	void Init();
-	void Update();
+	virtual void Update(bool& bIsDialogActive) override;
 	void OnCreationFinished(UHTexture* InTexture);
 
 private:

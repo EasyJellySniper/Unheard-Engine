@@ -27,10 +27,16 @@ void UHDeferredShadingRenderer::Resize()
 {
 	GraphicInterface->WaitGPU();
 
-	// resize buffers only otherwise
-	ReleaseRenderPassObjects(true);
+	// release other temporary textures used in rendering
+	GraphicInterface->RequestReleaseRT(GaussianBlurTempRT0);
+	GraphicInterface->RequestReleaseRT(GaussianBlurTempRT1);
+	GaussianBlurTempRT0 = nullptr;
+	GaussianBlurTempRT1 = nullptr;
+
+	ReleaseRenderPassObjects();
 	RelaseRenderingBuffers();
 	CreateRenderingBuffers();
+	CreateRenderPasses();
 	CreateRenderFrameBuffers();
 
 	// need to rewrite descriptors after resize
@@ -86,6 +92,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bEnableAsyncComputeRT = bEnableAsyncComputeGT;
 	bIsRenderingEnabledRT = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
 	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
+	bHasRefractionMaterialRT = bHasRefractionMaterialGT;
 
 	if (SkyMeshRT == nullptr)
 	{
@@ -242,7 +249,13 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			UHMaterial* Mat = Renderer->GetMaterial();
 			if (Mat->IsRenderDirty(CurrentFrameGT))
 			{
-				Mat->UploadMaterialData(CurrentFrameGT, DefaultSamplerIndex, SkyLight->GetCubemap());
+				UHSystemMaterialData MaterialData{};
+				MaterialData.DefaultSamplerIndex = DefaultSamplerIndex;
+				MaterialData.InEnvCube = SkyLight->GetCubemap();
+				MaterialData.RefractionClearIndex = GRefractionClearIndex;
+				MaterialData.RefractionBlurredIndex = GRefractionBlurredIndex;
+
+				Mat->UploadMaterialData(CurrentFrameGT, MaterialData);
 				Mat->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
@@ -349,7 +362,7 @@ void UHDeferredShadingRenderer::FrustumCullingTask(int32_t ThreadIdx)
 	{
 		// skip skybox renderer
 		UHMeshRendererComponent* Renderer = Renderers[Idx];
-		if (Renderer->GetMaterial()->IsSkybox())
+		if (Renderer->GetMaterial()->GetMaterialUsages().bIsSkybox)
 		{
 			continue;
 		}
@@ -373,6 +386,7 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 		}
 	}
 
+	bHasRefractionMaterialGT = false;
 	TranslucentsToRender.clear();
 	const std::vector<UHMeshRendererComponent*>& TranslucentRenderers = CurrentScene->GetTranslucentRenderers();
 	for (UHMeshRendererComponent* Renderer : TranslucentRenderers)
@@ -380,6 +394,14 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 		if (Renderer->IsVisible())
 		{
 			TranslucentsToRender.push_back(Renderer);
+
+			if (!bHasRefractionMaterialGT)
+			{
+				if (const UHMaterial* Mat = Renderer->GetMaterial())
+				{
+					bHasRefractionMaterialGT |= Mat->GetMaterialUsages().bUseRefraction;
+				}
+			}
 		}
 	}
 }
@@ -514,6 +536,14 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 			if (bIsRenderingEnabledRT)
 			{
+				// first-chance resource barriers
+				if (!bIsPresentedPreviously || bIsSwapChainResetRT)
+				{
+					SceneRenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+					SceneRenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+					SceneRenderBuilder.FlushResourceBarrier();
+				}
+
 				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
@@ -527,6 +557,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				DispatchRayShadowPass(SceneRenderBuilder);
 				RenderLightPass(SceneRenderBuilder);
 				RenderSkyPass(SceneRenderBuilder);
+				PreTranslucentPass(SceneRenderBuilder);
 				RenderTranslucentPass(SceneRenderBuilder);
 				RenderPostProcessing(SceneRenderBuilder);
 			}
@@ -571,18 +602,11 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		// wait until the previous presentation is done
 		if (bIsPresentedPreviously && !bIsSwapChainResetRT)
 		{
-			if (!GraphicInterface->IsPresentWaitSupported())
-			{
-				SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[1 - CurrentFrameRT]);
-			}
-			else if (GVkWaitForPresentKHR(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetSwapChain(), FrameNumberRT - 1, 100000000) != VK_SUCCESS)
-			{
-				UHE_LOG("Waiting for presentation failed!\n");
-			}
+			SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[1 - CurrentFrameRT]);
 		}
 
 		// present
-		bIsResetNeededShared = !SceneRenderBuilder.Present(GraphicInterface->GetSwapChain(), SceneRenderQueue.Queue, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT], PresentIndex, FrameNumberRT);
+		bIsResetNeededShared = !SceneRenderBuilder.Present(GraphicInterface->GetSwapChain(), SceneRenderQueue.Queue, SceneRenderQueue.FinishedSemaphores[CurrentFrameRT], PresentIndex);
 		bIsPresentedPreviously = true;
 
 		// tell main thread to continue

@@ -1,12 +1,47 @@
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBuilder)
+// Pass before the translucent
+void UHDeferredShadingRenderer::PreTranslucentPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TranslucentPass]);
 	if (CurrentScene == nullptr)
 	{
 		return;
 	}
+
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PreTranslucentPass]);
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Pre-Translucent Pass");
+
+	if (bHasRefractionMaterialRT)
+	{
+		// blit the scene result to opaque scene result
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+
+		RenderBuilder.Blit(GSceneResult, GOpaqueSceneResult);
+		RenderBuilder.Blit(GSceneResult, GQuarterBlurredScene);
+
+		// Blur the opaque scene
+		DispatchGaussianBlur(RenderBuilder, "Opaque Scene Blur", GQuarterBlurredScene, GQuarterBlurredScene, 4);
+
+		// final transition
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+	}
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}
+
+void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBuilder)
+{
+	if (CurrentScene == nullptr)
+	{
+		return;
+	}
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TranslucentPass]);
 
 	// this pass doesn't need a RT clear, will draw on scene result directly
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Translucent Pass");

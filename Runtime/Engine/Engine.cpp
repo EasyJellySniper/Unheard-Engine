@@ -77,7 +77,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 	// init profiler
 	UHEProfiler = UHProfiler(UHEGameTimer.get());
-	MainThreadProfile = UHProfiler(UHEGameTimer.get());
+	EngineUpdateProfile = UHProfiler(UHEGameTimer.get());
 
 	// sync full screen state to graphic
 	UHEGraphic->ToggleFullScreen(PresentationSettings.bFullScreen);
@@ -163,7 +163,7 @@ bool UHEngine::IsEngineInitialized()
 // engine updates
 void UHEngine::Update()
 {
-	UHProfilerScope Profiler(&MainThreadProfile);
+	UHProfilerScope Profiler(&EngineUpdateProfile);
 
 	// timer tick
 	UHEGameTimer->Tick();
@@ -236,14 +236,13 @@ void UHEngine::Update()
 	// cache input state of this frame
 	UHERawInput->ResetMouseData();
 	UHERawInput->CacheKeyStates();
-
-	GFrameNumber = (GFrameNumber + 1) % std::numeric_limits<uint32_t>::max();
 }
 
 // engine render loop
 void UHEngine::RenderLoop()
 {
 	UHERenderer->NotifyRenderThread();
+	GFrameNumber = (GFrameNumber + 1) % std::numeric_limits<uint32_t>::max();
 }
 
 void UHEngine::ResizeEngine()
@@ -375,7 +374,7 @@ void UHEngine::EndProfile()
 
 	// sync stats
 	UHStatistics& Stats = UHEProfiler.GetStatistics();
-	Stats.MainThreadTime = MainThreadProfile.GetDiff() * 1000.0f;
+	Stats.EngineUpdateTime = EngineUpdateProfile.GetDiff() * 1000.0f;
 	Stats.RenderThreadTime = UHERenderer->GetRenderThreadTime();
 	Stats.TotalTime = UHEProfiler.GetDiff() * 1000.0f;
 

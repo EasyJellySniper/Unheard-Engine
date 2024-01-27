@@ -8,7 +8,7 @@ struct UHStatistics
 {
 public:
 	UHStatistics()
-		: MainThreadTime(0)
+		: EngineUpdateTime(0)
 		, RenderThreadTime(0)
 		, TotalTime(0)
 		, FPS(0)
@@ -35,7 +35,7 @@ public:
 		}
 	}
 
-	float MainThreadTime;
+	float EngineUpdateTime;
 	float RenderThreadTime;
 	float TotalTime;
 	float FPS;

@@ -14,7 +14,7 @@ UHSettingDialog::UHSettingDialog(UHConfigManager* InConfig, UHEngine* InEngine, 
 
 }
 
-void UHSettingDialog::Update()
+void UHSettingDialog::Update(bool& bIsDialogActive)
 {
     if (!bIsOpened)
     {
@@ -111,6 +111,7 @@ void UHSettingDialog::Update()
     }
 
     ImGui::PopItemWidth();
+    bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     ImGui::End();
 }
 

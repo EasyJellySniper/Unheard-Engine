@@ -3,11 +3,12 @@
 // implementation of RenderBasePass(), this pass is a deferred rendering with GBuffers and depth buffer
 void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
 	if (CurrentScene == nullptr)
 	{
 		return;
 	}
+
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::BasePass]);
 
 	// setup clear value
 	std::vector<VkClearValue> ClearValues;

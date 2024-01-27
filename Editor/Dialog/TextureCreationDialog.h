@@ -16,7 +16,7 @@ public:
 	UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDialog* InTextureDialog, UHTextureImporter* InTextureImporter);
 	UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDialog* InCubemapDialog, UHAssetManager* InAssetMgr);
 
-	void Update();
+	virtual void Update(bool& bIsDialogActive) override;
 	void CheckPendingTextureCreation();
 	void CheckPendingCubeCreation();
 

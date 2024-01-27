@@ -12,5 +12,5 @@ public:
 	UHRenderBuffer<uint32_t>* GetToneMapData(int32_t FrameIdx) const;
 
 private:
-	UniquePtr<UHRenderBuffer<uint32_t>> ToneMapData[GNumOfPostProcessRT];
+	UniquePtr<UHRenderBuffer<uint32_t>> ToneMapData[GMaxFrameInFlight];
 };

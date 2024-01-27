@@ -393,6 +393,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianBlurShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -749,6 +752,12 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianBlurShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\BlurPassRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -801,5 +810,6 @@
     <None Include="Shaders\SphericalHarmonicComputeShader.hlsl" />
     <None Include="Shaders\UHSphericalHamonricCommon.hlsli" />
     <None Include="Shaders\DownsampleDepth.hlsl" />
+    <None Include="Shaders\PostProcessing\GaussianBlurComputeShader.hlsl" />
   </ItemGroup>
 </Project>

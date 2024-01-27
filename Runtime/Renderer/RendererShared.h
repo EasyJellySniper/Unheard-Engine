@@ -33,6 +33,8 @@ extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
 extern UHRenderTexture* GHalfDepth;
 extern UHRenderTexture* GHalfTranslucentDepth;
+extern UHRenderTexture* GQuarterBlurredScene;
+extern UHRenderTexture* GOpaqueSceneResult;
 
 // ray-tracing textures
 extern UHRenderTexture* GRTShadowResult;
@@ -49,3 +51,7 @@ extern UHSampler* GSkyCubeSampler;
 
 // SH9 data
 extern UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
+
+// variables
+extern int32_t GRefractionClearIndex;
+extern int32_t GRefractionBlurredIndex;

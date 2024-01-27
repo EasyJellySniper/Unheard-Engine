@@ -16,7 +16,7 @@ public:
 	~UHMeshDialog();
 
 	virtual void ShowDialog() override;
-	bool Update();
+	virtual void Update(bool& bIsDialogActive) override;
 
 private:
 	void SelectMesh(UHMesh* InMesh);

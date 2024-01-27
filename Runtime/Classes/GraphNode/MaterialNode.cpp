@@ -24,6 +24,7 @@ UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 	Inputs[UHMaterialInputs::FresnelFactor] = MakeUnique<UHGraphPin>("Fresnel Factor (R)", this, FloatPin);
 	Inputs[UHMaterialInputs::ReflectionFactor] = MakeUnique<UHGraphPin>("Reflection Factor (R)", this, FloatPin);
 	Inputs[UHMaterialInputs::Emissive] = MakeUnique<UHGraphPin>("Emissive (RGB)", this, Float3Pin);
+	Inputs[UHMaterialInputs::Refraction] = MakeUnique<UHGraphPin>("Refraction (R)", this, FloatPin);
 }
 
 void CollectTexDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing, int32_t& TextureIndexInMaterial
@@ -286,6 +287,17 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	else
 	{
 		Code += "\tInput.Emissive = float3(0,0,0)" + EndOfLine;
+	}
+
+	// Refraction, available for translucent objects only
+	if (UHGraphPin* Refraction = Inputs[UHMaterialInputs::Refraction]->GetSrcPin())
+	{
+		if (CompileData.MaterialCache->GetBlendMode() > UHBlendMode::Masked)
+		{
+			Code += "#if WITH_TRANSLUCENT && WITH_REFRACTION\n";
+			Code += "\tInput.Refraction = " + Refraction->GetOriginNode()->EvalHLSL(Refraction) + ".r" + EndOfLine;
+			Code += "#endif\n";
+		}
 	}
 
 	Code += ReturnCode;

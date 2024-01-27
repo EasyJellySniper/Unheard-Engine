@@ -49,6 +49,10 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, EditorHeightDelta(0)
 	, bDrawDebugViewRT(true)
 #endif
+	, GaussianBlurTempRT0(nullptr)
+	, GaussianBlurTempRT1(nullptr)
+	, bHasRefractionMaterialGT(false)
+	, bHasRefractionMaterialRT(false)
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
@@ -161,7 +165,7 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 		UHMaterial* Mat = Renderer->GetMaterial();
 		Mesh->CreateGPUBuffers(GraphicInterface);
 
-		if (!Mat->IsSkybox())
+		if (!Mat->GetMaterialUsages().bIsSkybox)
 		{
 			Mesh->CreateBottomLevelAS(GraphicInterface, CreationCmd);
 		}
@@ -267,7 +271,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && !Mat->IsSkybox())
+		if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
 		{
 			RecreateMaterialShaders(Renderer, Mat);
 		}
@@ -294,6 +298,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// post processing shaders
 	TemporalAAShader = MakeUnique<UHTemporalAAShader>(GraphicInterface, "TemporalAAShader");
 	ToneMapShader = MakeUnique<UHToneMappingShader>(GraphicInterface, "ToneMapShader", PostProcessPassObj[0].RenderPass);
+	BlurHorizontalShader = MakeUnique<UHGaussianBlurShader>(GraphicInterface, "BlurHShader", UHGaussianBlurType::BlurHorizontal);
+	BlurVerticalShader = MakeUnique<UHGaussianBlurShader>(GraphicInterface, "BlurVShader", UHGaussianBlurType::BlurVertical);
 
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
@@ -368,7 +374,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat == nullptr || Mat->IsSkybox())
+		if (Mat == nullptr || Mat->GetMaterialUsages().bIsSkybox)
 		{
 			continue;
 		}
@@ -399,6 +405,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// the post process RT binding will be in PostProcessRendering.cpp
 	ToneMapShader->BindParameters();
 	TemporalAAShader->BindParameters();
+	BlurHorizontalShader->BindParameters();
+	BlurVerticalShader->BindParameters();
 
 	// ------------------------------------------------ ray tracing pass descriptor update
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
@@ -415,7 +423,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		{
 			const UHMaterial* Mat = Renderers[Idx]->GetMaterial();
 			const UHMesh* Mesh = Renderers[Idx]->GetMesh();
-			if (!Mat || Mat->IsSkybox() || !Mesh)
+			if (!Mat || Mat->GetMaterialUsages().bIsSkybox || !Mesh)
 			{
 				continue;
 			}
@@ -523,6 +531,8 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	UH_SAFE_RELEASE(MotionCameraWorkaroundShader);
 	TemporalAAShader->Release();
 	ToneMapShader->Release();
+	BlurHorizontalShader->Release();
+	BlurVerticalShader->Release();
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
@@ -580,13 +590,20 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GHalfDepth = GraphicInterface->RequestRenderTexture("HalfDepth", HalfDepthResolution, HalfDepthFormat, true);
 	GHalfTranslucentDepth = GraphicInterface->RequestRenderTexture("HalfTranslucentDepth", HalfDepthResolution, HalfDepthFormat, true);
 
+	// quarter blurred RT, use R11G11B10 should suffice
+	VkExtent2D QuarterBlurredResolution;
+	QuarterBlurredResolution.width = RenderResolution.width >> 2;
+	QuarterBlurredResolution.height = RenderResolution.height >> 2;
+	GQuarterBlurredScene = GraphicInterface->RequestRenderTexture("QuarterBlurredScene", QuarterBlurredResolution, HistoryResultFormat);
+
 	// vertex normal buffer for saving the "search ray" in RT shadows
 	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat);
 	GSceneTranslucentVertexNormal = GraphicInterface->RequestRenderTexture("SceneTranslucentVertexNormal", RenderResolution, NormalFormat);
 
 	// post process buffer, use the same format as scene result
 	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
-	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, HistoryResultFormat, true);
+	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, HistoryResultFormat);
+	GOpaqueSceneResult = GraphicInterface->RequestRenderTexture("OpaqueSceneResult", RenderResolution, HistoryResultFormat);
 
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
@@ -622,7 +639,9 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GSceneTranslucentVertexNormal);
 	GraphicInterface->RequestReleaseRT(GPostProcessRT);
 	GraphicInterface->RequestReleaseRT(GPreviousSceneResult);
+	GraphicInterface->RequestReleaseRT(GOpaqueSceneResult);
 	GraphicInterface->RequestReleaseRT(GMotionVectorRT);
+	GraphicInterface->RequestReleaseRT(GQuarterBlurredScene);
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
@@ -720,46 +739,25 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 
-void UHDeferredShadingRenderer::ReleaseRenderPassObjects(bool bFrameBufferOnly)
+void UHDeferredShadingRenderer::ReleaseRenderPassObjects()
 {
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 
-	if (!bFrameBufferOnly)
+	if (bEnableDepthPrePass)
 	{
-		if (bEnableDepthPrePass)
-		{
-			DepthPassObj.Release(LogicalDevice);
-		}
-
-		BasePassObj.Release(LogicalDevice);
-		SkyboxPassObj.Release(LogicalDevice);
-		MotionCameraPassObj.Release(LogicalDevice);
-		MotionOpaquePassObj.Release(LogicalDevice);
-		MotionTranslucentPassObj.Release(LogicalDevice);
-		PostProcessPassObj[0].ReleaseRenderPass(LogicalDevice);
-
-		for (UHRenderPassObject& P : PostProcessPassObj)
-		{
-			P.ReleaseFrameBuffer(LogicalDevice);
-		}
+		DepthPassObj.Release(LogicalDevice);
 	}
-	else
+
+	BasePassObj.Release(LogicalDevice);
+	SkyboxPassObj.Release(LogicalDevice);
+	MotionCameraPassObj.Release(LogicalDevice);
+	MotionOpaquePassObj.Release(LogicalDevice);
+	MotionTranslucentPassObj.Release(LogicalDevice);
+	PostProcessPassObj[0].ReleaseRenderPass(LogicalDevice);
+
+	for (UHRenderPassObject& P : PostProcessPassObj)
 	{
-		if (bEnableDepthPrePass)
-		{
-			DepthPassObj.ReleaseFrameBuffer(LogicalDevice);
-		}
-
-		BasePassObj.ReleaseFrameBuffer(LogicalDevice);
-		SkyboxPassObj.ReleaseFrameBuffer(LogicalDevice);
-		MotionCameraPassObj.ReleaseFrameBuffer(LogicalDevice);
-		MotionOpaquePassObj.ReleaseFrameBuffer(LogicalDevice);
-		MotionTranslucentPassObj.ReleaseFrameBuffer(LogicalDevice);
-
-		for (UHRenderPassObject& P : PostProcessPassObj)
-		{
-			P.ReleaseFrameBuffer(LogicalDevice);
-		}
+		P.ReleaseFrameBuffer(LogicalDevice);
 	}
 }
 
@@ -851,12 +849,21 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 void UHDeferredShadingRenderer::UpdateTextureDescriptors()
 {
 	// ------------------------------------------------ Bindless table update
-	// bind texture table
-	std::vector<UHTexture*> Texes(AssetManagerInterface->GetReferencedTexture2Ds().size());
-	for (size_t Idx = 0; Idx < Texes.size(); Idx++)
+	std::vector<UHTexture*> Texes;
+
+	// bind textures from assets
+	const std::vector<UHTexture2D*> AssetTextures = AssetManagerInterface->GetReferencedTexture2Ds();
+	for (size_t Idx = 0; Idx < AssetTextures.size(); Idx++)
 	{
-		Texes[Idx] = AssetManagerInterface->GetReferencedTexture2Ds()[Idx];
+		Texes.push_back(AssetTextures[Idx]);
 	}
+
+	// bind necessary textures from system
+	Texes.push_back(GOpaqueSceneResult);
+	GRefractionClearIndex = (int32_t)Texes.size() - 1;
+
+	Texes.push_back(GQuarterBlurredScene);
+	GRefractionBlurredIndex = (int32_t)Texes.size() - 1;
 
 	size_t ReferencedSize = Texes.size();
 	while (ReferencedSize < GTextureTableSize)
@@ -918,7 +925,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	}
 
 	// recreate shader if need to assign renderer group again
-	if (bNeedReassignRendererGroup || CompileFlag == FullCompileResave)
+	if (bNeedReassignRendererGroup || CompileFlag == FullCompileResave || CompileFlag == FullCompileTemporary)
 	{
 		for (UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
@@ -998,7 +1005,8 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 	const int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const bool bReleaseDescriptorOnly = CompileFlag == RendererMaterialChanged;
 
-	if (bNeedReassignRendererGroup || CompileFlag == RendererMaterialChanged || CompileFlag == FullCompileResave)
+	if (bNeedReassignRendererGroup || CompileFlag == RendererMaterialChanged || CompileFlag == FullCompileResave
+		|| CompileFlag == FullCompileTemporary)
 	{
 		// release shaders if it's re-compiling
 		if (bEnableDepthPrePass)
@@ -1010,25 +1018,6 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 		SafeReleaseShaderPtr(MotionOpaqueShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 		SafeReleaseShaderPtr(MotionTranslucentShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 		SafeReleaseShaderPtr(TranslucentPassShaders, RendererBufferIndex, bReleaseDescriptorOnly);
-	}
-	else if (CompileFlag == FullCompileTemporary)
-	{
-		// compile only
-		if (bIsOpaque)
-		{
-			if (bEnableDepthPrePass)
-			{
-				DepthPassShaders[RendererBufferIndex]->OnCompile();
-			}
-
-			BasePassShaders[RendererBufferIndex]->OnCompile();
-			MotionOpaqueShaders[RendererBufferIndex]->OnCompile();
-		}
-		else
-		{
-			MotionTranslucentShaders[RendererBufferIndex]->OnCompile();
-			TranslucentPassShaders[RendererBufferIndex]->OnCompile();
-		}
 	}
 	else if (CompileFlag == BindOnly)
 	{
@@ -1109,7 +1098,7 @@ void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRend
 	for (UHMeshRendererComponent* Renderer : InRenderers)
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && !Mat->IsSkybox())
+		if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
 		{
 			RecreateMaterialShaders(Renderer, Mat);
 		}

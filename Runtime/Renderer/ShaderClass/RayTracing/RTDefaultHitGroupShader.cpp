@@ -7,7 +7,7 @@ UHRTDefaultHitGroupShader::UHRTDefaultHitGroupShader(UHGraphic* InGfx, std::stri
 	for (size_t Idx = 0; Idx < Materials.size(); Idx++)
 	{
 		// skip skybox material
-		if (Materials[Idx]->IsSkybox())
+		if (Materials[Idx]->GetMaterialUsages().bIsSkybox)
 		{
 			continue;
 		}

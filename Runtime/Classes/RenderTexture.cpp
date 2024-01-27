@@ -12,6 +12,49 @@ UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHText
 	bCreatePerMipImageView = true;
 }
 
+// Similar as the implementation of UHTexture2D
+void UHRenderTexture::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
+{
+	if (!TextureSettings.bUseMipmap || !GTextureFormatData[ImageFormat].bCanGenerateMipmap)
+	{
+		return;
+	}
+
+	VkImageViewCreateInfo TexInfo = GetImageViewInfo();
+	int32_t MipWidth = GetExtent().width;
+	int32_t MipHeight = GetExtent().height;
+
+	for (uint32_t Mdx = 1; Mdx < TexInfo.subresourceRange.levelCount; Mdx++)
+	{
+		// transition mip M-1 to SRC BIT, and M to DST BIT, note mip M is still layout undefined at this point
+		InRenderBuilder.PushResourceBarrier(UHImageBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, Mdx - 1));
+		InRenderBuilder.PushResourceBarrier(UHImageBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, Mdx));
+		InRenderBuilder.FlushResourceBarrier();
+
+		// blit to proper mip slices
+		VkExtent2D SrcExtent;
+		VkExtent2D DstExtent;
+		SrcExtent.width = MipWidth;
+		SrcExtent.height = MipHeight;
+		DstExtent.width = MipWidth >> 1;
+		DstExtent.height = MipHeight >> 1;
+		InRenderBuilder.Blit(this, this, SrcExtent, DstExtent, Mdx - 1, Mdx);
+		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
+
+		// for next mip
+		MipWidth = MipWidth >> 1;
+		MipHeight = MipHeight >> 1;
+	}
+
+	// transition all texture to shader read after generating mip maps
+	for (uint32_t Mdx = 0; Mdx < TexInfo.subresourceRange.levelCount; Mdx++)
+	{
+		// the last mip is DST bit, differeniate here
+		InRenderBuilder.PushResourceBarrier(UHImageBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx));
+	}
+	InRenderBuilder.FlushResourceBarrier();
+}
+
 #if WITH_EDITOR
 std::vector<uint8_t> UHRenderTexture::ReadbackTextureData()
 {

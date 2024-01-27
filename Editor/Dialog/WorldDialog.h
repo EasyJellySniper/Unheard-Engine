@@ -13,7 +13,7 @@ public:
 	UHWorldDialog(HWND ParentWnd, UHDeferredShadingRenderer* InRenderer);
 
 	virtual void ShowDialog() override;
-	void Update();
+	virtual void Update(bool& bIsDialogActive) override;
 
 	void ResetDialogWindow();
 	ImVec2 GetWindowSize() const;

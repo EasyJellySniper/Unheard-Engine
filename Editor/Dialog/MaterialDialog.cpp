@@ -105,7 +105,7 @@ void UHMaterialDialog::ShowDialog()
     }
 }
 
-void UHMaterialDialog::Update()
+void UHMaterialDialog::Update(bool& bIsDialogActive)
 {
     if (!IsDialogActive(IDD_MATERIAL))
     {
@@ -199,6 +199,7 @@ void UHMaterialDialog::Update()
         }
     }
     DialogSize = ImGui::GetWindowSize();
+    bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     ImGui::End();
 
     // store mouse states

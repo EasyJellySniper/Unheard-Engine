@@ -231,9 +231,6 @@ public:
 	// get shader record size
 	uint32_t GetShaderRecordSize() const;
 
-	// get min image count
-	uint32_t GetMinImageCount() const;
-
 	// get gpu time stamp period
 	float GetGPUTimeStampPeriod() const;
 
@@ -241,7 +238,6 @@ public:
 	bool IsRayTracingEnabled() const;
 	bool IsDebugLayerEnabled() const;
 	bool IsHDRAvailable() const;
-	bool IsPresentWaitSupported() const;
 	bool Is24BitDepthSupported() const;
 	bool IsAMDIntegratedGPU() const;
 
@@ -262,6 +258,7 @@ public:
 	VkQueue GetGraphicsQueue() const;
 
 #if WITH_EDITOR
+	uint32_t GetMinImageCount() const;
 	bool RecreateImGui();
 	VkPipeline GetImGuiPipeline() const;
 #endif
@@ -368,12 +365,10 @@ private:
 	UHAssetManager* AssetManagerInterface;
 	UHConfigManager* ConfigInterface;
 	uint32_t ShaderRecordSize;
-	uint32_t MinImageCount;
 	float GPUTimeStampPeriod;
 	bool bEnableDepthPrePass;
 	bool bEnableRayTracing;
 	bool bSupportHDR;
-	bool bSupportPresentWait;
 	bool bSupport24BitDepth;
 	bool bIsAMDIntegratedGPU;
 
@@ -393,6 +388,8 @@ protected:
 	UniquePtr<UHGPUMemory> ImageSharedMemory = nullptr;
 
 #if WITH_EDITOR
+	uint32_t MinImageCount;
+
 	// give access for some classes in debug build
 	friend UHEngine;
 	friend UHPreviewScene;

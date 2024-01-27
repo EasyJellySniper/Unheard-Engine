@@ -27,6 +27,8 @@ UHRenderTexture* GRTShadowResult;
 UHRenderTexture* GRTSharedTextureRG16F;
 UHRenderTexture* GHalfDepth;
 UHRenderTexture* GHalfTranslucentDepth;
+UHRenderTexture* GQuarterBlurredScene;
+UHRenderTexture* GOpaqueSceneResult;
 
 UHTextureCube* GSkyLightCube;
 
@@ -35,3 +37,6 @@ UHSampler* GLinearClampedSampler;
 UHSampler* GAnisoClampedSampler;
 UHSampler* GSkyCubeSampler;
 UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
+
+int32_t GRefractionClearIndex = UHINDEXNONE;
+int32_t GRefractionBlurredIndex = UHINDEXNONE;

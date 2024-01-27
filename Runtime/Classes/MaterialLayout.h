@@ -51,6 +51,7 @@ enum UHMaterialInputs
 	FresnelFactor,
 	ReflectionFactor,
 	Emissive,
+	Refraction,
 	MaterialMax
 };
 
@@ -63,4 +64,20 @@ enum UHMaterialCompileFlag
 	IncludeChanged,
 	StateChangedOnly,
 	RendererMaterialChanged
+};
+
+struct UHMaterialUsage
+{
+	bool bIsSkybox = false;
+	bool bIsTangentSpace = false;
+	bool bUseRefraction = false;
+};
+
+class UHTextureCube;
+struct UHSystemMaterialData
+{
+	int32_t DefaultSamplerIndex;
+	UHTextureCube* InEnvCube;
+	int32_t RefractionClearIndex;
+	int32_t RefractionBlurredIndex;
 };

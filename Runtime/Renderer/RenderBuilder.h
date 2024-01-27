@@ -67,7 +67,7 @@ public:
 		, VkSemaphore InFinishSemaphore);
 
 	// present to swap chain
-	bool Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId);
+	bool Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx);
 
 	// bind states
 	void BindGraphicState(UHGraphicState* InState);

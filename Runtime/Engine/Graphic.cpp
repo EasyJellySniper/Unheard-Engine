@@ -24,7 +24,6 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bEnableDepthPrePass(InConfig->RenderingSetting().bEnableDepthPrePass)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
 	, bSupportHDR(false)
-	, bSupportPresentWait(true)
 	, bSupport24BitDepth(true)
 	, bIsAMDIntegratedGPU(false)
 #if WITH_EDITOR
@@ -43,8 +42,6 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_spirv_1_4"
 		, "VK_KHR_shader_float_controls"
 		, "VK_EXT_robustness2"
-		, "VK_KHR_present_id"
-		, "VK_KHR_present_wait"
 		, "VK_EXT_hdr_metadata"
 		, "VK_KHR_dynamic_rendering"
 		, "VK_KHR_synchronization2" };
@@ -351,7 +348,6 @@ bool UHGraphic::CreateInstance()
 	GVkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBuildAccelerationStructuresKHR");
 	GVkDestroyAccelerationStructureKHR = (PFN_vkDestroyAccelerationStructureKHR)vkGetInstanceProcAddr(VulkanInstance, "vkDestroyAccelerationStructureKHR");
 	GVkCreateRayTracingPipelinesKHR = (PFN_vkCreateRayTracingPipelinesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCreateRayTracingPipelinesKHR");
-	GVkWaitForPresentKHR = (PFN_vkWaitForPresentKHR)vkGetInstanceProcAddr(VulkanInstance, "vkWaitForPresentKHR");
 	GVkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdTraceRaysKHR");
 	GVkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetRayTracingShaderGroupHandlesKHR");
 	GVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetInstanceProcAddr(VulkanInstance, "vkSetHdrMetadataEXT");
@@ -561,19 +557,11 @@ bool UHGraphic::CreateLogicalDevice()
 	RobustnessFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 	RobustnessFeatures.pNext = &VK13Features;
 
-	VkPhysicalDevicePresentIdFeaturesKHR PresentIdFeatureKHR{};
-	PresentIdFeatureKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
-	PresentIdFeatureKHR.pNext = &RobustnessFeatures;
-
-	VkPhysicalDevicePresentWaitFeaturesKHR PresentWaitFeatureKHR{};
-	PresentWaitFeatureKHR.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
-	PresentWaitFeatureKHR.pNext = &PresentIdFeatureKHR;
-
 	// device feature needs to assign in fature 2
 	VkPhysicalDeviceFeatures2 PhyFeatures{};
 	PhyFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	PhyFeatures.features = DeviceFeatures;
-	PhyFeatures.pNext = &PresentWaitFeatureKHR;
+	PhyFeatures.pNext = &RobustnessFeatures;
 
 	vkGetPhysicalDeviceFeatures2(PhysicalDevice, &PhyFeatures);
 
@@ -584,7 +572,6 @@ bool UHGraphic::CreateLogicalDevice()
 			UHE_LOG(L"Ray tracing pipeline not supported. System won't render ray tracing effects.\n");
 			bEnableRayTracing = false;
 		}
-		bSupportPresentWait = PresentWaitFeatureKHR.presentWait && PresentIdFeatureKHR.presentId;
 
 		// check 24-bit depth format
 		VkFormatProperties FormatProps{};
@@ -1526,11 +1513,6 @@ uint32_t UHGraphic::GetShaderRecordSize() const
 	return ShaderRecordSize;
 }
 
-uint32_t UHGraphic::GetMinImageCount() const
-{
-	return MinImageCount;
-}
-
 float UHGraphic::GetGPUTimeStampPeriod() const
 {
 	return GPUTimeStampPeriod;
@@ -1554,11 +1536,6 @@ bool UHGraphic::IsDebugLayerEnabled() const
 bool UHGraphic::IsHDRAvailable() const
 {
 	return bSupportHDR && ConfigInterface->RenderingSetting().bEnableHDR;
-}
-
-bool UHGraphic::IsPresentWaitSupported() const
-{
-	return bSupportPresentWait;
 }
 
 bool UHGraphic::Is24BitDepthSupported() const
@@ -1671,6 +1648,11 @@ VkQueue UHGraphic::GetGraphicsQueue() const
 }
 
 #if WITH_EDITOR
+uint32_t UHGraphic::GetMinImageCount() const
+{
+	return MinImageCount;
+}
+
 bool UHGraphic::RecreateImGui()
 {
 	bool bImGuiSucceed = true;
@@ -1760,13 +1742,15 @@ bool UHGraphic::CreateSwapChain()
 	VkPresentModeKHR PresentMode = ChooseSwapChainMode(SwapChainSupport, ConfigInterface->PresentationSetting().bVsync);
 	VkExtent2D Extent = ChooseSwapChainExtent(SwapChainSupport, WindowCache);
 
-	// give one extra count, so we have a chance to advance one more frame if driver is busy processing the others
-	uint32_t ImageCount = SwapChainSupport.Capabilities2.surfaceCapabilities.minImageCount + 1;
+	// Follow GMaxFrameInFlight for image counts
+	uint32_t ImageCount = GMaxFrameInFlight;
 	if (SwapChainSupport.Capabilities2.surfaceCapabilities.maxImageCount > 0 && ImageCount > SwapChainSupport.Capabilities2.surfaceCapabilities.maxImageCount)
 	{
 		ImageCount = SwapChainSupport.Capabilities2.surfaceCapabilities.maxImageCount;
 	}
-	MinImageCount = SwapChainSupport.Capabilities2.surfaceCapabilities.minImageCount;
+#if WITH_EDITOR
+	MinImageCount = ImageCount;
+#endif
 
 	// create info for swap chain
 	VkSwapchainCreateInfoKHR CreateInfo{};

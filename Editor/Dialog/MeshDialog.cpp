@@ -50,12 +50,13 @@ void UHMeshDialog::ShowDialog()
 	MaterialOutputPath = "";
 }
 
-bool UHMeshDialog::Update()
+void UHMeshDialog::Update(bool& bIsDialogActive)
 {
 	if (!bIsOpened)
 	{
-		return false;
+		return;
 	}
+
 	const std::vector<UHMesh*>& Meshes = AssetMgr->GetUHMeshes();
 	ImGui::Begin("Mesh Editor", &bIsOpened);
 
@@ -152,7 +153,7 @@ bool UHMeshDialog::Update()
 	PreviewScene->Render(bIsWindowActive);
 	ImGui::End();
 
-	return bIsWindowActive;
+	bIsDialogActive |= bIsWindowActive;
 }
 
 void UHMeshDialog::SelectMesh(UHMesh* InMesh)

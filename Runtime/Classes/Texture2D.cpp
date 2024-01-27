@@ -318,7 +318,6 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder
 
 void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 {
-	// generate mip maps for this texture, should be called in editor only
 	if (bIsMipMapGenerated || !TextureSettings.bUseMipmap || !GTextureFormatData[ImageFormat].bCanGenerateMipmap)
 	{
 		return;

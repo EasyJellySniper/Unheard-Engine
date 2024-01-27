@@ -113,7 +113,7 @@ private:
 
 	// profiler class
 	UHProfiler UHEProfiler;
-	UHProfiler MainThreadProfile;
+	UHProfiler EngineUpdateProfile;
 
 	// scene define
 	UniquePtr<UHScene> CurrentScene;

@@ -138,6 +138,7 @@ struct UHMaterialInputs
 	float FresnelFactor;
 	float ReflectionFactor;
 	float3 Emissive;
+	float Refraction;
 };
 
 struct UHDirectionalLight

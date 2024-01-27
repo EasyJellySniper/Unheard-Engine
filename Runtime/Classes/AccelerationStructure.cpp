@@ -131,7 +131,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		// refresh transform once
 		InRenderers[Idx]->Update();
 		UHMaterial* Mat = InRenderers[Idx]->GetMaterial();
-		if (Mat->IsSkybox())
+		if (Mat->GetMaterialUsages().bIsSkybox)
 		{
 			continue;
 		}

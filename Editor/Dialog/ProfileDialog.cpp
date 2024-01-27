@@ -26,7 +26,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex.str("");
         CPUStatTex.clear();
         CPUStatTex << "--CPU Profiles--\n";
-        CPUStatTex << "Main Thread Time: " << std::fixed << std::setprecision(4) << Stats.MainThreadTime << " ms\n";
+        CPUStatTex << "Engine Update Time: " << std::fixed << std::setprecision(4) << Stats.EngineUpdateTime << " ms\n";
         CPUStatTex << "Render Thread Time: " << std::fixed << std::setprecision(4) << Stats.RenderThreadTime << " ms\n";
         CPUStatTex << "Total CPU Time: " << std::fixed << std::setprecision(4) << Stats.TotalTime << " ms\n";
         CPUStatTex << "FPS: " << std::setprecision(4) << Stats.FPS << "\n\n";
@@ -51,11 +51,14 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
             , "Skybox Pass"
             , "Motion Pass"
             , "DownsampleDepth Pass"
+            , "Pre Translucent Pass"
             , "Translucent Pass"
             , "Tone Mapping"
             , "Temporal AA"
+            , "History Copying"
             , "Present SwapChain"};
 
+        float TotalGPUTime = 0.0f;
         GPUStatTex.str("");
         GPUStatTex.clear();
         GPUStatTex << "--GPU Profiles--\n";
@@ -63,7 +66,9 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         {
             GPUStatTex << GPUStatStrings[Idx] << ": " << std::fixed << std::setprecision(4)
                 << InProfiler->GetStatistics().GPUTimes[Idx] << " ms\n";
+            TotalGPUTime += InProfiler->GetStatistics().GPUTimes[Idx];
         }
+        GPUStatTex << "Total GPU Time: " << TotalGPUTime << " ms\n";
         GPUStatTex << "Render Resolution: " << InConfig->RenderingSetting().RenderWidth << "x" << InConfig->RenderingSetting().RenderHeight;
 
         InGameTimer->Reset();

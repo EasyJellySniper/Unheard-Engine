@@ -24,7 +24,6 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, MipMapCount(1)
 	, TextureType(Texture2D)
 	, bCreatePerMipImageView(false)
-	, ImageLayout(VK_IMAGE_LAYOUT_UNDEFINED)
 {
 #if WITH_EDITOR
 	for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -91,9 +90,9 @@ void UHTexture::SetImage(VkImage InImage)
 	ImageSource = InImage;
 }
 
-void UHTexture::SetImageLayout(VkImageLayout InLayout)
+void UHTexture::SetImageLayout(VkImageLayout InLayout, uint32_t InMipIndex)
 {
-	ImageLayout = InLayout;
+	ImageLayouts[InMipIndex] = InLayout;
 }
 
 bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
@@ -102,6 +101,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 	ImageExtent = InInfo.Extent;
 	MipMapCount = TextureSettings.bUseMipmap ? static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1 : 1;
 	TextureInfo = InInfo;
+	ImageLayouts.resize(MipMapCount);
 
 	// only create if the source is null, otherwise create image view only
 	if (ImageSource == nullptr)
@@ -329,9 +329,9 @@ VkImage UHTexture::GetImage() const
 	return ImageSource;
 }
 
-VkImageLayout UHTexture::GetImageLayout() const
+VkImageLayout UHTexture::GetImageLayout(const uint32_t InMipIndex) const
 {
-	return ImageLayout;
+	return ImageLayouts[InMipIndex];
 }
 
 VkImageView UHTexture::GetImageView() const

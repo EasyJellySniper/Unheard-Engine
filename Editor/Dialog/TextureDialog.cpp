@@ -52,7 +52,7 @@ void UHTextureDialog::Init()
     CurrentTextureDS = nullptr;
 }
 
-void UHTextureDialog::Update()
+void UHTextureDialog::Update(bool& bIsDialogActive)
 {
     if (!bIsOpened)
     {
@@ -178,7 +178,8 @@ void UHTextureDialog::Update()
     }
 
     ImGui::NewLine();
-    TextureCreationDialog->Update();
+    TextureCreationDialog->Update(bIsDialogActive);
+    bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     ImGui::End();
 }
 

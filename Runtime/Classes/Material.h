@@ -103,7 +103,7 @@ public:
 	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
 	void AllocateMaterialBuffer();
 	void AllocateRTMaterialBuffer();
-	void UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex, const UHTextureCube* InEnvCube);
+	void UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialData InMaterialData);
 
 	std::string GetName() const;
 	std::string GetSourcePath() const;
@@ -112,8 +112,9 @@ public:
 	UHMaterialProperty GetMaterialProps() const;
 	UHMaterialCompileFlag GetCompileFlag() const;
 	std::filesystem::path GetPath() const;
-	bool IsSkybox() const;
 	bool IsOpaque() const;
+	UHMaterialUsage GetMaterialUsages() const;
+
 	static bool IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB);
 
 	std::vector<std::string> GetMaterialDefines();
@@ -146,8 +147,7 @@ private:
 
 	// material flags
 	UHMaterialCompileFlag CompileFlag;
-	bool bIsSkybox;
-	bool bIsTangentSpace;
+	UHMaterialUsage MaterialUsages;
 
 	UHMaterialProperty MaterialProps;
 	std::string TexFileNames[UHMaterialInputs::MaterialMax];

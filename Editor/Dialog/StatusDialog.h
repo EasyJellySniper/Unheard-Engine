@@ -9,5 +9,6 @@ public:
 	UHStatusDialogScope(std::string InMsg);
 	~UHStatusDialogScope();
 
-	virtual void ShowDialog() {}
+	virtual void ShowDialog() override {}
+	virtual void Update(bool& bIsDialogActive) override {}
 };

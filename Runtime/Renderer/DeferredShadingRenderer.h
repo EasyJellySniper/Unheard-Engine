@@ -28,6 +28,7 @@
 #include "ShaderClass/TranslucentPassShader.h"
 #include "ShaderClass/PostProcessing/ToneMappingShader.h"
 #include "ShaderClass/PostProcessing/TemporalAAShader.h"
+#include "ShaderClass/PostProcessing/GaussianBlurShader.h"
 #include "ShaderClass/RayTracing/RTDefaultHitGroupShader.h"
 #include "ShaderClass/RayTracing/RTShadowShader.h"
 #include "ShaderClass/TextureSamplerTable.h"
@@ -134,7 +135,7 @@ private:
 	void CreateRenderFrameBuffers();
 
 	// release render pass objects
-	void ReleaseRenderPassObjects(bool bFrameBufferOnly = false);
+	void ReleaseRenderPassObjects();
 
 	// create constant buffers
 	void CreateDataBuffers();
@@ -175,10 +176,12 @@ private:
 	void GenerateSH9Pass(UHRenderBuilder& RenderBuilder);
 	void RenderSkyPass(UHRenderBuilder& RenderBuilder);
 	void RenderMotionPass(UHRenderBuilder& RenderBuilder);
+	void PreTranslucentPass(UHRenderBuilder& RenderBuilder);
 	void RenderTranslucentPass(UHRenderBuilder& RenderBuilder);
 	void RenderEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
-	void DispatchEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
+	void Dispatch2DEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHRenderBuilder& RenderBuilder);
+	void DispatchGaussianBlur(UHRenderBuilder& RenderBuilder, std::string InName, UHRenderTexture* Input, UHRenderTexture* Output, int32_t IterationCount);
 	uint32_t RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder);
 
 #if WITH_EDITOR
@@ -235,6 +238,8 @@ private:
 	bool bIsRenderingEnabledRT;
 	bool bIsSkyLightEnabledRT;
 	bool bNeedGenerateSH9RT;
+	bool bHasRefractionMaterialGT;
+	bool bHasRefractionMaterialRT;
 
 	// current scene
 	UHScene* CurrentScene;
@@ -310,6 +315,10 @@ private:
 
 	UniquePtr<UHToneMappingShader> ToneMapShader;
 	UniquePtr<UHTemporalAAShader> TemporalAAShader;
+	UniquePtr<UHGaussianBlurShader> BlurHorizontalShader;
+	UniquePtr<UHGaussianBlurShader> BlurVerticalShader;
+	UHRenderTexture* GaussianBlurTempRT0;
+	UHRenderTexture* GaussianBlurTempRT1;
 	bool bIsTemporalReset;
 
 #if WITH_EDITOR

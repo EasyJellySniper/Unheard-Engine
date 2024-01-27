@@ -50,7 +50,7 @@ UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDial
     CurrentOutputPath = "Assets\\Textures";
 }
 
-void UHTextureCreationDialog::Update()
+void UHTextureCreationDialog::Update(bool& bIsDialogActive)
 {
     if (TextureDialog)
     {

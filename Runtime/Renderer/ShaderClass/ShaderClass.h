@@ -212,5 +212,8 @@ protected:
 	UniquePtr<UHRenderBuffer<UHShaderRecord>> RayGenTable;
 	UniquePtr<UHRenderBuffer<UHShaderRecord>> HitGroupTable;
 	UniquePtr<UHRenderBuffer<UHShaderRecord>> MissTable;
+
+	// Push constant range
+	VkPushConstantRange PushConstantRange;
 };
 

@@ -27,7 +27,7 @@ void UHDeferredShadingRenderer::RenderEffect(UHShaderClass* InShader, UHRenderBu
 	PostProcessIdx = 1 - PostProcessIdx;
 }
 
-void UHDeferredShadingRenderer::DispatchEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName)
+void UHDeferredShadingRenderer::Dispatch2DEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName)
 {
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch " + InName);
 
@@ -83,20 +83,27 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 				// only render it when it's not resetting
 				TemporalAAShader->BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrameRT, true);
 				TemporalAAShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrameRT);
-				DispatchEffect(TemporalAAShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Temporal AA");
+				Dispatch2DEffect(TemporalAAShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Temporal AA");
 			}
 
 			bIsTemporalReset = false;
 		}
 	}
 
-	// copy to scene history
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
-	RenderBuilder.FlushResourceBarrier();
+	// -------------------------- History Result Passes --------------------------//
+	{
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::HistoryCopyingPass]);
+		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "History Result Copy");
 
-	RenderBuilder.Blit(PostProcessResults[1 - CurrentPostProcessRTIndex], GPreviousSceneResult);
-	RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		// blit to scene history
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+		RenderBuilder.Blit(PostProcessResults[1 - CurrentPostProcessRTIndex], GPreviousSceneResult);
+
+		RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+	}
 
 #if WITH_EDITOR
 	if (DebugViewIndex > 0)

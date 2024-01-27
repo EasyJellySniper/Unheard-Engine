@@ -28,7 +28,7 @@ void UHWorldDialog::ShowDialog()
 	RefreshObjectList();
 }
 
-void UHWorldDialog::Update()
+void UHWorldDialog::Update(bool& bIsDialogActive)
 {
 	if (bResetWindow && DialogSize.has_value())
 	{

@@ -1,0 +1,21 @@
+14-01-2024: 
+Add gaussian blur pass. The next is to try half-sized blurring or even quarter-sized if performance issue is there.
+15-01-2024: 
+Make gaussian blur calculate at lower resolution (not just half-sized).
+Also corrected a few performance profiles.
+
+19-01-2024: 
+Fixed the wrong tone map data array size. Made min image count follow GMaxFrameInFlight value.
+Removed the PresentWait and PresentId usage. They caused a high cpu usage.
+21-01-2024: 
+Started adding refraction material parameter and binding refraction textures.
+Next is to do refraction calculation.
+
+25-01-2024: 
+Started adding refraction calculation. But the blurred scene quality is too low IMO.
+Next is to try a higher resolution blurred scene with a lower blur radius.
+Fixed the material buffer size issue when the parameter changes.
+Input guard for all other editor dialogs.
+
+27-01-2024: Continue implementing the refraction material. First version of refraction material is done. Looks solid!
+Also pushed constants to blur shader successfully, saved constant buffer creation.

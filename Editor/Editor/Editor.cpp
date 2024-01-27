@@ -45,17 +45,17 @@ void UHEditor::OnEditorUpdate()
     bool bIsDialogActive = false;
     Input->SetInputEnabled(true);
     ProfileTimer.Tick();
-    SettingDialog->Update();
+    SettingDialog->Update(bIsDialogActive);
     ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config);
-    TextureDialog->Update();
-    MaterialDialog->Update();
-    CubemapDialog->Update();
-    bIsDialogActive |= MeshDialog->Update();
+    TextureDialog->Update(bIsDialogActive);
+    MaterialDialog->Update(bIsDialogActive);
+    CubemapDialog->Update(bIsDialogActive);
+    MeshDialog->Update(bIsDialogActive);
 
     if (!Config->PresentationSetting().bFullScreen)
     {
-        WorldDialog->Update();
-        InfoDialog->Update();
+        WorldDialog->Update(bIsDialogActive);
+        InfoDialog->Update(bIsDialogActive);
     }
 
     Input->SetInputEnabled(!bIsDialogActive);

@@ -26,6 +26,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, RayGenTable(nullptr)
 	, HitGroupTable(nullptr)
 	, RenderPassCache(InRenderPass)
+	, PushConstantRange(VkPushConstantRange{})
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -137,6 +138,8 @@ void UHShaderClass::Release(bool bDescriptorOnly)
 
 	UH_SAFE_RELEASE(HitGroupTable);
 	HitGroupTable.reset();
+
+	PushConstantRange = VkPushConstantRange{};
 }
 
 void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite)
@@ -360,6 +363,13 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 		VkPipelineLayoutCreateInfo PipelineLayoutInfo{};
 		PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		PipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(1 + AdditionalLayout.size());
+
+		// Setup push constant range if requested, for now count 1 should suffice
+		if (PushConstantRange.stageFlags != 0)
+		{
+			PipelineLayoutInfo.pushConstantRangeCount = 1;
+			PipelineLayoutInfo.pPushConstantRanges = &PushConstantRange;
+		}
 
 		std::vector<VkDescriptorSetLayout> Layouts = { GSetLayoutTable[GetId()][TypeIndexCache] };
 		if (AdditionalLayout.size() > 0)

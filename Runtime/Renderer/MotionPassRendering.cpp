@@ -2,11 +2,11 @@
 
 void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::MotionPass]);
 	if (CurrentScene == nullptr)
 	{
 		return;
 	}
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::MotionPass]);
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Motion Pass");
 	{
@@ -100,7 +100,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 					UHMesh* Mesh = Renderer->GetMesh();
 
 					// skip skybox mat and only draw dirty renderer
-					if (Mat->IsSkybox() || !Renderer->IsMotionDirty(CurrentFrameRT))
+					if (Mat->GetMaterialUsages().bIsSkybox || !Renderer->IsMotionDirty(CurrentFrameRT))
 					{
 						continue;
 					}
@@ -198,7 +198,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 					UHMesh* Mesh = Renderer->GetMesh();
 
 					// skip skybox mat
-					if (Mat->IsSkybox())
+					if (Mat->GetMaterialUsages().bIsSkybox)
 					{
 						continue;
 					}
@@ -282,7 +282,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	{
 		UHMeshRendererComponent* Renderer = OpaquesToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->IsSkybox() || (!Renderer->IsMotionDirty(CurrentFrameRT)))
+		if (Mat->GetMaterialUsages().bIsSkybox || (!Renderer->IsMotionDirty(CurrentFrameRT)))
 		{
 			continue;
 		}
@@ -349,7 +349,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	{
 		UHMeshRendererComponent* Renderer = TranslucentsToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->IsSkybox())
+		if (Mat->GetMaterialUsages().bIsSkybox)
 		{
 			continue;
 		}

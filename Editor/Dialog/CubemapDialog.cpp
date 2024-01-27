@@ -52,7 +52,7 @@ void UHCubemapDialog::Init()
     }
 }
 
-void UHCubemapDialog::Update()
+void UHCubemapDialog::Update(bool& bIsDialogActive)
 {
     if (!bIsOpened)
     {
@@ -176,7 +176,8 @@ void UHCubemapDialog::Update()
     }
 
     ImGui::NewLine();
-    TextureCreationDialog->Update();
+    TextureCreationDialog->Update(bIsDialogActive);
+    bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     ImGui::End();
 }
 

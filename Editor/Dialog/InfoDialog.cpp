@@ -18,7 +18,7 @@ void UHInfoDialog::ShowDialog()
 	ResetDialogWindow();
 }
 
-void UHInfoDialog::Update()
+void UHInfoDialog::Update(bool& bIsDialogActive)
 {
 	if ((bResetWindow || WorldDialog->IsDialogSizeChanged()) && DialogSize.has_value())
 	{

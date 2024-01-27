@@ -269,7 +269,7 @@ void UHScene::AddMeshRenderer(UHMeshRendererComponent* InRenderer)
 		InMaterial->SetBufferDataIndex(ConstIdx);
 	}
 	
-	if (!InMaterial->IsSkybox())
+	if (!InMaterial->GetMaterialUsages().bIsSkybox)
 	{
 		// otherwise, adds cache based on blend mode
 		switch (InMaterial->GetBlendMode())

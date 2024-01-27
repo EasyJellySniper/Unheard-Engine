@@ -40,7 +40,7 @@ public:
 	~UHMaterialDialog();
 
 	virtual void ShowDialog() override;
-	void Update();
+	virtual void Update(bool& bIsDialogActive) override;
 	void ResetDialogWindow();
 
 	void Init();

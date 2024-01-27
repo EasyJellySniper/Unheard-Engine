@@ -193,7 +193,7 @@ void UHRenderBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
 	}
 }
 
-bool UHRenderBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx, uint64_t PresentId)
+bool UHRenderBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSemaphore InFinishSemaphore, uint32_t InImageIdx)
 {
 	// present to swap chain, after render finish fence is signaled, it will present
 	VkPresentInfoKHR PresentInfo{};
@@ -209,17 +209,6 @@ bool UHRenderBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSem
 	PresentInfo.pSwapchains = &InSwapChain;
 	PresentInfo.pImageIndices = &InImageIdx;
 	PresentInfo.pResults = nullptr;
-
-	std::vector<uint64_t> PresentIds = { PresentId };
-	VkPresentIdKHR PresentIdInfo{};
-	PresentIdInfo.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
-	PresentIdInfo.swapchainCount = 1;
-	PresentIdInfo.pPresentIds = PresentIds.data();
-
-	if (PresentId != UINT64_MAX && Gfx->IsPresentWaitSupported())
-	{
-		PresentInfo.pNext = &PresentIdInfo;
-	}
 
 	VkResult PresentResult = vkQueuePresentKHR(InQueue, &PresentInfo);
 
@@ -422,7 +411,7 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 		Barrier.dstAccessMask = LayoutToAccessFlags[NewLayout];
 
 		Barriers[Idx] = Barrier;
-		InTextures[Idx]->SetImageLayout(NewLayout);
+		InTextures[Idx]->SetImageLayout(NewLayout, BaseMipLevel);
 	}
 
 	VkPipelineStageFlags SourceStage = LayoutToStageFlags[OldLayout];
@@ -445,7 +434,7 @@ void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
 	const bool bFallbackToOldResourceBarrier = false;
 	if (Gfx->IsAMDIntegratedGPU() || bFallbackToOldResourceBarrier)
 	{
-		ResourceBarrier(InBarrier.Texture, InBarrier.Texture->GetImageLayout(), InBarrier.NewLayout, InBarrier.BaseMipLevel);
+		ResourceBarrier(InBarrier.Texture, InBarrier.Texture->GetImageLayout(InBarrier.BaseMipLevel), InBarrier.NewLayout, InBarrier.BaseMipLevel);
 		return;
 	}
 
@@ -486,7 +475,7 @@ void UHRenderBuilder::FlushResourceBarrier()
 		TempBarrier.subresourceRange.levelCount = 1;
 		TempBarrier.subresourceRange.layerCount = 1;
 
-		ImageBarriers[Idx].Texture->SetImageLayout(TempBarrier.newLayout);
+		ImageBarriers[Idx].Texture->SetImageLayout(TempBarrier.newLayout, ImageBarriers[Idx].BaseMipLevel);
 		Barriers[Idx] = std::move(TempBarrier);
 	}
 	DependencyInfo.pImageMemoryBarriers = Barriers.data();

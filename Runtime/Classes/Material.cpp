@@ -18,8 +18,7 @@ UHMaterial::UHMaterial()
 	, BlendMode(UHBlendMode::Opaque)
 	, MaterialProps(UHMaterialProperty())
 	, CompileFlag(UpToDate)
-	, bIsSkybox(false)
-	, bIsTangentSpace(false)
+	, MaterialUsages(UHMaterialUsage{})
 	, MaterialBufferSize(0)
 {
 	MaterialNode = MakeUnique<UHMaterialNode>(this);
@@ -68,7 +67,6 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	FileIn.read(reinterpret_cast<char*>(&MaterialProps), sizeof(MaterialProps));
 
 	// material graph data
-	FileIn.read(reinterpret_cast<char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
 	UHUtilities::ReadStringVectorData(FileIn, RegisteredTextureNames);
 	ImportGraphData(FileIn);
 
@@ -214,6 +212,8 @@ void UHMaterial::SetMaterialBufferSize(size_t InSize)
 	if (MaterialBufferSize != InSize)
 	{
 		MaterialBufferSize = InSize;
+		// resize data buffer as well
+		AllocateMaterialBuffer();
 	}
 }
 
@@ -250,7 +250,6 @@ void UHMaterial::Export(const std::filesystem::path InPath)
 	FileOut.write(reinterpret_cast<const char*>(&MaterialProps), sizeof(MaterialProps));
 
 	// material graph data
-	FileOut.write(reinterpret_cast<const char*>(&bIsTangentSpace), sizeof(bIsTangentSpace));
 	UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
 	ExportGraphData(FileOut);
 
@@ -363,7 +362,10 @@ std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 	// constant from system
 	Code += "\tfloat GCutoff;\n";
 	Code += "\tfloat GEnvCubeMipMapCount;\n";
-	OutSize += sizeof(float) * 3;
+	Code += "\tint GRefractionClearIndex;\n";
+	Code += "\tint GRefractionBlurIndex;\n";
+
+	OutSize += sizeof(float) * 5;
 	
 	return Code;
 }
@@ -389,8 +391,8 @@ void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
 
 void UHMaterial::SetIsSkybox(bool InFlag)
 {
-	bIsSkybox = InFlag;
-	if (bIsSkybox)
+	MaterialUsages.bIsSkybox = InFlag;
+	if (MaterialUsages.bIsSkybox)
 	{
 		CullMode = UHCullMode::CullFront;
 	}
@@ -404,7 +406,7 @@ void UHMaterial::SetCompileFlag(UHMaterialCompileFlag InFlag)
 void UHMaterial::SetRegisteredTextureIndexes(std::vector<int32_t> InData)
 {
 	// skybox isn't in bindless system, doesn't need this index lookup
-	if (bIsSkybox)
+	if (MaterialUsages.bIsSkybox)
 	{
 		return;
 	}
@@ -418,6 +420,9 @@ void UHMaterial::AllocateMaterialBuffer()
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
+		UH_SAFE_RELEASE(MaterialConstantsGPU[Idx]);
+		MaterialConstantsGPU[Idx].reset();
+
 		// the buffer size will be aligned to 256, check how many element it actually needs
 		size_t ElementCount = (MaterialBufferSize + 256) / 256;
 		MaterialConstantsGPU[Idx] = GfxCache->RequestRenderBuffer<uint8_t>(ElementCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
@@ -436,7 +441,7 @@ void UHMaterial::AllocateRTMaterialBuffer()
 	}
 }
 
-void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamplerIndex, const UHTextureCube* InEnvCube)
+void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialData InMaterialData)
 {
 	if (MaterialBufferSize == 0)
 	{
@@ -459,7 +464,7 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 
 	// fill the index of sampler
 	// @TODO: Differentiate samplers
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &DefaultSamplerIndex, Stride);
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.DefaultSamplerIndex, Stride);
 	BufferAddress += Stride;
 
 	// fill cutoff
@@ -467,10 +472,21 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 	BufferAddress += Stride;
 
 	// fill env cube mip map count
-	if (InEnvCube != nullptr)
+	if (InMaterialData.InEnvCube != nullptr)
 	{
-		float EnvCubeMipMapCount = static_cast<float>(InEnvCube->GetMipMapCount());
+		float EnvCubeMipMapCount = static_cast<float>(InMaterialData.InEnvCube->GetMipMapCount());
 		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &EnvCubeMipMapCount, Stride);
+		BufferAddress += Stride;
+	}
+
+	// copy refraction texture index
+	if (MaterialUsages.bUseRefraction)
+	{
+		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionClearIndex, Stride);
+		BufferAddress += Stride;
+
+		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionBlurredIndex, Stride);
+		BufferAddress += Stride;
 	}
 
 	// upload material data
@@ -489,7 +505,7 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const int32_t DefaultSamp
 		for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
 		{
 			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &RegisteredTextureIndexes[Idx], Stride);
-			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &DefaultSamplerIndex, Stride);
+			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &InMaterialData.DefaultSamplerIndex, Stride);
 		}
 
 		// copy material parameters
@@ -525,14 +541,14 @@ UHMaterialProperty UHMaterial::GetMaterialProps() const
 	return MaterialProps;
 }
 
-bool UHMaterial::IsSkybox() const
-{
-	return bIsSkybox;
-}
-
 bool UHMaterial::IsOpaque() const
 {
 	return GetBlendMode() < UHBlendMode::TranditionalAlpha;
+}
+
+UHMaterialUsage UHMaterial::GetMaterialUsages() const
+{
+	return MaterialUsages;
 }
 
 bool UHMaterial::IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB)
@@ -553,6 +569,11 @@ std::filesystem::path UHMaterial::GetPath() const
 std::vector<std::string> UHMaterial::GetMaterialDefines()
 {
 	std::vector<std::string> Defines;
+
+	// @TODO: separate tangent space setting in editor
+	MaterialUsages.bIsTangentSpace = MaterialNode->GetInputs()[Normal]->GetSrcPin() != nullptr;
+	MaterialUsages.bUseRefraction = MaterialNode->GetInputs()[Refraction]->GetSrcPin() != nullptr;
+
 	if (BlendMode == UHBlendMode::Masked)
 	{
 		Defines.push_back("WITH_ALPHATEST");
@@ -561,17 +582,13 @@ std::vector<std::string> UHMaterial::GetMaterialDefines()
 	if (BlendMode > UHBlendMode::Masked)
 	{
 		Defines.push_back("WITH_TRANSLUCENT");
+		if (MaterialUsages.bUseRefraction)
+		{
+			Defines.push_back("WITH_REFRACTION");
+		}
 	}
 
-#if WITH_EDITOR
-	// @TODO: separate tangent space setting in editor
-	if (MaterialNode->GetInputs()[Normal]->GetSrcPin())
-	{
-		bIsTangentSpace = true;
-	}
-#endif
-
-	if (bIsTangentSpace)
+	if (MaterialUsages.bIsTangentSpace)
 	{
 		Defines.push_back("WITH_TANGENT_SPACE");
 	}
@@ -841,9 +858,9 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHE_LOG("Material: Mismatched EditNodes and EditGUIRelativePos size.\n");
 	}
 
-	if (MaterialNode->GetInputs()[Normal]->GetSrcPin())
+	if (MaterialNode->GetInputs()[Normal]->GetSrcPin() != nullptr)
 	{
-		bIsTangentSpace = true;
+		MaterialUsages.bIsTangentSpace = true;
 	}
 
 	GetRegisteredTextureNames();

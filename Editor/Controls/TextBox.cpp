@@ -98,7 +98,7 @@ T UHTextBox::Parse()
 	}
 	catch (...)
 	{
-		MessageBox(ParentControl, (L"Parsing " + GetText() + L" failed!").c_str(), L"Error", MB_OK);
+		UHE_LOG((L"Parsing " + GetText() + L" failed!"));
 	}
 
 	return Result;

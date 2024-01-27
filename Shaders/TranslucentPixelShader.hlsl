@@ -42,7 +42,18 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	float Occlusion = MaterialInput.Occlusion;
 	float Metallic = MaterialInput.Metallic;
 	float Roughness = MaterialInput.Roughness;
-	BaseColor = saturate(BaseColor - BaseColor * Metallic);
+    float Opacity = MaterialInput.Opacity;
+
+    float Smoothness = 1.0f - Roughness;
+    float SmoothnessSquare = Smoothness * Smoothness;
+    
+    float2 ScreenUV = Vin.Position.xy * UHResolution.zw;
+    float3 WorldPos = Vin.WorldPos;
+    
+#if WITH_REFRACTION || WITH_ENVCUBE
+    // Calc eye vector when necessary
+    float3 EyeVector = normalize(WorldPos - UHCameraPos);
+#endif    
 
 #if WITH_TANGENT_SPACE
 	float3 BumpNormal = MaterialInput.Normal;
@@ -54,6 +65,9 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	float3 BumpNormal = normalize(Vin.Normal);
 	BumpNormal *= (bIsFrontFace) ? 1 : -1;
 #endif
+    
+    // Base Color PBR
+    BaseColor = saturate(BaseColor - BaseColor * Metallic);
 
 	// specular color and roughness
 	float3 Specular = MaterialInput.Specular;
@@ -62,18 +76,42 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	float3 IndirectSpecular = 0;
 #if WITH_ENVCUBE
 	// if per-object env cube is used, calculate it here, and adds the result to emissive
-	float3 EyeVector = normalize(Vin.WorldPos - UHCameraPos);
 	float3 R = reflect(EyeVector, BumpNormal);
 	float NdotV = abs(dot(BumpNormal, -EyeVector));
-
-	float Smoothness = 1.0f - Roughness;
-	float SpecFade = Smoothness * Smoothness;
+	float SpecFade = SmoothnessSquare;
 	float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
 
 	IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
 
 	// since indirect spec will be added directly and can't be scaled with NdotL, expose material parameter to scale down it
 	IndirectSpecular *= MaterialInput.ReflectionFactor;
+#endif
+    
+    // Refraction
+#if WITH_REFRACTION
+    // Calc refract vector
+    float3 RefractEyeVec = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
+    float2 RefractOffset = (RefractEyeVec.xy - EyeVector.xy);
+    float2 RefractUV = ScreenUV + RefractOffset * 0.1f;
+    
+    UHBRANCH
+    if (RefractUV.x != saturate(RefractUV.x) || RefractUV.y != saturate(RefractUV.y))
+    {
+        // if it's outside the screen range, do not refract. I don't want to see clamping.
+        RefractUV = ScreenUV;
+    }
+    
+    float3 SceneColor = UHTextureTable[GRefractionClearIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
+    float3 BlurredSceneColor = UHTextureTable[GRefractionBlurIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
+    
+    // Use the scene color for refraction, the original BaseColor will be used as tint color instead
+    // Roughness will be used as a factor for lerp clear/blurred scene
+    float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, SmoothnessSquare * SmoothnessSquare);
+    float3 RefractionResult = RefractionColor * BaseColor;
+    RefractionResult += MaterialInput.Emissive.rgb + IndirectSpecular;
+    
+    // Early return and do not proceed to lighting, refraction should rely on the lit opaque scene.
+    return float4(RefractionResult, Opacity);
 #endif
 
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
@@ -91,7 +129,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     LightInfo.Diffuse = BaseColor;
     LightInfo.Specular = float4(Specular, Roughness);
     LightInfo.Normal = normalize(BumpNormal);
-    LightInfo.WorldPos = Vin.WorldPos;
+    LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
 	
 	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
@@ -132,7 +170,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         }
         LightInfo.LightColor = PointLight.Color.rgb;
 		
-        LightToWorld = Vin.WorldPos - PointLight.Position;
+        LightToWorld = WorldPos - PointLight.Position;
         LightInfo.LightDir = normalize(LightToWorld);
 		
 		// square distance attenuation
@@ -165,7 +203,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         
         LightInfo.LightColor = SpotLight.Color.rgb;
         LightInfo.LightDir = SpotLight.Dir;
-        LightToWorld = Vin.WorldPos - SpotLight.Position;
+        LightToWorld = WorldPos - SpotLight.Position;
         
         // squared distance attenuation
         LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + AttenNoise);
@@ -187,5 +225,5 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	Result += MaterialInput.Emissive.rgb + IndirectSpecular;
 
 	// output result with opacity
-	return float4(Result, MaterialInput.Opacity);
+	return float4(Result, Opacity);
 }
