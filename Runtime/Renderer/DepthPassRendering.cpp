@@ -17,92 +17,37 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 		RenderBuilder.SetViewport(RenderResolution);
 		RenderBuilder.SetScissor(RenderResolution);
 
-		// begin render pass based on flag
-		if (bParallelSubmissionRT)
-		{
-			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-		}
-		else
-		{
-			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue);
-		}
-
-		if (bParallelSubmissionRT)
-		{
-#if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				ThreadDrawCalls[I] = 0;
-			}
-#endif
-
-			// wake all worker threads
-			ParallelTask = UHParallelTask::DepthPassTask;
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				WorkerThreads[I]->WakeThread();
-			}
-
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				WorkerThreads[I]->WaitTask();
-			}
+		// begin render pass
+		RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
-			}
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		{
+			ThreadDrawCalls[I] = 0;
+		}
 #endif
 
-			// execute all recorded batches
-			RenderBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
-		}
-		else
+		// wake all worker threads
+		ParallelTask = UHParallelTask::DepthPassTask;
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
 		{
-			// bind texture table, they should only be bound once
-			if (DepthPassShaders.size() > 0)
-			{
-				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
-					, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-				RenderBuilder.BindDescriptorSet(DepthPassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
-			}
+			WorkerThreads[I]->WakeThread();
+		}
 
-			// render all opaque renderers from scene
-			for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
-			{
-				const UHMaterial* Mat = Renderer->GetMaterial();
-				UHMesh* Mesh = Renderer->GetMesh();
-
-				int32_t RendererIdx = Renderer->GetBufferDataIndex();
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		{
+			WorkerThreads[I]->WaitTask();
+		}
 
 #if WITH_EDITOR
-				if (DepthPassShaders.find(RendererIdx) == DepthPassShaders.end())
-				{
-					// unlikely to happen, but printing a message for debug
-					UHE_LOG(L"[RenderDepthPass] Can't find base pass shader for material: \n");
-					continue;
-				}
+		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		{
+			RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+		}
 #endif
 
-				const UHDepthPassShader* DepthShader = DepthPassShaders[RendererIdx].get();
-
-				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
-
-				// bind pipelines
-				RenderBuilder.BindGraphicState(DepthShader->GetState());
-				RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-				RenderBuilder.BindIndexBuffer(Mesh);
-				RenderBuilder.BindDescriptorSet(DepthShader->GetPipelineLayout(), DepthShader->GetDescriptorSet(CurrentFrameRT));
-
-				// draw call
-				RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
-
-				GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
-			}
-		}
-
+		// execute all recorded batches
+		RenderBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
 		RenderBuilder.EndRenderPass();
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());

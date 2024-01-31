@@ -30,7 +30,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, IndicesTypeBuffer(nullptr)
 	, NumWorkerThreads(0)
 	, RenderThread(nullptr)
-	, bParallelSubmissionRT(false)
 	, bVsyncRT(false)
 	, bIsSwapChainResetGT(false)
 	, bIsSwapChainResetRT(false)
@@ -49,10 +48,10 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, EditorHeightDelta(0)
 	, bDrawDebugViewRT(true)
 #endif
-	, GaussianBlurTempRT0(nullptr)
-	, GaussianBlurTempRT1(nullptr)
 	, bHasRefractionMaterialGT(false)
 	, bHasRefractionMaterialRT(false)
+	, FrontmostRefractionIndexGT(UHINDEXNONE)
+	, FrontmostRefractionIndexRT(UHINDEXNONE)
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
@@ -298,8 +297,11 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// post processing shaders
 	TemporalAAShader = MakeUnique<UHTemporalAAShader>(GraphicInterface, "TemporalAAShader");
 	ToneMapShader = MakeUnique<UHToneMappingShader>(GraphicInterface, "ToneMapShader", PostProcessPassObj[0].RenderPass);
-	BlurHorizontalShader = MakeUnique<UHGaussianBlurShader>(GraphicInterface, "BlurHShader", UHGaussianBlurType::BlurHorizontal);
-	BlurVerticalShader = MakeUnique<UHGaussianBlurShader>(GraphicInterface, "BlurVShader", UHGaussianBlurType::BlurVertical);
+
+	OpaqueBlurHShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterHShader", UHGaussianFilterType::FilterHorizontal);
+	OpaqueBlurVShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterVShader", UHGaussianFilterType::FilterVertical);
+	TranslucentBlurHShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterHShader", UHGaussianFilterType::FilterHorizontal);
+	TranslucentBlurVShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterVShader", UHGaussianFilterType::FilterVertical);
 
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
@@ -405,8 +407,11 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// the post process RT binding will be in PostProcessRendering.cpp
 	ToneMapShader->BindParameters();
 	TemporalAAShader->BindParameters();
-	BlurHorizontalShader->BindParameters();
-	BlurVerticalShader->BindParameters();
+
+	OpaqueBlurHShader->BindParameters();
+	OpaqueBlurVShader->BindParameters();
+	TranslucentBlurHShader->BindParameters();
+	TranslucentBlurVShader->BindParameters();
 
 	// ------------------------------------------------ ray tracing pass descriptor update
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
@@ -531,8 +536,10 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	UH_SAFE_RELEASE(MotionCameraWorkaroundShader);
 	TemporalAAShader->Release();
 	ToneMapShader->Release();
-	BlurHorizontalShader->Release();
-	BlurVerticalShader->Release();
+	OpaqueBlurHShader->Release();
+	OpaqueBlurVShader->Release();
+	TranslucentBlurHShader->Release();
+	TranslucentBlurVShader->Release();
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
@@ -590,12 +597,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GHalfDepth = GraphicInterface->RequestRenderTexture("HalfDepth", HalfDepthResolution, HalfDepthFormat, true);
 	GHalfTranslucentDepth = GraphicInterface->RequestRenderTexture("HalfTranslucentDepth", HalfDepthResolution, HalfDepthFormat, true);
 
-	// quarter blurred RT, use R11G11B10 should suffice
-	VkExtent2D QuarterBlurredResolution;
-	QuarterBlurredResolution.width = RenderResolution.width >> 2;
-	QuarterBlurredResolution.height = RenderResolution.height >> 2;
-	GQuarterBlurredScene = GraphicInterface->RequestRenderTexture("QuarterBlurredScene", QuarterBlurredResolution, HistoryResultFormat);
-
 	// vertex normal buffer for saving the "search ray" in RT shadows
 	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat);
 	GSceneTranslucentVertexNormal = GraphicInterface->RequestRenderTexture("SceneTranslucentVertexNormal", RenderResolution, NormalFormat);
@@ -604,6 +605,17 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
 	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, HistoryResultFormat);
 	GOpaqueSceneResult = GraphicInterface->RequestRenderTexture("OpaqueSceneResult", RenderResolution, HistoryResultFormat);
+
+	// quarter blurred RT, use R11G11B10 should suffice
+	VkExtent2D QuarterBlurredResolution;
+	QuarterBlurredResolution.width = RenderResolution.width >> 2;
+	QuarterBlurredResolution.height = RenderResolution.height >> 2;
+	GQuarterBlurredScene = GraphicInterface->RequestRenderTexture("QuarterBlurredScene", QuarterBlurredResolution, HistoryResultFormat);
+
+	// gaussian temp RTs, use R11G11B10 should suffice
+	// though this is created with render resolution, the rendering could only use partial size of it depend on down size factor
+	GGaussianFilterTempRT0 = GraphicInterface->RequestRenderTexture("GaussianFilterTemp0", RenderResolution, HistoryResultFormat, true);
+	GGaussianFilterTempRT1 = GraphicInterface->RequestRenderTexture("GaussianFilterTemp1", RenderResolution, HistoryResultFormat, true);
 
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
@@ -642,6 +654,8 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GOpaqueSceneResult);
 	GraphicInterface->RequestReleaseRT(GMotionVectorRT);
 	GraphicInterface->RequestReleaseRT(GQuarterBlurredScene);
+	GraphicInterface->RequestReleaseRT(GGaussianFilterTempRT0);
+	GraphicInterface->RequestReleaseRT(GGaussianFilterTempRT1);
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{

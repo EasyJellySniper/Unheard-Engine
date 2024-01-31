@@ -17,5 +17,13 @@ Next is to try a higher resolution blurred scene with a lower blur radius.
 Fixed the material buffer size issue when the parameter changes.
 Input guard for all other editor dialogs.
 
-27-01-2024: Continue implementing the refraction material. First version of refraction material is done. Looks solid!
+27-01-2024: 
+Continue implementing the refraction material. First version of refraction material is done. Looks solid!
 Also pushed constants to blur shader successfully, saved constant buffer creation.
+29-01-2024: 
+Slightly improved refraction. Prevent distant pixels from being distorted too much.
+
+30-01-2024:
+Refactored gaussian filter code. Also removed the parallel submission setting in editor and force the parallel submission. Not seeing a reason to disable it.
+Figured out a way to refract translucent objects in a translucent object, with some limitations though.
+Next is to test whether mipmap can be used for lower the flickering of blurred image or just linear upscaling.

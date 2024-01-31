@@ -27,12 +27,6 @@ void UHDeferredShadingRenderer::Resize()
 {
 	GraphicInterface->WaitGPU();
 
-	// release other temporary textures used in rendering
-	GraphicInterface->RequestReleaseRT(GaussianBlurTempRT0);
-	GraphicInterface->RequestReleaseRT(GaussianBlurTempRT1);
-	GaussianBlurTempRT0 = nullptr;
-	GaussianBlurTempRT1 = nullptr;
-
 	ReleaseRenderPassObjects();
 	RelaseRenderingBuffers();
 	CreateRenderingBuffers();
@@ -84,7 +78,6 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	}
 
 	// sync value before wake up RT thread
-	bParallelSubmissionRT = ConfigInterface->RenderingSetting().bParallelSubmission;
 	CurrentFrameRT = CurrentFrameGT;
 	FrameNumberRT = GFrameNumber;
 	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
@@ -93,6 +86,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bIsRenderingEnabledRT = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
 	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
 	bHasRefractionMaterialRT = bHasRefractionMaterialGT;
+	FrontmostRefractionIndexRT = FrontmostRefractionIndexGT;
 
 	if (SkyMeshRT == nullptr)
 	{
@@ -386,7 +380,6 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 		}
 	}
 
-	bHasRefractionMaterialGT = false;
 	TranslucentsToRender.clear();
 	const std::vector<UHMeshRendererComponent*>& TranslucentRenderers = CurrentScene->GetTranslucentRenderers();
 	for (UHMeshRendererComponent* Renderer : TranslucentRenderers)
@@ -394,14 +387,6 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 		if (Renderer->IsVisible())
 		{
 			TranslucentsToRender.push_back(Renderer);
-
-			if (!bHasRefractionMaterialGT)
-			{
-				if (const UHMaterial* Mat = Renderer->GetMaterial())
-				{
-					bHasRefractionMaterialGT |= Mat->GetMaterialUsages().bUseRefraction;
-				}
-			}
 		}
 	}
 }
@@ -437,6 +422,24 @@ void UHDeferredShadingRenderer::SortRenderer()
 
 			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) > MathHelpers::VectorDistanceSqr(ZB, CameraPos);
 		});
+
+	// find the frontmost translucent object that does refraction
+	// The rendering later will do a workflow: Draw background translucent -> Screenshot the result -> Draw Foreground translucent
+	// So at least the frontmost refraction object can refract some translucent objects behind it!
+	bHasRefractionMaterialGT = false;
+
+	FrontmostRefractionIndexGT = UHINDEXNONE;
+	for (size_t Idx = 0; Idx < TranslucentsToRender.size(); Idx++)
+	{
+		if (const UHMaterial* Mat = TranslucentsToRender[Idx]->GetMaterial())
+		{
+			if (Mat->GetMaterialUsages().bUseRefraction)
+			{
+				FrontmostRefractionIndexGT = static_cast<int32_t>(Idx);
+			}
+		}
+	}
+	bHasRefractionMaterialGT = (FrontmostRefractionIndexGT != UHINDEXNONE);
 }
 
 void UHDeferredShadingRenderer::GetLightCullingTileCount(uint32_t& TileCountX, uint32_t& TileCountY)
@@ -491,7 +494,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			UHProfilerScope Profiler(&RenderThreadProfile);
 
 			// collect worker bundle for this frame
-			if (bParallelSubmissionRT && bIsRenderingEnabledRT)
+			if (bIsRenderingEnabledRT)
 			{
 				DepthParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 				BaseParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
@@ -652,7 +655,7 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 			MotionTranslucentTask(ThreadIdx);
 			break;
 
-		case UHParallelTask::TranslucentPassTask:
+		case UHParallelTask::TranslucentBgPassTask:
 			TranslucentPassTask(ThreadIdx);
 			break;
 

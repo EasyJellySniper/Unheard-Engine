@@ -35,6 +35,8 @@ extern UHRenderTexture* GHalfDepth;
 extern UHRenderTexture* GHalfTranslucentDepth;
 extern UHRenderTexture* GQuarterBlurredScene;
 extern UHRenderTexture* GOpaqueSceneResult;
+extern UHRenderTexture* GGaussianFilterTempRT0;
+extern UHRenderTexture* GGaussianFilterTempRT1;
 
 // ray-tracing textures
 extern UHRenderTexture* GRTShadowResult;

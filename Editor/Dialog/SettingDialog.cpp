@@ -86,7 +86,6 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
         GEnableGPUTiming = RenderingSettings.bEnableGPUTiming;
     }
     ImGui::Checkbox("Enable Depth Pre Pass*", &RenderingSettings.bEnableDepthPrePass);
-    ImGui::Checkbox("Enable Parallel Submission", &RenderingSettings.bParallelSubmission);
     ImGui::Checkbox("Enable Async Compute*", &RenderingSettings.bEnableAsyncCompute);
     if (ImGui::Checkbox("Enable HDR", &RenderingSettings.bEnableHDR))
     {

@@ -44,93 +44,36 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		// opaque motion will only render the dynamic objects (motion is dirty), static objects are already calculated in camera motion
 		{
 			// begin for secondary cmd
-			if (bParallelSubmissionRT)
-			{
-				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-			}
-			else
-			{
-				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution);
-			}
-
-			if (bParallelSubmissionRT)
-			{
-#if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					ThreadDrawCalls[I] = 0;
-				}
-#endif
-
-				// wake all worker threads
-				ParallelTask = UHParallelTask::MotionOpaqueTask;
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					WorkerThreads[I]->WakeThread();
-				}
-
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					WorkerThreads[I]->WaitTask();
-				}
+			RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
-				}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				ThreadDrawCalls[I] = 0;
+			}
 #endif
 
-				// execute all recorded batches
-				RenderBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter.WorkerBundles);
-			}
-			else
+			// wake all worker threads
+			ParallelTask = UHParallelTask::MotionOpaqueTask;
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
-				// bind texture table, they should only be bound once
-				if (MotionOpaqueShaders.size() > 0)
-				{
-					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
-						, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-					RenderBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
-				}
-
-				for (UHMeshRendererComponent* Renderer : OpaquesToRender)
-				{
-					const UHMaterial* Mat = Renderer->GetMaterial();
-					UHMesh* Mesh = Renderer->GetMesh();
-
-					// skip skybox mat and only draw dirty renderer
-					if (Mat->GetMaterialUsages().bIsSkybox || !Renderer->IsMotionDirty(CurrentFrameRT))
-					{
-						continue;
-					}
-
-					const int32_t RendererIdx = Renderer->GetBufferDataIndex();
-					if (MotionOpaqueShaders.find(RendererIdx) == MotionOpaqueShaders.end())
-					{
-						// unlikely to happen, but printing a message for debug
-						UHE_LOG(L"[MotionObjectPass] Can't find motion object pass shader for material: \n");
-						continue;
-					}
-
-					const UHMotionObjectPassShader* MotionShader = MotionOpaqueShaders[RendererIdx].get();
-
-					GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-						std::to_string(Mesh->GetIndicesCount() / 3) + ")");
-
-					// bind pipelines
-					RenderBuilder.BindGraphicState(MotionShader->GetState());
-					RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-					RenderBuilder.BindIndexBuffer(Mesh);
-					RenderBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
-
-					// draw call
-					RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
-					GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
-					Renderer->SetMotionDirty(false, CurrentFrameRT);
-				}
+				WorkerThreads[I]->WakeThread();
 			}
 
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WaitTask();
+			}
+
+#if WITH_EDITOR
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+			}
+#endif
+
+			// execute all recorded batches
+			RenderBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter.WorkerBundles);
 			RenderBuilder.EndRenderPass();
 		}
 
@@ -141,93 +84,36 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			RenderBuilder.ClearRenderTexture(GSceneTranslucentVertexNormal);
 			RenderBuilder.ResourceBarrier(GSceneTranslucentVertexNormal, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-			if (bParallelSubmissionRT)
-			{
-				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-			}
-			else
-			{
-				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution);
-			}
-
-			if (bParallelSubmissionRT)
-			{
-#if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					ThreadDrawCalls[I] = 0;
-				}
-#endif
-
-				// wake all worker threads
-				ParallelTask = UHParallelTask::MotionTranslucentTask;
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					WorkerThreads[I]->WakeThread();
-				}
-
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					WorkerThreads[I]->WaitTask();
-				}
+			RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
-				{
-					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
-				}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				ThreadDrawCalls[I] = 0;
+			}
 #endif
 
-				// execute all recorded batches
-				RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
-			}
-			else
+			// wake all worker threads
+			ParallelTask = UHParallelTask::MotionTranslucentTask;
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
-				// bind texture table, they should only be bound once
-				if (MotionTranslucentShaders.size() > 0)
-				{
-					std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
-						, SamplerTable->GetDescriptorSet(CurrentFrameRT) };
-					RenderBuilder.BindDescriptorSet(MotionTranslucentShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
-				}
-
-				for (int32_t Idx = static_cast<int32_t>(TranslucentsToRender.size()) - 1; Idx >= 0; Idx--)
-				{
-					const UHMeshRendererComponent* Renderer = TranslucentsToRender[Idx];
-					const UHMaterial* Mat = Renderer->GetMaterial();
-					UHMesh* Mesh = Renderer->GetMesh();
-
-					// skip skybox mat
-					if (Mat->GetMaterialUsages().bIsSkybox)
-					{
-						continue;
-					}
-
-					const int32_t RendererIdx = Renderer->GetBufferDataIndex();
-					if (MotionTranslucentShaders.find(RendererIdx) == MotionTranslucentShaders.end())
-					{
-						// unlikely to happen, but printing a message for debug
-						UHE_LOG(L"[MotionObjectPass] Can't find motion object pass shader for material: \n");
-						continue;
-					}
-
-					const UHMotionObjectPassShader* MotionShader = MotionTranslucentShaders[RendererIdx].get();
-
-					GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-						std::to_string(Mesh->GetIndicesCount() / 3) + ")");
-
-					// bind pipelines
-					RenderBuilder.BindGraphicState(MotionShader->GetState());
-					RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-					RenderBuilder.BindIndexBuffer(Mesh);
-					RenderBuilder.BindDescriptorSet(MotionShader->GetPipelineLayout(), MotionShader->GetDescriptorSet(CurrentFrameRT));
-
-					// draw call
-					RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
-					GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
-				}
+				WorkerThreads[I]->WakeThread();
 			}
 
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WaitTask();
+			}
+
+#if WITH_EDITOR
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+			}
+#endif
+
+			// execute all recorded batches
+			RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
 			RenderBuilder.EndRenderPass();
 
 			// done rendering, transition depth to shader read

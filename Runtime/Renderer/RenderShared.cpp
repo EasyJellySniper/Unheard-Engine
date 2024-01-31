@@ -29,6 +29,8 @@ UHRenderTexture* GHalfDepth;
 UHRenderTexture* GHalfTranslucentDepth;
 UHRenderTexture* GQuarterBlurredScene;
 UHRenderTexture* GOpaqueSceneResult;
+UHRenderTexture* GGaussianFilterTempRT0;
+UHRenderTexture* GGaussianFilterTempRT1;
 
 UHTextureCube* GSkyLightCube;
 

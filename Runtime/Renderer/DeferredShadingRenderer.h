@@ -28,7 +28,7 @@
 #include "ShaderClass/TranslucentPassShader.h"
 #include "ShaderClass/PostProcessing/ToneMappingShader.h"
 #include "ShaderClass/PostProcessing/TemporalAAShader.h"
-#include "ShaderClass/PostProcessing/GaussianBlurShader.h"
+#include "ShaderClass/PostProcessing/GaussianFilterShader.h"
 #include "ShaderClass/RayTracing/RTDefaultHitGroupShader.h"
 #include "ShaderClass/RayTracing/RTShadowShader.h"
 #include "ShaderClass/TextureSamplerTable.h"
@@ -52,7 +52,7 @@ enum UHParallelTask
 	BasePassTask,
 	MotionOpaqueTask,
 	MotionTranslucentTask,
-	TranslucentPassTask
+	TranslucentBgPassTask
 };
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
@@ -181,7 +181,13 @@ private:
 	void RenderEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void Dispatch2DEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHRenderBuilder& RenderBuilder);
-	void DispatchGaussianBlur(UHRenderBuilder& RenderBuilder, std::string InName, UHRenderTexture* Input, UHRenderTexture* Output, int32_t IterationCount);
+
+	std::vector<float> CalculateBlurWeights(const int32_t InRadius);
+	void ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder, UHGaussianFilterConstants Constants
+		, UHGaussianFilterShader* FilterHShader, UHGaussianFilterShader* FilterVShader);
+	void DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, std::string InName
+		, UHRenderTexture* Input, UHRenderTexture* Output
+		, UHGaussianFilterConstants Constants, UHGaussianFilterShader* FilterHShader, UHGaussianFilterShader* FilterVShader);
 	uint32_t RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder);
 
 #if WITH_EDITOR
@@ -231,7 +237,6 @@ private:
 	std::vector<UniquePtr<UHThread>> WorkerThreads;
 	bool bIsResetNeededShared;
 	UHParallelTask ParallelTask;
-	bool bParallelSubmissionRT;
 	bool bVsyncRT;
 	bool bIsSwapChainResetGT;
 	bool bIsSwapChainResetRT;
@@ -240,6 +245,8 @@ private:
 	bool bNeedGenerateSH9RT;
 	bool bHasRefractionMaterialGT;
 	bool bHasRefractionMaterialRT;
+	int32_t FrontmostRefractionIndexGT;
+	int32_t FrontmostRefractionIndexRT;
 
 	// current scene
 	UHScene* CurrentScene;
@@ -315,10 +322,10 @@ private:
 
 	UniquePtr<UHToneMappingShader> ToneMapShader;
 	UniquePtr<UHTemporalAAShader> TemporalAAShader;
-	UniquePtr<UHGaussianBlurShader> BlurHorizontalShader;
-	UniquePtr<UHGaussianBlurShader> BlurVerticalShader;
-	UHRenderTexture* GaussianBlurTempRT0;
-	UHRenderTexture* GaussianBlurTempRT1;
+	UniquePtr<UHGaussianFilterShader> OpaqueBlurHShader;
+	UniquePtr<UHGaussianFilterShader> OpaqueBlurVShader;
+	UniquePtr<UHGaussianFilterShader> TranslucentBlurHShader;
+	UniquePtr<UHGaussianFilterShader> TranslucentBlurVShader;
 	bool bIsTemporalReset;
 
 #if WITH_EDITOR

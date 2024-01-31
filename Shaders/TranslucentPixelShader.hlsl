@@ -52,7 +52,9 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     
 #if WITH_REFRACTION || WITH_ENVCUBE
     // Calc eye vector when necessary
-    float3 EyeVector = normalize(WorldPos - UHCameraPos);
+    float3 EyeVector = WorldPos - UHCameraPos;
+    float EyeLength = length(EyeVector);
+    EyeVector = normalize(EyeVector);
 #endif    
 
 #if WITH_TANGENT_SPACE
@@ -91,8 +93,8 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 #if WITH_REFRACTION
     // Calc refract vector
     float3 RefractEyeVec = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
-    float2 RefractOffset = (RefractEyeVec.xy - EyeVector.xy);
-    float2 RefractUV = ScreenUV + RefractOffset * 0.1f;
+    float2 RefractOffset = (RefractEyeVec.xy - EyeVector.xy) / EyeLength;
+    float2 RefractUV = ScreenUV + RefractOffset;
     
     UHBRANCH
     if (RefractUV.x != saturate(RefractUV.x) || RefractUV.y != saturate(RefractUV.y))

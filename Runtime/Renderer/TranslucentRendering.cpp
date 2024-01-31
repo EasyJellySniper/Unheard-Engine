@@ -1,5 +1,27 @@
 #include "DeferredShadingRenderer.h"
 
+void UHDeferredShadingRenderer::ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder, UHGaussianFilterConstants Constants
+	, UHGaussianFilterShader* FilterHShader, UHGaussianFilterShader* FilterVShader)
+{
+	// blit the scene result to opaque scene result
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
+
+	RenderBuilder.Blit(GSceneResult, GOpaqueSceneResult);
+	RenderBuilder.Blit(GSceneResult, GQuarterBlurredScene);
+
+	DispatchGaussianFilter(RenderBuilder, PassName, GQuarterBlurredScene, GQuarterBlurredScene, Constants
+		, FilterHShader, FilterVShader);
+
+	// final transition
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
+}
+
 // Pass before the translucent
 void UHDeferredShadingRenderer::PreTranslucentPass(UHRenderBuilder& RenderBuilder)
 {
@@ -13,23 +35,16 @@ void UHDeferredShadingRenderer::PreTranslucentPass(UHRenderBuilder& RenderBuilde
 
 	if (bHasRefractionMaterialRT)
 	{
-		// blit the scene result to opaque scene result
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
-		RenderBuilder.FlushResourceBarrier();
-
-		RenderBuilder.Blit(GSceneResult, GOpaqueSceneResult);
-		RenderBuilder.Blit(GSceneResult, GQuarterBlurredScene);
-
 		// Blur the opaque scene
-		DispatchGaussianBlur(RenderBuilder, "Opaque Scene Blur", GQuarterBlurredScene, GQuarterBlurredScene, 4);
+		UHGaussianFilterConstants FilterConstants{};
+		FilterConstants.GBlurRadius = 3;
+		FilterConstants.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
+		FilterConstants.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
+		FilterConstants.IterationCount = 2;
 
-		// final transition
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-		RenderBuilder.FlushResourceBarrier();
+		std::vector<float> Weights = CalculateBlurWeights(FilterConstants.GBlurRadius);
+		memcpy_s(FilterConstants.Weights, sizeof(float) * Weights.size(), Weights.data(), sizeof(float) * Weights.size());
+		ScreenshotForRefraction("Opaque Scene Blur", RenderBuilder, FilterConstants, OpaqueBlurHShader.get(), OpaqueBlurVShader.get());
 	}
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
@@ -50,17 +65,9 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 		RenderBuilder.SetViewport(RenderResolution);
 		RenderBuilder.SetScissor(RenderResolution);
 
-		if (bParallelSubmissionRT)
+		// Draw the translucent background
 		{
 			RenderBuilder.BeginRenderPass(TranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-		}
-		else
-		{
-			RenderBuilder.BeginRenderPass(TranslucentPassObj, RenderResolution);
-		}
-
-		if (bParallelSubmissionRT)
-		{
 #if WITH_EDITOR
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
@@ -68,8 +75,8 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 			}
 #endif
 
-			// parallel pass
-			ParallelTask = UHParallelTask::TranslucentPassTask;
+			// parallel pass, if bHasRefractionMaterialRT is true, this will only draw from [0, FrontmostRefractionIndexRT] in the TranslucentsToRender vector
+			ParallelTask = UHParallelTask::TranslucentBgPassTask;
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				WorkerThreads[I]->WakeThread();
@@ -86,13 +93,26 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 			}
 #endif
-
 			// execute all recorded batches
 			RenderBuilder.ExecuteBundles(TranslucentParallelSubmitter.WorkerBundles);
+			RenderBuilder.EndRenderPass();
 		}
-		else
+
+		// Screenshot the result again and draw the foreground translucent objects
+		if (bHasRefractionMaterialRT)
 		{
-			// bind texture table, they should only be bound once
+			// Blur the background translucent scene
+			UHGaussianFilterConstants FilterConstants{};
+			FilterConstants.GBlurRadius = 3;
+			FilterConstants.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
+			FilterConstants.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
+			FilterConstants.IterationCount = 2;
+
+			std::vector<float> Weights = CalculateBlurWeights(FilterConstants.GBlurRadius);
+			memcpy_s(FilterConstants.Weights, sizeof(float) * Weights.size(), Weights.data(), sizeof(float) * Weights.size());
+			ScreenshotForRefraction("Translucent Scene Blur", RenderBuilder, FilterConstants, TranslucentBlurHShader.get(), TranslucentBlurVShader.get());
+
+			// now draw the foreground translucent
 			if (TranslucentPassShaders.size() > 0)
 			{
 				std::vector<VkDescriptorSet> TextureTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
@@ -100,24 +120,17 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 				RenderBuilder.BindDescriptorSet(TranslucentPassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 			}
 
-			// render all translucent renderers from scene
-			for (const UHMeshRendererComponent* Renderer : TranslucentsToRender)
+			RenderBuilder.BeginRenderPass(TranslucentPassObj, RenderResolution);
+
+			// render remaining translucent objects
+			for (size_t Idx = FrontmostRefractionIndexRT; Idx < TranslucentsToRender.size(); Idx++)
 			{
+				const UHMeshRendererComponent* Renderer = TranslucentsToRender[Idx];
 				const UHMaterial* Mat = Renderer->GetMaterial();
 				UHMesh* Mesh = Renderer->GetMesh();
 				int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
-#if WITH_EDITOR
-				if (TranslucentPassShaders.find(RendererIdx) == TranslucentPassShaders.end())
-				{
-					// unlikely to happen, but printing a message for debug
-					UHE_LOG(L"[RenderTranslucentPass] Can't find translucent pass shader for material: \n");
-					continue;
-				}
-#endif
-
 				const UHTranslucentPassShader* TranslucentShader = TranslucentPassShaders[RendererIdx].get();
-
 				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 					std::to_string(Mesh->GetIndicesCount() / 3) + ")");
 
@@ -132,9 +145,9 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 
 				GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 			}
+			RenderBuilder.EndRenderPass();
 		}
 
-		RenderBuilder.EndRenderPass();
 		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
@@ -143,7 +156,9 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 {
 	// simply separate buffer recording into N threads
-	const int32_t MaxCount = static_cast<int32_t>(TranslucentsToRender.size());
+	// draw in full range if there is no refraction material at all
+	// otherwise, draw from [0, FrontmostRefractionIndexRT] so the frontmost refraction can at least refract some translucent objects
+	const int32_t MaxCount = bHasRefractionMaterialRT ? FrontmostRefractionIndexRT : static_cast<int32_t>(TranslucentsToRender.size());
 	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
 	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
 	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);

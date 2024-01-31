@@ -393,7 +393,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianBlurShader.h">
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -752,10 +752,10 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianBlurShader.cpp">
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\BlurPassRendering.cpp">
+    <ClCompile Include="Runtime\Renderer\FilterPassRendering.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -810,6 +810,6 @@
     <None Include="Shaders\SphericalHarmonicComputeShader.hlsl" />
     <None Include="Shaders\UHSphericalHamonricCommon.hlsli" />
     <None Include="Shaders\DownsampleDepth.hlsl" />
-    <None Include="Shaders\PostProcessing\GaussianBlurComputeShader.hlsl" />
+    <None Include="Shaders\PostProcessing\GaussianFilterComputeShader.hlsl" />
   </ItemGroup>
 </Project>

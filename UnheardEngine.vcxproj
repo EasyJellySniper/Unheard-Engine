@@ -332,7 +332,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianBlurShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
@@ -415,7 +415,7 @@
     <ClCompile Include="Runtime\Classes\Utility.cpp" />
     <ClCompile Include="Runtime\Components\GameScript.cpp" />
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
-    <ClCompile Include="Runtime\Renderer\BlurPassRendering.cpp" />
+    <ClCompile Include="Runtime\Renderer\FilterPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\DescriptorHelper.cpp" />
     <ClCompile Include="Runtime\Components\Light.cpp" />
@@ -464,7 +464,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\MotionPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
-    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianBlurShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp" />
@@ -654,7 +654,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\PostProcessing\GaussianBlurComputeShader.hlsl">
+    <None Include="Shaders\PostProcessing\GaussianFilterComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
