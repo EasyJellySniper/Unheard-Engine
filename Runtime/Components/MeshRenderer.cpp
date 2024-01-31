@@ -145,6 +145,11 @@ UHObjectConstants UHMeshRendererComponent::GetConstants() const
 	CB.UHPrevWorld = GetPrevWorldMatrix();
 	CB.InstanceIndex = GetBufferDataIndex();
 
+	if (UHMaterial* Mat = GetMaterial())
+	{
+		CB.UHNeedWorldTBN = Mat->GetMaterialUsages().bIsTangentSpace;
+	}
+
 	return CB;
 }
 

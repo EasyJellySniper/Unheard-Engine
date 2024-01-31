@@ -364,8 +364,11 @@ std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 	Code += "\tfloat GEnvCubeMipMapCount;\n";
 	Code += "\tint GRefractionClearIndex;\n";
 	Code += "\tint GRefractionBlurIndex;\n";
+	Code += "\tint GBlendMode;\n";
+	Code += "\tint GIsTangentSpace;\n";
+	Code += "\tint GIsRefraction;\n";
 
-	OutSize += sizeof(float) * 5;
+	OutSize += sizeof(float) * 8;
 	
 	return Code;
 }
@@ -448,6 +451,10 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialDat
 		return;
 	}
 
+	// update usages before uploading
+	MaterialUsages.bIsTangentSpace = MaterialNode->GetInputs()[Normal]->GetSrcPin() != nullptr;
+	MaterialUsages.bUseRefraction = MaterialNode->GetInputs()[Refraction]->GetSrcPin() != nullptr;
+
 	// upload data one by one, this must be following the definitions in GetCBufferDefineCode()
 	size_t BufferAddress = 0;
 	size_t Stride = sizeof(float);
@@ -472,22 +479,27 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialDat
 	BufferAddress += Stride;
 
 	// fill env cube mip map count
-	if (InMaterialData.InEnvCube != nullptr)
-	{
-		float EnvCubeMipMapCount = static_cast<float>(InMaterialData.InEnvCube->GetMipMapCount());
-		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &EnvCubeMipMapCount, Stride);
-		BufferAddress += Stride;
-	}
+	float EnvCubeMipMapCount = static_cast<float>(InMaterialData.InEnvCube->GetMipMapCount());
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &EnvCubeMipMapCount, Stride);
+	BufferAddress += Stride;
 
 	// copy refraction texture index
-	if (MaterialUsages.bUseRefraction)
-	{
-		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionClearIndex, Stride);
-		BufferAddress += Stride;
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionClearIndex, Stride);
+	BufferAddress += Stride;
 
-		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionBlurredIndex, Stride);
-		BufferAddress += Stride;
-	}
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionBlurredIndex, Stride);
+	BufferAddress += Stride;
+
+	// copy blend mode
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &BlendMode, Stride);
+	BufferAddress += Stride;
+
+	// copy material usages
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaterialUsages.bIsTangentSpace, Stride);
+	BufferAddress += Stride;
+
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaterialUsages.bUseRefraction, Stride);
+	BufferAddress += Stride;
 
 	// upload material data
 	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data(), MaterialBufferSize);
@@ -500,6 +512,9 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialDat
 		// copy cutoff
 		memset(&MaterialRTDataCPU, 0, sizeof(UHRTMaterialData));
 		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &MaterialProps.Cutoff, Stride);
+
+		// copy blend mode
+		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &BlendMode, Stride);
 
 		// copy texture indexes if necessary
 		for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
@@ -564,36 +579,6 @@ UHMaterialCompileFlag UHMaterial::GetCompileFlag() const
 std::filesystem::path UHMaterial::GetPath() const
 {
 	return MaterialPath;
-}
-
-std::vector<std::string> UHMaterial::GetMaterialDefines()
-{
-	std::vector<std::string> Defines;
-
-	// @TODO: separate tangent space setting in editor
-	MaterialUsages.bIsTangentSpace = MaterialNode->GetInputs()[Normal]->GetSrcPin() != nullptr;
-	MaterialUsages.bUseRefraction = MaterialNode->GetInputs()[Refraction]->GetSrcPin() != nullptr;
-
-	if (BlendMode == UHBlendMode::Masked)
-	{
-		Defines.push_back("WITH_ALPHATEST");
-	}
-
-	if (BlendMode > UHBlendMode::Masked)
-	{
-		Defines.push_back("WITH_TRANSLUCENT");
-		if (MaterialUsages.bUseRefraction)
-		{
-			Defines.push_back("WITH_REFRACTION");
-		}
-	}
-
-	if (MaterialUsages.bIsTangentSpace)
-	{
-		Defines.push_back("WITH_TANGENT_SPACE");
-	}
-
-	return Defines;
 }
 
 std::vector<std::string> UHMaterial::GetRegisteredTextureNames()

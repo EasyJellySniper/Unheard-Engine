@@ -11,7 +11,7 @@
 #include "UHSphericalHamonricCommon.hlsli"
 
 RWTexture2D<float4> SceneResult : register(u5);
-Texture2D RTShadow : register(t6);
+Texture2D ScreenShadowTexture : register(t6);
 ByteAddressBuffer PointLightList : register(t7);
 ByteAddressBuffer SpotLightList : register(t8);
 SamplerState PointClampped : register(s10);
@@ -51,11 +51,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	float3 Result = 0;
 
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
-	float ShadowMask = 1.0f;
-#if WITH_RTSHADOWS
-	ShadowMask = RTShadow.SampleLevel(LinearClampped, UV, 0).r;
-#endif
-
+    float ShadowMask = ScreenShadowTexture.SampleLevel(LinearClampped, UV, 0).r;
 
     UHLightInfo LightInfo;
     LightInfo.Diffuse = Diffuse.rgb;

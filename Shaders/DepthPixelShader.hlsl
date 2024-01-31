@@ -19,12 +19,7 @@ UHMaterialInputs GetMaterialInput(float2 UV0)
 
 void DepthPS(DepthVertexOutput Vin)
 {
-	// only alpha test would trigger this route
-	// opaque object doesn't need a pixel shader
-
-#if WITH_ALPHATEST
+	// only alpha test will have this pixel shader, do cutoff anyway
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
-
 	clip(MaterialInput.Opacity - GCutoff);
-#endif
 }

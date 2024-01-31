@@ -8,7 +8,7 @@
 #define SH9_BIND t12
 #include "../Shaders/UHSphericalHamonricCommon.hlsli"
 
-Texture2D RTShadow : register(t9);
+Texture2D ScreenShadowTexture : register(t9);
 ByteAddressBuffer PointLightListTrans : register(t10);
 ByteAddressBuffer SpotLightListTrans : register(t11);
 SamplerState LinearClamppedSampler : register(s13);
@@ -50,23 +50,32 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     float2 ScreenUV = Vin.Position.xy * UHResolution.zw;
     float3 WorldPos = Vin.WorldPos;
     
-#if WITH_REFRACTION || WITH_ENVCUBE
     // Calc eye vector when necessary
-    float3 EyeVector = WorldPos - UHCameraPos;
-    float EyeLength = length(EyeVector);
-    EyeVector = normalize(EyeVector);
-#endif    
+    float3 EyeVector = 0;
+    float EyeLength = 0;
 
-#if WITH_TANGENT_SPACE
-	float3 BumpNormal = MaterialInput.Normal;
+    UHBRANCH
+    if (UHEnvironmentCubeEnabled || GIsRefraction)
+    {
+        EyeVector = WorldPos - UHCameraPos;
+        EyeLength = length(EyeVector);
+        EyeVector = normalize(EyeVector);
+    }
 
-	// tangent to world space
-	BumpNormal = mul(BumpNormal, Vin.WorldTBN);
-	BumpNormal *= (bIsFrontFace) ? 1 : -1;
-#else
-	float3 BumpNormal = normalize(Vin.Normal);
-	BumpNormal *= (bIsFrontFace) ? 1 : -1;
-#endif
+    float3 BumpNormal = 0;
+    UHBRANCH
+    if (GIsTangentSpace)
+    {
+        BumpNormal = MaterialInput.Normal;
+
+	    // tangent to world space
+        BumpNormal = mul(BumpNormal, Vin.WorldTBN);
+    }
+    else
+    {
+        BumpNormal = normalize(Vin.Normal);
+    }
+    BumpNormal *= (bIsFrontFace) ? 1 : -1;
     
     // Base Color PBR
     BaseColor = saturate(BaseColor - BaseColor * Metallic);
@@ -76,53 +85,53 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	Specular = ComputeSpecularColor(Specular, MaterialInput.Diffuse, Metallic);
 
 	float3 IndirectSpecular = 0;
-#if WITH_ENVCUBE
-	// if per-object env cube is used, calculate it here, and adds the result to emissive
-	float3 R = reflect(EyeVector, BumpNormal);
-	float NdotV = abs(dot(BumpNormal, -EyeVector));
-	float SpecFade = SmoothnessSquare;
-	float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
-
-	IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
-
-	// since indirect spec will be added directly and can't be scaled with NdotL, expose material parameter to scale down it
-	IndirectSpecular *= MaterialInput.ReflectionFactor;
-#endif
-    
-    // Refraction
-#if WITH_REFRACTION
-    // Calc refract vector
-    float3 RefractEyeVec = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
-    float2 RefractOffset = (RefractEyeVec.xy - EyeVector.xy) / EyeLength;
-    float2 RefractUV = ScreenUV + RefractOffset;
-    
-    UHBRANCH
-    if (RefractUV.x != saturate(RefractUV.x) || RefractUV.y != saturate(RefractUV.y))
+	UHBRANCH
+    if (UHEnvironmentCubeEnabled)
     {
-        // if it's outside the screen range, do not refract. I don't want to see clamping.
-        RefractUV = ScreenUV;
+	    // if per-object env cube is used, calculate it here, and adds the result to emissive
+        float3 R = reflect(EyeVector, BumpNormal);
+        float NdotV = abs(dot(BumpNormal, -EyeVector));
+        float SpecFade = SmoothnessSquare;
+        float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
+
+        IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
+
+	    // since indirect spec will be added directly and can't be scaled with NdotL, expose material parameter to scale down it
+        IndirectSpecular *= MaterialInput.ReflectionFactor;
     }
     
-    float3 SceneColor = UHTextureTable[GRefractionClearIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
-    float3 BlurredSceneColor = UHTextureTable[GRefractionBlurIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
+    // Refraction
+	UHBRANCH
+    if (GIsRefraction)
+    {
+        // Calc refract vector
+        float3 RefractEyeVec = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
+        float2 RefractOffset = (RefractEyeVec.xy - EyeVector.xy) / EyeLength;
+        float2 RefractUV = ScreenUV + RefractOffset;
     
-    // Use the scene color for refraction, the original BaseColor will be used as tint color instead
-    // Roughness will be used as a factor for lerp clear/blurred scene
-    float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, SmoothnessSquare * SmoothnessSquare);
-    float3 RefractionResult = RefractionColor * BaseColor;
-    RefractionResult += MaterialInput.Emissive.rgb + IndirectSpecular;
+        UHBRANCH
+        if (RefractUV.x != saturate(RefractUV.x) || RefractUV.y != saturate(RefractUV.y))
+        {
+            // if it's outside the screen range, do not refract. I don't want to see clamping.
+            RefractUV = ScreenUV;
+        }
     
-    // Early return and do not proceed to lighting, refraction should rely on the lit opaque scene.
-    return float4(RefractionResult, Opacity);
-#endif
+        float3 SceneColor = UHTextureTable[GRefractionClearIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
+        float3 BlurredSceneColor = UHTextureTable[GRefractionBlurIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
+    
+        // Use the scene color for refraction, the original BaseColor will be used as tint color instead
+        // Roughness will be used as a factor for lerp clear/blurred scene
+        float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, SmoothnessSquare * SmoothnessSquare);
+        float3 RefractionResult = RefractionColor * BaseColor;
+        RefractionResult += MaterialInput.Emissive.rgb + IndirectSpecular;
+    
+        // Early return and do not proceed to lighting, refraction should rely on the lit opaque scene.
+        return float4(RefractionResult, Opacity);
+    }
 
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
 	// sample shadows
-	float ShadowMask = 1.0f;
-#if WITH_RTSHADOWS
-	float2 UV = Vin.Position.xy * UHResolution.zw;
-	ShadowMask = RTShadow.Sample(LinearClamppedSampler, UV).r;
-#endif
+    float ShadowMask = ScreenShadowTexture.Sample(LinearClamppedSampler, ScreenUV).r;
 
 	// light calculation, be sure to normalize vector before using it
 	float3 Result = 0;

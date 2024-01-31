@@ -1,9 +1,8 @@
 #include "LightPassShader.h"
 #include "../RendererShared.h"
 
-UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t RTInstanceCount)
+UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name)
 	: UHShaderClass(InGfx, Name, typeid(UHLightPassShader), nullptr)
-	, RTObjectCount(RTInstanceCount)
 {
 	// Lighting pass: bind system, light buffer, GBuffers, and samplers, all fragment only since it's a full screen quad draw
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -31,10 +30,6 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name, int32_t
 void UHLightPassShader::OnCompile()
 {
 	std::vector<std::string> Defines;
-	if (RTObjectCount > 0)
-	{
-		Defines.push_back("WITH_RTSHADOWS");
-	}
 	ShaderCS = Gfx->RequestShader("LightComputeShader", "Shaders/LightComputeShader.hlsl", "LightCS", "cs_6_0", Defines);
 
 	// state
@@ -58,6 +53,10 @@ void UHLightPassShader::BindParameters()
 	if (Gfx->IsRayTracingEnabled())
 	{
 		BindImage(GRTShadowResult, 6);
+	}
+	else
+	{
+		BindImage(GWhiteTexture, 6);
 	}
 
 	BindStorage(GPointLightListBuffer.get(), 7, 0, true);

@@ -29,18 +29,15 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 
 void UHDepthPassShader::OnCompile()
 {
-	// check opacity texture
-	std::vector<std::string> MatDefines = MaterialCache->GetMaterialDefines();
-
 	if (MaterialCache->GetBlendMode() == UHBlendMode::Masked)
 	{
 		UHMaterialCompileData Data;
 		Data.MaterialCache = MaterialCache;
 		Data.bIsDepthOrMotionPass = true;
-		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data, MatDefines);
+		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data);
 	}
 
-	ShaderVS = Gfx->RequestShader("DepthPassVS", "Shaders/DepthVertexShader.hlsl", "DepthVS", "vs_6_0", MatDefines);
+	ShaderVS = Gfx->RequestShader("DepthPassVS", "Shaders/DepthVertexShader.hlsl", "DepthVS", "vs_6_0");
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache, UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)

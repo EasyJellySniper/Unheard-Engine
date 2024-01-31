@@ -21,17 +21,19 @@ void MotionObjectPS(MotionVertexOutput Vin
 	, out float4 OutVelocity : SV_Target0
 	, out float4 OutNormal : SV_Target1)
 {
-#if (WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS))
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
-	clip(MaterialInput.Opacity - GCutoff);
-#endif
+	UHBRANCH
+    if (GBlendMode == UH_ISMASKED && !UHPrepassDepthEnabled)
+    {
+        clip(MaterialInput.Opacity - GCutoff);
+    }
 	
-#if WITH_TRANSLUCENT
-	// fetch material input
-	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
-	clip(MaterialInput.Opacity - 0.001f);
-#endif
+	UHBRANCH
+    if (GBlendMode > UH_ISMASKED)
+    {
+        clip(MaterialInput.Opacity - 0.001f);
+    }
 
 	// calc current/prev clip pos and return motion
 	Vin.PrevPos /= Vin.PrevPos.w;
@@ -42,11 +44,13 @@ void MotionObjectPS(MotionVertexOutput Vin
 
 	OutVelocity = float4(CurrScreenPos.xy - PrevScreenPos.xy, 0, 1);
 
-#if WITH_TRANSLUCENT
-	float3 VertexNormal = normalize(Vin.Normal);
-	VertexNormal *= (bIsFrontFace) ? 1 : -1;
+	UHBRANCH
+    if (GBlendMode > UH_ISMASKED)
+    {
+        float3 VertexNormal = normalize(Vin.Normal);
+        VertexNormal *= (bIsFrontFace) ? 1 : -1;
 
-	// a must be 1 to store normal as this is translucent pass
-	OutNormal = float4(EncodeNormal(VertexNormal), 1);
-#endif
+		// a must be 1 to store normal as this is translucent pass
+        OutNormal = float4(EncodeNormal(VertexNormal), 1);
+    }
 }

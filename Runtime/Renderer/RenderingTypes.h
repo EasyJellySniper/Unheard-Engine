@@ -62,6 +62,9 @@ struct UHSystemConstants
 	uint32_t UHNumSpotLights;
 	uint32_t UHMaxSpotLightPerTile;
 	uint32_t UHFrameNumber;
+
+	uint32_t UHPrepassDepthEnabled;
+	uint32_t UHEnvironmentCubeEnabled;
 };
 
 struct UHObjectConstants
@@ -70,9 +73,10 @@ struct UHObjectConstants
 	XMFLOAT4X4 UHWorldIT;
 	XMFLOAT4X4 UHPrevWorld;
 	uint32_t InstanceIndex;
-
+	uint32_t UHNeedWorldTBN;
+	
 	// align to 256 bytes
-	float CPUPadding[15];
+	float CPUPadding[14];
 };
 
 struct UHDirectionalLightConstants

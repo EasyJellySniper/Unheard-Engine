@@ -34,9 +34,11 @@ void BasePS(VertexOutput Vin
 
 	// only clip objects without prepass
 	// otherwise, the equal test will suffice
-#if WITH_ALPHATEST && !defined(WITH_DEPTHPREPASS)
-	clip(MaterialInput.Opacity - GCutoff);
-#endif
+	UHBRANCH
+    if (GBlendMode == UH_ISMASKED && !UHPrepassDepthEnabled)
+    {
+        clip(MaterialInput.Opacity - GCutoff);
+    }
 
 	float3 BaseColor = MaterialInput.Diffuse;
 	float Occlusion = MaterialInput.Occlusion;
@@ -50,16 +52,17 @@ void BasePS(VertexOutput Vin
 	float3 VertexNormal = normalize(Vin.Normal);
 	VertexNormal *= (bIsFrontFace) ? 1 : -1;
 
-#if WITH_TANGENT_SPACE
-	float3 BumpNormal = MaterialInput.Normal;
+    float3 BumpNormal = VertexNormal;
+	UHBRANCH
+    if (GIsTangentSpace)
+    {
+        BumpNormal = MaterialInput.Normal;
 
-	// tangent to world space
-	BumpNormal = mul(BumpNormal, Vin.WorldTBN);
-	BumpNormal *= (bIsFrontFace) ? 1 : -1;
-#else
-	float3 BumpNormal = VertexNormal;
-#endif
-
+		// tangent to world space
+        BumpNormal = mul(BumpNormal, Vin.WorldTBN);
+        BumpNormal *= (bIsFrontFace) ? 1 : -1;
+    }
+	
     OutNormal = float4(EncodeNormal(BumpNormal), 0);
 
 	// output specular color and roughness
@@ -68,24 +71,26 @@ void BasePS(VertexOutput Vin
 	OutMaterial = float4(Specular, Roughness);
 
 	float3 IndirectSpecular = 0;
-#if WITH_ENVCUBE
-	// if per-object env cube is used, calculate it here, and adds the result to emissive buffer
-	float3 EyeVector = normalize(Vin.WorldPos - UHCameraPos);
-	float3 R = reflect(EyeVector, BumpNormal);
-	float NdotV = abs(dot(BumpNormal, -EyeVector));
+	UHBRANCH
+    if (UHEnvironmentCubeEnabled)
+    {
+		// if per-object env cube is used, calculate it here, and adds the result to emissive buffer
+        float3 EyeVector = normalize(Vin.WorldPos - UHCameraPos);
+        float3 R = reflect(EyeVector, BumpNormal);
+        float NdotV = abs(dot(BumpNormal, -EyeVector));
 
-	float Smoothness = 1.0f - Roughness;
-	float SpecFade = Smoothness * Smoothness;
+        float Smoothness = 1.0f - Roughness;
+        float SpecFade = Smoothness * Smoothness;
 
-	// use 1.0f - smooth * smooth as mip bias, so it will blurry with low smoothness
-	// just don't want to declare another variable so simply use SpecFade
-	float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
+		// use 1.0f - smooth * smooth as mip bias, so it will blurry with low smoothness
+		// just don't want to declare another variable so simply use SpecFade
+        float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
 
-	IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
+        IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
 
-	// since indirect spec will be added directly and can't be scaled with NdotL, expose material parameter to scale down it
-	IndirectSpecular *= MaterialInput.ReflectionFactor;
-#endif
+		// since indirect spec will be added directly and can't be scaled with NdotL, expose material parameter to scale down it
+        IndirectSpecular *= MaterialInput.ReflectionFactor;
+    }
 
 	// output emissive color, a is not used at the moment
 	OutEmissive = float4(MaterialInput.Emissive.rgb + IndirectSpecular, 0);

@@ -66,18 +66,12 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 
 void UHMotionObjectPassShader::OnCompile()
 {
-	std::vector<std::string> MatDefines = MaterialCache->GetMaterialDefines();
-	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", MatDefines);
-
-	if (bHasDepthPrePass)
-	{
-		MatDefines.push_back("WITH_DEPTHPREPASS");
-	}
+	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0");
 
 	UHMaterialCompileData Data;
 	Data.MaterialCache = MaterialCache;
 	Data.bIsDepthOrMotionPass = true;
-	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, MatDefines);
+	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data);
 
 	// states, enable depth test, and write depth for translucent object only
 	const bool bIsTranslucent = MaterialCache->GetBlendMode() > UHBlendMode::Masked;

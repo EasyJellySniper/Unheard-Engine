@@ -42,3 +42,6 @@ UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 
 int32_t GRefractionClearIndex = UHINDEXNONE;
 int32_t GRefractionBlurredIndex = UHINDEXNONE;
+
+UHTexture2D* GWhiteTexture;
+UHTextureCube* GBlackCube;

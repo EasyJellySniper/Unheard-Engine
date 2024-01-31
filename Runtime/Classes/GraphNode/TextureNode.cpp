@@ -55,9 +55,8 @@ std::string UHTexture2DNode::EvalDefinition()
 		// if it's compiling for ray tracing, I need to use the SampleLevel instead of Sample
 		if (bIsCompilingRayTracing)
 		{
-			const int32_t TextureIndexStart = 1;
-			const std::string TextureIndexCode = "MatData.Data[" + std::to_string(2 * TextureIndexInMaterial + TextureIndexStart) + "]";
-			const std::string SamplerIndexCode = "MatData.Data[" + std::to_string(2 * TextureIndexInMaterial + 1 + TextureIndexStart) + "]";
+			const std::string TextureIndexCode = "MatData.Data[" + std::to_string(2 * TextureIndexInMaterial + GRTMaterialDataStartIndex) + "]";
+			const std::string SamplerIndexCode = "MatData.Data[" + std::to_string(2 * TextureIndexInMaterial + 1 + GRTMaterialDataStartIndex) + "]";
 
 			// the mip level will be calculated in the shader
 			std::string Result =

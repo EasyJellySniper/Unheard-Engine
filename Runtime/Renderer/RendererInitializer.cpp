@@ -231,6 +231,37 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		Cube->Build(GraphicInterface, RenderBuilder);
 	}
 
+
+	// Next, allocate system fallback textures
+	// Might worth to implement a wrapper for this
+	VkExtent2D FallbackTexSize{};
+	FallbackTexSize.width = 2;
+	FallbackTexSize.height = 2;
+
+	UHTextureSettings FallbackTexSetting{};
+	FallbackTexSetting.bIsLinear = true;
+	FallbackTexSetting.bUseMipmap = false;
+
+	const UHTextureFormat FallbackTexFormat = UH_FORMAT_RGBA8_UNORM;
+
+	// textures
+	{
+
+		std::vector<uint8_t> TexData(2 * 2 * GTextureFormatData[FallbackTexFormat].ByteSize, 255);
+
+		UniquePtr<UHTexture2D> FallbackTex = MakeUnique<UHTexture2D>("SystemWhiteTex", "", FallbackTexSize, FallbackTexFormat, FallbackTexSetting);
+		GWhiteTexture = GraphicInterface->RequestTexture2D(FallbackTex, false);
+		GWhiteTexture->SetTextureData(TexData);
+		GWhiteTexture->UploadToGPU(GraphicInterface, RenderBuilder);
+	}
+
+	// cubemaps
+	{
+		UniquePtr<UHTextureCube> FallbackCube = MakeUnique<UHTextureCube>("SystemBlackCube", FallbackTexSize, FallbackTexFormat, FallbackTexSetting);
+		GBlackCube = GraphicInterface->RequestTextureCube(FallbackCube);
+		GBlackCube->Build(GraphicInterface, RenderBuilder);
+	}
+
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 }
 
@@ -281,7 +312,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 	// light culling and pass shaders
 	LightCullingShader = MakeUnique<UHLightCullingShader>(GraphicInterface, "LightCullingShader");
-	LightPassShader = MakeUnique<UHLightPassShader>(GraphicInterface, "LightPassShader", RTInstanceCount);
+	LightPassShader = MakeUnique<UHLightPassShader>(GraphicInterface, "LightPassShader");
 
 	// sky pass shader
 	SkyPassShader = MakeUnique<UHSkyPassShader>(GraphicInterface, "SkyPassShader", SkyboxPassObj.RenderPass);
@@ -1141,7 +1172,7 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 		}
 
 		BasePassShaders[RendererBufferIndex] = MakeUnique<UHBasePassShader>(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, InMat, bEnableDepthPrePass
-			, bHasEnvCube, BindlessLayouts);
+			,  BindlessLayouts);
 
 		MotionOpaqueShaders[RendererBufferIndex] = MakeUnique<UHMotionObjectPassShader>(GraphicInterface, "MotionObjectShader", MotionOpaquePassObj.RenderPass, InMat, bEnableDepthPrePass, BindlessLayouts);
 	}
@@ -1149,7 +1180,7 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 	{
 		MotionTranslucentShaders[RendererBufferIndex] = MakeUnique<UHMotionObjectPassShader>(GraphicInterface, "MotionObjectShader", MotionTranslucentPassObj.RenderPass, InMat, bEnableDepthPrePass, BindlessLayouts);
 		TranslucentPassShaders[RendererBufferIndex]
-			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, bHasEnvCube, BindlessLayouts);
+			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 	}
 
 	InMeshRenderer->SetRayTracingDirties(true);

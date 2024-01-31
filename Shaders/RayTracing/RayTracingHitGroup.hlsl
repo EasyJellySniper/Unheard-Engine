@@ -30,11 +30,20 @@ struct Attribute
 	float2 Bary;
 };
 
+struct MaterialUsage
+{
+    float Cutoff;
+    uint BlendMode;
+};
+
 // get material input, the simple version that has opacity only
-UHMaterialInputs GetMaterialInputSimple(float2 UV0, float MipLevel, out float Cutoff)
+UHMaterialInputs GetMaterialInputSimple(float2 UV0, float MipLevel, out MaterialUsage Usages)
 {
     MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
-    Cutoff = asfloat(MatData.Data[0]);
+    Usages.Cutoff = asfloat(MatData.Data[0]);
+    Usages.BlendMode = MatData.Data[1];
+	
+	// TextureIndexStart in TextureNode.cpp decides where the first index of texture will start in MaterialData.Data[]
 
 	// material input code will be generated in C++ side
 	//%UHS_INPUT_Simple
@@ -92,10 +101,14 @@ float2 GetHitUV0(uint InstanceIndex, uint PrimIndex, Attribute Attr)
 void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
 	Payload.HitT = RayTCurrent();
-#if !WITH_TRANSLUCENT
+	
+    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
+
 	// set alpha to 1 if it's opaque
-	Payload.HitAlpha = 1.0f;
-#endif
+    if (MatData.Data[1] <= UH_ISMASKED)
+    {
+        Payload.HitAlpha = 1.0f;
+    }
 }
 
 [shader("anyhit")]
@@ -103,22 +116,22 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
 	// fetch material data and cutoff if it's alpha test
 	float2 UV0 = GetHitUV0(InstanceIndex(), PrimitiveIndex(), Attr);
-	float Cutoff;
-	UHMaterialInputs MaterialInput = GetMaterialInputSimple(UV0, Payload.MipLevel, Cutoff);
+	
+    MaterialUsage Usages = (MaterialUsage)0;
+    UHMaterialInputs MaterialInput = GetMaterialInputSimple(UV0, Payload.MipLevel, Usages);
 
-#if WITH_ALPHATEST
-	if (MaterialInput.Opacity < Cutoff)
+    if (Usages.BlendMode == UH_ISMASKED && MaterialInput.Opacity < Usages.Cutoff)
 	{
 		// discard this hit if it's alpha testing
 		IgnoreHit();
 		return;
 	}
-#endif
 
-#if WITH_TRANSLUCENT
-	// for translucent object, evaludate the hit alpha and store the HitT data
-	Payload.HitT = max(Payload.HitT, RayTCurrent());
-	Payload.HitAlpha = max(MaterialInput.Opacity, Payload.HitAlpha);
-	IgnoreHit();
-#endif
+    if (Usages.BlendMode > UH_ISMASKED)
+    {
+		// for translucent object, evaludate the hit alpha and store the HitT data
+        Payload.HitT = max(Payload.HitT, RayTCurrent());
+        Payload.HitAlpha = max(MaterialInput.Opacity, Payload.HitAlpha);
+        IgnoreHit();
+    }
 }

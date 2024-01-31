@@ -17,12 +17,11 @@ UHRTDefaultHitGroupShader::UHRTDefaultHitGroupShader(UHGraphic* InGfx, std::stri
 		Data.MaterialCache = Materials[Idx];
 
 		// closest hit init
-		std::vector<std::string> MatDefines = Materials[Idx]->GetMaterialDefines();
-		uint32_t ClosestHitShader = InGfx->RequestMaterialShader("RTDefaultClosestHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultClosestHit", "lib_6_3", Data, MatDefines);
+		uint32_t ClosestHitShader = InGfx->RequestMaterialShader("RTDefaultClosestHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultClosestHit", "lib_6_3", Data);
 		ClosestHitShaders.push_back(ClosestHitShader);
 
 		// any hit init
-		uint32_t AnyHitShader = InGfx->RequestMaterialShader("RTDefaultAnyHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultAnyHit", "lib_6_3", Data, MatDefines);
+		uint32_t AnyHitShader = InGfx->RequestMaterialShader("RTDefaultAnyHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultAnyHit", "lib_6_3", Data);
 		AnyHitShaders.push_back(AnyHitShader);
 	}
 
@@ -47,11 +46,10 @@ void UHRTDefaultHitGroupShader::UpdateHitShader(UHGraphic* InGfx, UHMaterial* In
 	Data.MaterialCache = InMat;
 
 	// closest hit update
-	std::vector<std::string> MatDefines = InMat->GetMaterialDefines();
 	InGfx->RequestReleaseShader(ClosestHitShaders[Index]);
-	ClosestHitShaders[Index] = InGfx->RequestMaterialShader("RTDefaultClosestHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultClosestHit", "lib_6_3", Data, MatDefines);
+	ClosestHitShaders[Index] = InGfx->RequestMaterialShader("RTDefaultClosestHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultClosestHit", "lib_6_3", Data);
 
 	// any hit update
 	InGfx->RequestReleaseShader(AnyHitShaders[Index]);
-	AnyHitShaders[Index] = InGfx->RequestMaterialShader("RTDefaultAnyHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultAnyHit", "lib_6_3", Data, MatDefines);
+	AnyHitShaders[Index] = InGfx->RequestMaterialShader("RTDefaultAnyHit", "Shaders/RayTracing/RayTracingHitGroup.hlsl", "RTDefaultAnyHit", "lib_6_3", Data);
 }

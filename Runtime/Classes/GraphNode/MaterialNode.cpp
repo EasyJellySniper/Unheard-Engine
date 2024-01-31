@@ -155,7 +155,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	if (CompileData.bIsHitGroup)
 	{
 		DefinitionTable.clear();
-		int32_t DataIndexInMaterial = (Definitions.size() > 0) ? 2 * TextureIndexInMaterial + 1 : 0;
+		int32_t DataIndexInMaterial = (Definitions.size() > 0) ? 2 * TextureIndexInMaterial + (GRTMaterialDataStartIndex % 2) : 0;
 		for (int32_t Idx = 0; Idx < UHMaterialInputs::MaterialMax; Idx++)
 		{
 			CollectParameterDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, DataIndexInMaterial, Definitions, DefinitionTable);
@@ -294,9 +294,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	{
 		if (CompileData.MaterialCache->GetBlendMode() > UHBlendMode::Masked)
 		{
-			Code += "#if WITH_TRANSLUCENT && WITH_REFRACTION\n";
 			Code += "\tInput.Refraction = " + Refraction->GetOriginNode()->EvalHLSL(Refraction) + ".r" + EndOfLine;
-			Code += "#endif\n";
 		}
 	}
 

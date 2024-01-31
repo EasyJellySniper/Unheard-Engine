@@ -27,3 +27,8 @@ Slightly improved refraction. Prevent distant pixels from being distorted too mu
 Refactored gaussian filter code. Also removed the parallel submission setting in editor and force the parallel submission. Not seeing a reason to disable it.
 Figured out a way to refract translucent objects in a translucent object, with some limitations though.
 Next is to test whether mipmap can be used for lower the flickering of blurred image or just linear upscaling.
+
+31-01-2024:
+Nope, no way to improve blurred image unless rising the resolution.
+Removed various shader macro define, and used dynamic branch with constant value in shader instead.
+Reduced a few shader variants!

@@ -221,6 +221,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	SystemConstantsCPU.UHNumRTInstances = RTInstanceCount;
 	SystemConstantsCPU.UHFrameNumber = GFrameNumber;
+	SystemConstantsCPU.UHPrepassDepthEnabled = bEnableDepthPrePass;
+	SystemConstantsCPU.UHEnvironmentCubeEnabled = GetCurrentSkyCube() != nullptr;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -245,7 +247,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			{
 				UHSystemMaterialData MaterialData{};
 				MaterialData.DefaultSamplerIndex = DefaultSamplerIndex;
-				MaterialData.InEnvCube = SkyLight->GetCubemap();
+				MaterialData.InEnvCube = GetCurrentSkyCube();
 				MaterialData.RefractionClearIndex = GRefractionClearIndex;
 				MaterialData.RefractionBlurredIndex = GRefractionBlurredIndex;
 
@@ -458,6 +460,12 @@ UHTextureCube* UHDeferredShadingRenderer::GetCurrentSkyCube() const
 		{
 			CurrSkyCube = SkyLightComp->GetCubemap();
 		}
+	}
+
+	// set fallback cube if it's not available
+	if (CurrSkyCube == nullptr)
+	{
+		CurrSkyCube = GBlackCube;
 	}
 
 	return CurrSkyCube;

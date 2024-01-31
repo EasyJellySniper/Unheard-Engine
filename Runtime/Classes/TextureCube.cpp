@@ -188,6 +188,14 @@ void UHTextureCube::Build(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 			// if slices are not there, upload from raw data directly, mipdata is also contained
 			UploadSlice(InGfx, InRenderBuilder, Idx, MipMapCount);
 		}
+		else
+		{
+			// no data (could be dummy fallback cube), transition to shader read
+			for (uint32_t Mdx = 0; Mdx < MipMapCount; Mdx++)
+			{
+				InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx, Idx);
+			}
+		}
 	}
 
 	bIsCubeBuilt = true;

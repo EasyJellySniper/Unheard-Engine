@@ -2,10 +2,9 @@
 #include "../../Components/MeshRenderer.h"
 #include "../RendererShared.h"
 
-UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bHasEnvCube
+UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHTranslucentPassShader), InMat, InRenderPass)
-	, bHasEnvCubemap(bHasEnvCube)
 {
 	// sys, obj, mat consts
 	for (int32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
@@ -48,23 +47,10 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 
 void UHTranslucentPassShader::OnCompile()
 {
-	// define macros
-	std::vector<std::string> VSDefines = MaterialCache->GetMaterialDefines();
-	if (bHasEnvCubemap)
-	{
-		VSDefines.push_back("WITH_ENVCUBE");
-	}
-
-	std::vector<std::string> PSDefines = VSDefines;
-	if (Gfx->IsRayTracingEnabled())
-	{
-		PSDefines.push_back("WITH_RTSHADOWS");
-	}
-
-	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", VSDefines);
+	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0");
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("TranslucentPixelShader", "Shaders/TranslucentPixelShader.hlsl", "TranslucentPS", "ps_6_0", Data, PSDefines);
+	ShaderPS = Gfx->RequestMaterialShader("TranslucentPixelShader", "Shaders/TranslucentPixelShader.hlsl", "TranslucentPS", "ps_6_0", Data);
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
@@ -100,6 +86,11 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 	{
 		BindImage(GRTShadowResult, 9);
 	}
+	else
+	{
+		BindImage(GWhiteTexture, 9);
+	}
+
 	BindStorage(GPointLightListTransBuffer.get(), 10, 0, true);
 	BindStorage(GSpotLightListTransBuffer.get(), 11, 0, true);
 	BindStorage(GSH9Data.get(), 12, 0, true);

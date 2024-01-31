@@ -4,7 +4,7 @@
 class UHBasePassShader : public UHShaderClass
 {
 public:
-	UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass, bool bHasEnvCube
+	UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
 		, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
 
 	virtual void OnCompile() override;
@@ -13,5 +13,4 @@ public:
 
 private:
 	bool bHasDepthPrePass;
-	bool bHasEnvCubemap;
 };

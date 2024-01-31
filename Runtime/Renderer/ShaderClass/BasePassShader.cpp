@@ -2,11 +2,10 @@
 #include "../../Components/MeshRenderer.h"
 #include "../RendererShared.h"
 
-UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass, bool bHasEnvCube
+UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat, InRenderPass)
 	, bHasDepthPrePass(bEnableDepthPrePass)
-	, bHasEnvCubemap(bHasEnvCube)
 {
 	// DeferredPass: Bind all constants, visiable in VS/PS only
 	for (int32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
@@ -37,22 +36,10 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 void UHBasePassShader::OnCompile()
 {
-	// also check prepass define
-	std::vector<std::string> MatDefines = MaterialCache->GetMaterialDefines();
-	if (bHasDepthPrePass)
-	{
-		MatDefines.push_back("WITH_DEPTHPREPASS");
-	}
-
-	if (bHasEnvCubemap)
-	{
-		MatDefines.push_back("WITH_ENVCUBE");
-	}
-
-	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", MatDefines);
+	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0");
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, MatDefines);
+	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data);
 
 	
 	// states

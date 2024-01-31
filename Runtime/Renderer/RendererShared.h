@@ -57,3 +57,7 @@ extern UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 // variables
 extern int32_t GRefractionClearIndex;
 extern int32_t GRefractionBlurredIndex;
+
+// fallback textures
+extern UHTexture2D* GWhiteTexture;
+extern UHTextureCube* GBlackCube;

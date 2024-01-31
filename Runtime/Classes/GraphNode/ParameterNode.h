@@ -2,6 +2,7 @@
 #include "../../../UnheardEngine.h"
 #include "GraphNode.h"
 #include "../Types.h"
+#include "../MaterialLayout.h"
 
 // UH parameter node structure
 template <typename T>
@@ -86,7 +87,7 @@ public:
 
 	void SetDataIndexInMaterial(int32_t InIndex)
 	{
-		DataIndexInMaterial = InIndex;
+		DataIndexInMaterial = GRTMaterialDataStartIndex + InIndex;
 	}
 
 protected:

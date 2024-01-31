@@ -42,29 +42,28 @@
 #define UHLIGHTCULLING_TILE 16
 #define UHLIGHTCULLING_UPSCALE 2
 
+#define UH_ISOPAQUE 0
+#define UH_ISMASKED 1
+#define UH_ISALPHABLEND 2
+#define UH_ISADDITION 3
+
 struct VertexOutput
 {
 	float4 Position : SV_POSITION;
 	float2 UV0 : TEXCOORD0;
-#if WITH_TANGENT_SPACE
+	
 	// output TBN if normal mapping enabled
 	float3x3 WorldTBN : TEXCOORD2;
-#endif
 
 	// will always output vertex normal
 	float3 Normal : NORMAL;
-
-#if defined(WITH_ENVCUBE) || defined(WITH_TRANSLUCENT)
 	float3 WorldPos : TEXCOORD5;
-#endif
 };
 
 struct DepthVertexOutput
 {
 	float4 Position : SV_POSITION;
-#if WITH_ALPHATEST
 	float2 UV0 : TEXCOORD0;
-#endif
 };
 
 struct MotionVertexOutput
@@ -114,6 +113,9 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     uint UHNumSpotLights;
     uint UHMaxSpotLightPerTile;
 	uint UHFrameNumber;
+	
+    uint UHPrepassDepthEnabled;
+    uint UHEnvironmentCubeEnabled;
 }
 
 // IT means inverse-transposed
@@ -123,6 +125,7 @@ cbuffer ObjectConstants : register(UHOBJ_BIND)
 	float4x4 UHWorldIT;
 	float4x4 UHPrevWorld;
 	uint UHInstanceIndex;
+    uint UHNeedWorldTBN;
 }
 
 // material inputs from graph system

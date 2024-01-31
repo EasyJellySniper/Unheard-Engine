@@ -6,6 +6,7 @@
 // hard code variables in shader
 const std::string GDefaultSamplerName = "DefaultAniso16";
 const std::string GDefaultTextureChannel0Name = "UV0";
+const int32_t GRTMaterialDataStartIndex = 2;
 
 // ------------------------------ header for material layout defines
 
