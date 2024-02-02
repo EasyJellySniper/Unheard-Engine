@@ -71,8 +71,6 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
 	}
 	Atten *= PCSS_WEIGHT;
 
-	// ensure group is done reading g channel and store the result
-	GroupMemoryBarrierWithGroupSync();
     RTShadow[PixelCoord] = Atten;
 }
 

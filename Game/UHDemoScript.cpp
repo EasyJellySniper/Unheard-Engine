@@ -119,6 +119,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	if (UHUtilities::StringFind(InScene->GetName(), "SpotLightNight"))
 	{
+		TestSpotLights.clear();
 		for (UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
 			if (Comp->GetComponentClassId() == UHSpotLightComponent::ClassId)
@@ -131,6 +132,8 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	if (UHUtilities::StringFind(InScene->GetName(), "PointLightNight"))
 	{
+		TestPointLights.clear();
+		TestPointLightOrigin.clear();
 		for (UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
 			if (Comp->GetComponentClassId() == UHPointLightComponent::ClassId)
