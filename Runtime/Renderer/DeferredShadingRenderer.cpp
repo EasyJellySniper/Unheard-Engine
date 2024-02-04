@@ -87,6 +87,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
 	bHasRefractionMaterialRT = bHasRefractionMaterialGT;
 	FrontmostRefractionIndexRT = FrontmostRefractionIndexGT;
+	RTCullingDistanceRT = ConfigInterface->RenderingSetting().RTCullingRadius;
 
 	if (SkyMeshRT == nullptr)
 	{
@@ -223,6 +224,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.UHFrameNumber = GFrameNumber;
 	SystemConstantsCPU.UHPrepassDepthEnabled = bEnableDepthPrePass;
 	SystemConstantsCPU.UHEnvironmentCubeEnabled = GetCurrentSkyCube() != nullptr;
+	SystemConstantsCPU.UHDirectionalShadowRayTMax = ConfigInterface->RenderingSetting().RTShadowTMax;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -348,6 +350,7 @@ void UHDeferredShadingRenderer::FrustumCullingTask(int32_t ThreadIdx)
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	const BoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
 	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
+	const XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
 
 	const int32_t MaxCount = static_cast<int32_t>(Renderers.size());
 	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
@@ -366,6 +369,9 @@ void UHDeferredShadingRenderer::FrustumCullingTask(int32_t ThreadIdx)
 		const BoundingBox& RendererBound = Renderer->GetRendererBound();
 		const bool bVisible = (CameraFrustum.Contains(RendererBound) != DirectX::DISJOINT);
 		Renderer->SetVisible(bVisible);
+
+		// also calculate the square distance to current camera for later use
+		Renderer->CalculateSquareDistanceTo(CameraPos);
 	}
 }
 
@@ -410,19 +416,13 @@ void UHDeferredShadingRenderer::SortRenderer()
 	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
 	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
-			XMFLOAT3 ZA = A->GetRendererBound().Center;
-			XMFLOAT3 ZB = B->GetRendererBound().Center;
-
-			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) < MathHelpers::VectorDistanceSqr(ZB, CameraPos);
+			return A->GetSquareDistanceToMainCam() < B->GetSquareDistanceToMainCam();
 		});
 
-	// sort back-to-front for translucents, this unfortunately can't be parallel unless going OIT
+	// sort back-to-front for translucents
 	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
-			XMFLOAT3 ZA = A->GetRendererBound().Center;
-			XMFLOAT3 ZB = B->GetRendererBound().Center;
-
-			return MathHelpers::VectorDistanceSqr(ZA, CameraPos) > MathHelpers::VectorDistanceSqr(ZB, CameraPos);
+			return A->GetSquareDistanceToMainCam() > B->GetSquareDistanceToMainCam();
 		});
 
 	// find the frontmost translucent object that does refraction

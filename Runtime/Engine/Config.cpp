@@ -55,7 +55,9 @@ void UHConfigManager::LoadConfig()
 			RenderingSettings.bEnableGPUTiming = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPUTiming");
 			RenderingSettings.bEnableDepthPrePass = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableDepthPrePass");
 			RenderingSettings.ParallelThreads = UHUtilities::ReadINIData<int32_t>(FileIn, "ParallelThreads");
-			RenderingSettings.RTDirectionalShadowQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTDirectionalShadowQuality");
+			RenderingSettings.RTCullingRadius = UHUtilities::ReadINIData<float>(FileIn, "RTCullingRadius");
+			RenderingSettings.RTShadowQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTShadowQuality");
+			RenderingSettings.RTShadowTMax = UHUtilities::ReadINIData<float>(FileIn, "RTShadowTMax");
 			RenderingSettings.bEnableAsyncCompute = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableAsyncCompute");
 			RenderingSettings.bEnableHDR = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableHDR");
 
@@ -105,7 +107,9 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "bEnableGPUTiming", RenderingSettings.bEnableGPUTiming);
 		UHUtilities::WriteINIData(FileOut, "bEnableDepthPrePass", RenderingSettings.bEnableDepthPrePass);
 		UHUtilities::WriteINIData(FileOut, "ParallelThreads", RenderingSettings.ParallelThreads);
-		UHUtilities::WriteINIData(FileOut, "RTDirectionalShadowQuality", RenderingSettings.RTDirectionalShadowQuality);
+		UHUtilities::WriteINIData(FileOut, "RTCullingRadius", RenderingSettings.RTCullingRadius);
+		UHUtilities::WriteINIData(FileOut, "RTShadowQuality", RenderingSettings.RTShadowQuality);
+		UHUtilities::WriteINIData(FileOut, "RTShadowTMax", RenderingSettings.RTShadowTMax);
 		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 		UHUtilities::WriteINIData(FileOut, "bEnableHDR", RenderingSettings.bEnableHDR);
 	}

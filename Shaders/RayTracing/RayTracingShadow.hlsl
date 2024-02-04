@@ -83,7 +83,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
 		ShadowRay.Direction = -DirLight.Dir;
 
 		ShadowRay.TMin = Gap;
-		ShadowRay.TMax = float(1 << 20);
+        ShadowRay.TMax = UHDirectionalShadowRayTMax;
 
 		UHDefaultPayload Payload = (UHDefaultPayload)0;
         if (!bAlreadyHasShadow)

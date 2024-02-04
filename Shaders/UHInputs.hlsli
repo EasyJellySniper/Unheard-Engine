@@ -116,6 +116,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
 	
     uint UHPrepassDepthEnabled;
     uint UHEnvironmentCubeEnabled;
+	float UHDirectionalShadowRayTMax;
 }
 
 // IT means inverse-transposed

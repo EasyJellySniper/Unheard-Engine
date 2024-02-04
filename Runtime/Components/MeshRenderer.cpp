@@ -20,6 +20,7 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 #endif
 	, MeshId(UUID())
 	, MaterialId(UUID())
+	, SquareDistanceToMainCam(0.0f)
 {
 	SetMaterial(MaterialCache);
 	SetName("MeshRendererComponent" + std::to_string(GetId()));
@@ -126,6 +127,14 @@ void UHMeshRendererComponent::SetMaterial(UHMaterial* InMaterial)
 	}
 }
 
+void UHMeshRendererComponent::CalculateSquareDistanceTo(const XMFLOAT3 Position)
+{
+	// this roughly does the calculation with the center point of a bound
+	// to have more precise result, find the closest point on a bound first
+	const XMFLOAT3 Center = GetRendererBound().Center;
+	SquareDistanceToMainCam = MathHelpers::VectorDistanceSqr(Center, Position);
+}
+
 UHMesh* UHMeshRendererComponent::GetMesh() const
 {
 	return MeshCache;
@@ -156,6 +165,11 @@ UHObjectConstants UHMeshRendererComponent::GetConstants() const
 BoundingBox UHMeshRendererComponent::GetRendererBound() const
 {
 	return RendererBound;
+}
+
+float UHMeshRendererComponent::GetSquareDistanceToMainCam() const
+{
+	return SquareDistanceToMainCam;
 }
 
 void UHMeshRendererComponent::SetVisible(bool bVisible)

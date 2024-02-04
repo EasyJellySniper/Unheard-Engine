@@ -93,21 +93,28 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     }
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
 
+    // raytracing settings
+    ImGui::NewLine();
+    ImGui::Text("---Raytracing Settings---");
+    ImGui::InputFloat("RT Culling Distance", &RenderingSettings.RTCullingRadius);
+
     std::vector<std::string> ShadowQualities = { "Full", "Half" };
-    if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", ShadowQualities[RenderingSettings.RTDirectionalShadowQuality].c_str()))
+    if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", ShadowQualities[RenderingSettings.RTShadowQuality].c_str()))
     {
         for (size_t Idx = 0; Idx < ShadowQualities.size(); Idx++)
         {
-            const bool bIsSelected = (RenderingSettings.RTDirectionalShadowQuality == Idx);
+            const bool bIsSelected = (RenderingSettings.RTShadowQuality == Idx);
             if (ImGui::Selectable(ShadowQualities[Idx].c_str(), bIsSelected))
             {
-                RenderingSettings.RTDirectionalShadowQuality = static_cast<int32_t>(Idx);
+                RenderingSettings.RTShadowQuality = static_cast<int32_t>(Idx);
                 DeferredRenderer->ResizeRayTracingBuffers(false);
                 break;
             }
         }
         ImGui::EndCombo();
     }
+
+    ImGui::InputFloat("RT Shadow TMax", &RenderingSettings.RTShadowTMax);
 
     ImGui::PopItemWidth();
     bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

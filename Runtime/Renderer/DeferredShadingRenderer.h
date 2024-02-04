@@ -247,6 +247,7 @@ private:
 	bool bHasRefractionMaterialRT;
 	int32_t FrontmostRefractionIndexGT;
 	int32_t FrontmostRefractionIndexRT;
+	float RTCullingDistanceRT;
 
 	// current scene
 	UHScene* CurrentScene;

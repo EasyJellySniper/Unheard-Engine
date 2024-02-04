@@ -65,6 +65,7 @@ struct UHSystemConstants
 
 	uint32_t UHPrepassDepthEnabled;
 	uint32_t UHEnvironmentCubeEnabled;
+	float UHDirectionalShadowRayTMax;
 };
 
 struct UHObjectConstants

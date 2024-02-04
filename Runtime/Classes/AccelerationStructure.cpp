@@ -246,24 +246,26 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 }
 
 // update top AS
-void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t CurrentFrameRT)
+void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_t CurrentFrameRT, const float RTCullingDistance)
 {
-	// upload changed data to ASInstanceBuffer
-	bool bNeedUpdate = false;
 	for (size_t Idx = 0; Idx < InstanceKHRs.size(); Idx++)
 	{
-		if (RendererCache[Idx]->IsRayTracingDirty(CurrentFrameRT))
+		UHMeshRendererComponent* Renderer = RendererCache[Idx];
+
+		// copy transform3x4 when it's dirty
+		if (Renderer->IsTransformChanged())
 		{
-			// copy transform3x4
-			XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(RendererCache[Idx]->GetWorldMatrix());
+			XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(Renderer->GetWorldMatrix());
 			std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
+		}
 
-			// check visibility
-#if WITH_EDITOR
-			InstanceKHRs[Idx].mask = RendererCache[Idx]->IsVisibleInEditor() ? 0xff : 0;
-#endif
+		// check visibility
+		const bool bIsVisible = Renderer->IsVisible() || (Renderer->GetSquareDistanceToMainCam() < RTCullingDistance * RTCullingDistance);
+		InstanceKHRs[Idx].mask = bIsVisible ? 0xff : 0;
 
-			// check material state
+		// check material state
+		if (Renderer->IsRayTracingDirty(CurrentFrameRT))
+		{
 			UHMaterial* Mat = RendererCache[Idx]->GetMaterial();
 			InstanceKHRs[Idx].flags = 0;
 
@@ -282,19 +284,17 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, int32_t Curr
 			{
 				InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
 			}
-
-			ASInstanceBuffer->UploadData(&InstanceKHRs[Idx], Idx);
-			RendererCache[Idx]->SetRayTracingDirty(false, CurrentFrameRT);
-			bNeedUpdate = true;
 		}
+
+		Renderer->SetRayTracingDirty(false, CurrentFrameRT);
 	}
 
-	if (bNeedUpdate)
-	{
-		// update it 
-		const VkAccelerationStructureBuildRangeInfoKHR* RangeInfos[1] = { &RangeInfoCache };
-		GVkCmdBuildAccelerationStructuresKHR(InBuffer, 1, &GeometryInfoCache, RangeInfos);
-	}
+	// upload all data in one call
+	ASInstanceBuffer->UploadAllData(InstanceKHRs.data());
+
+	// update it 
+	const VkAccelerationStructureBuildRangeInfoKHR* RangeInfos[1] = { &RangeInfoCache };
+	GVkCmdBuildAccelerationStructuresKHR(InBuffer, 1, &GeometryInfoCache, RangeInfos);
 }
 
 void UHAccelerationStructure::Release()

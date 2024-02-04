@@ -52,6 +52,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bHasRefractionMaterialRT(false)
 	, FrontmostRefractionIndexGT(UHINDEXNONE)
 	, FrontmostRefractionIndexRT(UHINDEXNONE)
+	, RTCullingDistanceRT(0.0f)
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
@@ -504,7 +505,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		RTShadowShader->BindParameters();
 		SoftRTShadowShader->BindParameters();
 
-		if (ConfigInterface->RenderingSetting().RTDirectionalShadowQuality == 0)
+		if (ConfigInterface->RenderingSetting().RTShadowQuality == 0)
 		{
 			SoftRTShadowShader->BindImage(GSceneDepth, 3);
 			SoftRTShadowShader->BindImage(GSceneTranslucentDepth, 4);

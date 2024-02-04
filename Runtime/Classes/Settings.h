@@ -69,7 +69,9 @@ public:
 		, bEnableGPUTiming(true)
 		, bEnableDepthPrePass(false)
 		, ParallelThreads(0)
-		, RTDirectionalShadowQuality(0)
+		, RTCullingRadius(100.0f)
+		, RTShadowQuality(0)
+		, RTShadowTMax(0.0f)
 		, bEnableAsyncCompute(false)
 		, bEnableHDR(false)
 	{
@@ -85,7 +87,9 @@ public:
 	bool bEnableGPUTiming;
 	bool bEnableDepthPrePass;
 	int32_t ParallelThreads;
-	int32_t RTDirectionalShadowQuality;
+	float RTCullingRadius;
+	int32_t RTShadowQuality;
+	float RTShadowTMax;
 	bool bEnableAsyncCompute;
 	bool bEnableHDR;
 };

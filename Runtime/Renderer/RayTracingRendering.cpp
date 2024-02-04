@@ -12,7 +12,7 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 			GraphicInterface->RequestReleaseRT(GRTSharedTextureRG16F);
 		}
 
-		const int32_t ShadowQuality = ConfigInterface->RenderingSetting().RTDirectionalShadowQuality;
+		const int32_t ShadowQuality = ConfigInterface->RenderingSetting().RTShadowQuality;
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
 
@@ -38,7 +38,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 	// https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#general-tips-for-building-acceleration-structures
 	// From Microsoft tips: Rebuild top-level acceleration structure every frame
 	// but I still choose to update AS instead of rebuilding, FPS is higher with updating
-	TopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT);
+	TopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT, RTCullingDistanceRT);
 }
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)

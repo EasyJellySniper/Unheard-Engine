@@ -19,11 +19,13 @@ public:
 
 	void SetMesh(UHMesh* InMesh);
 	void SetMaterial(UHMaterial* InMaterial);
+	void CalculateSquareDistanceTo(const XMFLOAT3 Position);
 
 	UHMesh* GetMesh() const;
 	UHMaterial* GetMaterial() const;
 	UHObjectConstants GetConstants() const;
 	BoundingBox GetRendererBound() const;
+	float GetSquareDistanceToMainCam() const;
 
 	void SetVisible(bool bVisible);
 	bool IsVisible() const;
@@ -43,6 +45,7 @@ private:
 
 	bool bIsVisible;
 	BoundingBox RendererBound;
+	float SquareDistanceToMainCam;
 
 #if WITH_EDITOR
 	bool bIsVisibleEditor;
