@@ -125,5 +125,6 @@ private:
 	UHEngineResizeReason EngineResizeReason;
 
 	int64_t FrameBeginTime;
+	float DisplayFrequency;
 };
 

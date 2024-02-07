@@ -86,6 +86,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             // call the game loop
             if (GUnheardEngine)
             {
+                GUnheardEngine->BeginFPSLimiter();
             #if WITH_EDITOR
                 GUnheardEngine->BeginProfile();
                 ImGui_ImplVulkan_NewFrame();
@@ -97,19 +98,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             #endif
 
                 // update anyway, could consider adding a setting to decide wheter to pause update when it's minimized
-                GUnheardEngine->BeginFPSLimiter();
                 GUnheardEngine->Update();
 
-#if WITH_EDITOR
+            #if WITH_EDITOR
                 ImGui::Render();
-#endif
+            #endif
 
                 // only call render loop when it's not minimized
                 if (!GIsMinimized)
                 {
                     GUnheardEngine->RenderLoop();
                 }
-                GUnheardEngine->EndFPSLimiter();
 
             #if WITH_EDITOR
                 // assume multi-view is always enabled
@@ -118,6 +117,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault(nullptr, &CustomData);
+            #endif
+
+                GUnheardEngine->EndFPSLimiter();
+            #if WITH_EDITOR
                 GUnheardEngine->EndProfile();
             #endif
             }

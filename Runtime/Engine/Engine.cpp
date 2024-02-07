@@ -15,6 +15,7 @@ UHEngine::UHEngine()
 	, bIsInitialized(false)
 	, EngineResizeReason(UHEngineResizeReason::NotResizing)
 	, FrameBeginTime(0)
+	, DisplayFrequency(60.0f)
 #if WITH_EDITOR
 	, UHEEditor(nullptr)
 	, UHEProfiler(nullptr)
@@ -41,6 +42,12 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 {
 	// set affinity of current thread (main thread)
 	SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
+
+	// cache current monitor refresh rate
+	DEVMODE DevMode;
+	DevMode.dmSize = sizeof(DEVMODE);
+	EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &DevMode);
+	DisplayFrequency = static_cast<float>(DevMode.dmDisplayFrequency);
 
 	// init asset manager
 	UHEAsset = MakeUnique<UHAssetManager>();
@@ -283,20 +290,32 @@ void UHEngine::BeginFPSLimiter()
 
 void UHEngine::EndFPSLimiter()
 {
+	const float FPSLimit = UHEConfig->EngineSetting().FPSLimit;
+
 	// if FPSLimit is 0, don't limit it
-	if (UHEConfig->EngineSetting().FPSLimit < std::numeric_limits<float>::epsilon())
+	if (FPSLimit < std::numeric_limits<float>::epsilon())
 	{
 		return;
 	}
 
-	int64_t FrameEndTime = UHEGameTimer->GetTime();
-	float Duration = static_cast<float>((FrameEndTime - FrameBeginTime) * UHEGameTimer->GetSecondsPerCount());
-	float DesiredDuration = (1.0f / UHEConfig->EngineSetting().FPSLimit);
+	// do not need to limit fps if Vsync is on and limit is > monitor HZ
+	if (UHEConfig->PresentationSetting().bVsync && FPSLimit >= DisplayFrequency)
+	{
+		return;
+	}
+
+	const int64_t FrameEndTime = UHEGameTimer->GetTime();
+	const float Duration = static_cast<float>((FrameEndTime - FrameBeginTime) * UHEGameTimer->GetSecondsPerCount());
+	const float DesiredDuration = 1.0f / FPSLimit;
 
 	if (DesiredDuration > Duration)
 	{
-		int64_t WaitDuration = static_cast<int64_t>((DesiredDuration - Duration) / UHEGameTimer->GetSecondsPerCount());
-		while (UHEGameTimer->GetTime() <= WaitDuration + FrameEndTime);
+		const int64_t WaitDuration = static_cast<int64_t>((DesiredDuration - Duration) / UHEGameTimer->GetSecondsPerCount());
+		std::thread WaitDurationThread([this, WaitDuration, FrameEndTime]()
+			{
+				while (UHEGameTimer->GetTime() <= WaitDuration + FrameEndTime);
+			});
+		WaitDurationThread.join();
 	}
 }
 

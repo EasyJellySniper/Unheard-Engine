@@ -610,7 +610,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		DrawCalls = SceneRenderBuilder.DrawCalls;
 	#endif
 
-		// wait until the previous presentation is done
+		// wait until the previous presentation is done, to prevent glitches on some hardwares
 		if (bIsPresentedPreviously && !bIsSwapChainResetRT)
 		{
 			SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[1 - CurrentFrameRT]);
