@@ -32,3 +32,9 @@ Next is to test whether mipmap can be used for lower the flickering of blurred i
 Nope, no way to improve blurred image unless rising the resolution.
 Removed various shader macro define, and used dynamic branch with constant value in shader instead.
 Reduced a few shader variants!
+
+07-02-2024:
+Minor improvement for FPS limiter. Reduced CPU usage.
+08-02-2024:
+Improved FPS limiter again. Created another thread for the wait operation.
+Also mixed the method of sleep and while loop waiting.

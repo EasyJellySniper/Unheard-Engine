@@ -24,6 +24,11 @@ void UHThread::BeginThread(std::thread InObj, uint32_t AffinityCore)
 	}
 }
 
+void UHThread::BeginThread(std::thread InObj)
+{
+	ThreadObj = std::move(InObj);
+}
+
 // end thread, this should force infinite wait loop to finish and terminate the thread
 void UHThread::EndThread()
 {

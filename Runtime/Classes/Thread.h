@@ -8,8 +8,9 @@ class UHThread
 public:
 	UHThread();
 
-	// kick off a thread
+	// kick off a thread with or without affinity setting
 	void BeginThread(std::thread InObj, uint32_t AffinityCore);
+	void BeginThread(std::thread InObj);
 
 	// end a thread
 	void EndThread();

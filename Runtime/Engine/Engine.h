@@ -8,6 +8,7 @@
 #include "Asset.h"
 #include "../Renderer/DeferredShadingRenderer.h"
 #include "../Classes/Scene.h"
+#include "../Classes/Thread.h"
 #include <memory>
 #include <string>
 
@@ -65,6 +66,7 @@ public:
 	// FPS limiter function
 	void BeginFPSLimiter();
 	void EndFPSLimiter();
+	void LimitFramerate();
 
 	void OnSaveScene(std::filesystem::path OutputPath);
 	void OnLoadScene(std::filesystem::path InputPath);
@@ -125,6 +127,10 @@ private:
 	UHEngineResizeReason EngineResizeReason;
 
 	int64_t FrameBeginTime;
+	int64_t FrameEndTime;
 	float DisplayFrequency;
+	UniquePtr<UHThread> FramerateLimitThread;
+	int64_t WaitDuration;
+	float WaitDurationMS;
 };
 

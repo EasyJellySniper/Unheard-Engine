@@ -15,7 +15,10 @@ UHEngine::UHEngine()
 	, bIsInitialized(false)
 	, EngineResizeReason(UHEngineResizeReason::NotResizing)
 	, FrameBeginTime(0)
+	, FrameEndTime(0)
 	, DisplayFrequency(60.0f)
+	, WaitDuration(0)
+	, WaitDurationMS(0.0f)
 #if WITH_EDITOR
 	, UHEEditor(nullptr)
 	, UHEProfiler(nullptr)
@@ -137,6 +140,9 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	}
 #endif
 
+	FramerateLimitThread = MakeUnique<UHThread>();
+	FramerateLimitThread->BeginThread(std::thread(&UHEngine::LimitFramerate, this));
+
 	return true;
 }
 
@@ -160,6 +166,9 @@ void UHEngine::ReleaseEngine()
 
 	UH_SAFE_RELEASE(UHEGraphic);
 	UHEGraphic.reset();
+
+	FramerateLimitThread->WaitTask();
+	FramerateLimitThread->EndThread();
 }
 
 bool UHEngine::IsEngineInitialized()
@@ -285,6 +294,9 @@ UHRawInput* UHEngine::GetRawInput() const
 
 void UHEngine::BeginFPSLimiter()
 {
+#if WITH_RELEASE
+	FramerateLimitThread->WaitTask();
+#endif
 	FrameBeginTime = UHEGameTimer->GetTime();
 }
 
@@ -304,18 +316,56 @@ void UHEngine::EndFPSLimiter()
 		return;
 	}
 
-	const int64_t FrameEndTime = UHEGameTimer->GetTime();
+	FrameEndTime = UHEGameTimer->GetTime();
 	const float Duration = static_cast<float>((FrameEndTime - FrameBeginTime) * UHEGameTimer->GetSecondsPerCount());
 	const float DesiredDuration = 1.0f / FPSLimit;
 
 	if (DesiredDuration > Duration)
 	{
-		const int64_t WaitDuration = static_cast<int64_t>((DesiredDuration - Duration) / UHEGameTimer->GetSecondsPerCount());
-		std::thread WaitDurationThread([this, WaitDuration, FrameEndTime]()
+		WaitDuration = static_cast<int64_t>((DesiredDuration - Duration) / UHEGameTimer->GetSecondsPerCount());
+		WaitDurationMS = (DesiredDuration - Duration) * 1000.0f;
+
+		FramerateLimitThread->WakeThread();
+#if WITH_EDITOR
+		FramerateLimitThread->WaitTask();
+#endif
+	}
+}
+
+void UHEngine::LimitFramerate()
+{
+	auto Curr = std::chrono::steady_clock::now();
+	using FPS100 = std::chrono::duration<int32_t, std::ratio<1, 100>>;
+	auto Next = Curr + FPS100{ 1 };
+	const float SleepThresholdMS = 10.0f;
+
+	while (true)
+	{
+		FramerateLimitThread->WaitNotify();
+
+		if (FramerateLimitThread->IsTermindate())
+		{
+			break;
+		}
+
+		// sleep if the requested MS is larger than a value
+		if (WaitDurationMS > SleepThresholdMS)
+		{
+			std::this_thread::sleep_until(Next);
+			Next += FPS100{ 1 };
+		}
+
+		// wait the remaining time
+		while (true)
+		{
+			std::this_thread::yield();
+			if (UHEGameTimer->GetTime() > WaitDuration + FrameEndTime)
 			{
-				while (UHEGameTimer->GetTime() <= WaitDuration + FrameEndTime);
-			});
-		WaitDurationThread.join();
+				break;
+			}
+		}
+
+		FramerateLimitThread->NotifyTaskDone();
 	}
 }
 
