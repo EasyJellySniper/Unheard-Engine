@@ -38,3 +38,5 @@ Minor improvement for FPS limiter. Reduced CPU usage.
 08-02-2024:
 Improved FPS limiter again. Created another thread for the wait operation.
 Also mixed the method of sleep and while loop waiting.
+09-02-2024:
+Fixup the NTSC frequencies when engine is caching monitor Hz value.
