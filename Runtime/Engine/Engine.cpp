@@ -41,16 +41,31 @@ void UHEngine::SaveConfig()
 	UHEConfig->SaveConfig(UHEngineWindow);
 }
 
+// NTSC frequencies fixup
+float FixupNTSCFrequency(DWORD InFrequency)
+{
+	switch (InFrequency)
+	{
+	case 23:
+	case 29:
+	case 59:
+	case 119:
+		return (static_cast<float>(InFrequency) + 1) * 1000.0f / 1001.0f;
+	}
+
+	return static_cast<float>(InFrequency);
+}
+
 bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 {
 	// set affinity of current thread (main thread)
 	SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
 
-	// cache current monitor refresh rate
+	// cache current monitor refresh rate, also consider the NTSC frequencies
 	DEVMODE DevMode;
 	DevMode.dmSize = sizeof(DEVMODE);
 	EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &DevMode);
-	DisplayFrequency = static_cast<float>(DevMode.dmDisplayFrequency);
+	DisplayFrequency = FixupNTSCFrequency(DevMode.dmDisplayFrequency);
 
 	// init asset manager
 	UHEAsset = MakeUnique<UHAssetManager>();
