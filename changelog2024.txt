@@ -40,3 +40,6 @@ Improved FPS limiter again. Created another thread for the wait operation.
 Also mixed the method of sleep and while loop waiting.
 09-02-2024:
 Fixup the NTSC frequencies when engine is caching monitor Hz value.
+
+16-02-2024:
+Minor change to refraction blur. Also fixed the compile issue, now it set renderer dirties anyway as long as refresh material shader is called.

@@ -967,6 +967,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 		if (UHMeshRendererComponent* Renderer = static_cast<UHMeshRendererComponent*>(RendererObj))
 		{
 			ResetMaterialShaders(Renderer, CompileFlag, bIsOpaque, bNeedReassignRendererGroup);
+			Renderer->SetRenderDirties(true);
 		}
 	}
 

@@ -37,7 +37,7 @@ void UHDeferredShadingRenderer::PreTranslucentPass(UHRenderBuilder& RenderBuilde
 	{
 		// Blur the opaque scene
 		UHGaussianFilterConstants FilterConstants{};
-		FilterConstants.GBlurRadius = 3;
+		FilterConstants.GBlurRadius = 4;
 		FilterConstants.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
 		FilterConstants.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
 		FilterConstants.IterationCount = 2;
@@ -103,7 +103,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 		{
 			// Blur the background translucent scene
 			UHGaussianFilterConstants FilterConstants{};
-			FilterConstants.GBlurRadius = 3;
+			FilterConstants.GBlurRadius = 4;
 			FilterConstants.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
 			FilterConstants.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
 			FilterConstants.IterationCount = 2;
