@@ -27,7 +27,6 @@ extern UHRenderTexture* GSceneMip;
 extern UHRenderTexture* GSceneDepth;
 extern UHRenderTexture* GSceneTranslucentDepth;
 extern UHRenderTexture* GSceneVertexNormal;
-extern UHRenderTexture* GSceneTranslucentVertexNormal;
 extern UHRenderTexture* GMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
@@ -61,3 +60,5 @@ extern int32_t GRefractionBlurredIndex;
 // fallback textures
 extern UHTexture2D* GWhiteTexture;
 extern UHTextureCube* GBlackCube;
+
+extern std::vector<UHTexture*> GetGBuffersSRV();

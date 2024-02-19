@@ -15,50 +15,33 @@ ByteAddressBuffer PointLightList : register(t6);
 ByteAddressBuffer PointLightListTrans : register(t7);
 ByteAddressBuffer SpotLightList : register(t8);
 ByteAddressBuffer SpotLightListTrans : register(t9);
-Texture2D MipTexture : register(t10);
-Texture2D DepthTexture : register(t11);
-Texture2D TranslucentDepthTexture : register(t12);
-Texture2D VertexNormalTexture : register(t13);
-Texture2D TranslucentVertexNormalTexture : register(t14);
-SamplerState PointSampler : register(s15);
-SamplerState LinearSampler : register(s16);
 
-static const float GTranslucentShadowCutoff = 0.2f;
+Texture2D MixedMipTexture : register(t10);
+Texture2D MixedDepthTexture : register(t11);
+Texture2D MixedVertexNormalTexture : register(t12);
+SamplerState PointSampler : register(s13);
+SamplerState LinearSampler : register(s14);
 
 // both opaque and translucent shadow are traced in this function
-void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float MipRate, float MipLevel, bool bIsTranslucent)
+void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLevel)
 {
+    // The MixedDepthTexture contains both opaque/translucent depth
+    float SceneDepth = MixedDepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r;
+
 	UHBRANCH
-    if (OpaqueDepth == 0.0f && !bIsTranslucent)
-	{
-		// early return if no opaque depth (no object)
+    if (SceneDepth == 0.0f)
+    {
+        // early out if no depth
 		return;
-	}
-	
-    float TranslucentDepth = bIsTranslucent ? TranslucentDepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r : 0.0f;
-
-	UHBRANCH
-    if (abs(OpaqueDepth - TranslucentDepth) < GTranslucentShadowCutoff && bIsTranslucent && OpaqueDepth != 0.0f)
-    {
-		// when opaque and translucent depth are close, considering this pixel contains no translucent object, simply share the result from opaque and return
-        return;
-    }
-
-	UHBRANCH
-    if (TranslucentDepth == 0.0f && bIsTranslucent)
-    {
-		// early return if there is no translucent at all
-        return;
     }
 
 	// reconstruct world position and get world normal
-    float Depth = bIsTranslucent ? TranslucentDepth : OpaqueDepth;
-    float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, Depth);
+    float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth);
 
 	// reconstruct normal, simply sample from the texture
-    float3 WorldNormal = bIsTranslucent ? DecodeNormal(TranslucentVertexNormalTexture.SampleLevel(PointSampler, ScreenUV, 0).xyz)
-		: DecodeNormal(VertexNormalTexture.SampleLevel(PointSampler, ScreenUV, 0).xyz);
-
+    // likewise,  The MixedVertexNormalTexture contains both opaque/translucent's vertex normal
+    float4 VertexNormalData = MixedVertexNormalTexture.SampleLevel(PointSampler, ScreenUV, 0);
+    float3 WorldNormal = DecodeNormal(VertexNormalData.xyz);
 	
 	// ------------------------------------------------------------------------------------------ Directional Light Tracing
 	// give a little gap for preventing self-shadowing, along the vertex normal direction
@@ -107,8 +90,10 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float OpaqueDepth, float Mip
             Atten += NdotL;
         }
     }
-	
-	
+    
+    // evaluate if it's translucent or not from VertexNormalData.w
+    bool bIsTranslucent = VertexNormalData.w > 0;
+    
 	// ------------------------------------------------------------------------------------------ Point Light Tracing
     uint2 TileCoordinate = PixelCoord.xy;
     uint TileX = TileCoordinate.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
@@ -255,17 +240,15 @@ void RTShadowRayGen()
 		return;
 	}
 
-	// to UV and get depth
+    // to UV
 	float2 ScreenUV = (PixelCoord + 0.5f) * UHResolution.zw;
-    float OpaqueDepth = DepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r;
 
 	// calculate mip level before ray tracing kicks off
-	float MipRate = MipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
+    float MipRate = MixedMipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
 	float MipLevel = max(0.5f * log2(MipRate * MipRate), 0);
 
-	// trace for translucent objs after opaque, the second OpaqueDepth isn't wrong since it will be compared in translucent function
-	TraceShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel, false);
-	TraceShadow(PixelCoord, ScreenUV, OpaqueDepth, MipRate, MipLevel, true);
+    // trace shadow just once, it will take care opaque/translucent tracing at the same time
+	TraceShadow(PixelCoord, ScreenUV, MipRate, MipLevel);
 
     // if it's half-sized tracing, fill the empty pixels on right and bottom
     if (UHResolution.x != RTShadowResolution.x)

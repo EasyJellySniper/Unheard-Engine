@@ -43,3 +43,8 @@ Fixup the NTSC frequencies when engine is caching monitor Hz value.
 
 16-02-2024:
 Minor change to refraction blur. Also fixed the compile issue, now it set renderer dirties anyway as long as refresh material shader is called.
+
+19-02-2024:
+Organized the descriptor in RT shadow shader.
+Fixed the bool parameter bug, I should bind the integer instead.
+Optimized both RT shadow and soft shadow shader, they should only need one iteration.

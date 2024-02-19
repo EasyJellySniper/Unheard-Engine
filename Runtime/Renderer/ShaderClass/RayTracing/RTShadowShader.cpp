@@ -27,8 +27,6 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -66,6 +64,8 @@ void UHRTShadowShader::BindParameters()
 	// TLAS will be bound on fly (slot 1)
 
 	BindRWImage(GRTSharedTextureRG16F, 2);
+
+	// light buffers
 	BindStorage(GDirectionalLightBuffer, 3, 0, true);
 	BindStorage(GPointLightBuffer, 4, 0, true);
 	BindStorage(GSpotLightBuffer, 5, 0, true);
@@ -73,11 +73,11 @@ void UHRTShadowShader::BindParameters()
 	BindStorage(GPointLightListTransBuffer.get(), 7, 0, true);
 	BindStorage(GSpotLightListBuffer.get(), 8, 0, true);
 	BindStorage(GSpotLightListTransBuffer.get(), 9, 0, true);
+
+	// translucent buffers and samplers
 	BindImage(GSceneMip, 10);
-	BindImage(GSceneDepth, 11);
-	BindImage(GSceneTranslucentDepth, 12);
-	BindImage(GSceneVertexNormal, 13);
-	BindImage(GSceneTranslucentVertexNormal, 14);
-	BindSampler(GPointClampedSampler, 15);
-	BindSampler(GLinearClampedSampler, 16);
+	BindImage(GSceneTranslucentDepth, 11);
+	BindImage(GSceneVertexNormal, 12);
+	BindSampler(GPointClampedSampler, 13);
+	BindSampler(GLinearClampedSampler, 14);
 }

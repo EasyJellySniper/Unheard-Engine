@@ -101,6 +101,6 @@ void BasePS(VertexOutput Vin
 	float DeltaMax = max(length(Dx), length(Dy));
 	OutMipRate = DeltaMax;
 
-	// a is unused for now
+	// a remains as 0 means opaque
     OutVertexNormal = float4(EncodeNormal(VertexNormal), 0);
 }

@@ -13,6 +13,7 @@ const uint32_t GNumOfPostProcessRT = 2;
 
 // gbuffer counts, not including scene result
 const uint32_t GNumOfGBuffers = 6;
+const uint32_t GNumOfGBuffersSRV = 4;
 
 // thread group number
 const uint32_t GThreadGroup2D_X = 8;

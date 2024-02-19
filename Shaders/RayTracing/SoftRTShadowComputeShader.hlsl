@@ -8,10 +8,9 @@
 RWTexture2D<float> OutRTShadow : register(u1);
 Texture2D InputRTShadow : register(t2);
 Texture2D DepthTexture : register(t3);
-Texture2D TranslucentDepthTexture : register(t4);
-Texture2D MipRateTex : register(t5);
-SamplerState PointClampped : register(s6);
-SamplerState LinearClampped : register(s7);
+Texture2D MipRateTex : register(t4);
+SamplerState PointClampped : register(s5);
+SamplerState LinearClampped : register(s6);
 
 // hard code to 5x5 for now, for different preset, set different define from C++ side in the future
 #define PCSS_INNERLOOP 2
@@ -20,20 +19,13 @@ SamplerState LinearClampped : register(s7);
 #define PCSS_MAXPENUMBRA 10.0f
 #define PCSS_BLOCKERSCALE 0.02f
 
-void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, float MipRate, float OpaqueDepth, bool bIsTranslucent)
+void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, float MipRate)
 {
 	// pre-sample the texture and cache it
-    float BaseDepth = (bIsTranslucent) ? TranslucentDepthTexture.SampleLevel(PointClampped, UV, 0).r : DepthTexture.SampleLevel(PointClampped, UV, 0).r;
+    float BaseDepth = DepthTexture.SampleLevel(PointClampped, UV, 0).r;
 	UHBRANCH
     if (BaseDepth == 0.0f)
     {
-        return;
-    }
-	
-    if (bIsTranslucent && BaseDepth == OpaqueDepth)
-    {
-		// the result of opaque & translucent shadow is stored in the same buffer now
-		// return if it's already processed
         return;
     }
 
@@ -58,7 +50,7 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
 		{
             float2 ShadowUV = UV + float2(I, J) * Penumbra * RTShadowResolution.zw;
 			
-            float CmpDepth = (bIsTranslucent) ? TranslucentDepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r : DepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r;
+            float CmpDepth = DepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r;
             if ((CmpDepth - BaseDepth) > DepthDiffThres)
             {
                 Atten += BaseShadowData.g;
@@ -94,8 +86,5 @@ void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
 
 	float2 UV = float2(PixelCoord + 0.5f) * RTShadowResolution.zw;
 	float MipRate = MipRateTex.SampleLevel(LinearClampped, UV, 0).r;
-    float OpaqueDepth = DepthTexture.SampleLevel(PointClampped, UV, 0).r;
-
-    SoftShadow(OutRTShadow, PixelCoord, UV, MipRate, OpaqueDepth, false);
-    SoftShadow(OutRTShadow, PixelCoord, UV, MipRate, OpaqueDepth, true);
+    SoftShadow(OutRTShadow, PixelCoord, UV, MipRate);
 }

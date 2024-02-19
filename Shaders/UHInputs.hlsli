@@ -179,10 +179,9 @@ StructuredBuffer<UHSpotLight> UHSpotLights : register(UHSPOTLIGHT_BIND);
 
 // 0: Color + AO
 // 1: Normal
-// 2: MRS
+// 2: Specular + Roughness
 // 3: Depth
-// 4: vertex normal + mipmap level
-Texture2D SceneBuffers[5] : register(UHGBUFFER_BIND);
+Texture2D SceneBuffers[4] : register(UHGBUFFER_BIND);
 
 struct UHBoundingBox
 {

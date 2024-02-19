@@ -494,11 +494,13 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialDat
 	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &BlendMode, Stride);
 	BufferAddress += Stride;
 
-	// copy material usages
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaterialUsages.bIsTangentSpace, Stride);
+	// copy material usages, be sure to use int instead of bool when copying the flag! HLSL always uses 4 bytes scalar.
+	int32_t UsageValue = MaterialUsages.bIsTangentSpace ? 1 : 0;
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
 	BufferAddress += Stride;
 
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaterialUsages.bUseRefraction, Stride);
+	UsageValue = MaterialUsages.bUseRefraction ? 1 : 0;
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
 	BufferAddress += Stride;
 
 	// upload material data

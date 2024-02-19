@@ -19,7 +19,6 @@ UHRenderTexture* GSceneMip;
 UHRenderTexture* GSceneDepth;
 UHRenderTexture* GSceneTranslucentDepth;
 UHRenderTexture* GSceneVertexNormal;
-UHRenderTexture* GSceneTranslucentVertexNormal;
 UHRenderTexture* GMotionVectorRT;
 UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;
@@ -45,3 +44,10 @@ int32_t GRefractionBlurredIndex = UHINDEXNONE;
 
 UHTexture2D* GWhiteTexture;
 UHTextureCube* GBlackCube;
+
+inline std::vector<UHTexture*> GetGBuffersSRV()
+{
+	// get the GBuffer used in SRV
+	std::vector<UHTexture*> GBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth };
+	return GBuffers;
+}

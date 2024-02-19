@@ -507,13 +507,12 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		if (ConfigInterface->RenderingSetting().RTShadowQuality == 0)
 		{
-			SoftRTShadowShader->BindImage(GSceneDepth, 3);
-			SoftRTShadowShader->BindImage(GSceneTranslucentDepth, 4);
+			// translucent depth contains opaque as well
+			SoftRTShadowShader->BindImage(GSceneTranslucentDepth, 3);
 		}
 		else
 		{
-			SoftRTShadowShader->BindImage(GHalfDepth, 3);
-			SoftRTShadowShader->BindImage(GHalfTranslucentDepth, 4);
+			SoftRTShadowShader->BindImage(GHalfTranslucentDepth, 3);
 		}
 	}
 
@@ -631,7 +630,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// vertex normal buffer for saving the "search ray" in RT shadows
 	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat);
-	GSceneTranslucentVertexNormal = GraphicInterface->RequestRenderTexture("SceneTranslucentVertexNormal", RenderResolution, NormalFormat);
 
 	// post process buffer, use the same format as scene result
 	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
@@ -680,7 +678,6 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GHalfDepth);
 	GraphicInterface->RequestReleaseRT(GHalfTranslucentDepth);
 	GraphicInterface->RequestReleaseRT(GSceneVertexNormal);
-	GraphicInterface->RequestReleaseRT(GSceneTranslucentVertexNormal);
 	GraphicInterface->RequestReleaseRT(GPostProcessRT);
 	GraphicInterface->RequestReleaseRT(GPreviousSceneResult);
 	GraphicInterface->RequestReleaseRT(GOpaqueSceneResult);
@@ -736,7 +733,7 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
 
-	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT , GSceneNormal };
+	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT , GSceneVertexNormal };
 	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(TranslucentMotionTextures
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
@@ -781,7 +778,7 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentDepth->GetImageView() };
 	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionOpaquePassObj.RenderPass, RenderResolution);
 
-	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentVertexNormal->GetImageView(), GSceneTranslucentDepth->GetImageView() };
+	Views = { GMotionVectorRT->GetImageView(), GSceneVertexNormal->GetImageView(), GSceneTranslucentDepth->GetImageView() };
 	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 
