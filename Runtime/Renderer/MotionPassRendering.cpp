@@ -15,7 +15,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 		RenderBuilder.FlushResourceBarrier();
 
-		// copy opaque depth/vertex normal to translucent depth/vertex normal RT
+		// copy opaque depth to translucent depth
 		RenderBuilder.CopyTexture(GSceneDepth, GSceneTranslucentDepth);
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
@@ -81,6 +81,17 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		{
 			// set vertex normal as color output, translucent vertex normal will be output to it too
 			RenderBuilder.ResourceBarrier(GSceneVertexNormal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+			// clear translucent bump & roughness buffer and transition to color output
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentRoughness, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+			RenderBuilder.FlushResourceBarrier();
+			RenderBuilder.ClearRenderTexture(GTranslucentBump);
+			RenderBuilder.ClearRenderTexture(GTranslucentRoughness);
+
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentRoughness, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+			RenderBuilder.FlushResourceBarrier();
 
 			RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 

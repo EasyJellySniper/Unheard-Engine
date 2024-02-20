@@ -30,12 +30,12 @@ extern UHRenderTexture* GSceneVertexNormal;
 extern UHRenderTexture* GMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
-extern UHRenderTexture* GHalfDepth;
-extern UHRenderTexture* GHalfTranslucentDepth;
 extern UHRenderTexture* GQuarterBlurredScene;
 extern UHRenderTexture* GOpaqueSceneResult;
 extern UHRenderTexture* GGaussianFilterTempRT0;
 extern UHRenderTexture* GGaussianFilterTempRT1;
+extern UHRenderTexture* GTranslucentBump;
+extern UHRenderTexture* GTranslucentRoughness;
 
 // ray-tracing textures
 extern UHRenderTexture* GRTShadowResult;

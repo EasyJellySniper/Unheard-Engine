@@ -68,13 +68,14 @@ VkPipelineVertexInputStateCreateInfo GetVertexInputInfo(VkVertexInputBindingDesc
 }
 
 // get blend state info based on input blend mode
-VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, int32_t RTCount, std::vector<VkPipelineColorBlendAttachmentState>& OutColorBlendAttachments)
+VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, int32_t RTCount, std::vector<VkPipelineColorBlendAttachmentState>& OutColorBlendAttachments
+	, bool bForceBlendOff)
 {
 	for (int32_t Idx = 0; Idx < RTCount; Idx++)
 	{
 		VkPipelineColorBlendAttachmentState ColorBlendAttachment{};
 		ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-		ColorBlendAttachment.blendEnable = (InBlendMode > UHBlendMode::Masked) ? VK_TRUE : VK_FALSE;
+		ColorBlendAttachment.blendEnable = VK_FALSE;
 		ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
 		ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
 		ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
@@ -82,17 +83,22 @@ VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, i
 		ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
 		ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
 
-		// TranditionalAlpha blend mode: Color = SrcAlpha * SrcColor + (1.0f - SrcAlpha) * DestColor
-		if (InBlendMode == UHBlendMode::TranditionalAlpha)
+		if (!bForceBlendOff)
 		{
-			ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		}
+			ColorBlendAttachment.blendEnable = VK_TRUE;
 
-		// addition mode: Color = SrcColor + DstColor
-		if (InBlendMode == UHBlendMode::Addition)
-		{
-			ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			// TranditionalAlpha blend mode: Color = SrcAlpha * SrcColor + (1.0f - SrcAlpha) * DestColor
+			if (InBlendMode == UHBlendMode::TranditionalAlpha)
+			{
+				ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+				ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			}
+
+			// addition mode: Color = SrcColor + DstColor
+			if (InBlendMode == UHBlendMode::Addition)
+			{
+				ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			}
 		}
 
 		OutColorBlendAttachments.push_back(ColorBlendAttachment);
@@ -245,7 +251,8 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 
 	/*** Color blending, default to opaque ***/
 	std::vector<VkPipelineColorBlendAttachmentState> ColorBlendAttachments;
-	VkPipelineColorBlendStateCreateInfo ColorBlending = GetBlendStateInfo(RenderPassInfo.BlendMode, RenderPassInfo.RTCount, ColorBlendAttachments);
+	VkPipelineColorBlendStateCreateInfo ColorBlending = GetBlendStateInfo(RenderPassInfo.BlendMode, RenderPassInfo.RTCount, ColorBlendAttachments
+		, RenderPassInfo.bForceBlendOff);
 
 
 	/*** finally, create pipeline info ***/

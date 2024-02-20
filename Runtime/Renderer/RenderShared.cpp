@@ -24,12 +24,12 @@ UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;
 UHRenderTexture* GRTShadowResult;
 UHRenderTexture* GRTSharedTextureRG16F;
-UHRenderTexture* GHalfDepth;
-UHRenderTexture* GHalfTranslucentDepth;
 UHRenderTexture* GQuarterBlurredScene;
 UHRenderTexture* GOpaqueSceneResult;
 UHRenderTexture* GGaussianFilterTempRT0;
 UHRenderTexture* GGaussianFilterTempRT1;
+UHRenderTexture* GTranslucentBump;
+UHRenderTexture* GTranslucentRoughness;
 
 UHTextureCube* GSkyLightCube;
 

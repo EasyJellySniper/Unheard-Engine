@@ -558,7 +558,6 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
-				DownsampleDepthPass(SceneRenderBuilder);
 				if (!bEnableAsyncComputeRT)
 				{
 					BuildTopLevelAS(SceneRenderBuilder);

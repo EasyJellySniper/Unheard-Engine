@@ -36,7 +36,6 @@
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 #include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 #include "ShaderClass/SphericalHarmonicShader.h"
-#include "ShaderClass/DownsampleDepthShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -168,7 +167,6 @@ private:
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
 	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
-	void DownsampleDepthPass(UHRenderBuilder& RenderBuilder);
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
@@ -274,7 +272,6 @@ private:
 	/************************************************ Render Pass stuffs ************************************************/
 
 	// -------------------------------------------- Depth Pass -------------------------------------------- //
-	UniquePtr<UHDownsampleDepthShader> DownsampleDepthShader;
 	std::unordered_map<int32_t, UniquePtr<UHDepthPassShader>> DepthPassShaders;
 	UHRenderPassObject DepthPassObj;
 	bool bEnableDepthPrePass;

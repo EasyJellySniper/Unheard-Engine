@@ -72,6 +72,8 @@ struct MotionVertexOutput
 	float2 UV0 : TEXCOORD0;
 	float4 CurrPos : TEXCOORD1;
 	float4 PrevPos : TEXCOORD2;
+	// output TBN if normal mapping enabled
+    float3x3 WorldTBN : TEXCOORD3;
 	float3 Normal : NORMAL;
 };
 

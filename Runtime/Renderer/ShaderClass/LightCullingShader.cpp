@@ -14,7 +14,6 @@ UHLightCullingShader::UHLightCullingShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateDescriptor();
 	OnCompile();
@@ -40,7 +39,6 @@ void UHLightCullingShader::BindParameters()
 	BindStorage(GPointLightListTransBuffer.get(), 4, 0, true);
 	BindStorage(GSpotLightListBuffer.get(), 5, 0, true);
 	BindStorage(GSpotLightListTransBuffer.get(), 6, 0, true);
-	BindImage(GHalfDepth, 7);
-	BindImage(GHalfTranslucentDepth, 8);
-	BindSampler(GPointClampedSampler, 9);
+	BindImage(GSceneDepth, 7);
+	BindImage(GSceneTranslucentDepth, 8);
 }

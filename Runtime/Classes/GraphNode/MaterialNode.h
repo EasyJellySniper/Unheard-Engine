@@ -5,18 +5,26 @@
 class UHMaterial;
 struct UHRTMaterialData;
 
+enum UHMaterialInputType
+{
+	MaterialInputStandard,
+	MaterialInputSimple,
+	MaterialInputOpacityNormalRoughOnly,
+	MaterialInputMax,
+};
+
 struct UHMaterialCompileData
 {
 public:
 	UHMaterialCompileData()
 		: MaterialCache(nullptr)
-		, bIsDepthOrMotionPass(false)
+		, InputType(MaterialInputStandard)
 		, bIsHitGroup(false)
 	{
 	}
 
 	UHMaterial* MaterialCache;
-	bool bIsDepthOrMotionPass;
+	UHMaterialInputType InputType;
 	bool bIsHitGroup;
 };
 

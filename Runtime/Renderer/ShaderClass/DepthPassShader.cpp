@@ -33,7 +33,6 @@ void UHDepthPassShader::OnCompile()
 	{
 		UHMaterialCompileData Data;
 		Data.MaterialCache = MaterialCache;
-		Data.bIsDepthOrMotionPass = true;
 		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data);
 	}
 

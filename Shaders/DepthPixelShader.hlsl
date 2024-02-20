@@ -13,7 +13,7 @@ cbuffer PassConstant : register(UHMAT_BIND)
 UHMaterialInputs GetMaterialInput(float2 UV0)
 {
 	// material input code will be generated in C++ side
-	//%UHS_INPUT
+	//%UHS_INPUT_Simple
 	return (UHMaterialInputs)0;
 }
 

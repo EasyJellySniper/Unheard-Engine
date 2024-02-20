@@ -33,7 +33,8 @@ void UHSoftRTShadowShader::BindParameters()
 	BindRWImage(GRTShadowResult, 1);
 	BindImage(GRTSharedTextureRG16F, 2);
 
-	// scene depth will be bound on fly
+	// translucent depth contains opaque as well
+	BindImage(GSceneTranslucentDepth, 3);
 
 	BindImage(GSceneMip, 4);
 	BindSampler(GPointClampedSampler, 5);

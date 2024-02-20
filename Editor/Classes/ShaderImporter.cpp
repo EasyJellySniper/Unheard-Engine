@@ -326,23 +326,22 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		return "";
 	}
 
-	// get source code returned from material, and replace it in template code
+	// calculate and set material buffer size for non hit group shader
 	if (!InData.bIsHitGroup)
 	{
 		size_t MaterialBufferSize = 0;
 		ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_CBUFFERDEFINE", InData.MaterialCache->GetCBufferDefineCode(MaterialBufferSize));
-		ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_INPUT_Simple", InData.MaterialCache->GetMaterialInputCode(InData));
-		ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_INPUT", InData.MaterialCache->GetMaterialInputCode(InData));
 		InData.MaterialCache->SetMaterialBufferSize(MaterialBufferSize);
 	}
-	else
+
+	// get source code returned from material, and replace it in template code
+	const std::vector<std::string> ShaderInputIdentifiers = { "//%UHS_INPUT", "//%UHS_INPUT_Simple","//%UHS_INPUT_OpacityNormalRough" };
+	for (int32_t Idx = MaterialInputMax - 1; Idx >= 0 ; Idx--)
 	{
-		// hit group shader needs two version of UHS_INPUT
-		InData.bIsDepthOrMotionPass = true;
-		ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_INPUT_Simple", InData.MaterialCache->GetMaterialInputCode(InData));
-		InData.bIsDepthOrMotionPass = false;
-		ShaderCode = UHUtilities::StringReplace(ShaderCode, "//%UHS_INPUT", InData.MaterialCache->GetMaterialInputCode(InData));
+		InData.InputType = static_cast<UHMaterialInputType>(Idx);
+		ShaderCode = UHUtilities::StringReplace(ShaderCode, ShaderInputIdentifiers[Idx], InData.MaterialCache->GetMaterialInputCode(InData));
 	}
+
 
 	if (!std::filesystem::exists(GTempFilePath))
 	{

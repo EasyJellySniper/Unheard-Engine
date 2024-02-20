@@ -48,3 +48,8 @@ Minor change to refraction blur. Also fixed the compile issue, now it set render
 Organized the descriptor in RT shadow shader.
 Fixed the bool parameter bug, I should bind the integer instead.
 Optimized both RT shadow and soft shadow shader, they should only need one iteration.
+
+20-02-2024:
+Refactored material input compilation.
+Added translucent bump and roughness output. It should be ready for RT reflection now.
+Removed half depth buffer, better to just search neighbor pixels in shader.

@@ -192,8 +192,35 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 		Code += "\tInput.Opacity = 1.0f" + EndOfLine;
 	}
 
-	// ************** Early return if this is for depth or motion pass only ************** //
-	if (CompileData.bIsDepthOrMotionPass)
+	// ************** Early return if it needs opacity only ************** //
+	if (CompileData.InputType == MaterialInputSimple)
+	{
+		Code += ReturnCode;
+		return Code;
+	}
+
+	// Normal
+	if (UHGraphPin* Normal = Inputs[UHMaterialInputs::Normal]->GetSrcPin())
+	{
+		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL(Normal) + ".rgb" + EndOfLine;
+	}
+	else
+	{
+		Code += "\tInput.Normal = float3(0,0,1.0f)" + EndOfLine;
+	}
+
+	// Roughness
+	if (UHGraphPin* Roughness = Inputs[UHMaterialInputs::Roughness]->GetSrcPin())
+	{
+		Code += "\tInput.Roughness = " + Roughness->GetOriginNode()->EvalHLSL(Roughness) + ".r" + EndOfLine;
+	}
+	else
+	{
+		Code += "\tInput.Roughness = 1.0f" + EndOfLine;
+	}
+
+	// ************** Early return if it needs opacity+normal+roughness only ************** //
+	if (CompileData.InputType == MaterialInputOpacityNormalRoughOnly)
 	{
 		Code += ReturnCode;
 		return Code;
@@ -229,16 +256,6 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 		Code += "\tInput.Specular = 0.5f" + EndOfLine;
 	}
 
-	// Normal
-	if (UHGraphPin* Normal = Inputs[UHMaterialInputs::Normal]->GetSrcPin())
-	{
-		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL(Normal) + ".rgb" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.Normal = float3(0,0,1.0f)" + EndOfLine;
-	}
-
 	// Metallic
 	if (UHGraphPin* Metallic = Inputs[UHMaterialInputs::Metallic]->GetSrcPin())
 	{
@@ -247,16 +264,6 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	else
 	{
 		Code += "\tInput.Metallic = 0.0f" + EndOfLine;
-	}
-
-	// Roughness
-	if (UHGraphPin* Roughness = Inputs[UHMaterialInputs::Roughness]->GetSrcPin())
-	{
-		Code += "\tInput.Roughness = " + Roughness->GetOriginNode()->EvalHLSL(Roughness) + ".r" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.Roughness = 1.0f" + EndOfLine;
 	}
 
 	// FresnelFactor

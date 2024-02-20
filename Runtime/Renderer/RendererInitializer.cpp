@@ -308,9 +308,6 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		}
 	}
 
-	// down sample depth shader
-	DownsampleDepthShader = MakeUnique<UHDownsampleDepthShader>(GraphicInterface, "DownsampleDepthShader");
-
 	// light culling and pass shaders
 	LightCullingShader = MakeUnique<UHLightCullingShader>(GraphicInterface, "LightCullingShader");
 	LightPassShader = MakeUnique<UHLightPassShader>(GraphicInterface, "LightPassShader");
@@ -379,7 +376,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			DepthPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 		}
 	}
-	DownsampleDepthShader->BindParameters();
 
 	// ------------------------------------------------ Base pass descriptor update
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
@@ -504,16 +500,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		RTShadowShader->BindParameters();
 		SoftRTShadowShader->BindParameters();
-
-		if (ConfigInterface->RenderingSetting().RTShadowQuality == 0)
-		{
-			// translucent depth contains opaque as well
-			SoftRTShadowShader->BindImage(GSceneTranslucentDepth, 3);
-		}
-		else
-		{
-			SoftRTShadowShader->BindImage(GHalfTranslucentDepth, 3);
-		}
 	}
 
 	// ------------------------------------------------ debug passes descriptor update
@@ -533,7 +519,6 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		}
 		DepthPassShaders.clear();
 	}
-	DownsampleDepthShader->Release();
 
 	for (auto& Shader : BasePassShaders)
 	{
@@ -605,6 +590,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	const UHTextureFormat HDRFormat = UH_FORMAT_RGBA16F;
 	const UHTextureFormat MotionFormat = UH_FORMAT_RG16F;
 	const UHTextureFormat HalfDepthFormat = UH_FORMAT_R32F;
+	const UHTextureFormat MaskFormat = UH_FORMAT_R8_UNORM;
 
 	// create GBuffer
 	RenderResolution.width = ConfigInterface->RenderingSetting().RenderWidth;
@@ -621,15 +607,10 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GSceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat);
 	GSceneTranslucentDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat);
 
-	// half res depth buffer
-	VkExtent2D HalfDepthResolution;
-	HalfDepthResolution.width = RenderResolution.width >> 1;
-	HalfDepthResolution.height = RenderResolution.height >> 1;
-	GHalfDepth = GraphicInterface->RequestRenderTexture("HalfDepth", HalfDepthResolution, HalfDepthFormat, true);
-	GHalfTranslucentDepth = GraphicInterface->RequestRenderTexture("HalfTranslucentDepth", HalfDepthResolution, HalfDepthFormat, true);
-
-	// vertex normal buffer for saving the "search ray" in RT shadows
+	// buffers for saving the "search ray" in RT shadows
 	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat);
+	GTranslucentBump = GraphicInterface->RequestRenderTexture("TranslucentBump", RenderResolution, NormalFormat);
+	GTranslucentRoughness = GraphicInterface->RequestRenderTexture("TranslucentRoughness", RenderResolution, MaskFormat);
 
 	// post process buffer, use the same format as scene result
 	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
@@ -675,8 +656,6 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GSceneMip);
 	GraphicInterface->RequestReleaseRT(GSceneDepth);
 	GraphicInterface->RequestReleaseRT(GSceneTranslucentDepth);
-	GraphicInterface->RequestReleaseRT(GHalfDepth);
-	GraphicInterface->RequestReleaseRT(GHalfTranslucentDepth);
 	GraphicInterface->RequestReleaseRT(GSceneVertexNormal);
 	GraphicInterface->RequestReleaseRT(GPostProcessRT);
 	GraphicInterface->RequestReleaseRT(GPreviousSceneResult);
@@ -685,6 +664,8 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GQuarterBlurredScene);
 	GraphicInterface->RequestReleaseRT(GGaussianFilterTempRT0);
 	GraphicInterface->RequestReleaseRT(GGaussianFilterTempRT1);
+	GraphicInterface->RequestReleaseRT(GTranslucentBump);
+	GraphicInterface->RequestReleaseRT(GTranslucentRoughness);
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
@@ -733,7 +714,7 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
 
-	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT , GSceneVertexNormal };
+	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT , GSceneVertexNormal, GTranslucentBump, GTranslucentRoughness };
 	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(TranslucentMotionTextures
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
@@ -778,7 +759,8 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentDepth->GetImageView() };
 	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionOpaquePassObj.RenderPass, RenderResolution);
 
-	Views = { GMotionVectorRT->GetImageView(), GSceneVertexNormal->GetImageView(), GSceneTranslucentDepth->GetImageView() };
+	Views = { GMotionVectorRT->GetImageView(), GSceneVertexNormal->GetImageView(), GTranslucentBump->GetImageView(), GTranslucentRoughness->GetImageView()
+		, GSceneTranslucentDepth->GetImageView() };
 	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 

@@ -37,6 +37,7 @@ UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDept
 	, PipelineLayout(InPipelineLayout)
 	, bDrawLine(false)
 	, bDrawWireFrame(false)
+	, bForceBlendOff(false)
 {
 
 }

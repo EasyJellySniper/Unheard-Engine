@@ -27,9 +27,10 @@ void UHDownsampleDepthShader::OnCompile()
 
 void UHDownsampleDepthShader::BindParameters()
 {
+	// @TODO: Consider removing this? It's unused at the moment.
 	BindConstant(GSystemConstantBuffer, 0);
-	BindRWImage(GHalfDepth, 1);
-	BindRWImage(GHalfTranslucentDepth, 2);
+	//BindRWImage(GHalfDepth, 1);
+	//BindRWImage(GHalfTranslucentDepth, 2);
 	BindImage(GSceneDepth, 3);
 	BindImage(GSceneTranslucentDepth, 4);
 }

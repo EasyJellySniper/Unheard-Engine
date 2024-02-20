@@ -56,7 +56,8 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 		}
 	}
 
-	// UV0/normal Buffer
+	// UV0/normal/tangent Buffer
+	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -70,7 +71,6 @@ void UHMotionObjectPassShader::OnCompile()
 
 	UHMaterialCompileData Data;
 	Data.MaterialCache = MaterialCache;
-	Data.bIsDepthOrMotionPass = true;
 	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data);
 
 	// states, enable depth test, and write depth for translucent object only
@@ -82,8 +82,14 @@ void UHMotionObjectPassShader::OnCompile()
 		, MaterialCache->GetBlendMode()
 		, ShaderVS
 		, ShaderPS
-		, bIsTranslucent ? 2 : 1
+		, bIsTranslucent ? GNumOfGBuffersTrans : 1
 		, PipelineLayout);
+
+	// disable blending intentionally if it's translucent
+	if (bIsTranslucent)
+	{
+		MaterialPassInfo.bForceBlendOff = true;
+	}
 
 	RecreateMaterialState();
 }
@@ -96,4 +102,5 @@ void UHMotionObjectPassShader::BindParameters(const UHMeshRendererComponent* InR
 
 	BindStorage(InRenderer->GetMesh()->GetUV0Buffer(), 3, 0, true);
 	BindStorage(InRenderer->GetMesh()->GetNormalBuffer(), 4, 0, true);
+	BindStorage(InRenderer->GetMesh()->GetTangentBuffer(), 5, 0, true);
 }

@@ -50,7 +50,6 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
             , "Light Pass"
             , "Skybox Pass"
             , "Motion Pass"
-            , "DownsampleDepth Pass"
             , "Pre Translucent Pass"
             , "Translucent Pass"
             , "Tone Mapping"

@@ -245,6 +245,8 @@ void UHShaderClass::RecreateMaterialState()
 		, PrevPassInfo.RTCount
 		, PipelineLayout);
 
+	MaterialPassInfo.bForceBlendOff = PrevPassInfo.bForceBlendOff;
+
 	CreateMaterialState(MaterialPassInfo);
 }
 
