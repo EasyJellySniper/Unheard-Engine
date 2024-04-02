@@ -1,9 +1,9 @@
 #include "SettingDialog.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Engine/Config.h"
-#include "../../Runtime/Engine/Engine.h"
-#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "../../../Runtime/Engine/Config.h"
+#include "../../../Runtime/Engine/Engine.h"
+#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
 
 UHSettingDialog::UHSettingDialog(UHConfigManager* InConfig, UHEngine* InEngine, UHDeferredShadingRenderer* InRenderer)
 	: UHDialog(nullptr, nullptr)
@@ -98,13 +98,14 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::Text("---Raytracing Settings---");
     ImGui::InputFloat("RT Culling Distance", &RenderingSettings.RTCullingRadius);
 
-    std::vector<std::string> ShadowQualities = { "Full", "Half" };
-    if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", ShadowQualities[RenderingSettings.RTShadowQuality].c_str()))
+    // RT Shadows
+    std::vector<std::string> RTShadowQualities = { "Full", "Half" };
+    if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", RTShadowQualities[RenderingSettings.RTShadowQuality].c_str()))
     {
-        for (size_t Idx = 0; Idx < ShadowQualities.size(); Idx++)
+        for (size_t Idx = 0; Idx < RTShadowQualities.size(); Idx++)
         {
             const bool bIsSelected = (RenderingSettings.RTShadowQuality == Idx);
-            if (ImGui::Selectable(ShadowQualities[Idx].c_str(), bIsSelected))
+            if (ImGui::Selectable(RTShadowQualities[Idx].c_str(), bIsSelected))
             {
                 RenderingSettings.RTShadowQuality = static_cast<int32_t>(Idx);
                 DeferredRenderer->ResizeRayTracingBuffers(false);
@@ -115,6 +116,26 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     }
 
     ImGui::InputFloat("RT Shadow TMax", &RenderingSettings.RTShadowTMax);
+
+    // RT Reflections
+    std::vector<std::string> RTReflectionQualities = { "Full", "Half Pixel", "Quarter Pixel" };
+    if (ImGui::BeginCombo("Ray Tracing Reflection Quaility", RTReflectionQualities[RenderingSettings.RTReflectionQuality].c_str()))
+    {
+        for (size_t Idx = 0; Idx < RTReflectionQualities.size(); Idx++)
+        {
+            const bool bIsSelected = (RenderingSettings.RTReflectionQuality == Idx);
+            if (ImGui::Selectable(RTReflectionQualities[Idx].c_str(), bIsSelected))
+            {
+                RenderingSettings.RTReflectionQuality = static_cast<int32_t>(Idx);
+                DeferredRenderer->ResizeRayTracingBuffers(false);
+                break;
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    ImGui::InputFloat("RT Reflection TMax", &RenderingSettings.RTReflectionTMax);
+    ImGui::InputFloat("RT Reflection Smooth Cutoff", &RenderingSettings.RTReflectionSmoothCutoff);
 
     ImGui::PopItemWidth();
     bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

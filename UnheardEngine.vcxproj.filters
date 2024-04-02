@@ -396,6 +396,18 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTTextureTable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -758,6 +770,18 @@
     <ClCompile Include="Runtime\Renderer\FilterPassRendering.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ReflectionPassRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -781,7 +805,6 @@
     <None Include="Shaders\SkyboxVertexShader.hlsl" />
     <None Include="Shaders\SkyboxPixelShader.hlsl" />
     <None Include="Shaders\PostProcessing\ToneMapPixelShader.hlsl" />
-    <None Include="packages.config" />
     <None Include="Shaders\MotionCameraShader.hlsl" />
     <None Include="Shaders\RayTracing\RayTracingShadow.hlsl" />
     <None Include="Shaders\RayTracing\UHRTCommon.hlsli" />
@@ -811,5 +834,9 @@
     <None Include="Shaders\UHSphericalHamonricCommon.hlsli" />
     <None Include="Shaders\DownsampleDepth.hlsl" />
     <None Include="Shaders\PostProcessing\GaussianFilterComputeShader.hlsl" />
+    <None Include="Shaders\RayTracing\RayTracingReflection.hlsl" />
+    <None Include="Shaders\ReflectionComputeShader.hlsl" />
+    <None Include="Shaders\UHMaterialCommon.hlsli" />
+    <None Include="Shaders\RayTracing\RTReflectionMipmap.hlsl" />
   </ItemGroup>
 </Project>

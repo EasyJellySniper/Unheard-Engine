@@ -7,13 +7,13 @@ DepthVertexOutput DepthVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 {
 	DepthVertexOutput Vout = (DepthVertexOutput)0;
 
-	float3 WorldPos = mul(float4(Position, 1.0f), UHWorld).xyz;
+	float3 WorldPos = mul(float4(Position, 1.0f), GWorld).xyz;
 
 	// calculate jitter
-	float4x4 JitterMatrix = GetDistanceScaledJitterMatrix(length(WorldPos - UHCameraPos));
+	float4x4 JitterMatrix = GetDistanceScaledJitterMatrix(length(WorldPos - GCameraPos));
 
 	// pass through the vertex data
-	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
+	Vout.Position = mul(float4(WorldPos, 1.0f), GViewProj_NonJittered);
 	Vout.Position = mul(Vout.Position, JitterMatrix);
 	Vout.UV0 = UV0Buffer[Vid];
 

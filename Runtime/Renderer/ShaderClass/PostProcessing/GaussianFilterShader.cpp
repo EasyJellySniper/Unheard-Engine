@@ -1,31 +1,23 @@
 #include "GaussianFilterShader.h"
 #include "../../RendererShared.h"
+#include "../../RenderBuilder.h"
 
 UHGaussianFilterShader::UHGaussianFilterShader(UHGraphic* InGfx, std::string Name, const UHGaussianFilterType InType)
 	: UHShaderClass(InGfx, Name, typeid(UHGaussianFilterShader), nullptr)
 	, GaussianFilterType(InType)
 {
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
+	// utilize push constants, so the shader could be reused
+	PushConstantRange.offset = 0;
+	PushConstantRange.size = sizeof(UHGaussianFilterConstants);
+	PushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bPushDescriptor = true;
+
 	CreateDescriptor();
 	OnCompile();
-
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		GaussianConstantsGPU[Idx] = InGfx->RequestRenderBuffer<UHGaussianFilterConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	}
-}
-
-void UHGaussianFilterShader::Release(bool bDescriptorOnly)
-{
-	UHShaderClass::Release(bDescriptorOnly);
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		UH_SAFE_RELEASE(GaussianConstantsGPU[Idx]);
-	}
 }
 
 void UHGaussianFilterShader::OnCompile()
@@ -49,25 +41,10 @@ void UHGaussianFilterShader::OnCompile()
 	CreateComputeState(CInfo);
 }
 
-void UHGaussianFilterShader::BindParameters()
+void UHGaussianFilterShader::BindParameters(UHRenderBuilder& RenderBuilder, const int32_t CurrentFrame, UHTexture* Input, UHTexture* Output)
 {
-	BindConstant(GSystemConstantBuffer, 0);
-	BindConstant(GaussianConstantsGPU, 1);
-
-	// Bind the I/O textures based on filter direction
-	if (GaussianFilterType == FilterHorizontal)
-	{
-		BindRWImage(GGaussianFilterTempRT0, 2);
-		BindImage(GGaussianFilterTempRT1, 3);
-	}
-	else
-	{
-		BindRWImage(GGaussianFilterTempRT1, 2);
-		BindImage(GGaussianFilterTempRT0, 3);
-	}
-}
-
-void UHGaussianFilterShader::SetGaussianConstants(UHGaussianFilterConstants InConstants, const int32_t FrameIdx)
-{
-	GaussianConstantsGPU[FrameIdx]->UploadAllData(&InConstants);
+	PushConstantBuffer(GSystemConstantBuffer[CurrentFrame], 0);
+	PushImage(Output, 1, true);
+	PushImage(Input, 2);
+	FlushPushDescriptor(RenderBuilder.GetCmdList());
 }

@@ -44,7 +44,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_EXT_robustness2"
 		, "VK_EXT_hdr_metadata"
 		, "VK_KHR_dynamic_rendering"
-		, "VK_KHR_synchronization2" };
+		, "VK_KHR_synchronization2"
+		, "VK_KHR_push_descriptor"};
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -351,6 +352,7 @@ bool UHGraphic::CreateInstance()
 	GVkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdTraceRaysKHR");
 	GVkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetRayTracingShaderGroupHandlesKHR");
 	GVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetInstanceProcAddr(VulkanInstance, "vkSetHdrMetadataEXT");
+	GVkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdPushDescriptorSetKHR");
 
 	return true;
 }
@@ -729,22 +731,36 @@ VkPresentModeKHR ChooseSwapChainMode(const UHSwapChainDetails& Details, bool bUs
 	// VK_PRESENT_MODE_FIFO_KHR: vertical blank
 	// VK_PRESENT_MODE_FIFO_RELAXED_KHR: Instead of waiting for the next vertical blank
 	// , the image is transferred right away when it finally arrives. This may result in visible tearing
-	// VK_PRESENT_MODE_MAILBOX_KHR: Similar to triple buffering
+	// VK_PRESENT_MODE_MAILBOX_KHR: Similar to triple buffering. Tearing can not be observed.
 
-	// select the present mode I want
+	// select the mode based on Vsync setting and go for mailbox if possible
+	bool bMailboxSupported = false;
+	bool bVsyncSupported = false;
+
 	for (const auto& AvailablePresentMode : Details.PresentModes)
 	{
-		if (AvailablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR && !bUseVsync)
+		if (AvailablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
 		{
-			return AvailablePresentMode;
+			bMailboxSupported = true;
 		}
-		else if (AvailablePresentMode == VK_PRESENT_MODE_FIFO_KHR && bUseVsync)
+
+		if (AvailablePresentMode == VK_PRESENT_MODE_FIFO_KHR)
 		{
-			return AvailablePresentMode;
+			bVsyncSupported = true;
 		}
 	}
 
-	return VK_PRESENT_MODE_FIFO_KHR;
+	if (bUseVsync && bVsyncSupported)
+	{
+		return VK_PRESENT_MODE_FIFO_KHR;
+	}
+
+	if (!bUseVsync && bMailboxSupported)
+	{
+		return VK_PRESENT_MODE_MAILBOX_KHR;
+	}
+
+	return VK_PRESENT_MODE_IMMEDIATE_KHR;
 }
 
 VkExtent2D ChooseSwapChainExtent(const UHSwapChainDetails& Details, HWND WindowCache)

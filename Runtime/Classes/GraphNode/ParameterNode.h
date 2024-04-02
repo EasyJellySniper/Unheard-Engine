@@ -1,5 +1,5 @@
 #pragma once
-#include "../../../UnheardEngine.h"
+#include "../../../../UnheardEngine.h"
 #include "GraphNode.h"
 #include "../Types.h"
 #include "../MaterialLayout.h"
@@ -87,7 +87,7 @@ public:
 
 	void SetDataIndexInMaterial(int32_t InIndex)
 	{
-		DataIndexInMaterial = GRTMaterialDataStartIndex + InIndex;
+		DataIndexInMaterial = InIndex;
 	}
 
 protected:

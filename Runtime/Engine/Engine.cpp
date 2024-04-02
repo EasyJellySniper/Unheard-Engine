@@ -273,7 +273,7 @@ void UHEngine::Update()
 void UHEngine::RenderLoop()
 {
 	UHERenderer->NotifyRenderThread();
-	GFrameNumber = (GFrameNumber + 1) % std::numeric_limits<uint32_t>::max();
+	GFrameNumber++;
 }
 
 void UHEngine::ResizeEngine()

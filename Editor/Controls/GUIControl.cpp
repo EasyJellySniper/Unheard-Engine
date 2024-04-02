@@ -1,7 +1,7 @@
 #include "GUIControl.h"
 #include <winuser.h>
 #include "../Dialog/Dialog.h"
-#include "../../Runtime/Classes/Utility.h"
+#include "../../../../Runtime/Classes/Utility.h"
 
 UHGUIProperty::UHGUIProperty()
 	: AutoSize(AutoSizeNone)

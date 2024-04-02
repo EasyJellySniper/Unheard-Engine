@@ -256,6 +256,8 @@ void UHMaterial::Export(const std::filesystem::path InPath)
 	// new version, going bindless
 	if (Version >= UHMaterialVersion::GoingBindless)
 	{
+		// ensure the MaterialBufferSize is up-to-date before saving
+		GetCBufferDefineCode(MaterialBufferSize);
 		FileOut.write(reinterpret_cast<const char*>(&MaterialBufferSize), sizeof(MaterialBufferSize));
 	}
 
@@ -356,19 +358,12 @@ std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 	MaterialNode->CollectTextureIndex(Code, OutSize);
 	MaterialNode->CollectMaterialParameter(Code, OutSize);
 
-	// @TODO: Differentiate sampler state in the future
-	Code += "\tint " + GDefaultSamplerName + "_Index;\n";
-
 	// constant from system
 	Code += "\tfloat GCutoff;\n";
-	Code += "\tfloat GEnvCubeMipMapCount;\n";
-	Code += "\tint GRefractionClearIndex;\n";
-	Code += "\tint GRefractionBlurIndex;\n";
 	Code += "\tint GBlendMode;\n";
-	Code += "\tint GIsTangentSpace;\n";
-	Code += "\tint GIsRefraction;\n";
+	Code += "\tuint GMaterialFeature;\n";
 
-	OutSize += sizeof(float) * 8;
+	OutSize += sizeof(float) * 3;
 	
 	return Code;
 }
@@ -444,7 +439,7 @@ void UHMaterial::AllocateRTMaterialBuffer()
 	}
 }
 
-void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialData InMaterialData)
+void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 {
 	if (MaterialBufferSize == 0)
 	{
@@ -469,47 +464,31 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialDat
 	// copy material parameters
 	MaterialNode->CopyMaterialParameter(MaterialConstantsCPU, BufferAddress);
 
-	// fill the index of sampler
-	// @TODO: Differentiate samplers
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.DefaultSamplerIndex, Stride);
-	BufferAddress += Stride;
-
 	// fill cutoff
 	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaterialProps.Cutoff, Stride);
-	BufferAddress += Stride;
-
-	// fill env cube mip map count
-	float EnvCubeMipMapCount = static_cast<float>(InMaterialData.InEnvCube->GetMipMapCount());
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &EnvCubeMipMapCount, Stride);
-	BufferAddress += Stride;
-
-	// copy refraction texture index
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionClearIndex, Stride);
-	BufferAddress += Stride;
-
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &InMaterialData.RefractionBlurredIndex, Stride);
 	BufferAddress += Stride;
 
 	// copy blend mode
 	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &BlendMode, Stride);
 	BufferAddress += Stride;
 
-	// copy material usages, be sure to use int instead of bool when copying the flag! HLSL always uses 4 bytes scalar.
-	int32_t UsageValue = MaterialUsages.bIsTangentSpace ? 1 : 0;
+	// copy material usages
+	uint32_t UsageValue = 0;
+	UsageValue |= MaterialUsages.bIsTangentSpace ? MaterialTangentSpace : 0;
+	UsageValue |= MaterialUsages.bUseRefraction ? MaterialRefraction : 0;
 	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
 	BufferAddress += Stride;
 
-	UsageValue = MaterialUsages.bUseRefraction ? 1 : 0;
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
-	BufferAddress += Stride;
-
-	// upload material data
+	// upload material data, the BufferAddress should reach the end of material buffer at this point
+	assert(MaterialBufferSize == BufferAddress);
 	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data(), MaterialBufferSize);
 
 	if (GfxCache->IsRayTracingEnabled())
 	{
 		// copy the data to RT material data, the order does matter
 		int32_t DstIndex = 0;
+
+		// ** Start copy system values, be sure to adjust GRTMaterialDataStartIndex too! ** //
 
 		// copy cutoff
 		memset(&MaterialRTDataCPU, 0, sizeof(UHRTMaterialData));
@@ -518,15 +497,22 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialDat
 		// copy blend mode
 		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &BlendMode, Stride);
 
+		// copy usage value
+		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &UsageValue, Stride);
+
+		// ** End copy system values ** //
+
 		// copy texture indexes if necessary
 		for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
 		{
 			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &RegisteredTextureIndexes[Idx], Stride);
-			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &InMaterialData.DefaultSamplerIndex, Stride);
+			//@TODO: Custom sampler index? Be sure to modify the index in TextureNode.cpp too if this is going to be uncommented.
+			//memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &DefaultSamplerIndex, Stride);
 		}
 
 		// copy material parameters
 		MaterialNode->CopyRTMaterialParameter(MaterialRTDataCPU, DstIndex);
+		assert(DstIndex < GMaxRTMaterialDataSlot);
 
 		// finally, upload to GPU buffer
 		MaterialRTDataGPU[CurrFrame]->UploadAllData(&MaterialRTDataCPU);

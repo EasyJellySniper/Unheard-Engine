@@ -32,14 +32,13 @@ extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
 extern UHRenderTexture* GQuarterBlurredScene;
 extern UHRenderTexture* GOpaqueSceneResult;
-extern UHRenderTexture* GGaussianFilterTempRT0;
-extern UHRenderTexture* GGaussianFilterTempRT1;
 extern UHRenderTexture* GTranslucentBump;
-extern UHRenderTexture* GTranslucentRoughness;
+extern UHRenderTexture* GTranslucentSmoothness;
 
 // ray-tracing textures
 extern UHRenderTexture* GRTShadowResult;
-extern UHRenderTexture* GRTSharedTextureRG16F;
+extern UHRenderTexture* GRTSharedTextureRG;
+extern UHRenderTexture* GRTReflectionResult;
 
 // cubemaps
 extern UHTextureCube* GSkyLightCube;
@@ -47,17 +46,13 @@ extern UHTextureCube* GSkyLightCube;
 // samplers
 extern UHSampler* GPointClampedSampler;
 extern UHSampler* GLinearClampedSampler;
-extern UHSampler* GAnisoClampedSampler;
 extern UHSampler* GSkyCubeSampler;
 
 // SH9 data
 extern UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 
-// variables
-extern int32_t GRefractionClearIndex;
-extern int32_t GRefractionBlurredIndex;
-
 // fallback textures
+extern UHTexture2D* GBlackTexture;
 extern UHTexture2D* GWhiteTexture;
 extern UHTextureCube* GBlackCube;
 

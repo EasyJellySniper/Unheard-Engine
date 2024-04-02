@@ -130,7 +130,7 @@ public:
 	VkImageView GetImageView() const;
 	VkImageView GetImageView(int32_t MipIndex) const;
 #if WITH_EDITOR
-	VkImageView GetCubemapImageView(const int32_t SliceIndex) const;
+	VkImageView GetCubemapImageView(const int32_t SliceIndex, const int32_t MipIndex) const;
 #endif
 
 	// get image view info
@@ -181,7 +181,8 @@ private:
 	std::vector<VkImageLayout> ImageLayouts;
 
 #if WITH_EDITOR
-	// individual face image view for editor use
-	VkImageView CubemapImageView[6];
+	// individual face image view for editor use, assume it's 15 mipmap max
+	static const int32_t CubemapImageViewCount = 90;
+	VkImageView CubemapImageView[CubemapImageViewCount];
 #endif
 };

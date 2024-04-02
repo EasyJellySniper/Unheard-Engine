@@ -65,7 +65,7 @@ void UHDeferredShadingRenderer::Update()
 	UploadDataBuffers();
 	FrustumCulling();
 	CollectVisibleRenderer();
-	SortRenderer();
+	SortRenderingComponents();
 }
 
 void UHDeferredShadingRenderer::NotifyRenderThread()
@@ -86,8 +86,9 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bIsRenderingEnabledRT = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
 	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
 	bHasRefractionMaterialRT = bHasRefractionMaterialGT;
-	FrontmostRefractionIndexRT = FrontmostRefractionIndexGT;
+	bHDREnabledRT = GraphicInterface->IsHDRAvailable();
 	RTCullingDistanceRT = ConfigInterface->RenderingSetting().RTCullingRadius;
+	RTReflectionQualityRT = ConfigInterface->RenderingSetting().RTReflectionQuality;
 
 	if (SkyMeshRT == nullptr)
 	{
@@ -127,7 +128,16 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 		DebugViewShader->BindParameters();
 
 		bDrawDebugViewRT = true;
-		UHRenderTexture* Buffers[] = { nullptr, GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth, GMotionVectorRT, GSceneMip, GRTShadowResult };
+		UHRenderTexture* Buffers[] = { nullptr
+			, GSceneDiffuse
+			, GSceneNormal
+			, GSceneMaterial
+			, GSceneDepth
+			, GMotionVectorRT
+			, GSceneMip
+			, GRTShadowResult
+			, GRTReflectionResult };
+
 		if (Buffers[DebugViewIndex] != nullptr)
 		{
 			DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
@@ -176,55 +186,73 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	}
 
 	// setup system constants and upload
-	SystemConstantsCPU.UHViewProj = CurrentCamera->GetViewProjMatrix();
-	SystemConstantsCPU.UHViewProjInv = CurrentCamera->GetInvViewProjMatrix();
-	SystemConstantsCPU.UHPrevViewProj_NonJittered = CurrentCamera->GetPrevViewProjMatrixNonJittered();
-	SystemConstantsCPU.UHViewProj_NonJittered = CurrentCamera->GetViewProjMatrixNonJittered();
-	SystemConstantsCPU.UHViewProjInv_NonJittered = CurrentCamera->GetInvViewProjMatrixNonJittered();
-	SystemConstantsCPU.UHView = CurrentCamera->GetViewMatrix();
-	SystemConstantsCPU.UHProjInv = CurrentCamera->GetInvProjMatrix();
-	SystemConstantsCPU.UHProjInv_NonJittered = CurrentCamera->GetInvProjMatrixNonJittered();
+	SystemConstantsCPU.GViewProj = CurrentCamera->GetViewProjMatrix();
+	SystemConstantsCPU.GViewProjInv = CurrentCamera->GetInvViewProjMatrix();
+	SystemConstantsCPU.GPrevViewProj_NonJittered = CurrentCamera->GetPrevViewProjMatrixNonJittered();
+	SystemConstantsCPU.GViewProj_NonJittered = CurrentCamera->GetViewProjMatrixNonJittered();
+	SystemConstantsCPU.GViewProjInv_NonJittered = CurrentCamera->GetInvViewProjMatrixNonJittered();
+	SystemConstantsCPU.GView = CurrentCamera->GetViewMatrix();
+	SystemConstantsCPU.GProjInv = CurrentCamera->GetInvProjMatrix();
+	SystemConstantsCPU.GProjInv_NonJittered = CurrentCamera->GetInvProjMatrixNonJittered();
 
-	SystemConstantsCPU.UHResolution.x = static_cast<float>(RenderResolution.width);
-	SystemConstantsCPU.UHResolution.y = static_cast<float>(RenderResolution.height);
-	SystemConstantsCPU.UHResolution.z = 1.0f / SystemConstantsCPU.UHResolution.x;
-	SystemConstantsCPU.UHResolution.w = 1.0f / SystemConstantsCPU.UHResolution.y;
+	SystemConstantsCPU.GResolution.x = static_cast<float>(RenderResolution.width);
+	SystemConstantsCPU.GResolution.y = static_cast<float>(RenderResolution.height);
+	SystemConstantsCPU.GResolution.z = 1.0f / SystemConstantsCPU.GResolution.x;
+	SystemConstantsCPU.GResolution.w = 1.0f / SystemConstantsCPU.GResolution.y;
 
-	SystemConstantsCPU.UHCameraPos = CurrentCamera->GetPosition();
-	SystemConstantsCPU.UHCameraDir = CurrentCamera->GetForward();
-	SystemConstantsCPU.UHNumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
-	SystemConstantsCPU.UHNumPointLights = static_cast<uint32_t>(CurrentScene->GetPointLightCount());
-	SystemConstantsCPU.UHNumSpotLights = static_cast<uint32_t>(CurrentScene->GetSpotLightCount());
-	SystemConstantsCPU.UHMaxPointLightPerTile = MaxPointLightPerTile;
-	SystemConstantsCPU.UHMaxSpotLightPerTile = MaxSpotLightPerTile;
+	SystemConstantsCPU.GCameraPos = CurrentCamera->GetPosition();
+	SystemConstantsCPU.GCameraDir = CurrentCamera->GetForward();
+	SystemConstantsCPU.GNumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
+	SystemConstantsCPU.GNumPointLights = static_cast<uint32_t>(CurrentScene->GetPointLightCount());
+	SystemConstantsCPU.GNumSpotLights = static_cast<uint32_t>(CurrentScene->GetSpotLightCount());
+	SystemConstantsCPU.GMaxPointLightPerTile = MaxPointLightPerTile;
+	SystemConstantsCPU.GMaxSpotLightPerTile = MaxSpotLightPerTile;
 
 	uint32_t Dummy;
-	GetLightCullingTileCount(SystemConstantsCPU.UHLightTileCountX, Dummy);
+	GetLightCullingTileCount(SystemConstantsCPU.GLightTileCountX, Dummy);
 
 	if (ConfigInterface->RenderingSetting().bTemporalAA)
 	{
 		XMFLOAT4 Offset = CurrentCamera->GetJitterOffset();
-		SystemConstantsCPU.JitterOffsetX = Offset.x;
-		SystemConstantsCPU.JitterOffsetY = Offset.y;
-		SystemConstantsCPU.JitterScaleMin = Offset.z;
-		SystemConstantsCPU.JitterScaleFactor = Offset.w;
+		SystemConstantsCPU.GJitterOffsetX = Offset.x;
+		SystemConstantsCPU.GJitterOffsetY = Offset.y;
+		SystemConstantsCPU.GJitterScaleMin = Offset.z;
+		SystemConstantsCPU.GJitterScaleFactor = Offset.w;
 	}
 
 	// set sky light data
 	UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
-	SystemConstantsCPU.UHAmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
-	SystemConstantsCPU.UHAmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
+	SystemConstantsCPU.GAmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
+	SystemConstantsCPU.GAmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
 
-	SystemConstantsCPU.RTShadowResolution.x = static_cast<float>(RTShadowExtent.width);
-	SystemConstantsCPU.RTShadowResolution.y = static_cast<float>(RTShadowExtent.height);
-	SystemConstantsCPU.RTShadowResolution.z = 1.0f / SystemConstantsCPU.RTShadowResolution.x;
-	SystemConstantsCPU.RTShadowResolution.w = 1.0f / SystemConstantsCPU.RTShadowResolution.y;
+	SystemConstantsCPU.GShadowResolution.x = static_cast<float>(RTShadowExtent.width);
+	SystemConstantsCPU.GShadowResolution.y = static_cast<float>(RTShadowExtent.height);
+	SystemConstantsCPU.GShadowResolution.z = 1.0f / SystemConstantsCPU.GShadowResolution.x;
+	SystemConstantsCPU.GShadowResolution.w = 1.0f / SystemConstantsCPU.GShadowResolution.y;
 
-	SystemConstantsCPU.UHNumRTInstances = RTInstanceCount;
-	SystemConstantsCPU.UHFrameNumber = GFrameNumber;
-	SystemConstantsCPU.UHPrepassDepthEnabled = bEnableDepthPrePass;
-	SystemConstantsCPU.UHEnvironmentCubeEnabled = GetCurrentSkyCube() != nullptr;
-	SystemConstantsCPU.UHDirectionalShadowRayTMax = ConfigInterface->RenderingSetting().RTShadowTMax;
+	UHTextureCube* SkyCube = GetCurrentSkyCube();
+
+	SystemConstantsCPU.GNumRTInstances = RTInstanceCount;
+	SystemConstantsCPU.GFrameNumber = GFrameNumber;
+
+	// pack system rendering feature data
+	uint32_t FeatureData = 0;
+	FeatureData |= (bEnableDepthPrePass) ? FeatureDepthPrePass : 0;
+	FeatureData |= (SkyCube != nullptr) ? FeatureEnvCube : 0;
+	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? FeatureHDR : 0;
+	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
+
+	SystemConstantsCPU.GDirectionalShadowRayTMax = ConfigInterface->RenderingSetting().RTShadowTMax;
+	SystemConstantsCPU.GLinearClampSamplerIndex = LinearClampSamplerIndex;
+	SystemConstantsCPU.GSkyCubeSamplerIndex = SkyCubeSamplerIndex;
+	SystemConstantsCPU.GPointClampSamplerIndex = PointClampSamplerIndex;
+	SystemConstantsCPU.RTReflectionQuality = ConfigInterface->RenderingSetting().RTReflectionQuality;
+	SystemConstantsCPU.RTReflectionRayTMax = ConfigInterface->RenderingSetting().RTReflectionTMax;
+	SystemConstantsCPU.RTReflectionSmoothCutoff = ConfigInterface->RenderingSetting().RTReflectionSmoothCutoff;
+	SystemConstantsCPU.GEnvCubeMipMapCount = (SkyCube != nullptr) ? static_cast<float>(SkyCube->GetMipMapCount()) : 0;
+	SystemConstantsCPU.GRefractionClearIndex = RefractionClearIndex;
+	SystemConstantsCPU.GRefractionBlurIndex = RefractionBlurredIndex;
+	SystemConstantsCPU.GDefaultAnisoSamplerIndex = DefaultSamplerIndex;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -239,7 +267,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			UHMeshRendererComponent* Renderer = Renderers[Idx];
 			if (Renderer->IsRenderDirty(CurrentFrameGT))
 			{
-				ObjectConstantsCPU[Idx] = Renderer->GetConstants();
+				ObjectConstantsCPU[Renderer->GetBufferDataIndex()] = Renderer->GetConstants();
 				Renderer->SetRenderDirty(false, CurrentFrameGT);
 			}
 
@@ -247,13 +275,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			UHMaterial* Mat = Renderer->GetMaterial();
 			if (Mat->IsRenderDirty(CurrentFrameGT))
 			{
-				UHSystemMaterialData MaterialData{};
-				MaterialData.DefaultSamplerIndex = DefaultSamplerIndex;
-				MaterialData.InEnvCube = GetCurrentSkyCube();
-				MaterialData.RefractionClearIndex = GRefractionClearIndex;
-				MaterialData.RefractionBlurredIndex = GRefractionBlurredIndex;
-
-				Mat->UploadMaterialData(CurrentFrameGT, MaterialData);
+				Mat->UploadMaterialData(CurrentFrameGT);
 				Mat->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
@@ -313,10 +335,6 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SH9Constant.MipLevel = 4;
 	SH9Constant.Weight = 4.0f * G_PI / 64.0f;
 	SH9Shader->GetSH9Constants(CurrentFrameGT)->UploadAllData(&SH9Constant);
-
-	// upload tone map data
-	uint32_t IsHDR = GraphicInterface->IsHDRAvailable();
-	ToneMapShader->GetToneMapData(CurrentFrameGT)->UploadAllData(&IsHDR);
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
@@ -399,10 +417,10 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 	}
 }
 
-void UHDeferredShadingRenderer::SortRenderer()
+void UHDeferredShadingRenderer::SortRenderingComponents()
 {
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
-	if (!CurrentCamera)
+	if (!CurrentCamera || !CurrentScene)
 	{
 		return;
 	}
@@ -413,35 +431,30 @@ void UHDeferredShadingRenderer::SortRenderer()
 	}
 
 	// sort front-to-back
-	XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
-	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
 			return A->GetSquareDistanceToMainCam() < B->GetSquareDistanceToMainCam();
 		});
 
 	// sort back-to-front for translucents
-	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [&CameraPos](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
+	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
 		{
 			return A->GetSquareDistanceToMainCam() > B->GetSquareDistanceToMainCam();
 		});
 
-	// find the frontmost translucent object that does refraction
-	// The rendering later will do a workflow: Draw background translucent -> Screenshot the result -> Draw Foreground translucent
-	// So at least the frontmost refraction object can refract some translucent objects behind it!
-	bHasRefractionMaterialGT = false;
 
-	FrontmostRefractionIndexGT = UHINDEXNONE;
+	bHasRefractionMaterialGT = false;
 	for (size_t Idx = 0; Idx < TranslucentsToRender.size(); Idx++)
 	{
 		if (const UHMaterial* Mat = TranslucentsToRender[Idx]->GetMaterial())
 		{
 			if (Mat->GetMaterialUsages().bUseRefraction)
 			{
-				FrontmostRefractionIndexGT = static_cast<int32_t>(Idx);
+				bHasRefractionMaterialGT = true;
+				break;
 			}
 		}
 	}
-	bHasRefractionMaterialGT = (FrontmostRefractionIndexGT != UHINDEXNONE);
 }
 
 void UHDeferredShadingRenderer::GetLightCullingTileCount(uint32_t& TileCountX, uint32_t& TileCountY)
@@ -558,16 +571,23 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
+
 				if (!bEnableAsyncComputeRT)
 				{
 					BuildTopLevelAS(SceneRenderBuilder);
 					GenerateSH9Pass(SceneRenderBuilder);
 				}
+
 				DispatchLightCulling(SceneRenderBuilder);
 				DispatchRayShadowPass(SceneRenderBuilder);
+
 				RenderLightPass(SceneRenderBuilder);
 				RenderSkyPass(SceneRenderBuilder);
-				PreTranslucentPass(SceneRenderBuilder);
+
+				PreReflectionPass(SceneRenderBuilder);
+				DispatchRayReflectionPass(SceneRenderBuilder);
+				DrawReflectionPass(SceneRenderBuilder);
+
 				RenderTranslucentPass(SceneRenderBuilder);
 				RenderPostProcessing(SceneRenderBuilder);
 			}

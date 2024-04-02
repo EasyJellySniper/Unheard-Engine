@@ -27,7 +27,6 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 	// Bind envcube and sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	CreateMaterialDescriptor(ExtraLayouts);
@@ -67,7 +66,10 @@ void UHBasePassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 	BindStorage(Mesh->GetNormalBuffer(), 4, 0, true);
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
 
-	// write textures/samplers when they are available
+	BindSkyCube();
+}
+
+void UHBasePassShader::BindSkyCube()
+{
 	BindImage(GSkyLightCube, 6);
-	BindSampler(GSkyCubeSampler, 7);
 }

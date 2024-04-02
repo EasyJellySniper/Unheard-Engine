@@ -2,8 +2,8 @@
 #include "../../UnheardEngine.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Engine/Graphic.h"
-#include "../../Runtime/Renderer/ShaderClass/MeshPreviewShader.h"
+#include "../../../Runtime/Engine/Graphic.h"
+#include "../../../Runtime/Renderer/ShaderClass/MeshPreviewShader.h"
 #include "../../Runtime/Components/Camera.h"
 
 enum UHPreviewSceneType

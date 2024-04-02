@@ -2,7 +2,7 @@
 #include "Dialog.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Classes/GraphNode/MaterialNode.h"
+#include "../../../Runtime/Classes/GraphNode/MaterialNode.h"
 #include "../Classes/GraphNodeGUI.h"
 #include "../Classes/MenuGUI.h"
 #include <memory>

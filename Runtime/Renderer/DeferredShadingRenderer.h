@@ -31,11 +31,15 @@
 #include "ShaderClass/PostProcessing/GaussianFilterShader.h"
 #include "ShaderClass/RayTracing/RTDefaultHitGroupShader.h"
 #include "ShaderClass/RayTracing/RTShadowShader.h"
+#include "ShaderClass/RayTracing/RTReflectionShader.h"
 #include "ShaderClass/TextureSamplerTable.h"
 #include "ShaderClass/RayTracing/RTMeshTable.h"
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 #include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 #include "ShaderClass/SphericalHarmonicShader.h"
+#include "ShaderClass/RayTracing/RTTextureTable.h"
+#include "ShaderClass/ReflectionPassShader.h"
+#include "ShaderClass/RayTracing/RTReflectionMipmap.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -74,6 +78,7 @@ public:
 	void WaitPreviousRenderTask();
 
 	// only resize RT buffers
+	void ReleaseRayTracingBuffers();
 	void ResizeRayTracingBuffers(bool bInitOnly);
 	void UpdateTextureDescriptors();
 
@@ -95,6 +100,11 @@ public:
 #endif
 	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
 	void RecreateRTShaders(UHMaterial* InMat, bool bRecreateTable);
+
+	void CalculateBlurWeights(const int32_t InRadius, float* OutWeights);
+	bool DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, std::string InName
+		, UHTexture* Input, UHRenderTexture* Output
+		, UHGaussianFilterConstants Constants);
 
 private:
 	/************************************************ functions ************************************************/
@@ -154,8 +164,8 @@ private:
 	// collect visible renderer
 	void CollectVisibleRenderer();
 
-	// sort renderer
-	void SortRenderer();
+	// sort rendering components
+	void SortRenderingComponents();
 
 	// get light culling tile count
 	void GetLightCullingTileCount(uint32_t& TileCountX, uint32_t& TileCountY);
@@ -170,22 +180,20 @@ private:
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
+	void DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder);
 	void RenderLightPass(UHRenderBuilder& RenderBuilder);
+	void PreReflectionPass(UHRenderBuilder& RenderBuilder);
+	void DrawReflectionPass(UHRenderBuilder& RenderBuilder);
 	void GenerateSH9Pass(UHRenderBuilder& RenderBuilder);
 	void RenderSkyPass(UHRenderBuilder& RenderBuilder);
 	void RenderMotionPass(UHRenderBuilder& RenderBuilder);
-	void PreTranslucentPass(UHRenderBuilder& RenderBuilder);
 	void RenderTranslucentPass(UHRenderBuilder& RenderBuilder);
 	void RenderEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void Dispatch2DEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHRenderBuilder& RenderBuilder);
 
-	std::vector<float> CalculateBlurWeights(const int32_t InRadius);
-	void ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder, UHGaussianFilterConstants Constants
-		, UHGaussianFilterShader* FilterHShader, UHGaussianFilterShader* FilterVShader);
-	void DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, std::string InName
-		, UHRenderTexture* Input, UHRenderTexture* Output
-		, UHGaussianFilterConstants Constants, UHGaussianFilterShader* FilterHShader, UHGaussianFilterShader* FilterVShader);
+	void ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder, UHGaussianFilterConstants Constants);
+
 	uint32_t RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder);
 
 #if WITH_EDITOR
@@ -243,9 +251,9 @@ private:
 	bool bNeedGenerateSH9RT;
 	bool bHasRefractionMaterialGT;
 	bool bHasRefractionMaterialRT;
-	int32_t FrontmostRefractionIndexGT;
-	int32_t FrontmostRefractionIndexRT;
+	bool bHDREnabledRT;
 	float RTCullingDistanceRT;
+	int32_t RTReflectionQualityRT;
 
 	// current scene
 	UHScene* CurrentScene;
@@ -263,6 +271,11 @@ private:
 
 	// shared samplers
 	int32_t DefaultSamplerIndex;
+	int32_t LinearClampSamplerIndex;
+	int32_t PointClampSamplerIndex;
+	int32_t SkyCubeSamplerIndex;
+	int32_t RefractionClearIndex;
+	int32_t RefractionBlurredIndex;
 
 	// bindless table
 	UniquePtr<UHTextureTable> TextureTable;
@@ -287,6 +300,8 @@ private:
 	const uint32_t MaxSpotLightPerTile;
 	UniquePtr<UHLightCullingShader> LightCullingShader;
 	UniquePtr<UHLightPassShader> LightPassShader;
+	UniquePtr<UHReflectionPassShader> ReflectionPassShader;
+	UniquePtr<UHRTReflectionMipmap> RTReflectionMipmapShader;
 
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
 	UniquePtr<UHSkyPassShader> SkyPassShader;
@@ -320,10 +335,8 @@ private:
 
 	UniquePtr<UHToneMappingShader> ToneMapShader;
 	UniquePtr<UHTemporalAAShader> TemporalAAShader;
-	UniquePtr<UHGaussianFilterShader> OpaqueBlurHShader;
-	UniquePtr<UHGaussianFilterShader> OpaqueBlurVShader;
-	UniquePtr<UHGaussianFilterShader> TranslucentBlurHShader;
-	UniquePtr<UHGaussianFilterShader> TranslucentBlurVShader;
+	UniquePtr<UHGaussianFilterShader> GaussianFilterHShader;
+	UniquePtr<UHGaussianFilterShader> GaussianFilterVShader;
 	bool bIsTemporalReset;
 
 #if WITH_EDITOR
@@ -355,11 +368,16 @@ private:
 	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;
 	UniquePtr<UHSoftRTShadowShader> SoftRTShadowShader;
 	UniquePtr<UHRTShadowShader> RTShadowShader;
+	UniquePtr<UHRTReflectionShader> RTReflectionShader;
+	std::vector<VkDescriptorSet> RTDescriptorSets[GMaxFrameInFlight];
 
-	UniquePtr<UHRTVertexTable> RTVertexTable;
+	UniquePtr<UHRTVertexTable> RTUVTable;
+	UniquePtr<UHRTVertexTable> RTNormalTable;
+	UniquePtr<UHRTVertexTable> RTTangentTable;
 	UniquePtr<UHRTIndicesTable> RTIndicesTable;
 	UniquePtr<UHRTIndicesTypeTable> RTIndicesTypeTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
+	UniquePtr<UHRTTextureTable> RTTextureTable;
 	UniquePtr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
 
 	uint32_t RTInstanceCount;
@@ -367,4 +385,7 @@ private:
 	// -------------------------------------------- Culling related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
 	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
+
+	// caches
+	std::unordered_map<uint32_t, UHRenderTexture*> TempRenderTextures;
 };

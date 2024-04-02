@@ -29,8 +29,7 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name)
 
 void UHLightPassShader::OnCompile()
 {
-	std::vector<std::string> Defines;
-	ShaderCS = Gfx->RequestShader("LightComputeShader", "Shaders/LightComputeShader.hlsl", "LightCS", "cs_6_0", Defines);
+	ShaderCS = Gfx->RequestShader("LightComputeShader", "Shaders/LightComputeShader.hlsl", "LightCS", "cs_6_0");
 
 	// state
 	UHComputePassInfo Info(PipelineLayout);
@@ -47,7 +46,7 @@ void UHLightPassShader::BindParameters()
 	BindStorage(GSpotLightBuffer, 3, 0, true);
 
 	BindImage(GetGBuffersSRV(), 4);
-	BindImage(GSceneResult, 5, -1, true);
+	BindRWImage(GSceneResult, 5);
 
 	if (Gfx->IsRayTracingEnabled())
 	{

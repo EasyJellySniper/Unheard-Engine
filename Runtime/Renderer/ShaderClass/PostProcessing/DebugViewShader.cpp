@@ -46,10 +46,8 @@ void UHDebugViewShader::BindParameters()
 		BindConstant(DebugViewData, 0, Idx);
 	}
 
-	if (Gfx->IsRayTracingEnabled())
-	{
-		BindImage(GRTShadowResult, 1);
-	}
+	// slot 1 will be bound in fly
+
 	BindSampler(GPointClampedSampler, 2);
 }
 

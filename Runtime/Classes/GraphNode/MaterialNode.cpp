@@ -133,6 +133,58 @@ void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingR
 	}
 }
 
+void UHMaterialNode::InsertOpacityCode(std::string& Code) const
+{
+	std::string EndOfLine = ";\n";
+	if (UHGraphPin* Opacity = Inputs[UHMaterialInputs::Opacity]->GetSrcPin())
+	{
+		Code += "\tInput.Opacity = saturate(" + Opacity->GetOriginNode()->EvalHLSL(Opacity) + ".r)" + EndOfLine;
+	}
+	else
+	{
+		Code += "\tInput.Opacity = 1.0f" + EndOfLine;
+	}
+}
+
+void UHMaterialNode::InsertNormalCode(std::string& Code) const
+{
+	std::string EndOfLine = ";\n";
+	if (UHGraphPin* Normal = Inputs[UHMaterialInputs::Normal]->GetSrcPin())
+	{
+		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL(Normal) + ".rgb" + EndOfLine;
+	}
+	else
+	{
+		Code += "\tInput.Normal = float3(0,0,1.0f)" + EndOfLine;
+	}
+}
+
+void UHMaterialNode::InsertRoughnessCode(std::string& Code) const
+{
+	std::string EndOfLine = ";\n";
+	if (UHGraphPin* Roughness = Inputs[UHMaterialInputs::Roughness]->GetSrcPin())
+	{
+		Code += "\tInput.Roughness = saturate(" + Roughness->GetOriginNode()->EvalHLSL(Roughness) + ".r)" + EndOfLine;
+	}
+	else
+	{
+		Code += "\tInput.Roughness = 1.0f" + EndOfLine;
+	}
+}
+
+void UHMaterialNode::InsertEmissiveCode(std::string& Code) const
+{
+	std::string EndOfLine = ";\n";
+	if (UHGraphPin* Emissive = Inputs[UHMaterialInputs::Emissive]->GetSrcPin())
+	{
+		Code += "\tInput.Emissive = " + Emissive->GetOriginNode()->EvalHLSL(Emissive) + ".rgb" + EndOfLine;
+	}
+	else
+	{
+		Code += "\tInput.Emissive = float3(0,0,0)" + EndOfLine;
+	}
+}
+
 std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 {
 	if (!CanEvalHLSL())
@@ -155,7 +207,12 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	if (CompileData.bIsHitGroup)
 	{
 		DefinitionTable.clear();
-		int32_t DataIndexInMaterial = (Definitions.size() > 0) ? 2 * TextureIndexInMaterial + (GRTMaterialDataStartIndex % 2) : 0;
+
+		// Calculate the DataIndexInMaterial, if it has no texture definitions, the starting index shall be GRTMaterialDataStartIndex
+		// Otherwise, follow the texture index in material and properly offset it with GRTMaterialDataStartIndex
+		// @TODO: Custom sampler index?
+		int32_t DataIndexInMaterial = (Definitions.size() > 0) ? /*2 */ TextureIndexInMaterial + GRTMaterialDataStartIndex : GRTMaterialDataStartIndex;
+
 		for (int32_t Idx = 0; Idx < UHMaterialInputs::MaterialMax; Idx++)
 		{
 			CollectParameterDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, DataIndexInMaterial, Definitions, DefinitionTable);
@@ -182,46 +239,36 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 
 	Code += "\n\tUHMaterialInputs Input = (UHMaterialInputs)0;\n";
 
-	// Opacity
-	if (UHGraphPin* Opacity = Inputs[UHMaterialInputs::Opacity]->GetSrcPin())
+	// ************** Early return if it needs normal only ************** //
+	if (CompileData.InputType == MaterialInputNormalOnly)
 	{
-		Code += "\tInput.Opacity = " + Opacity->GetOriginNode()->EvalHLSL(Opacity) + ".r" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.Opacity = 1.0f" + EndOfLine;
-	}
-
-	// ************** Early return if it needs opacity only ************** //
-	if (CompileData.InputType == MaterialInputSimple)
-	{
+		InsertNormalCode(Code);
 		Code += ReturnCode;
 		return Code;
 	}
 
-	// Normal
-	if (UHGraphPin* Normal = Inputs[UHMaterialInputs::Normal]->GetSrcPin())
+	// ************** Early return if it needs opacity only ************** //
+	if (CompileData.InputType == MaterialInputOpacityOnly)
 	{
-		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL(Normal) + ".rgb" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.Normal = float3(0,0,1.0f)" + EndOfLine;
-	}
-
-	// Roughness
-	if (UHGraphPin* Roughness = Inputs[UHMaterialInputs::Roughness]->GetSrcPin())
-	{
-		Code += "\tInput.Roughness = " + Roughness->GetOriginNode()->EvalHLSL(Roughness) + ".r" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.Roughness = 1.0f" + EndOfLine;
+		InsertOpacityCode(Code);
+		Code += ReturnCode;
+		return Code;
 	}
 
 	// ************** Early return if it needs opacity+normal+roughness only ************** //
 	if (CompileData.InputType == MaterialInputOpacityNormalRoughOnly)
 	{
+		InsertOpacityCode(Code);
+		InsertNormalCode(Code);
+		InsertRoughnessCode(Code);
+		Code += ReturnCode;
+		return Code;
+	}
+
+	// ************** Early return if it needs emissive only ************** //
+	if (CompileData.InputType == MaterialInputEmissiveOnly)
+	{
+		InsertEmissiveCode(Code);
 		Code += ReturnCode;
 		return Code;
 	}
@@ -239,7 +286,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	// Occlusion
 	if (UHGraphPin* Occlusion = Inputs[UHMaterialInputs::Occlusion]->GetSrcPin())
 	{
-		Code += "\tInput.Occlusion = " + Occlusion->GetOriginNode()->EvalHLSL(Occlusion) + ".r" + EndOfLine;
+		Code += "\tInput.Occlusion = saturate(" + Occlusion->GetOriginNode()->EvalHLSL(Occlusion) + ".r)" + EndOfLine;
 	}
 	else
 	{
@@ -249,17 +296,26 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	// Specular
 	if (UHGraphPin* Specular = Inputs[UHMaterialInputs::Specular]->GetSrcPin())
 	{
-		Code += "\tInput.Specular = " + Specular->GetOriginNode()->EvalHLSL(Specular) + ".rgb" + EndOfLine;
+		Code += "\tInput.Specular = saturate(" + Specular->GetOriginNode()->EvalHLSL(Specular) + ".rgb)" + EndOfLine;
 	}
 	else
 	{
 		Code += "\tInput.Specular = 0.5f" + EndOfLine;
 	}
 
+	// Roughness
+	InsertRoughnessCode(Code);
+
+	// Normal
+	InsertNormalCode(Code);
+
+	// Opacity
+	InsertOpacityCode(Code);
+
 	// Metallic
 	if (UHGraphPin* Metallic = Inputs[UHMaterialInputs::Metallic]->GetSrcPin())
 	{
-		Code += "\tInput.Metallic = " + Metallic->GetOriginNode()->EvalHLSL(Metallic) + ".r" + EndOfLine;
+		Code += "\tInput.Metallic = saturate(" + Metallic->GetOriginNode()->EvalHLSL(Metallic) + ".r)" + EndOfLine;
 	}
 	else
 	{
@@ -269,39 +325,31 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	// FresnelFactor
 	if (UHGraphPin* FresnelFactor = Inputs[UHMaterialInputs::FresnelFactor]->GetSrcPin())
 	{
-		Code += "\tInput.FresnelFactor = " + FresnelFactor->GetOriginNode()->EvalHLSL(FresnelFactor) + ".r" + EndOfLine;
+		Code += "\tInput.FresnelFactor = saturate(" + FresnelFactor->GetOriginNode()->EvalHLSL(FresnelFactor) + ".r)" + EndOfLine;
 	}
 	else
 	{
-		Code += "\tInput.FresnelFactor = 1.0f" + EndOfLine;
+		Code += "\tInput.FresnelFactor = 0.0f" + EndOfLine;
 	}
 
 	// ReflectionFactor
 	if (UHGraphPin* ReflectionFactor = Inputs[UHMaterialInputs::ReflectionFactor]->GetSrcPin())
 	{
-		Code += "\tInput.ReflectionFactor = " + ReflectionFactor->GetOriginNode()->EvalHLSL(ReflectionFactor) + ".r" + EndOfLine;
+		Code += "\tInput.ReflectionFactor = max(" + ReflectionFactor->GetOriginNode()->EvalHLSL(ReflectionFactor) + ".r, 0)" + EndOfLine;
 	}
 	else
 	{
 		Code += "\tInput.ReflectionFactor = 0.5f" + EndOfLine;
 	}
 
-	// Emissive
-	if (UHGraphPin* Emissive = Inputs[UHMaterialInputs::Emissive]->GetSrcPin())
-	{
-		Code += "\tInput.Emissive = " + Emissive->GetOriginNode()->EvalHLSL(Emissive) + ".rgb" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.Emissive = float3(0,0,0)" + EndOfLine;
-	}
+	InsertEmissiveCode(Code);
 
 	// Refraction, available for translucent objects only
 	if (UHGraphPin* Refraction = Inputs[UHMaterialInputs::Refraction]->GetSrcPin())
 	{
 		if (CompileData.MaterialCache->GetBlendMode() > UHBlendMode::Masked)
 		{
-			Code += "\tInput.Refraction = " + Refraction->GetOriginNode()->EvalHLSL(Refraction) + ".r" + EndOfLine;
+			Code += "\tInput.Refraction = max(" + Refraction->GetOriginNode()->EvalHLSL(Refraction) + ".r, 0.01f)" + EndOfLine;
 		}
 	}
 

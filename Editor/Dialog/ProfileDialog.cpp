@@ -2,7 +2,7 @@
 
 #if WITH_EDITOR
 #include "../Editor/Profiler.h"
-#include "../../Runtime/Engine/Config.h"
+#include "../../../Runtime/Engine/Config.h"
 
 UHProfileDialog::UHProfileDialog()
     : UHDialog(nullptr, nullptr)
@@ -46,11 +46,13 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
             , "Update Top Level AS"
             , "GenerateSH9"
             , "Ray Tracing Shadow"
+            , "Ray Tracing Reflection"
             , "Light Culling"
             , "Light Pass"
             , "Skybox Pass"
             , "Motion Pass"
-            , "Pre Translucent Pass"
+            , "Pre Reflection Pass"
+            , "Reflection Pass"
             , "Translucent Pass"
             , "Tone Mapping"
             , "Temporal AA"

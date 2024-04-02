@@ -53,3 +53,74 @@ Optimized both RT shadow and soft shadow shader, they should only need one itera
 Refactored material input compilation.
 Added translucent bump and roughness output. It should be ready for RT reflection now.
 Removed half depth buffer, better to just search neighbor pixels in shader.
+
+25-02-2024:
+Started RT reflection implementation. Added more resource bindings in RT hit group shader.
+I've not added the rendering pass for RT reflection yet. Did the shader part first.
+
+26-02-2024:
+Tried mailbox mode if it's available. Used R11G11B10 for RT shared texture instead.
+Tested the RT reflection compilation was fine. I'll add the rendering pass for it.
+Added rendering pass for RT reflection without issues.
+
+01-03-2024:
+Expose RT reflection debug view mode.
+03-03-2024:
+Continue the RT reflection implementation. 
+Organized sampler index into system constant buffer, so some shaders do not need to bind extra samplerstate and can reuse it from UHSamplerTable.
+Fixed a minor bug regarding material buffer size, now it always checks the size before saving it.
+Finished the material fetching in RT reflection, the next to do is lighting calculation or deal with translucent material.
+
+15-03-2024:
+Added emissive material for RT as well. Refactored the shader material input code.
+Reverted the visual studio update that caused garbage file issue, thank you Microsoft! 
+Recorded the VS version in SDK dependency.txt too.
+
+17-03-2024:
+Continued RT reflection. Applied lighting if the hit position is inside the screen.
+Need to make point/spot light receiving work when a hit position is outside the screen.
+
+18-03-2024:
+It can now receive the lighting for a hit position outside of screen.
+Lighting is basically done except the shadow mask for the hit position outside the screen.
+
+24-03-2024:
+Deal with translucent object in RT reflection!
+Also try to deal with the refraction in reflection, but it's still an issue for the pixel outside the screen.
+For now, simply use the mirror repeat trick.
+
+25-03-2024:
+Try applying temporal tracing for reflection.
+Performance does improve, but the result also looks "laggy"
+
+26-03-2024:
+Added temporal history sampling for RT reflection.
+It looks smooth when mouse moving, but stuttering with keyboard.
+It was a failure lol, I forgot that motion vector couldn't be used for reflected result...
+I'll try a different method tomorrow. Also default fresnel parameter as 0 instead of 1.
+
+27-03-2024:
+Reverted the history sampling in RT reflection.
+Fixed a stupid channel bug when sampling translucent smoothness.
+Added the half pixels method again. Next is to actually apply the reflection to object, and also add quality setting for RT reflection.
+
+28-03-2024:
+Expose RT reflection quality settings.
+Done adding the quality setting for the RT reflection.
+
+30-03-2024:
+Minor shader code refactor. Minor optimized refraction calc.
+Next is to reorganize the rendering pipeline, expected order: RT shadow -> Light pass -> Opaque screenshot -> RT reflection -> Render reflection
+
+31-03-2024:
+Added the reflection pass. But there is another egg-chicken problem lol. 
+So giving up 'translucent in refraction' now. I'll revisit it in the future.
+Did some material data packing as well. And the reflection mipmaps for low smoothness.
+
+01-04-2024:
+Refine the RT reflection with high roughness. I probably want to apply gaussian blur to low mips (<2) in case of ugly box-artifact.
+Done the blur for the RT reflection mips, much better result! Next is to deal with env & RT reflection composite.
+
+02-04-2024:
+Improved reflection composite! It looks better now.
+Finalized RT reflection implementation.

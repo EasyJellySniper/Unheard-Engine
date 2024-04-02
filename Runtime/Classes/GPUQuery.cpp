@@ -4,7 +4,7 @@
 UHGPUQuery::UHGPUQuery()
 	: QueryCount(0)
 	, State(UHGPUQueryState::Idle)
-	, QueryPool(VK_NULL_HANDLE)
+	, QueryPool(nullptr)
 	, PreviousValidTimeStamp(0)
 {
 

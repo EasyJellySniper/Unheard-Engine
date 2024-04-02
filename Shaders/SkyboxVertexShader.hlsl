@@ -9,10 +9,10 @@ struct SkyVertexOutput
 SkyVertexOutput SkyboxVS(float3 Position : POSITION)
 {
 	SkyVertexOutput Vout = (SkyVertexOutput)0;
-    float3 WorldPos = Position.xyz + UHCameraPos.xyz;
+    float3 WorldPos = Position.xyz + GCameraPos.xyz;
 
 	// doesn't need jitter VP for skybox
-	Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
+	Vout.Position = mul(float4(WorldPos, 1.0f), GViewProj_NonJittered);
 
 	// always on the far plane (use 0 here since I use reversed-z)
 	Vout.Position.z = 0;

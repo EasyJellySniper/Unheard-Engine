@@ -8,7 +8,7 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader), nullptr)
 {
 	// system const
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 	// TLAS + RT shadow result (float4, xy for dir light, zw for point light)
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
@@ -63,7 +63,7 @@ void UHRTShadowShader::BindParameters()
 
 	// TLAS will be bound on fly (slot 1)
 
-	BindRWImage(GRTSharedTextureRG16F, 2);
+	BindRWImage(GRTSharedTextureRG, 2);
 
 	// light buffers
 	BindStorage(GDirectionalLightBuffer, 3, 0, true);

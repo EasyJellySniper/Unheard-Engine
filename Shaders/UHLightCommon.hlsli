@@ -34,7 +34,7 @@ float3 LightBRDF(UHLightInfo LightInfo)
 {
     float3 LightColor = LightInfo.LightColor * LightInfo.ShadowMask;
     float3 LightDir = -LightInfo.LightDir;
-    float3 ViewDir = -normalize(LightInfo.WorldPos - UHCameraPos);
+    float3 ViewDir = -normalize(LightInfo.WorldPos - GCameraPos);
 
     // Diffuse = N dot L
     float NdotL = saturate(dot(LightInfo.Normal, LightDir));
@@ -46,8 +46,7 @@ float3 LightBRDF(UHLightInfo LightInfo)
     float LdotH = saturate(dot(LightDir, HalfDir));
     float NdotH = saturate(dot(LightInfo.Normal, HalfDir));
 
-    // inverse roughness to smoothness
-    float Smoothness = 1.0f - saturate(LightInfo.Specular.a);
+    float Smoothness = LightInfo.Specular.a;
     float3 LightSpecular = LightColor * SchlickFresnel(LightInfo.Specular.rgb, LdotH) * BlinnPhong(Smoothness, NdotH) * NdotL;
 
     return LightInfo.Diffuse * LightDiffuse + LightSpecular;
@@ -55,15 +54,15 @@ float3 LightBRDF(UHLightInfo LightInfo)
 
 uint GetPointLightOffset(uint InIndex)
 {
-    return InIndex * (UHMaxPointLightPerTile * 4 + 4);
+    return InIndex * (GMaxPointLightPerTile * 4 + 4);
 }
 
 uint GetSpotLightOffset(uint InIndex)
 {
-    return InIndex * (UHMaxSpotLightPerTile * 4 + 4);
+    return InIndex * (GMaxSpotLightPerTile * 4 + 4);
 }
 
 bool HasLighting()
 {
-    return UHNumDirLights > 0 || UHNumPointLights > 0 || UHNumSpotLights > 0;
+    return GNumDirLights > 0 || GNumPointLights > 0 || GNumSpotLights > 0;
 }

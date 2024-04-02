@@ -58,6 +58,9 @@ void UHConfigManager::LoadConfig()
 			RenderingSettings.RTCullingRadius = UHUtilities::ReadINIData<float>(FileIn, "RTCullingRadius");
 			RenderingSettings.RTShadowQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTShadowQuality");
 			RenderingSettings.RTShadowTMax = UHUtilities::ReadINIData<float>(FileIn, "RTShadowTMax");
+			RenderingSettings.RTReflectionQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTReflectionQuality");
+			RenderingSettings.RTReflectionTMax = UHUtilities::ReadINIData<float>(FileIn, "RTReflectionTMax");
+			RenderingSettings.RTReflectionSmoothCutoff = UHUtilities::ReadINIData<float>(FileIn, "RTReflectionSmoothCutoff");
 			RenderingSettings.bEnableAsyncCompute = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableAsyncCompute");
 			RenderingSettings.bEnableHDR = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableHDR");
 
@@ -110,6 +113,9 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "RTCullingRadius", RenderingSettings.RTCullingRadius);
 		UHUtilities::WriteINIData(FileOut, "RTShadowQuality", RenderingSettings.RTShadowQuality);
 		UHUtilities::WriteINIData(FileOut, "RTShadowTMax", RenderingSettings.RTShadowTMax);
+		UHUtilities::WriteINIData(FileOut, "RTReflectionQuality", RenderingSettings.RTReflectionQuality);
+		UHUtilities::WriteINIData(FileOut, "RTReflectionTMax", RenderingSettings.RTReflectionTMax);
+		UHUtilities::WriteINIData(FileOut, "RTReflectionSmoothCutoff", RenderingSettings.RTReflectionSmoothCutoff);
 		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 		UHUtilities::WriteINIData(FileOut, "bEnableHDR", RenderingSettings.bEnableHDR);
 	}

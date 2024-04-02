@@ -14,7 +14,8 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 
 	GraphicInterface->WaitGPU();
 	SH9Shader->BindParameters();
-	SkyPassShader->BindImage(GSkyLightCube, 1);
+	SkyPassShader->BindSkyCube();
+	ReflectionPassShader->BindSkyCube();
 
 	if (bNeedRecompile)
 	{
@@ -32,12 +33,12 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 
 	for (auto& BaseShader : BasePassShaders)
 	{
-		BaseShader.second->BindImage(GSkyLightCube, 6);
+		BaseShader.second->BindSkyCube();
 	}
 
 	for (auto& TransShader : TranslucentPassShaders)
 	{
-		TransShader.second->BindImage(GSkyLightCube, 14);
+		TransShader.second->BindSkyCube();
 	}
 
 	{
@@ -56,7 +57,7 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Generate SH9");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Blur mips and generate SH9");
 	{
 		RenderBuilder.BindComputeState(SH9Shader->GetComputeState());
 		RenderBuilder.BindDescriptorSetCompute(SH9Shader->GetPipelineLayout(), SH9Shader->GetDescriptorSet(CurrentFrameRT));
@@ -69,7 +70,6 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::SkyPass]);
-	RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	if (!bIsSkyLightEnabledRT)
 	{
 		return;
@@ -77,6 +77,7 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Sky Pass");
 	{
+		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		RenderBuilder.BeginRenderPass(SkyboxPassObj, RenderResolution);
 
 		RenderBuilder.SetViewport(RenderResolution);
@@ -94,6 +95,7 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.DrawIndexed(SkyMeshRT->GetIndicesCount());
 
 		RenderBuilder.EndRenderPass();
+		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

@@ -5,11 +5,11 @@
 #if WITH_EDITOR
 #include "../Classes/EditorUtils.h"
 #include "../../resource.h"
-#include "../../Runtime/Engine/Asset.h"
-#include "../../Runtime/Classes/TextureCube.h"
-#include "../../Runtime/Renderer/RenderBuilder.h"
-#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
-#include "../../Runtime/Classes/AssetPath.h"
+#include "../../../Runtime/Engine/Asset.h"
+#include "../../../Runtime/Classes/TextureCube.h"
+#include "../../../Runtime/Renderer/RenderBuilder.h"
+#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "../../../Runtime/Classes/AssetPath.h"
 #include <filesystem>
 #include "StatusDialog.h"
 
@@ -242,7 +242,7 @@ void UHCubemapDialog::RefreshImGuiMipLevel()
 {
     UHSamplerInfo LinearClampedInfo(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     LinearClampedInfo.MaxAnisotropy = 1;
-    LinearClampedInfo.MipBias = static_cast<float>(CurrentMip);
+    LinearClampedInfo.MipBias = 0;
 
     const UHSampler* LinearSampler = Gfx->RequestTextureSampler(LinearClampedInfo);
     for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -251,7 +251,9 @@ void UHCubemapDialog::RefreshImGuiMipLevel()
         {
             CubeDSToRemove.push_back(CurrentCubeDS[Idx]);
         }
-        CurrentCubeDS[Idx] = ImGui_ImplVulkan_AddTexture(LinearSampler->GetSampler(), CurrentCube->GetCubemapImageView(Idx), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        // get the mip image view directly, can't use the same mip bias trick as in UHTextureDialog::RefreshImGuiMipLevel() for some reason
+        CurrentCubeDS[Idx] = ImGui_ImplVulkan_AddTexture(LinearSampler->GetSampler(), CurrentCube->GetCubemapImageView(Idx, CurrentMip), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 }
 

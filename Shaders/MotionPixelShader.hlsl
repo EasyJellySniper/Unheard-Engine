@@ -1,5 +1,6 @@
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
+#include "../Shaders/UHMaterialCommon.hlsli"
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -21,12 +22,13 @@ void MotionObjectPS(MotionVertexOutput Vin
 	, out float4 OutVelocity : SV_Target0
 	, out float4 OutNormal : SV_Target1
 	, out float4 OutBump : SV_Target2
-	, out float OutRoughness : SV_Target3)
+	, out float OutSmoothness : SV_Target3
+	, out float OutMipRate : SV_Target4)
 {
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 	UHBRANCH
-    if (GBlendMode == UH_ISMASKED && !UHPrepassDepthEnabled)
+    if (GBlendMode == UH_ISMASKED && !(GSystemRenderFeature & UH_DEPTH_PREPASS))
     {
         clip(MaterialInput.Opacity - GCutoff);
     }
@@ -55,7 +57,7 @@ void MotionObjectPS(MotionVertexOutput Vin
 		
         float3 BumpNormal = VertexNormal;
 		UHBRANCH
-        if (GIsTangentSpace)
+        if ((GMaterialFeature & UH_TANGENT_SPACE))
         {
             BumpNormal = MaterialInput.Normal;
 
@@ -64,9 +66,14 @@ void MotionObjectPS(MotionVertexOutput Vin
             BumpNormal *= (bIsFrontFace) ? 1 : -1;
         }
 		
-		// shared with opaque vertex normal, mark alpha as 1 here for differentiate
-        OutNormal = float4(EncodeNormal(VertexNormal), 1);
-        OutBump = float4(EncodeNormal(BumpNormal), 1);
-        OutRoughness = MaterialInput.Roughness;
+		// shared with opaque vertex normal, mark alpha as UH_TRANSLUCENT_MASK here for differentiate
+        OutNormal = float4(EncodeNormal(VertexNormal), UH_TRANSLUCENT_MASK);
+        OutBump = float4(EncodeNormal(BumpNormal), UH_TRANSLUCENT_MASK);
+        OutSmoothness = 1.0f - MaterialInput.Roughness;
+		
+        float2 Dx = ddx_fine(Vin.UV0);
+        float2 Dy = ddy_fine(Vin.UV0);
+        float DeltaMax = max(length(Dx), length(Dy));
+        OutMipRate = DeltaMax;
     }
 }

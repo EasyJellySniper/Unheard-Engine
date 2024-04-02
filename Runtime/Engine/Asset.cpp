@@ -236,6 +236,8 @@ void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
 					ReferencedTexture2Ds.push_back(UHTexture2Ds[Jdx]);
 				}
 
+				// offset the texture index with system preserved texture slots
+				TextureIdx += GSystemPreservedTextureSlots;
 				RegisteredIndexes.push_back(TextureIdx);
 				UHTexture2Ds[Jdx]->AddReferenceObject(InMat);
 				break;

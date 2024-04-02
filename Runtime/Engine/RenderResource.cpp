@@ -2,9 +2,9 @@
 
 UHRenderResource::UHRenderResource()
 	: GfxCache(nullptr)
-	, LogicalDevice(VK_NULL_HANDLE)
+	, LogicalDevice(nullptr)
 	, DeviceMemoryProperties(VkPhysicalDeviceMemoryProperties())
-	, VulkanInstance(VK_NULL_HANDLE)
+	, VulkanInstance(nullptr)
 {
 
 }

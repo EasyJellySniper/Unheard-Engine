@@ -48,7 +48,7 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
 		UHUNROLL
 		for (int J = -PCSS_INNERLOOP; J <= PCSS_INNERLOOP; J++)
 		{
-            float2 ShadowUV = UV + float2(I, J) * Penumbra * RTShadowResolution.zw;
+            float2 ShadowUV = UV + float2(I, J) * Penumbra * GShadowResolution.zw;
 			
             float CmpDepth = DepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r;
             if ((CmpDepth - BaseDepth) > DepthDiffThres)
@@ -69,7 +69,7 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
 {
-    if (DTid.x >= RTShadowResolution.x || DTid.y >= RTShadowResolution.y)
+    if (DTid.x >= GShadowResolution.x || DTid.y >= GShadowResolution.y)
 	{
 		return;
 	}
@@ -84,7 +84,7 @@ void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
 		return;
 	}
 
-	float2 UV = float2(PixelCoord + 0.5f) * RTShadowResolution.zw;
+	float2 UV = float2(PixelCoord + 0.5f) * GShadowResolution.zw;
 	float MipRate = MipRateTex.SampleLevel(LinearClampped, UV, 0).r;
     SoftShadow(OutRTShadow, PixelCoord, UV, MipRate);
 }

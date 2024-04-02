@@ -10,10 +10,10 @@ float3 ComputeWorldPositionFromDeviceZ(float2 ScreenPos, float Depth, bool bNonJ
 {
 	// build NDC space position
 	float4 NDCPos = float4(ScreenPos, Depth, 1);
-	NDCPos.xy *= UHResolution.zw;
+	NDCPos.xy *= GResolution.zw;
 	NDCPos.xy = NDCPos.xy * 2.0f - 1.0f;
 
-	float4 WorldPos = mul(NDCPos, (bNonJittered) ? UHViewProjInv_NonJittered : UHViewProjInv);
+	float4 WorldPos = mul(NDCPos, (bNonJittered) ? GViewProjInv_NonJittered : GViewProjInv);
 	WorldPos.xyz /= WorldPos.w;
 
 	return WorldPos.xyz;
@@ -26,7 +26,7 @@ float3 ComputeWorldPositionFromDeviceZ_UV(float2 UV, float Depth, bool bNonJitte
 	float4 NDCPos = float4(UV, Depth, 1);
 	NDCPos.xy = NDCPos.xy * 2.0f - 1.0f;
 
-	float4 WorldPos = mul(NDCPos, (bNonJittered) ? UHViewProjInv_NonJittered : UHViewProjInv);
+	float4 WorldPos = mul(NDCPos, (bNonJittered) ? GViewProjInv_NonJittered : GViewProjInv);
 	WorldPos.xyz /= WorldPos.w;
 
 	return WorldPos.xyz;
@@ -36,10 +36,10 @@ float3 ComputeViewPositionFromDeviceZ(float2 ScreenPos, float Depth, bool bNonJi
 {
 	// build NDC space position
     float4 NDCPos = float4(ScreenPos, Depth, 1);
-    NDCPos.xy *= UHResolution.zw;
+    NDCPos.xy *= GResolution.zw;
     NDCPos.xy = NDCPos.xy * 2.0f - 1.0f;
 
-    float4 ViewPos = mul((bNonJittered) ? UHProjInv_NonJittered : UHProjInv, NDCPos);
+    float4 ViewPos = mul((bNonJittered) ? GProjInv_NonJittered : GProjInv, NDCPos);
     ViewPos.xyz /= ViewPos.w;
 
     return ViewPos.xyz * float3(1, 1, -1);
@@ -54,19 +54,19 @@ float3 ComputeSpecularColor(float3 Specular, float3 BaseColor, float Metallic)
 float3 LocalToWorldNormal(float3 Normal)
 {
 	// mul(IT_M, norm) => mul(norm, I_M) => {dot(norm, I_M.col0), dot(norm, I_M.col1), dot(norm, I_M.col2)}
-	return normalize(mul(Normal, (float3x3)UHWorldIT));
+	return normalize(mul(Normal, (float3x3)GWorldIT));
 }
 
 float3 LocalToWorldDir(float3 Dir)
 {
-	return normalize(mul(Dir, (float3x3)UHWorld));
+	return normalize(mul(Dir, (float3x3)GWorld));
 }
 
 float3 WorldToViewPos(float3 Pos)
 {
 	// View matrix isn't transposed so the order is different than other matrix
 	// inverse z at last
-    return mul(UHView, float4(Pos, 1.0f)).xyz * float3(1, 1, -1);
+    return mul(GView, float4(Pos, 1.0f)).xyz * float3(1, 1, -1);
 }
 
 float3x3 CreateTBN(float3 InWorldNormal, float4 InTangent)
@@ -82,11 +82,11 @@ float4x4 GetDistanceScaledJitterMatrix(float Dist)
 {
 	// calculate jitter offset based on the distance
 	// so the distant objects have lower jitter, use a square curve
-	float DistFactor = saturate(Dist * JitterScaleFactor);
+	float DistFactor = saturate(Dist * GJitterScaleFactor);
 	DistFactor *= DistFactor;
 
-	float OffsetX = lerp(JitterOffsetX, JitterOffsetX * JitterScaleMin, DistFactor);
-	float OffsetY = lerp(JitterOffsetY, JitterOffsetY * JitterScaleMin, DistFactor);
+	float OffsetX = lerp(GJitterOffsetX, GJitterOffsetX * GJitterScaleMin, DistFactor);
+	float OffsetY = lerp(GJitterOffsetY, GJitterOffsetY * GJitterScaleMin, DistFactor);
 
 	float4x4 JitterMatrix = 
 	{
@@ -212,6 +212,17 @@ float3 ConvertUVToSpherePos(float2 UV)
 
 	// flip the result to matach hardward implementation
 	return float3(Pos.y, Pos.z, -Pos.x);
+}
+
+bool IsUVInsideScreen(float2 UV)
+{
+    return UV.x >= 0.0f && UV.x <= 1.0f && UV.y >= 0.0f && UV.y <= 1.0f;
+}
+
+// https://en.wikipedia.org/wiki/Relative_luminance
+float RGBToLuminance(float3 Color)
+{
+    return (0.2126f * Color.r + 0.7152f * Color.g + 0.0722f * Color.b);
 }
 
 #endif

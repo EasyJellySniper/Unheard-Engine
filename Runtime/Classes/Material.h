@@ -32,7 +32,7 @@ struct UHMaterialProperty
 		Specular = XMFLOAT3(0.5f, 0.5f, 0.5f);
 		BumpScale = 1.0f;
 		Cutoff = 0.33f;
-		FresnelFactor = 1.0f;
+		FresnelFactor = 0.0f;
 		ReflectionFactor = 1.0f;
 	}
 
@@ -67,9 +67,10 @@ struct UHMaterialProperty
 };
 
 // material data, max available number of scalars are 128 for now, the shader needs to match this number
+static const int32_t GMaxRTMaterialDataSlot = 128;
 struct UHRTMaterialData
 {
-	uint32_t Data[128];
+	uint32_t Data[GMaxRTMaterialDataSlot];
 };
 
 // UH Engine's material class, each instance is unique
@@ -103,7 +104,7 @@ public:
 	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
 	void AllocateMaterialBuffer();
 	void AllocateRTMaterialBuffer();
-	void UploadMaterialData(int32_t CurrFrame, const UHSystemMaterialData InMaterialData);
+	void UploadMaterialData(int32_t CurrFrame);
 
 	std::string GetName() const;
 	std::string GetSourcePath() const;

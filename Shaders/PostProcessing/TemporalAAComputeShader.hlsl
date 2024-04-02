@@ -1,4 +1,5 @@
 #include "../UHInputs.hlsli"
+#include "../UHCommon.hlsli"
 
 // compute version TAA
 RWTexture2D<float4> SceneResult : register(u1);
@@ -18,12 +19,12 @@ groupshared float3 GColorCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
-	if (DTid.x >= UHResolution.x || DTid.y >= UHResolution.y)
+	if (DTid.x >= GResolution.x || DTid.y >= GResolution.y)
 	{
 		return;
 	}
 
-	float2 UV = float2(DTid.xy + 0.5f) * UHResolution.zw;
+	float2 UV = float2(DTid.xy + 0.5f) * GResolution.zw;
 
 	// sampling history is needed for ghosting
 	float2 Motion = MotionTexture.SampleLevel(PointSampler, UV, 0).rg;
@@ -35,7 +36,7 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	float Weight = lerp(GHistoryWeightMin, GHistoryWeightMax, WeightBlend * WeightBlend);
 
 	// if history UV is outside of the screen use the sample from current frame
-	Weight = lerp(Weight, 0, HistoryUV.x != saturate(HistoryUV.x) || HistoryUV.y != saturate(HistoryUV.y));
+    Weight = lerp(0, Weight, IsUVInsideScreen(HistoryUV));
 
 	float3 Result = SceneTexture.SampleLevel(PointSampler, UV, 0).rgb;
 	float3 HistoryResult = HistoryTexture.SampleLevel(LinearSampler, HistoryUV, 0).rgb;

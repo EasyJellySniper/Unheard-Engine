@@ -19,29 +19,29 @@ UHRenderTexture* GSceneMip;
 UHRenderTexture* GSceneDepth;
 UHRenderTexture* GSceneTranslucentDepth;
 UHRenderTexture* GSceneVertexNormal;
+
 UHRenderTexture* GMotionVectorRT;
 UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;
+
 UHRenderTexture* GRTShadowResult;
-UHRenderTexture* GRTSharedTextureRG16F;
+UHRenderTexture* GRTSharedTextureRG;
+UHRenderTexture* GRTReflectionResult;
+
 UHRenderTexture* GQuarterBlurredScene;
 UHRenderTexture* GOpaqueSceneResult;
-UHRenderTexture* GGaussianFilterTempRT0;
-UHRenderTexture* GGaussianFilterTempRT1;
+
 UHRenderTexture* GTranslucentBump;
-UHRenderTexture* GTranslucentRoughness;
+UHRenderTexture* GTranslucentSmoothness;
 
 UHTextureCube* GSkyLightCube;
 
 UHSampler* GPointClampedSampler;
 UHSampler* GLinearClampedSampler;
-UHSampler* GAnisoClampedSampler;
 UHSampler* GSkyCubeSampler;
 UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 
-int32_t GRefractionClearIndex = UHINDEXNONE;
-int32_t GRefractionBlurredIndex = UHINDEXNONE;
-
+UHTexture2D* GBlackTexture;
 UHTexture2D* GWhiteTexture;
 UHTextureCube* GBlackCube;
 

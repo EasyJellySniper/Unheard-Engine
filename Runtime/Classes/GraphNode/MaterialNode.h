@@ -8,8 +8,10 @@ struct UHRTMaterialData;
 enum UHMaterialInputType
 {
 	MaterialInputStandard,
-	MaterialInputSimple,
+	MaterialInputOpacityOnly,
 	MaterialInputOpacityNormalRoughOnly,
+	MaterialInputNormalOnly,
+	MaterialInputEmissiveOnly,
 	MaterialInputMax,
 };
 
@@ -37,6 +39,11 @@ public:
 	virtual void InputData(std::ifstream& FileIn) override {}
 	virtual void OutputData(std::ofstream& FileOut) override {}
 
+	void InsertOpacityCode(std::string& Code) const;
+	void InsertNormalCode(std::string& Code) const;
+	void InsertRoughnessCode(std::string& Code) const;
+	void InsertEmissiveCode(std::string& Code) const;
+	 
 	void SetMaterialCompileData(UHMaterialCompileData InData);
 	void CollectTextureIndex(std::string& Code, size_t& OutSize);
 	void CollectTextureNames(std::vector<std::string>& Names);

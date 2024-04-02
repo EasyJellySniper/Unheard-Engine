@@ -3,7 +3,7 @@
 
 #if WITH_EDITOR
 #include "GraphNodeGUI.h"
-#include "../../Runtime/Classes/GraphNode/ParameterNode.h"
+#include "../../../Runtime/Classes/GraphNode/ParameterNode.h"
 
 class UHDeferredShadingRenderer;
 class UHMaterial;

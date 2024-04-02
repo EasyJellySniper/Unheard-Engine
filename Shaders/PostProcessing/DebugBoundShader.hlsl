@@ -147,7 +147,7 @@ DebugBoundVertexOutput DebugBoundVS(uint Vid : SV_VertexID)
     
     float3 Ext = (BoundType == 0) ? Extent : Radius * 0.5f;
     float3 WorldPos = (BoundType == 2) ? GetBoundingCone(Vid) : GetBounding(Vid, BoundType) * Ext + Position;
-    Vout.Position = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
+    Vout.Position = mul(float4(WorldPos, 1.0f), GViewProj_NonJittered);
     
     return Vout;
 }

@@ -21,7 +21,7 @@ UHCameraComponent::UHCameraComponent()
 	, Height(1)
 	, CameraFrustum(BoundingFrustum())
 	, CullingDistance(1000.0f)
-	, JitterScaleMin(0.01f)
+	, GJitterScaleMin(0.01f)
 	, JitterScaleMax(0.5f)
 	, JitterEndDistance(500.0f)
 #if WITH_EDITOR
@@ -99,7 +99,7 @@ void UHCameraComponent::OnSave(std::ofstream& OutStream)
 	OutStream.write(reinterpret_cast<const char*>(&Dummy), sizeof(Dummy));
 #endif
 	OutStream.write(reinterpret_cast<const char*>(&CullingDistance), sizeof(CullingDistance));
-	OutStream.write(reinterpret_cast<const char*>(&JitterScaleMin), sizeof(JitterScaleMin));
+	OutStream.write(reinterpret_cast<const char*>(&GJitterScaleMin), sizeof(GJitterScaleMin));
 	OutStream.write(reinterpret_cast<const char*>(&JitterScaleMax), sizeof(JitterScaleMax));
 	OutStream.write(reinterpret_cast<const char*>(&JitterEndDistance), sizeof(JitterEndDistance));
 }
@@ -116,7 +116,7 @@ void UHCameraComponent::OnLoad(std::ifstream& InStream)
 	InStream.read(reinterpret_cast<char*>(&Dummy), sizeof(Dummy));
 #endif
 	InStream.read(reinterpret_cast<char*>(&CullingDistance), sizeof(CullingDistance));
-	InStream.read(reinterpret_cast<char*>(&JitterScaleMin), sizeof(JitterScaleMin));
+	InStream.read(reinterpret_cast<char*>(&GJitterScaleMin), sizeof(GJitterScaleMin));
 	InStream.read(reinterpret_cast<char*>(&JitterScaleMax), sizeof(JitterScaleMax));
 	InStream.read(reinterpret_cast<char*>(&JitterEndDistance), sizeof(JitterEndDistance));
 }
@@ -211,7 +211,7 @@ XMFLOAT4 UHCameraComponent::GetJitterOffset() const
 	XMFLOAT4 Offset;
 	Offset.x = JitterOffset.x;
 	Offset.y = JitterOffset.y;
-	Offset.z = JitterScaleMin;
+	Offset.z = GJitterScaleMin;
 	Offset.w = 1.0f / JitterEndDistance;
 
 	return Offset;
@@ -288,7 +288,7 @@ void UHCameraComponent::OnGenerateDetailView()
 		SetCullingDistance(CullingDistance);
 	}
 
-	ImGui::InputFloat("JitterScaleMin", &JitterScaleMin);
+	ImGui::InputFloat("GJitterScaleMin", &GJitterScaleMin);
 	ImGui::InputFloat("JitterScaleMax", &JitterScaleMax);
 	ImGui::InputFloat("JitterEndDistance", &JitterEndDistance);
 }
@@ -318,8 +318,9 @@ void UHCameraComponent::BuildProjectionMatrix()
 	if (bUseJitterOffset)
 	{
 		const XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
-		JitterOffset.x = Offset.x / Width * JitterScaleMax;
-		JitterOffset.y = Offset.y / Height * JitterScaleMax;
+		// a little hack - don't jitter the camera when it's not moving
+		JitterOffset.x = bIsWorldDirty ? Offset.x / Width * JitterScaleMax : 0.0f;
+		JitterOffset.y = bIsWorldDirty ? Offset.y / Height * JitterScaleMax : 0.0f;
 
 		const XMMATRIX JitterMatrix = XMMatrixTranslation(JitterOffset.x, JitterOffset.y, 0);
 		XMStoreFloat4x4(&ProjectionMatrix, P * JitterMatrix);

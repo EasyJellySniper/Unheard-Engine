@@ -79,18 +79,19 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 		// translucent motion, however, needs to render all regardless if it's static or dynamic
 		{
-			// set vertex normal as color output, translucent vertex normal will be output to it too
-			RenderBuilder.ResourceBarrier(GSceneVertexNormal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+			// set vertex normal/mip as color output, translucent vertex normal/mip will be output to it too
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneVertexNormal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMip, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 
 			// clear translucent bump & roughness buffer and transition to color output
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentRoughness, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 			RenderBuilder.FlushResourceBarrier();
 			RenderBuilder.ClearRenderTexture(GTranslucentBump);
-			RenderBuilder.ClearRenderTexture(GTranslucentRoughness);
+			RenderBuilder.ClearRenderTexture(GTranslucentSmoothness);
 
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentRoughness, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 			RenderBuilder.FlushResourceBarrier();
 
 			RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
@@ -128,6 +129,9 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			// done rendering, transition depth to shader read
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneVertexNormal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMip, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 		}
 
 		// depth/motion vector will be used in shader later, transition them

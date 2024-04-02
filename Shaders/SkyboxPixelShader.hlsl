@@ -14,7 +14,7 @@ SamplerState SkySampler : register(s2);
 float4 SkyboxPS(SkyVertexOutput Vin) : SV_Target
 {
 	// sample sky and multiply sky color
-	float3 SkyColor = UHAmbientSky * SkyCube.SampleLevel(SkySampler, Vin.LocalPos, 0).rgb;
+	float3 SkyColor = GAmbientSky * SkyCube.SampleLevel(SkySampler, Vin.LocalPos, 0).rgb;
     float Dither = lerp(-0.001f, 0.001f, CoordinateToHash(Vin.Position.xy));
 	
     return float4(SkyColor + Dither, 1.0f);

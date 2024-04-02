@@ -1,7 +1,7 @@
 #include "PreviewScene.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Renderer/RenderBuilder.h"
+#include "../../../Runtime/Renderer/RenderBuilder.h"
 
 UHPreviewScene::UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType)
 	: Gfx(InGraphic)

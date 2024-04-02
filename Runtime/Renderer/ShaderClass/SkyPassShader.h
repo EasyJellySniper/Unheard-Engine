@@ -9,4 +9,5 @@ public:
 	virtual void OnCompile() override;
 
 	void BindParameters();
+	void BindSkyCube();
 };

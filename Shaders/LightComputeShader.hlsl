@@ -20,14 +20,14 @@ SamplerState LinearClampped : register(s11);
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
-	if (DTid.x >= UHResolution.x || DTid.y >= UHResolution.y)
+	if (DTid.x >= GResolution.x || DTid.y >= GResolution.y)
 	{
 		return;
 	}
 
-    float2 UV = (DTid.xy + 0.5f) * UHResolution.zw;
+    float2 UV = (DTid.xy + 0.5f) * GResolution.zw;
 	float Depth = SceneBuffers[3].SampleLevel(PointClampped, UV, 0).r;
-    float3 CurrSceneColor = SceneResult[DTid.xy].rgb;
+    float4 CurrSceneData = SceneResult[DTid.xy];
 
 	// don't apply lighting to empty pixels or there is no light
 	UHBRANCH
@@ -45,7 +45,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	// unpack normal from [0,1] to [-1,1]
     float3 Normal = DecodeNormal(SceneBuffers[1].SampleLevel(PointClampped, UV, 0).xyz);
 
-	// get specular color, a is roughness
+	// get specular color, a is smoothness
 	float4 Specular = SceneBuffers[2].SampleLevel(PointClampped, UV, 0);
     
 	float3 Result = 0;
@@ -60,7 +60,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
 	
-	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
+	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{
         UHDirectionalLight DirLight = UHDirLights[Ldx];
         UHBRANCH
@@ -78,7 +78,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	// point lights accumulation, fetch the tile index here, note that the system culls at half resolution
     uint TileX = DTid.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileY = DTid.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileIndex = TileX + TileY * UHLightTileCountX;
+    uint TileIndex = TileX + TileY * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightList.Load(TileOffset);
     TileOffset += 4;
@@ -91,6 +91,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     for (Ldx = 0; Ldx < PointLightCount; Ldx++)
     {
         uint PointLightIdx = PointLightList.Load(TileOffset);
+        TileOffset += 4;
        
         UHPointLight PointLight = UHPointLights[PointLightIdx];
         UHBRANCH
@@ -109,7 +110,6 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         LightInfo.ShadowMask = LightAtten * ShadowMask;
 		
         Result += LightBRDF(LightInfo);
-        TileOffset += 4;
     }
     
     // ------------------------------------------------------------------------------------------ spot lights accumulation
@@ -153,5 +153,5 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	// indirect light accumulation
     Result += ShadeSH9(Diffuse.rgb, float4(Normal, 1.0f), Diffuse.a);
 
-    SceneResult[DTid.xy] = float4(CurrSceneColor + Result, 0);
+    SceneResult[DTid.xy] = float4(CurrSceneData.rgb + Result, CurrSceneData.a);
 }

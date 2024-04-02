@@ -4,16 +4,16 @@
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
 #include "../Shaders/UHLightCommon.hlsli"
+#include "../Shaders/UHMaterialCommon.hlsli"
 
-#define SH9_BIND t12
+#define SH9_BIND t13
 #include "../Shaders/UHSphericalHamonricCommon.hlsli"
 
 Texture2D ScreenShadowTexture : register(t9);
-ByteAddressBuffer PointLightListTrans : register(t10);
-ByteAddressBuffer SpotLightListTrans : register(t11);
-SamplerState LinearClamppedSampler : register(s13);
+Texture2D ScreenReflectionTexture : register(t10);
+ByteAddressBuffer PointLightListTrans : register(t11);
+ByteAddressBuffer SpotLightListTrans : register(t12);
 TextureCube EnvCube : register(t14);
-SamplerState EnvSampler : register(s15);
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -37,6 +37,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
+    SamplerState LinearClamppedSampler = UHSamplerTable[GLinearClampSamplerIndex];
 
 	float3 BaseColor = MaterialInput.Diffuse;
 	float Occlusion = MaterialInput.Occlusion;
@@ -47,27 +48,31 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     float Smoothness = 1.0f - Roughness;
     float SmoothnessSquare = Smoothness * Smoothness;
     
-    float2 ScreenUV = Vin.Position.xy * UHResolution.zw;
+    float2 ScreenUV = Vin.Position.xy * GResolution.zw;
     float3 WorldPos = Vin.WorldPos;
     
     // Calc eye vector when necessary
     float3 EyeVector = 0;
     float EyeLength = 0;
+    bool bEnvCubeEnabled = (GSystemRenderFeature & UH_ENV_CUBE);
+    bool bRefraction = (GMaterialFeature & UH_REFRACTION);
 
     UHBRANCH
-    if (UHEnvironmentCubeEnabled || GIsRefraction)
+    if (bEnvCubeEnabled || bRefraction)
     {
-        EyeVector = WorldPos - UHCameraPos;
+        EyeVector = WorldPos - GCameraPos;
         EyeLength = length(EyeVector);
         EyeVector = normalize(EyeVector);
     }
 
     float3 BumpNormal = 0;
+    float2 RefractScale = 1;
     UHBRANCH
-    if (GIsTangentSpace)
+    if ((GMaterialFeature & UH_TANGENT_SPACE))
     {
         BumpNormal = MaterialInput.Normal;
-
+        RefractScale *= BumpNormal.xy;
+        
 	    // tangent to world space
         BumpNormal = mul(BumpNormal, Vin.WorldTBN);
     }
@@ -83,39 +88,17 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	// specular color and roughness
 	float3 Specular = MaterialInput.Specular;
 	Specular = ComputeSpecularColor(Specular, MaterialInput.Diffuse, Metallic);
-
-	float3 IndirectSpecular = 0;
-	UHBRANCH
-    if (UHEnvironmentCubeEnabled)
-    {
-	    // if per-object env cube is used, calculate it here, and adds the result to emissive
-        float3 R = reflect(EyeVector, BumpNormal);
-        float NdotV = abs(dot(BumpNormal, -EyeVector));
-        float SpecFade = SmoothnessSquare;
-        float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
-
-        IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * UHAmbientSky * SpecFade * SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
-
-	    // since indirect spec will be added directly and can't be scaled with NdotL, expose material parameter to scale down it
-        IndirectSpecular *= MaterialInput.ReflectionFactor;
-    }
     
     // Refraction
 	UHBRANCH
-    if (GIsRefraction)
+    if (bRefraction)
     {
         // Calc refract vector
         float3 RefractEyeVec = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
         float2 RefractOffset = (RefractEyeVec.xy - EyeVector.xy) / EyeLength;
-        float2 RefractUV = ScreenUV + RefractOffset;
+        float2 RefractUV = ScreenUV + RefractScale * RefractOffset;
     
-        UHBRANCH
-        if (RefractUV.x != saturate(RefractUV.x) || RefractUV.y != saturate(RefractUV.y))
-        {
-            // if it's outside the screen range, do not refract. I don't want to see clamping.
-            RefractUV = ScreenUV;
-        }
-    
+        // allows clampping refraction
         float3 SceneColor = UHTextureTable[GRefractionClearIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
         float3 BlurredSceneColor = UHTextureTable[GRefractionBlurIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
     
@@ -123,19 +106,38 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         // Roughness will be used as a factor for lerp clear/blurred scene
         float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, SmoothnessSquare * SmoothnessSquare);
         float3 RefractionResult = RefractionColor * BaseColor;
-        RefractionResult += MaterialInput.Emissive.rgb + IndirectSpecular;
+        RefractionResult += MaterialInput.Emissive.rgb;
     
-        // Early return and do not proceed to lighting, refraction should rely on the lit opaque scene.
+        // Early return and do not proceed to lighting, refraction should rely on the lit from scene color to prevent over bright.
         return float4(RefractionResult, Opacity);
     }
+    
+    // ------------------------------------------------------------------------------------------ reflection
+    float3 IndirectSpecular = 0;
+    float SpecFade = SmoothnessSquare;
+    float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
+    
+    // calc fresnel
+    float3 R = reflect(EyeVector, BumpNormal);
+    float NdotV = abs(dot(BumpNormal, -EyeVector));
+    float3 Fresnel = SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
+    
+	UHBRANCH
+    if (bEnvCubeEnabled)
+    {
+        IndirectSpecular = EnvCube.SampleLevel(UHSamplerTable[GSkyCubeSamplerIndex], R, SpecMip).rgb * GAmbientSky;
+    }
+    
+    float4 DynamicReflection = ScreenReflectionTexture.SampleLevel(UHSamplerTable[GLinearClampSamplerIndex], ScreenUV, SpecMip);
+    IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);
+    IndirectSpecular *= SpecFade * Fresnel * Occlusion;
 
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
 	// sample shadows
     float ShadowMask = ScreenShadowTexture.Sample(LinearClamppedSampler, ScreenUV).r;
-
-	// light calculation, be sure to normalize vector before using it
 	float3 Result = 0;
-	
+
+	// light calculation, be sure to normalize normal vector before using it	
     UHLightInfo LightInfo;
     LightInfo.Diffuse = BaseColor;
     LightInfo.Specular = float4(Specular, Roughness);
@@ -143,7 +145,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
 	
-	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
+	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{
         UHBRANCH
         if (!UHDirLights[Ldx].bIsEnabled)
@@ -160,7 +162,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	// point lights accumulation, fetch the tile index here, note that the system culls at half resolution
     uint TileX = uint(Vin.Position.x + 0.5f) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileY = uint(Vin.Position.y + 0.5f) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileIndex = TileX + TileY * UHLightTileCountX;
+    uint TileIndex = TileX + TileY * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightListTrans.Load(TileOffset);
     TileOffset += 4;
@@ -172,6 +174,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     for (Ldx = 0; Ldx < PointLightCount; Ldx++)
     {
         uint PointLightIdx = PointLightListTrans.Load(TileOffset);
+        TileOffset += 4;
        
         UHPointLight PointLight = UHPointLights[PointLightIdx];
         UHBRANCH
@@ -190,7 +193,6 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         LightInfo.ShadowMask = LightAtten * ShadowMask;
 		
         Result += LightBRDF(LightInfo);
-        TileOffset += 4;
     }
 	
 	// ------------------------------------------------------------------------------------------ spot lights accumulation

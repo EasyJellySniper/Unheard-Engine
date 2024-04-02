@@ -1,8 +1,8 @@
 #pragma once
-#include "../UnheardEngine.h"
-#include "../Runtime/Engine/GameTimer.h"
+#include "../../UnheardEngine.h"
+#include "../../Runtime/Engine/GameTimer.h"
 #include <unordered_map>
-#include "../Runtime/Renderer/RenderingTypes.h"
+#include "../../Runtime/Renderer/RenderingTypes.h"
 
 struct UHStatistics
 {

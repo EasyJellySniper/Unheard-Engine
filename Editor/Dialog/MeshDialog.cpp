@@ -1,11 +1,11 @@
 #include "MeshDialog.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
-#include "../../Runtime/Engine/Asset.h"
-#include "../../Runtime/Engine/Graphic.h"
+#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "../../../Runtime/Engine/Asset.h"
+#include "../../../Runtime/Engine/Graphic.h"
 #include "../Classes/EditorUtils.h"
-#include "../../Runtime/Classes/AssetPath.h"
+#include "../../../Runtime/Classes/AssetPath.h"
 #include "../../Editor/Classes/FbxImporter.h"
 
 UHMeshDialog::UHMeshDialog(UHAssetManager* InAsset, UHGraphic* InGfx, UHDeferredShadingRenderer* InRenderer, UHRawInput* InInput)

@@ -5,7 +5,7 @@ struct UHParallelSubmitter
 {
 public:
 	UHParallelSubmitter()
-		: LogicalDevice(VK_NULL_HANDLE)
+		: LogicalDevice(nullptr)
 		, NumWT(0)
 	{
 

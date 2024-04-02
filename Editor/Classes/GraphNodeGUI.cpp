@@ -1,7 +1,7 @@
 #include "GraphNodeGUI.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Classes/Utility.h"
+#include "../../../../Runtime/Classes/Utility.h"
 #include "EditorUtils.h"
 #include <algorithm>
 #include <CommCtrl.h>

@@ -51,7 +51,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
 	float Atten = 0.0f;
     bool bAlreadyHasShadow = false;
 
-	for (uint Ldx = 0; Ldx < UHNumDirLights; Ldx++)
+	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{
 		// shoot ray from world pos to light dir
 		UHDirectionalLight DirLight = UHDirLights[Ldx];
@@ -66,7 +66,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
 		ShadowRay.Direction = -DirLight.Dir;
 
 		ShadowRay.TMin = Gap;
-        ShadowRay.TMax = UHDirectionalShadowRayTMax;
+        ShadowRay.TMax = GDirectionalShadowRayTMax;
 
 		UHDefaultPayload Payload = (UHDefaultPayload)0;
         if (!bAlreadyHasShadow)
@@ -98,7 +98,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
     uint2 TileCoordinate = PixelCoord.xy;
     uint TileX = TileCoordinate.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
     uint TileY = TileCoordinate.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileIndex = TileX + TileY * UHLightTileCountX;
+    uint TileIndex = TileX + TileY * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint LightCount = (bIsTranslucent) ? PointLightListTrans.Load(TileOffset) : PointLightList.Load(TileOffset);
     TileOffset += 4;
@@ -230,7 +230,7 @@ void RTShadowRayGen()
 {
     // the tracing could be half-sized, but now the buffer is always the same resolution as rendering
     // so need to calculate proper pixel coordinate here
-	uint2 PixelCoord = DispatchRaysIndex().xy * UHResolution.xy * RTShadowResolution.zw;
+	uint2 PixelCoord = DispatchRaysIndex().xy * GResolution.xy * GShadowResolution.zw;
     OutShadowResult[PixelCoord] = float2(0.0f, 1.0f);
 	
 	// early return if no lights
@@ -241,7 +241,7 @@ void RTShadowRayGen()
 	}
 
     // to UV
-	float2 ScreenUV = (PixelCoord + 0.5f) * UHResolution.zw;
+	float2 ScreenUV = (PixelCoord + 0.5f) * GResolution.zw;
 
 	// calculate mip level before ray tracing kicks off
     float MipRate = MixedMipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
@@ -251,14 +251,14 @@ void RTShadowRayGen()
 	TraceShadow(PixelCoord, ScreenUV, MipRate, MipLevel);
 
     // if it's half-sized tracing, fill the empty pixels on right and bottom
-    if (UHResolution.x != RTShadowResolution.x)
+    if (GResolution.x != GShadowResolution.x)
     {
         int Dx[3] = { 1,0,1 };
         int Dy[3] = { 0,1,1 };
         for (int I = 0; I < 3; I++)
         {
             int2 Pos = PixelCoord + int2(Dx[I], Dy[I]);
-            Pos = min(Pos, UHResolution.xy - 1);
+            Pos = min(Pos, GResolution.xy - 1);
             OutShadowResult[Pos] = OutShadowResult[PixelCoord];
         }
     }

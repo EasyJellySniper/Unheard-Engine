@@ -55,6 +55,19 @@ public:
 	float ImageMemoryBudgetMB;
 };
 
+enum UHRTShadowQuality
+{
+	RTShadow_Full,
+	RTShadow_Half
+};
+
+enum UHRTReflectionQuality
+{
+	RTReflection_FullNative,
+	RTReflection_FullTemporal,
+	RTReflection_Half
+};
+
 // rendering settings
 struct UHRenderingSettings
 {
@@ -70,8 +83,11 @@ public:
 		, bEnableDepthPrePass(false)
 		, ParallelThreads(0)
 		, RTCullingRadius(100.0f)
-		, RTShadowQuality(0)
-		, RTShadowTMax(0.0f)
+		, RTShadowQuality(RTShadow_Half)
+		, RTShadowTMax(100.0f)
+		, RTReflectionQuality(RTReflection_FullTemporal)
+		, RTReflectionTMax(100)
+		, RTReflectionSmoothCutoff(0.5f)
 		, bEnableAsyncCompute(false)
 		, bEnableHDR(false)
 	{
@@ -87,9 +103,19 @@ public:
 	bool bEnableGPUTiming;
 	bool bEnableDepthPrePass;
 	int32_t ParallelThreads;
+
+	// RT common
 	float RTCullingRadius;
+
+	// RT shadows
 	int32_t RTShadowQuality;
 	float RTShadowTMax;
+
+	// RT reflections
+	int32_t RTReflectionQuality;
+	float RTReflectionTMax;
+	float RTReflectionSmoothCutoff;
+
 	bool bEnableAsyncCompute;
 	bool bEnableHDR;
 };

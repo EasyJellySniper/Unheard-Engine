@@ -14,21 +14,21 @@ struct UHGaussianFilterConstants
 	int32_t GBlurRadius;
 	// Support up to 11 (Radius 5) weights
 	float Weights[11];
+
+	// following 3 won't be used by shader
 	int32_t IterationCount;
-	int32_t DownsizeFactor = 2;
+	int32_t InputMip = 0;
+	UHTextureFormat TempRTFormat = UH_FORMAT_RGBA16F;
 };
 
 class UHGaussianFilterShader : public UHShaderClass
 {
 public:
 	UHGaussianFilterShader(UHGraphic* InGfx, std::string Name, const UHGaussianFilterType InType);
-	virtual void Release(bool bDescriptorOnly = false) override;
 	virtual void OnCompile() override;
 
-	void BindParameters();
-	void SetGaussianConstants(UHGaussianFilterConstants InConstants, const int32_t FrameIdx);
+	void BindParameters(UHRenderBuilder& RenderBuilder, const int32_t CurrentFrame, UHTexture* Input, UHTexture* Output);
 
 private:
 	UHGaussianFilterType GaussianFilterType;
-	UniquePtr<UHRenderBuffer<UHGaussianFilterConstants>> GaussianConstantsGPU[GMaxFrameInFlight];
 };

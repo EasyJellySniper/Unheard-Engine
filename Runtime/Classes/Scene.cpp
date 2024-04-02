@@ -153,6 +153,23 @@ void UHScene::Update()
 			Light->Update();
 		}
 	}
+
+	if (!MainCamera)
+	{
+		return;
+	}
+
+	// sort point lights and spot lights based on distance to camera
+	const XMFLOAT3 CameraPos = MainCamera->GetPosition();
+	std::sort(PointLights.begin(), PointLights.end(), [&CameraPos](UHPointLightComponent* A, UHPointLightComponent* B)
+		{
+			return MathHelpers::VectorDistanceSqr(A->GetPosition(), CameraPos) < MathHelpers::VectorDistanceSqr(B->GetPosition(), CameraPos);
+		});
+
+	std::sort(SpotLights.begin(), SpotLights.end(), [&CameraPos](UHSpotLightComponent* A, UHSpotLightComponent* B)
+		{
+			return MathHelpers::VectorDistanceSqr(A->GetPosition(), CameraPos) < MathHelpers::VectorDistanceSqr(B->GetPosition(), CameraPos);
+		});
 }
 
 UHComponent* UHScene::RequestComponent(uint32_t InComponentClassId)

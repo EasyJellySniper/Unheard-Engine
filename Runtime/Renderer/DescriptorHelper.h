@@ -43,7 +43,7 @@ public:
 		NewInfo.range = (bFullRange) ? InBuffer->GetBufferSize() : InBuffer->GetBufferStride();
 		NewInfo.offset = InOffset * InBuffer->GetBufferStride();
 
-		if (NewInfo.buffer == VK_NULL_HANDLE)
+		if (NewInfo.buffer == nullptr)
 		{
 			NewInfo.offset = 0;
 			NewInfo.range = VK_WHOLE_SIZE;

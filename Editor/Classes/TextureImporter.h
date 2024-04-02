@@ -1,13 +1,13 @@
 #pragma once
-#include "../UnheardEngine.h"
+#include "../../UnheardEngine.h"
 
 #if WITH_EDITOR
 
-#include "../Runtime/Classes/Utility.h"
+#include "../../../Runtime/Classes/Utility.h"
 #include <string>
 #include <vector>
 #include <filesystem>
-#include "../Runtime/Classes/Texture2D.h"
+#include "../../Runtime/Classes/Texture2D.h"
 using namespace Microsoft::WRL;
 
 #define RETURN_IF_FAILED(x) if(x != S_OK) return std::vector<uint8_t>();

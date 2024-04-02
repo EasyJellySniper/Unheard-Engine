@@ -65,7 +65,7 @@ private:
 	int32_t Width;
 	int32_t Height;
 	XMFLOAT2 JitterOffset;
-	float JitterScaleMin;
+	float GJitterScaleMin;
 	float JitterScaleMax;
 	float JitterEndDistance;
 

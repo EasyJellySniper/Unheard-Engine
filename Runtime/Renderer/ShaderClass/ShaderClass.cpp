@@ -27,6 +27,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, HitGroupTable(nullptr)
 	, RenderPassCache(InRenderPass)
 	, PushConstantRange(VkPushConstantRange{})
+	, bPushDescriptor(false)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -140,9 +141,10 @@ void UHShaderClass::Release(bool bDescriptorOnly)
 	HitGroupTable.reset();
 
 	PushConstantRange = VkPushConstantRange{};
+	bPushDescriptor = false;
 }
 
-void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite)
+void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite, int32_t MipIdx)
 {
 	if (CurrentFrameRT < 0)
 	{
@@ -151,7 +153,7 @@ void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int3
 			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
 			if (InImage)
 			{
-				Helper.WriteImage(InImage, DstBinding, bIsReadWrite);
+				Helper.WriteImage(InImage, DstBinding, bIsReadWrite, MipIdx);
 			}
 		}
 	}
@@ -160,7 +162,7 @@ void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int3
 		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrameRT]);
 		if (InImage)
 		{
-			Helper.WriteImage(InImage, DstBinding, bIsReadWrite);
+			Helper.WriteImage(InImage, DstBinding, bIsReadWrite, MipIdx);
 		}
 	}
 }
@@ -175,6 +177,47 @@ void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, int32_t Ds
 			Helper.WriteImage(InImages, DstBinding);
 		}
 	}
+}
+
+void UHShaderClass::PushImage(const UHTexture* InImage, int32_t DstBinding, bool bIsReadWrite, int32_t MipIdx)
+{
+	VkDescriptorImageInfo ImageInfo{};
+	ImageInfo.imageLayout = bIsReadWrite ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	ImageInfo.imageView = (MipIdx == UHINDEXNONE) ? InImage->GetImageView() : InImage->GetImageView(MipIdx);
+	PushImageInfos.push_back(ImageInfo);
+
+	VkWriteDescriptorSet WriteSet{};
+	WriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	WriteSet.descriptorType = bIsReadWrite ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	WriteSet.dstBinding = DstBinding;
+	WriteSet.descriptorCount = 1;
+
+	PushDescriptorSets.push_back(WriteSet);
+}
+
+void UHShaderClass::FlushPushDescriptor(VkCommandBuffer InCmdList)
+{
+	// link the pImageInfo & pBufferInfo
+	int32_t ImageInfoIdx = 0;
+	int32_t BufferInfoIdx = 0;
+
+	for (size_t Idx = 0; Idx < PushDescriptorSets.size(); Idx++)
+	{
+		if (PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+		{
+			PushDescriptorSets[Idx].pBufferInfo = &PushBufferInfos[BufferInfoIdx++];
+		}
+		else if (PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+		{
+			PushDescriptorSets[Idx].pImageInfo = &PushImageInfos[ImageInfoIdx++];
+		}
+	}
+
+	GVkCmdPushDescriptorSetKHR(InCmdList, VK_PIPELINE_BIND_POINT_COMPUTE, PipelineLayout, 0, (uint32_t)PushDescriptorSets.size(), PushDescriptorSets.data());
+
+	PushDescriptorSets.clear();
+	PushImageInfos.clear();
+	PushBufferInfos.clear();
 }
 
 void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx)
@@ -352,6 +395,11 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 		LayoutInfo.bindingCount = static_cast<uint32_t>(LayoutBindings.size());
 		LayoutInfo.pBindings = LayoutBindings.data();
 
+		if (bPushDescriptor)
+		{
+			LayoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+		}
+
 		if (vkCreateDescriptorSetLayout(LogicalDevice, &LayoutInfo, nullptr, &GSetLayoutTable[GetId()][TypeIndexCache]) != VK_SUCCESS)
 		{
 			UHE_LOG(L"Failed to create descriptor set layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
@@ -409,6 +457,12 @@ void UHShaderClass::CreateDescriptor(std::vector<VkDescriptorSetLayout> Addition
 	if (vkCreateDescriptorPool(LogicalDevice, &PoolInfo, nullptr, &DescriptorPool) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create descriptor pool for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+	}
+
+	if (bPushDescriptor)
+	{
+		// skip allocating descriptor if it's pushing
+		return;
 	}
 
 	std::vector<VkDescriptorSetLayout> SetLayouts(GMaxFrameInFlight, GSetLayoutTable[GetId()][TypeIndexCache]);

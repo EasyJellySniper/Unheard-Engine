@@ -6,16 +6,16 @@ struct UHQueueSubmitter
 {
 public:
 	UHQueueSubmitter()
-		: CommandPool(VK_NULL_HANDLE)
-		, LogicalDevice(VK_NULL_HANDLE)
-		, Queue(VK_NULL_HANDLE)
+		: CommandPool(nullptr)
+		, LogicalDevice(nullptr)
+		, Queue(nullptr)
 	{
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
-			CommandBuffers[Idx] = VK_NULL_HANDLE;
-			WaitingSemaphores[Idx] = VK_NULL_HANDLE;
-			FinishedSemaphores[Idx] = VK_NULL_HANDLE;
-			Fences[Idx] = VK_NULL_HANDLE;
+			CommandBuffers[Idx] = nullptr;
+			WaitingSemaphores[Idx] = nullptr;
+			FinishedSemaphores[Idx] = nullptr;
+			Fences[Idx] = nullptr;
 		}
 	}
 

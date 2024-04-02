@@ -4,9 +4,10 @@
 #include <string>
 
 // hard code variables in shader
-const std::string GDefaultSamplerName = "DefaultAniso16";
+const std::string GDefaultSamplerIndexName = "GDefaultAnisoSamplerIndex";
 const std::string GDefaultTextureChannel0Name = "UV0";
-const int32_t GRTMaterialDataStartIndex = 2;
+const int32_t GRTMaterialDataStartIndex = 3;
+const int32_t GSystemPreservedTextureSlots = 2;
 
 // ------------------------------ header for material layout defines
 
@@ -74,11 +75,15 @@ struct UHMaterialUsage
 	bool bUseRefraction = false;
 };
 
-class UHTextureCube;
-struct UHSystemMaterialData
+enum UHSystemRenderFeatureBits
 {
-	int32_t DefaultSamplerIndex;
-	UHTextureCube* InEnvCube;
-	int32_t RefractionClearIndex;
-	int32_t RefractionBlurredIndex;
+	FeatureDepthPrePass = 1 << 0,
+	FeatureEnvCube = 1 << 1,
+	FeatureHDR = 1 << 2,
+};
+
+enum UHMaterialFeatureBits
+{
+	MaterialTangentSpace = 1 << 0,
+	MaterialRefraction = 1 << 1,
 };

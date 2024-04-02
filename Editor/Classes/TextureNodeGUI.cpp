@@ -1,10 +1,10 @@
 #include "TextureNodeGUI.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Engine/Asset.h"
-#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "../../../Runtime/Engine/Asset.h"
+#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "EditorUtils.h"
-#include "../../Runtime/Classes/Utility.h"
+#include "../../../../Runtime/Classes/Utility.h"
 
 UHTexture2DNodeGUI::UHTexture2DNodeGUI(UHAssetManager* InAssetManager, UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)

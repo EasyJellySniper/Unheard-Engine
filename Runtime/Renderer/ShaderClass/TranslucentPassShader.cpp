@@ -29,16 +29,15 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// RT shadow result, point & spot light culling buffer
+	// RT shadow/reflection result, point & spot light culling buffer
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	// Bind envcube and sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	CreateMaterialDescriptor(ExtraLayouts);
@@ -85,18 +84,21 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 	if (Gfx->IsRayTracingEnabled())
 	{
 		BindImage(GRTShadowResult, 9);
+		BindImage(GRTReflectionResult, 10);
 	}
 	else
 	{
 		BindImage(GWhiteTexture, 9);
+		BindImage(GBlackTexture, 10);
 	}
 
-	BindStorage(GPointLightListTransBuffer.get(), 10, 0, true);
-	BindStorage(GSpotLightListTransBuffer.get(), 11, 0, true);
-	BindStorage(GSH9Data.get(), 12, 0, true);
-	BindSampler(GLinearClampedSampler, 13);
+	BindStorage(GPointLightListTransBuffer.get(), 11, 0, true);
+	BindStorage(GSpotLightListTransBuffer.get(), 12, 0, true);
+	BindStorage(GSH9Data.get(), 13, 0, true);
+	BindSkyCube();
+}
 
-	// write textures/samplers when they are available
+void UHTranslucentPassShader::BindSkyCube()
+{
 	BindImage(GSkyLightCube, 14);
-	BindSampler(GSkyCubeSampler, 15);
 }

@@ -9,7 +9,7 @@ UHAccelerationStructure::UHAccelerationStructure()
     : AccelerationStructureBuffer(nullptr)
 	, ScratchBuffer(nullptr)
 	, ASInstanceBuffer(nullptr)
-    , AccelerationStructure(VK_NULL_HANDLE)
+    , AccelerationStructure(nullptr)
 	, GeometryKHRCache(VkAccelerationStructureGeometryKHR())
 	, GeometryInfoCache(VkAccelerationStructureBuildGeometryInfoKHR())
 	, RangeInfoCache(VkAccelerationStructureBuildRangeInfoKHR())
@@ -39,7 +39,7 @@ VkDeviceAddress UHAccelerationStructure::GetDeviceAddress(VkAccelerationStructur
 void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InBuffer)
 {
 	// prevent duplicate builds
-	if (!GfxCache->IsRayTracingEnabled() || AccelerationStructure != VK_NULL_HANDLE)
+	if (!GfxCache->IsRayTracingEnabled() || AccelerationStructure != nullptr)
 	{
 		return;
 	}
@@ -260,7 +260,16 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 		}
 
 		// check visibility
-		const bool bIsVisible = Renderer->IsVisible() || (Renderer->GetSquareDistanceToMainCam() < RTCullingDistance * RTCullingDistance);
+		bool bIsVisible = Renderer->IsVisible(); 
+		if (Renderer->IsEnabled() 
+#if WITH_EDITOR
+			&& Renderer->IsVisibleInEditor()
+#endif
+			)
+		{
+			// only check culling distance when the component is enabled or visiable in the editor
+			bIsVisible |= (Renderer->GetSquareDistanceToMainCam() < RTCullingDistance * RTCullingDistance);
+		}
 		InstanceKHRs[Idx].mask = bIsVisible ? 0xff : 0;
 
 		// check material state

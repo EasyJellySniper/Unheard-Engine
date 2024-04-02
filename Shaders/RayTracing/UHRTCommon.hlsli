@@ -4,6 +4,11 @@
 #include "../UHCommon.hlsli"
 #define RT_MIPRATESCALE 100.0f
 
+// payload data bits
+#define PAYLOAD_ISREFLECTION 1 << 0
+#define PAYLOAD_HITTRANSLUCENT 1 << 1
+#define PAYLOAD_HITREFRACTION 1 << 2
+
 struct UHDefaultPayload
 {
 	bool IsHit() 
@@ -14,6 +19,29 @@ struct UHDefaultPayload
 	float HitT;
 	float MipLevel;
 	float HitAlpha;
+	// HLSL will pad bool to 4 bytes, so using uint here anyway
+	// Could pack more data to this variable in the future
+    uint PayloadData;
+	
+	// for opaque
+    float4 HitDiffuse;
+    float3 HitNormal;
+    float4 HitSpecular;
+	float3 HitEmissive;
+    float2 HitScreenUV;
+	
+	// for translucent
+    float4 HitDiffuseTrans;
+    float3 HitNormalTrans;
+    float4 HitSpecularTrans;
+	// .a will store the opacity, which used differently from the HitAlpha above!
+    float4 HitEmissiveTrans;
+    float2 HitScreenUVTrans;
+    float3 HitWorldPosTrans;
+    float2 HitRefractScale;
+    float HitRefraction;
+	
+    uint IsInsideScreen;
 };
 
 RayDesc GenerateCameraRay(uint2 ScreenPos)
@@ -23,8 +51,8 @@ RayDesc GenerateCameraRay(uint2 ScreenPos)
 	float3 WorldPos = ComputeWorldPositionFromDeviceZ(float2(ScreenPos + 0.5f), 0.001f, true);
 
 	RayDesc CameraRay;
-	CameraRay.Origin = UHCameraPos;
-	CameraRay.Direction = normalize(WorldPos - UHCameraPos);
+	CameraRay.Origin = GCameraPos;
+	CameraRay.Direction = normalize(WorldPos - GCameraPos);
 	CameraRay.TMin = 0.0f;
 	CameraRay.TMax = float(1 << 20);
 
@@ -38,8 +66,8 @@ RayDesc GenerateCameraRay_UV(float2 ScreenUV)
 	float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, 0.001f, true);
 
 	RayDesc CameraRay;
-	CameraRay.Origin = UHCameraPos;
-	CameraRay.Direction = normalize(WorldPos - UHCameraPos);
+	CameraRay.Origin = GCameraPos;
+	CameraRay.Direction = normalize(WorldPos - GCameraPos);
 	CameraRay.TMin = 0.0f;
 	CameraRay.TMax = float(1 << 20);
 

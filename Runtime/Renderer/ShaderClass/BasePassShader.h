@@ -10,6 +10,7 @@ public:
 	virtual void OnCompile() override;
 
 	void BindParameters(const UHMeshRendererComponent* InRenderer);
+	void BindSkyCube();
 
 private:
 	bool bHasDepthPrePass;

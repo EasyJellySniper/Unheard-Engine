@@ -26,7 +26,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, bCreatePerMipImageView(false)
 {
 #if WITH_EDITOR
-	for (int32_t Idx = 0; Idx < 6; Idx++)
+	for (int32_t Idx = 0; Idx < CubemapImageViewCount; Idx++)
 	{
 		CubemapImageView[Idx] = nullptr;
 	}
@@ -66,10 +66,13 @@ void UHTexture::Release()
 	ImageViewPerMip.clear();
 
 #if WITH_EDITOR
-	for (int32_t Idx = 0; Idx < 6; Idx++)
+	for (int32_t Idx = 0; Idx < CubemapImageViewCount; Idx++)
 	{
-		vkDestroyImageView(LogicalDevice, CubemapImageView[Idx], nullptr);
-		CubemapImageView[Idx] = nullptr;
+		if (CubemapImageView[Idx] != nullptr)
+		{
+			vkDestroyImageView(LogicalDevice, CubemapImageView[Idx], nullptr);
+			CubemapImageView[Idx] = nullptr;
+		}
 	}
 #endif
 
@@ -288,9 +291,14 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 		for (int32_t Idx = 0; Idx < 6; Idx++)
 		{
 			CreateInfo.subresourceRange.baseArrayLayer = Idx;
-			if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &CubemapImageView[Idx]) != VK_SUCCESS)
+			for (uint32_t MipIdx = 0; MipIdx < MipMapCount; MipIdx++)
 			{
-				UHE_LOG(L"Failed to create cubemap image views!\n");
+				CreateInfo.subresourceRange.baseMipLevel = MipIdx;
+				CreateInfo.subresourceRange.levelCount = 1;
+				if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &CubemapImageView[Idx * 15 + MipIdx]) != VK_SUCCESS)
+				{
+					UHE_LOG(L"Failed to create cubemap image views!\n");
+				}
 			}
 		}
 	}
@@ -341,13 +349,17 @@ VkImageView UHTexture::GetImageView() const
 
 VkImageView UHTexture::GetImageView(int32_t MipIndex) const
 {
+	if (MipIndex == UHINDEXNONE)
+	{
+		return ImageView;
+	}
 	return ImageViewPerMip[MipIndex];
 }
 
 #if WITH_EDITOR
-VkImageView UHTexture::GetCubemapImageView(const int32_t SliceIndex) const
+VkImageView UHTexture::GetCubemapImageView(const int32_t SliceIndex, const int32_t MipIndex) const
 {
-	return CubemapImageView[SliceIndex];
+	return CubemapImageView[SliceIndex * 15 + MipIndex];
 }
 #endif
 

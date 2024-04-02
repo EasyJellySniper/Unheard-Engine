@@ -122,7 +122,7 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     }
 	GroupMemoryBarrierWithGroupSync();
     
-    uint TileIdx = Gid.x + Gid.y * UHLightTileCountX;
+    uint TileIdx = Gid.x + Gid.y * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIdx);
     
     // convert depth to float and calculate the bounding box
@@ -145,7 +145,7 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     float4 TileFrustum[6];
     CalcFrustumPlanes(Gid.x, Gid.y, MaxDepth, MinDepth, TileFrustum);
     
-    for (uint LightIdx = GIndex; LightIdx < UHNumPointLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
+    for (uint LightIdx = GIndex; LightIdx < GNumPointLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
     {
         UHPointLight PointLight = UHPointLights[LightIdx];
         UHBRANCH
@@ -163,7 +163,7 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
             InterlockedAdd(GTileLightCount, 1, StoreIdx);
             
             // discard the result that exceeds the max point light per tile
-            if (StoreIdx < UHMaxPointLightPerTile)
+            if (StoreIdx < GMaxPointLightPerTile)
             {
                 if (!bForTranslucent)
                 {
@@ -184,11 +184,11 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     {
         if (!bForTranslucent)
         {
-            OutPointLightList.Store(TileOffset, min(GTileLightCount, UHMaxPointLightPerTile));
+            OutPointLightList.Store(TileOffset, min(GTileLightCount, GMaxPointLightPerTile));
         }
         else
         {
-            OutPointLightListTrans.Store(TileOffset, min(GTileLightCount, UHMaxPointLightPerTile));
+            OutPointLightListTrans.Store(TileOffset, min(GTileLightCount, GMaxPointLightPerTile));
         }
     }
 }
@@ -234,7 +234,7 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     }
     GroupMemoryBarrierWithGroupSync();
     
-    uint TileIdx = Gid.x + Gid.y * UHLightTileCountX;
+    uint TileIdx = Gid.x + Gid.y * GLightTileCountX;
     uint TileOffset = GetSpotLightOffset(TileIdx);
     
     // convert depth to float and calculate the bounding box
@@ -260,7 +260,7 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     float3 TileCornersWorld[8];
     CalcFrustumCorners(Gid.x, Gid.y, MaxDepth, MinDepth, TileCornersWorld);
     
-    for (uint LightIdx = GIndex; LightIdx < UHNumSpotLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
+    for (uint LightIdx = GIndex; LightIdx < GNumSpotLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
     {
         UHSpotLight SpotLight = UHSpotLights[LightIdx];
         UHBRANCH
@@ -280,7 +280,7 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
             InterlockedAdd(GTileLightCount, 1, StoreIdx);
             
             // discard the result that exceeds the max point light per tile
-            if (StoreIdx < UHMaxSpotLightPerTile)
+            if (StoreIdx < GMaxSpotLightPerTile)
             {
                 if (!bForTranslucent)
                 {
@@ -301,11 +301,11 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     {
         if (!bForTranslucent)
         {
-            OutSpotLightList.Store(TileOffset, min(GTileLightCount, UHMaxSpotLightPerTile));
+            OutSpotLightList.Store(TileOffset, min(GTileLightCount, GMaxSpotLightPerTile));
         }
         else
         {
-            OutSpotLightListTrans.Store(TileOffset, min(GTileLightCount, UHMaxSpotLightPerTile));
+            OutSpotLightListTrans.Store(TileOffset, min(GTileLightCount, GMaxSpotLightPerTile));
         }
     }
 }
@@ -315,7 +315,7 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
 [numthreads(UHLIGHTCULLING_TILE, UHLIGHTCULLING_TILE, 1)]
 void LightCullingCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GIndex : SV_GroupIndex)
 {
-    if (DTid.x * UHLIGHTCULLING_UPSCALE >= UHResolution.x || DTid.y * UHLIGHTCULLING_UPSCALE >= UHResolution.y)
+    if (DTid.x * UHLIGHTCULLING_UPSCALE >= GResolution.x || DTid.y * UHLIGHTCULLING_UPSCALE >= GResolution.y)
     {
         // no need to evaluate out-of-range pixels
         return;
@@ -330,7 +330,7 @@ void LightCullingCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, ui
     for (int I = 0; I < 4; I++)
     {
         int2 Pos = DTid.xy * UHLIGHTCULLING_UPSCALE + int2(Dx[I], Dy[I]);
-        Pos = min(Pos, UHResolution.xy - 1);
+        Pos = min(Pos, GResolution.xy - 1);
         
         Depth = max(DepthTexture[Pos].r, Depth);
         TransDepth = max(TransDepthTexture[Pos].r, TransDepth);
@@ -339,7 +339,7 @@ void LightCullingCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, ui
     // cull point light for both opaque and translucent objects
     // point light culling uses a box-sphere test method, although it's not as precise as sphere-frustum test but faster
     UHBRANCH
-    if (UHNumPointLights > 0)
+    if (GNumPointLights > 0)
     {
         CullPointLight(Gid, GIndex, Depth, false);
         CullPointLight(Gid, GIndex, TransDepth, true);
@@ -348,7 +348,7 @@ void LightCullingCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, ui
     // cull spot light for both opaque and translucent objects
     // uses a similar way as culling point light, but just considers the angle as well
     UHBRANCH
-    if (UHNumSpotLights > 0)
+    if (GNumSpotLights > 0)
     {
         CullSpotLight(Gid, GIndex, Depth, false);
         CullSpotLight(Gid, GIndex, TransDepth, true);

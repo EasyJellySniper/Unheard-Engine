@@ -3,7 +3,7 @@
 
 #if WITH_EDITOR
 #include "GraphNodeGUI.h"
-#include "../../Runtime/Classes/GraphNode/TextureNode.h"
+#include "../../../Runtime/Classes/GraphNode/TextureNode.h"
 
 class UHAssetManager;
 class UHDeferredShadingRenderer;

@@ -1,11 +1,11 @@
 #pragma once
-#include "../../../UnheardEngine.h"
+#include "../../../../UnheardEngine.h"
 #include <vector>
 #include <string>
 #include <fstream>
 #include "GraphPin.h"
-#include "../../../Runtime/Classes/Object.h"
-#include "../../../Runtime/Classes/Types.h"
+#include "../../../../Runtime/Classes/Object.h"
+#include "../../../../Runtime/Classes/Types.h"
 
 const std::string GOutChannelShared[] = { ".rgb",".r",".g",".b" };
 

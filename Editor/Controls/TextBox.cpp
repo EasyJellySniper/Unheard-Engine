@@ -1,7 +1,7 @@
 #include "TextBox.h"
 
 #if WITH_EDITOR
-#include "../../Runtime/Classes/Utility.h"
+#include "../../../../Runtime/Classes/Utility.h"
 #include <windowsx.h>
 
 UHTextBox::UHTextBox()

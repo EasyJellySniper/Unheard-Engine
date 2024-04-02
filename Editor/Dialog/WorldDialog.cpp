@@ -2,10 +2,10 @@
 
 #if WITH_EDITOR
 #include "../../Runtime/Components/Component.h"
-#include "../../../UnheardEngine.h"
-#include "../../Runtime/Classes/Types.h"
+#include "../../../../UnheardEngine.h"
+#include "../../../Runtime/Classes/Types.h"
 #include "../../Runtime/Components/Transform.h"
-#include "../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "../../Runtime/Components/GameScript.h"
 
 UHWorldDialog::UHWorldDialog(HWND InParentWnd, UHDeferredShadingRenderer* InRenderer)

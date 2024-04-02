@@ -42,10 +42,10 @@
 #define UHLIGHTCULLING_TILE 16
 #define UHLIGHTCULLING_UPSCALE 2
 
-#define UH_ISOPAQUE 0
-#define UH_ISMASKED 1
-#define UH_ISALPHABLEND 2
-#define UH_ISADDITION 3
+// system feature bits
+#define UH_DEPTH_PREPASS 1 << 0
+#define UH_ENV_CUBE 1 << 1
+#define UH_HDR 1 << 2
 
 struct VertexOutput
 {
@@ -85,50 +85,61 @@ struct PostProcessVertexOutput
 
 cbuffer SystemConstants : register(UHSYSTEM_BIND)
 {
-	float4x4 UHViewProj;
-	float4x4 UHViewProjInv;
-	float4x4 UHViewProj_NonJittered;
-	float4x4 UHViewProjInv_NonJittered;
-	float4x4 UHPrevViewProj_NonJittered;
-    float4x4 UHProjInv;
-    float4x4 UHProjInv_NonJittered;
-    float4x4 UHView;
-	float4 UHResolution;		// xy for resolution, zw for 1/resolution
-	float4 RTShadowResolution; // xy for resolution, zw for 1/resolution
-	float3 UHCameraPos;
-	uint UHNumDirLights;
+	float4x4 GViewProj;
+	float4x4 GViewProjInv;
+	float4x4 GViewProj_NonJittered;
+	float4x4 GViewProjInv_NonJittered;
+	float4x4 GPrevViewProj_NonJittered;
+    float4x4 GProjInv;
+    float4x4 GProjInv_NonJittered;
+    float4x4 GView;
+	float4 GResolution;		// xy for resolution, zw for 1/resolution
+	float4 GShadowResolution; // xy for resolution, zw for 1/resolution
+	float3 GCameraPos;
+	uint GNumDirLights;
 
-	float3 UHAmbientSky;
-	float JitterOffsetX;
-	float3 UHAmbientGround;
-	float JitterOffsetY;
+	float3 GAmbientSky;
+	float GJitterOffsetX;
+	float3 GAmbientGround;
+	float GJitterOffsetY;
 
-	float3 UHCameraDir;
-	uint UHNumRTInstances;
+	float3 GCameraDir;
+	uint GNumRTInstances;
 
-	float JitterScaleMin;	// minimum jitter scale
-	float JitterScaleFactor;	// jitter scale factorto multiply with
-    uint UHNumPointLights;
-    uint UHLightTileCountX;
+	float GJitterScaleMin;	// minimum jitter scale
+	float GJitterScaleFactor;	// jitter scale factorto multiply with
+    uint GNumPointLights;
+    uint GLightTileCountX;
 	
-    uint UHMaxPointLightPerTile;
-    uint UHNumSpotLights;
-    uint UHMaxSpotLightPerTile;
-	uint UHFrameNumber;
+    uint GMaxPointLightPerTile;
+    uint GNumSpotLights;
+    uint GMaxSpotLightPerTile;
+	uint GFrameNumber;
 	
-    uint UHPrepassDepthEnabled;
-    uint UHEnvironmentCubeEnabled;
-	float UHDirectionalShadowRayTMax;
+    uint GSystemRenderFeature;
+	float GDirectionalShadowRayTMax;
+	uint GLinearClampSamplerIndex;
+	uint GSkyCubeSamplerIndex;
+	
+    uint GPointClampSamplerIndex;
+    uint GRTReflectionQuality;
+    float GRTReflectionRayTMax;
+    float GRTReflectionSmoothCutoff;
+	
+    float GEnvCubeMipMapCount;
+    uint GDefaultAnisoSamplerIndex;
+    uint GRefractionClearIndex;
+    uint GRefractionBlurIndex;
 }
 
 // IT means inverse-transposed
 cbuffer ObjectConstants : register(UHOBJ_BIND)
 {
-	float4x4 UHWorld;
-	float4x4 UHWorldIT;
-	float4x4 UHPrevWorld;
-	uint UHInstanceIndex;
-    uint UHNeedWorldTBN;
+	float4x4 GWorld;
+	float4x4 GWorldIT;
+	float4x4 GPrevWorld;
+	uint GInstanceIndex;
+    uint GNeedWorldTBN;
 }
 
 // material inputs from graph system
@@ -181,7 +192,7 @@ StructuredBuffer<UHSpotLight> UHSpotLights : register(UHSPOTLIGHT_BIND);
 
 // 0: Color + AO
 // 1: Normal
-// 2: Specular + Roughness
+// 2: Specular + Smoothness
 // 3: Depth
 Texture2D SceneBuffers[4] : register(UHGBUFFER_BIND);
 

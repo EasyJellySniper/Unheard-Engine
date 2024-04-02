@@ -68,7 +68,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 	// -------------------------- Tone Mapping --------------------------//
 	{
 		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]);
-		ToneMapShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 0, CurrentFrameRT);
+		ToneMapShader->BindInputImage(PostProcessResults[1 - CurrentPostProcessRTIndex], CurrentFrameRT);
 		RenderEffect(ToneMapShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
 	

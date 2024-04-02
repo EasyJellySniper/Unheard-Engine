@@ -1,12 +1,7 @@
 #include "../UHInputs.hlsli"
 
-Texture2D SceneTexture : register(t0);
-SamplerState SceneSampler : register(s1);
-
-cbuffer ToneMapConstant : register(b2)
-{
-    bool bIsHDR;
-}
+Texture2D SceneTexture : register(t1);
+SamplerState SceneSampler : register(s2);
 
 // The code in this file was originally written by Stephen Hill (@self_shadow), who deserves all
 // credit for coming up with this fit and implementing it.
@@ -39,7 +34,7 @@ float4 ToneMapPS(PostProcessVertexOutput Vin) : SV_Target
     float3 Result = SceneTexture.SampleLevel(SceneSampler, Vin.UV, 0).rgb;
     
     UHBRANCH
-    if (bIsHDR)
+    if (GSystemRenderFeature & UH_HDR)
     {
         // apply a log10 and gamma conversion
         Result = log10(Result + 1);

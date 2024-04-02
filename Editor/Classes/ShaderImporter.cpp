@@ -1,10 +1,10 @@
 #include "ShaderImporter.h"
 
 #if WITH_EDITOR
-#include "../Runtime/Classes/Utility.h"
+#include "../../Runtime/Classes/Utility.h"
 #include <assert.h>
-#include "../Runtime/Classes/AssetPath.h"
-#include "../Runtime/Classes/Material.h"
+#include "../../Runtime/Classes/AssetPath.h"
+#include "../../Runtime/Classes/Material.h"
 #include <sstream>
 
 UHShaderImporter::UHShaderImporter()
@@ -232,11 +232,7 @@ bool CompileShader(std::string CommandLine)
 	CloseHandle(ProcInfo.hThread);
 	CloseHandle(Std_OUT_Rd);
 
-	if (ErrorCount == 0)
-	{
-		UHE_LOG(L"Compile succeed!!\n");
-	}
-	else
+	if (ErrorCount != 0)
 	{
 		assert(("Shader compilation failed, see output logs for details!", ErrorCount == 0));
 		return false;
@@ -335,7 +331,12 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 	}
 
 	// get source code returned from material, and replace it in template code
-	const std::vector<std::string> ShaderInputIdentifiers = { "//%UHS_INPUT", "//%UHS_INPUT_Simple","//%UHS_INPUT_OpacityNormalRough" };
+	const std::vector<std::string> ShaderInputIdentifiers = { "//%UHS_INPUT"
+		, "//%UHS_INPUT_OpacityOnly"
+		, "//%UHS_INPUT_OpacityNormalRough"
+		, "//%UHS_INPUT_NormalOnly"
+		, "//%UHS_INPUT_EmissiveOnly"};
+
 	for (int32_t Idx = MaterialInputMax - 1; Idx >= 0 ; Idx--)
 	{
 		InData.InputType = static_cast<UHMaterialInputType>(Idx);

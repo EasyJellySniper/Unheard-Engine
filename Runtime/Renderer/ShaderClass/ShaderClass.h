@@ -59,6 +59,24 @@ public:
 	}
 
 	template <typename T>
+	void PushConstantBuffer(const UniquePtr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
+	{
+		VkDescriptorBufferInfo NewInfo{};
+		NewInfo.buffer = InBuffer->GetBuffer();
+		NewInfo.range = InBuffer->GetBufferStride();
+		NewInfo.offset = InOffset * InBuffer->GetBufferStride();
+		PushBufferInfos.push_back(NewInfo);
+
+		VkWriteDescriptorSet WriteSet{};
+		WriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		WriteSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		WriteSet.dstBinding = DstBinding;
+		WriteSet.descriptorCount = 1;
+
+		PushDescriptorSets.push_back(WriteSet);
+	}
+
+	template <typename T>
 	void BindStorage(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
@@ -141,8 +159,11 @@ public:
 		}
 	}
 
-	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT = UHINDEXNONE, bool bIsReadWrite = false);
+	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT = UHINDEXNONE, bool bIsReadWrite = false, int32_t MipIdx = UHINDEXNONE);
 	void BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding);
+	void PushImage(const UHTexture* InImage, int32_t DstBinding, bool bIsReadWrite = false, int32_t MipIdx = UHINDEXNONE);
+	void FlushPushDescriptor(VkCommandBuffer InCmdList);
+
 	void BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx = UHINDEXNONE);
 	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
@@ -213,7 +234,11 @@ protected:
 	UniquePtr<UHRenderBuffer<UHShaderRecord>> HitGroupTable;
 	UniquePtr<UHRenderBuffer<UHShaderRecord>> MissTable;
 
-	// Push constant range
+	// Push constant range & descriptor support
 	VkPushConstantRange PushConstantRange;
+	bool bPushDescriptor;
+	std::vector<VkWriteDescriptorSet> PushDescriptorSets;
+	std::vector<VkDescriptorImageInfo> PushImageInfos;
+	std::vector<VkDescriptorBufferInfo> PushBufferInfos;
 };
 

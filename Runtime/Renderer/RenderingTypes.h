@@ -14,7 +14,7 @@ const uint32_t GNumOfPostProcessRT = 2;
 // gbuffer counts
 const uint32_t GNumOfGBuffers = 6;
 const uint32_t GNumOfGBuffersSRV = 4;
-const uint32_t GNumOfGBuffersTrans = 4;
+const uint32_t GNumOfGBuffersTrans = 5;
 
 // thread group number
 const uint32_t GThreadGroup2D_X = 8;
@@ -34,49 +34,61 @@ const float G_PI = 3.141592653589793f;
 
 struct UHSystemConstants
 {
-	XMFLOAT4X4 UHViewProj;
-	XMFLOAT4X4 UHViewProjInv;
-	XMFLOAT4X4 UHViewProj_NonJittered;
-	XMFLOAT4X4 UHViewProjInv_NonJittered;
-	XMFLOAT4X4 UHPrevViewProj_NonJittered;
-	XMFLOAT4X4 UHProjInv;
-	XMFLOAT4X4 UHProjInv_NonJittered;
-	XMFLOAT4X4 UHView;
-	XMFLOAT4 UHResolution;
-	XMFLOAT4 RTShadowResolution;
-	XMFLOAT3 UHCameraPos;
-	uint32_t UHNumDirLights;
+	XMFLOAT4X4 GViewProj;
+	XMFLOAT4X4 GViewProjInv;
+	XMFLOAT4X4 GViewProj_NonJittered;
+	XMFLOAT4X4 GViewProjInv_NonJittered;
+	XMFLOAT4X4 GPrevViewProj_NonJittered;
+	XMFLOAT4X4 GProjInv;
+	XMFLOAT4X4 GProjInv_NonJittered;
+	XMFLOAT4X4 GView;
+	XMFLOAT4 GResolution;
+	XMFLOAT4 GShadowResolution;
+	XMFLOAT3 GCameraPos;
+	uint32_t GNumDirLights;
 
-	XMFLOAT3 UHAmbientSky;
-	float JitterOffsetX;
-	XMFLOAT3 UHAmbientGround;
-	float JitterOffsetY;
+	XMFLOAT3 GAmbientSky;
+	float GJitterOffsetX;
+	XMFLOAT3 GAmbientGround;
+	float GJitterOffsetY;
 
-	XMFLOAT3 UHCameraDir;
-	uint32_t UHNumRTInstances;
+	XMFLOAT3 GCameraDir;
+	uint32_t GNumRTInstances;
 
-	float JitterScaleMin;
-	float JitterScaleFactor;
-	uint32_t UHNumPointLights;
-	uint32_t UHLightTileCountX;
+	float GJitterScaleMin;
+	float GJitterScaleFactor;
+	uint32_t GNumPointLights;
+	uint32_t GLightTileCountX;
 
-	uint32_t UHMaxPointLightPerTile;
-	uint32_t UHNumSpotLights;
-	uint32_t UHMaxSpotLightPerTile;
-	uint32_t UHFrameNumber;
+	uint32_t GMaxPointLightPerTile;
+	uint32_t GNumSpotLights;
+	uint32_t GMaxSpotLightPerTile;
+	uint32_t GFrameNumber;
+	
+	// the feature shall be able to store up to 32 flag bits without issues
+	uint32_t GSystemRenderFeature;
+	float GDirectionalShadowRayTMax;
+	uint32_t GLinearClampSamplerIndex;
+	uint32_t GSkyCubeSamplerIndex;
 
-	uint32_t UHPrepassDepthEnabled;
-	uint32_t UHEnvironmentCubeEnabled;
-	float UHDirectionalShadowRayTMax;
+	uint32_t GPointClampSamplerIndex;
+	uint32_t RTReflectionQuality;
+	float RTReflectionRayTMax;
+	float RTReflectionSmoothCutoff;
+
+	float GEnvCubeMipMapCount;
+	uint32_t GDefaultAnisoSamplerIndex;
+	uint32_t GRefractionClearIndex;
+	uint32_t GRefractionBlurIndex;
 };
 
 struct UHObjectConstants
 {
-	XMFLOAT4X4 UHWorld;
-	XMFLOAT4X4 UHWorldIT;
-	XMFLOAT4X4 UHPrevWorld;
+	XMFLOAT4X4 GWorld;
+	XMFLOAT4X4 GWorldIT;
+	XMFLOAT4X4 GPrevWorld;
 	uint32_t InstanceIndex;
-	uint32_t UHNeedWorldTBN;
+	uint32_t GNeedWorldTBN;
 	
 	// align to 256 bytes
 	float CPUPadding[14];
@@ -135,11 +147,13 @@ enum UHRenderPassTypes
 	UpdateTopLevelAS,
 	GenerateSH9,
 	RayTracingShadow,
+	RayTracingReflection,
 	LightCulling,
 	LightPass,
 	SkyPass,
 	MotionPass,
-	PreTranslucentPass,
+	PreReflectionPass,
+	ReflectionPass,
 	TranslucentPass,
 	ToneMappingPass,
 	TemporalAAPass,

@@ -3,18 +3,19 @@
 #if WITH_EDITOR
 #include "../../resource.h"
 #include "../Classes/EditorUtils.h"
-#include "../../Runtime/Classes/Utility.h"
+#include "../../../Runtime/Classes/Utility.h"
 #include <filesystem>
 #include "TextureDialog.h"
 #include "CubemapDialog.h"
-#include "../../Runtime/Classes/AssetPath.h"
-#include "../../Runtime/Engine/Asset.h"
-#include "../../Runtime/Engine/Graphic.h"
-#include "../../Runtime/Renderer/RenderBuilder.h"
-#include "../../Runtime/Renderer/RendererShared.h"
+#include "../../../Runtime/Classes/AssetPath.h"
+#include "../../../Runtime/Engine/Asset.h"
+#include "../../../Runtime/Engine/Graphic.h"
+#include "../../../Runtime/Renderer/RenderBuilder.h"
+#include "../../../Runtime/Renderer/RendererShared.h"
 #include "StatusDialog.h"
 #include "../../../Runtime/Renderer/ShaderClass/PanoramaToCubemapShader.h"
 #include "../../../Runtime/Renderer/ShaderClass/SmoothCubemapShader.h"
+#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
 
 struct UHPanoramaData
 {
@@ -371,18 +372,18 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             }
         }
 
-        // Step 2 ------------------------------------------------- Smooth the edge of cubemap
+        // Step 2 ------------------------------------------------- Smooth the cubemap edge
         UniquePtr<UHSmoothCubemapShader> SmoothCubemap = MakeUnique<UHSmoothCubemapShader>(Gfx, "SmoothCubemapShader");
         for (uint32_t MipIdx = 0; MipIdx < CubemapRT[0]->GetMipMapCount(); MipIdx++)
         {
             UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
+            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
             // smooth shader
             for (int32_t Idx = 0; Idx < 6; Idx++)
             {
                 SmoothCubemap->BindRWImage(CubemapRT[Idx], Idx, MipIdx);
             }
-            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
             uint32_t MipSize = Size >> MipIdx;
             ShaderData->UploadData(&MipSize, 0);
@@ -410,8 +411,9 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
             for (uint32_t MipIdx = 0; MipIdx < Slices[Idx]->GetMipMapCount(); MipIdx++)
             {
-                RenderBuilder.ResourceBarrier(CubemapRT[Idx], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, MipIdx);
-                RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, MipIdx);
+                RenderBuilder.PushResourceBarrier(UHImageBarrier(CubemapRT[Idx], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, MipIdx));
+                RenderBuilder.PushResourceBarrier(UHImageBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, MipIdx));
+                RenderBuilder.FlushResourceBarrier();
                 RenderBuilder.CopyTexture(CubemapRT[Idx], Slices[Idx], MipIdx);
                 RenderBuilder.ResourceBarrier(Slices[Idx], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, MipIdx);
             }

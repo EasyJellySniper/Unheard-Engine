@@ -4,28 +4,13 @@
 UHToneMappingShader::UHToneMappingShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass)
 	: UHShaderClass(InGfx, Name, typeid(UHToneMappingShader), nullptr, InRenderPass)
 {
-	// one texture and one sampler for tone mapping
+	// simply system constant + one texture and one sampler for tone mapping
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 	CreateDescriptor();
 	OnCompile();
-
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		ToneMapData[Idx] = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	}
-}
-
-void UHToneMappingShader::Release(bool bDescriptorOnly)
-{
-	UHShaderClass::Release(bDescriptorOnly);
-
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		UH_SAFE_RELEASE(ToneMapData[Idx]);
-	}
 }
 
 void UHToneMappingShader::OnCompile()
@@ -47,11 +32,11 @@ void UHToneMappingShader::OnCompile()
 
 void UHToneMappingShader::BindParameters()
 {
-	BindSampler(GPointClampedSampler, 1);
-	BindConstant(ToneMapData, 2);
+	BindConstant(GSystemConstantBuffer, 0);
+	BindSampler(GPointClampedSampler, 2);
 }
 
-UHRenderBuffer<uint32_t>* UHToneMappingShader::GetToneMapData(int32_t FrameIdx) const
+void UHToneMappingShader::BindInputImage(UHTexture* InImage, const int32_t CurrentFrameRT)
 {
-	return ToneMapData[FrameIdx].get();
+	BindImage(InImage, 1, CurrentFrameRT);
 }

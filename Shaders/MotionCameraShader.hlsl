@@ -21,11 +21,11 @@ float4 CameraMotionPS(PostProcessVertexOutput Vin) : SV_Target
 	float3 WorldPos = ComputeWorldPositionFromDeviceZ(Vin.Position.xy, Depth, true);
 
 	// calc current/prev clip pos
-	float4 PrevNDCPos = mul(float4(WorldPos, 1.0f), UHPrevViewProj_NonJittered);
+	float4 PrevNDCPos = mul(float4(WorldPos, 1.0f), GPrevViewProj_NonJittered);
 	PrevNDCPos /= PrevNDCPos.w;
 	float2 PrevScreenPos = (PrevNDCPos.xy * 0.5f + 0.5f);
 
-	float4 CurrNDCPos = mul(float4(WorldPos, 1.0f), UHViewProj_NonJittered);
+	float4 CurrNDCPos = mul(float4(WorldPos, 1.0f), GViewProj_NonJittered);
 	CurrNDCPos /= CurrNDCPos.w;
 	float2 CurrScreenPos = (CurrNDCPos.xy * 0.5f + 0.5f);
 

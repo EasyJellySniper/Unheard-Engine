@@ -11,7 +11,7 @@ static const uint DownsampleFactor = 2;
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void HalfDownsampleDepthCS(uint3 DTid : SV_DispatchThreadID)
 {
-    if (DTid.x * DownsampleFactor >= UHResolution.x || DTid.y * DownsampleFactor >= UHResolution.y)
+    if (DTid.x * DownsampleFactor >= GResolution.x || DTid.y * DownsampleFactor >= GResolution.y)
     {
         return;
     }
@@ -24,7 +24,7 @@ void HalfDownsampleDepthCS(uint3 DTid : SV_DispatchThreadID)
         for (int J = 0; J <= 1; J++)
         {
             int2 DepthPos = DTid.xy * DownsampleFactor + int2(I, J);
-            DepthPos = min(DepthPos, UHResolution.xy - 1);
+            DepthPos = min(DepthPos, GResolution.xy - 1);
             OutDepth = max(OutDepth, InDepth[DepthPos].r);
         }
     }
@@ -39,7 +39,7 @@ void HalfDownsampleDepthCS(uint3 DTid : SV_DispatchThreadID)
         for (int J = 0; J <= 1; J++)
         {
             int2 DepthPos = DTid.xy * DownsampleFactor + int2(I, J);
-            DepthPos = min(DepthPos, UHResolution.xy - 1);
+            DepthPos = min(DepthPos, GResolution.xy - 1);
             OutTranslucentDepth = max(OutTranslucentDepth, InTranslucentDepth[DepthPos].r);
         }
     }
