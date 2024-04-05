@@ -3,7 +3,7 @@
 
 // high-level definition of the texture format in UHE
 // these should be translated to low-level formats
-enum UHTextureFormat
+enum class UHTextureFormat
 {
 	UH_FORMAT_NONE = 0,
 	UH_FORMAT_RGBA8_UNORM,
@@ -61,7 +61,7 @@ struct UHTextureFormatData
 };
 
 // texture format data, their info must match the format definition
-inline const UHTextureFormatData GTextureFormatData[UH_FORMAT_MAX] =
+inline const UHTextureFormatData GTextureFormatData[UH_ENUM_VALUE(UHTextureFormat::UH_FORMAT_MAX)] =
 {
 	{0,0,0,true},
 	{4,1,4,true},

@@ -124,3 +124,6 @@ Done the blur for the RT reflection mips, much better result! Next is to deal wi
 02-04-2024:
 Improved reflection composite! It looks better now.
 Finalized RT reflection implementation.
+
+05-04-2024:
+Refactored all plain enums as enum classes.

@@ -21,7 +21,7 @@ public:
 		, TextureCubeCount(0)
 		, MateralCount(0)
 	{
-		for (int32_t Idx = 0; Idx < UHRenderPassTypes::UHRenderPassMax; Idx++)
+		for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
 		{
 			GPUTimes[Idx] = 0.0f;
 		}
@@ -29,7 +29,7 @@ public:
 
 	void SetGPUTimes(float* InTime)
 	{
-		for (int32_t Idx = 0; Idx < UHRenderPassTypes::UHRenderPassMax; Idx++)
+		for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
 		{
 			GPUTimes[Idx] = InTime[Idx];
 		}
@@ -39,7 +39,7 @@ public:
 	float RenderThreadTime;
 	float TotalTime;
 	float FPS;
-	float GPUTimes[UHRenderPassTypes::UHRenderPassMax];
+	float GPUTimes[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
 	int32_t DrawCallCount;
 	int32_t PSOCount;

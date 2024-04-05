@@ -17,7 +17,7 @@
 #endif
 #include "../../Editor/Editor/Profiler.h"
 
-enum UHEngineResizeReason
+enum class UHEngineResizeReason
 {
 	NotResizing = 0,
 	FromWndMessage,

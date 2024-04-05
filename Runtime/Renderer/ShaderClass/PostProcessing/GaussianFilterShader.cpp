@@ -25,11 +25,11 @@ void UHGaussianFilterShader::OnCompile()
 	std::vector<std::string> Defines;
 	Defines.push_back("MAX_FILTER_RADIUS=" + std::to_string(GMaxGaussianFilterRadius));
 
-	if (GaussianFilterType == FilterHorizontal)
+	if (GaussianFilterType == UHGaussianFilterType::FilterHorizontal)
 	{
 		ShaderCS = Gfx->RequestShader("GaussianFilterHShader", "Shaders/PostProcessing/GaussianFilterComputeShader.hlsl", "HorizontalFilterCS", "cs_6_0", Defines);
 	}
-	else if (GaussianFilterType == FilterVertical)
+	else if (GaussianFilterType == UHGaussianFilterType::FilterVertical)
 	{
 		ShaderCS = Gfx->RequestShader("GaussianFilterVShader", "Shaders/PostProcessing/GaussianFilterComputeShader.hlsl", "VerticalFilterCS", "cs_6_0", Defines);
 	}

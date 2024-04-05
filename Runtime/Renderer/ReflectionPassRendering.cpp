@@ -7,7 +7,7 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 		return;
 	}
 
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PreReflectionPass]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::PreReflectionPass)]);
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Pre reflection Pass");
 
 	// opaque scene capture before applying reflection
@@ -19,7 +19,7 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 		FilterConstants.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
 		FilterConstants.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
 		FilterConstants.IterationCount = 2;
-		FilterConstants.TempRTFormat = UH_FORMAT_R11G11B10;
+		FilterConstants.TempRTFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
 
 		CalculateBlurWeights(FilterConstants.GBlurRadius, &FilterConstants.Weights[0]);
 		ScreenshotForRefraction("Opaque Scene Blur", RenderBuilder, FilterConstants);
@@ -36,7 +36,7 @@ void UHDeferredShadingRenderer::DrawReflectionPass(UHRenderBuilder& RenderBuilde
 		return;
 	}
 
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ReflectionPass]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ReflectionPass)]);
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Reflection Pass");
 	{
 		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);

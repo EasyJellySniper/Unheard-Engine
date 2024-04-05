@@ -41,7 +41,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << "Number of materials: " << Stats.MateralCount << "\n";
 
         // GPU stat section
-        std::string GPUStatStrings[UHRenderPassMax] = { "Depth Pre Pass"
+        std::string GPUStatStrings[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)] = { "Depth Pre Pass"
             , "Base Pass"
             , "Update Top Level AS"
             , "GenerateSH9"
@@ -63,7 +63,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         GPUStatTex.str("");
         GPUStatTex.clear();
         GPUStatTex << "--GPU Profiles--\n";
-        for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+        for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
         {
             GPUStatTex << GPUStatStrings[Idx] << ": " << std::fixed << std::setprecision(4)
                 << InProfiler->GetStatistics().GPUTimes[Idx] << " ms\n";

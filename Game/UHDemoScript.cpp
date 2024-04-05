@@ -11,7 +11,7 @@ UHDemoScript::UHDemoScript()
 	, Geo364OriginPos(XMFLOAT3())
 	, TimeCounter(0)
 	, TimeSign(1)
-	, TestType(DayTest)
+	, TestType(UHDemoType::DayTest)
 	, PointLightTimeCounter(0.0f)
 	, DefaultCamera(nullptr)
 	, DefaultDirectionalLight(nullptr)
@@ -23,11 +23,11 @@ UHDemoScript::UHDemoScript()
 
 void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 {
-	if (TestType == DayTest)
+	if (TestType == UHDemoType::DayTest)
 	{
 		InEngine->OnLoadScene("Assets/Scenes/VikingHouses.uhscene");
 	}
-	else if (TestType == PointLightNight)
+	else if (TestType == UHDemoType::PointLightNight)
 	{
 		InEngine->OnLoadScene("Assets/Scenes/VikingHouses_PointLightNight.uhscene");
 	}
@@ -43,7 +43,7 @@ void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 void UHDemoScript::OnEngineUpdate(float DeltaTime)
 {
 	float LightRotSpd = 5.0f * DeltaTime;
-	if (TestType == DayTest)
+	if (TestType == UHDemoType::DayTest)
 	{
 		//DefaultDirectionalLight.Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
 	}
@@ -72,7 +72,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 	}
 
 	// giving point light a little transform so it lits objects like a torch
-	if (TestType == PointLightNight)
+	if (TestType == UHDemoType::PointLightNight)
 	{
 		float MaxRadius = 15.0f;
 		for (int32_t Idx = 0; Idx < TestPointLights.size(); Idx++)
@@ -97,17 +97,17 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		}
 	}
 
-	if (TestType == SpotLightNight)
+	if (TestType == UHDemoType::SpotLightNight)
 	{
 		LightRotSpd = 45.0f * DeltaTime;
 		for (UHSpotLightComponent* SpotLight : TestSpotLights)
 		{
-			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), World);
+			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
 		}
 
 		for (UHSpotLightComponent* SpotLight : TestSpotLights2)
 		{
-			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), World);
+			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
 		}
 	}
 }
@@ -115,7 +115,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx)
 {
 	std::vector<UniquePtr<UHComponent>>& SceneComponents = InScene->GetAllCompoments();
-	TestType = DayTest;
+	TestType = UHDemoType::DayTest;
 
 	if (UHUtilities::StringFind(InScene->GetName(), "SpotLightNight"))
 	{
@@ -127,7 +127,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				TestSpotLights.push_back((UHSpotLightComponent*)Comp.get());
 			}
 		}
-		TestType = SpotLightNight;
+		TestType = UHDemoType::SpotLightNight;
 	}
 
 	if (UHUtilities::StringFind(InScene->GetName(), "PointLightNight"))
@@ -142,7 +142,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 				TestPointLightOrigin.push_back(((UHPointLightComponent*)Comp.get())->GetPosition());
 			}
 		}
-		TestType = PointLightNight;
+		TestType = UHDemoType::PointLightNight;
 	}
 
 	for (UniquePtr<UHComponent>& Comp : SceneComponents)
@@ -172,17 +172,17 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 	// setup default light
 	DefaultDirectionalLight = (UHDirectionalLightComponent*)InScene->RequestComponent(UHDirectionalLightComponent::ClassId);
 	DefaultDirectionalLight->SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
-	DefaultDirectionalLight->SetIntensity(TestType != DayTest ? 0.2f : 4.5f);
+	DefaultDirectionalLight->SetIntensity(TestType != UHDemoType::DayTest ? 0.2f : 4.5f);
 	DefaultDirectionalLight->SetRotation(XMFLOAT3(45, -120, 0));
 
 	// setup default sky light
 	DefaultSkyLight = (UHSkyLightComponent*)InScene->RequestComponent(UHSkyLightComponent::ClassId);
 	DefaultSkyLight->SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
 	DefaultSkyLight->SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
-	DefaultSkyLight->SetSkyIntensity(TestType != DayTest ? 0.15f : 2.0f);
-	DefaultSkyLight->SetGroundIntensity(TestType != DayTest ? 0.5f : 1.5f);
+	DefaultSkyLight->SetSkyIntensity(TestType != UHDemoType::DayTest ? 0.15f : 2.0f);
+	DefaultSkyLight->SetGroundIntensity(TestType != UHDemoType::DayTest ? 0.5f : 1.5f);
 
-	if (TestType == DayTest)
+	if (TestType == UHDemoType::DayTest)
 	{
 		DefaultSkyLight->SetCubemap(InAsset->GetCubemapByName("table_mountain_1_puresky_4k_Cube"));
 	}
@@ -233,7 +233,7 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 		}
 	}
 
-	if (TestType == PointLightNight)
+	if (TestType == UHDemoType::PointLightNight)
 	{
 		// point light test
 		float PointLightStartX = -105;
@@ -276,7 +276,7 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 		}
 	}
 
-	if (TestType == SpotLightNight)
+	if (TestType == UHDemoType::SpotLightNight)
 	{
 		// spot light test
 		float SpotLightStartX = -105;

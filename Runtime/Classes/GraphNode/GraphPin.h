@@ -5,7 +5,7 @@
 #include "../../../Editor/Controls/RadioButton.h"
 #endif
 
-enum UHGraphPinType
+enum class UHGraphPinType
 {
     VoidPin,
     FloatPin,

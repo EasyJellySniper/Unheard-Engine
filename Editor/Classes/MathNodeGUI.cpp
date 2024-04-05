@@ -28,7 +28,7 @@ void UHMathNodeGUI::PreAddingPins()
 
 void UHMathNodeGUI::PostAddingPins()
 {
-	const int32_t Operator = Node->GetOperator();
+	const int32_t Operator = UH_ENUM_VALUE(Node->GetOperator());
 	ComboBox->Select(GOperatorString[Operator]);
 }
 

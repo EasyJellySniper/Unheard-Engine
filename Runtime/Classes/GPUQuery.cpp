@@ -87,7 +87,7 @@ float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 			// get data successfully, calculate time period and return
 			// also set state to Idle for next request
 			float Duration = static_cast<float>(Queries[1] - Queries[0]) * GfxCache->GetGPUTimeStampPeriod() * 1e-6f;
-			State = Idle;
+			State = UHGPUQueryState::Idle;
 			PreviousValidTimeStamp = Duration;
 			return Duration;
 		}

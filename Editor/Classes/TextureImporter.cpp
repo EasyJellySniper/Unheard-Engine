@@ -150,24 +150,24 @@ void CompressionSettingToFormat(const UHTextureSettings& InSetting, UHTextureFor
 {
 	switch (InSetting.CompressionSetting)
 	{
-	case BC1:
-		OutFormat = (InSetting.bIsLinear) ? UH_FORMAT_BC1_UNORM : UH_FORMAT_BC1_SRGB;
+	case UHTextureCompressionSettings::BC1:
+		OutFormat = (InSetting.bIsLinear) ? UHTextureFormat::UH_FORMAT_BC1_UNORM : UHTextureFormat::UH_FORMAT_BC1_SRGB;
 		break;
 
-	case BC3:
-		OutFormat = (InSetting.bIsLinear) ? UH_FORMAT_BC3_UNORM : UH_FORMAT_BC3_SRGB;
+	case UHTextureCompressionSettings::BC3:
+		OutFormat = (InSetting.bIsLinear) ? UHTextureFormat::UH_FORMAT_BC3_UNORM : UHTextureFormat::UH_FORMAT_BC3_SRGB;
 		break;
 
-	case BC4:
-		OutFormat = UH_FORMAT_BC4;
+	case UHTextureCompressionSettings::BC4:
+		OutFormat = UHTextureFormat::UH_FORMAT_BC4;
 		break;
 
-	case BC5:
-		OutFormat = UH_FORMAT_BC5;
+	case UHTextureCompressionSettings::BC5:
+		OutFormat = UHTextureFormat::UH_FORMAT_BC5;
 		break;
 
-	case BC6H:
-		OutFormat = UH_FORMAT_BC6H;
+	case UHTextureCompressionSettings::BC6H:
+		OutFormat = UHTextureFormat::UH_FORMAT_BC6H;
 		break;
 	}
 }
@@ -193,8 +193,8 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	Extent.width = Width;
 	Extent.height = Height;
 
-	UHTextureFormat DesiredFormat = InSettings.bIsLinear ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
-	DesiredFormat = InSettings.bIsHDR ? UH_FORMAT_RGBA16F : DesiredFormat;
+	UHTextureFormat DesiredFormat = InSettings.bIsLinear ? UHTextureFormat::UH_FORMAT_RGBA8_UNORM : UHTextureFormat::UH_FORMAT_RGBA8_SRGB;
+	DesiredFormat = InSettings.bIsHDR ? UHTextureFormat::UH_FORMAT_RGBA16F : DesiredFormat;
 	CompressionSettingToFormat(InSettings, DesiredFormat);
 
 	std::string OutputPathName = OutputFolder.string() + "/" + SourcePath.stem().string();

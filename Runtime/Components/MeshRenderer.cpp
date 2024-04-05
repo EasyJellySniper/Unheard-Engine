@@ -190,7 +190,7 @@ bool UHMeshRendererComponent::IsVisible() const
 UHDebugBoundConstant UHMeshRendererComponent::GetDebugBoundConst() const
 {
 	UHDebugBoundConstant BoundConst{};
-	BoundConst.BoundType = DebugBox;
+	BoundConst.BoundType = UHDebugBoundType::DebugBox;
 	BoundConst.Position = GetRendererBound().Center;
 	BoundConst.Extent = GetRendererBound().Extents;
 	BoundConst.Color = XMFLOAT3(1, 1, 0);

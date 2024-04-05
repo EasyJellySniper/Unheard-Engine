@@ -6,19 +6,19 @@
 #include "GPUMemory.h"
 #include "TextureFormat.h"
 
-enum UHTextureVersion
+enum class UHTextureVersion
 {
 	InitialTexture = 0,
 	TextureVersionMax
 };
 
-enum UHTextureType
+enum class UHTextureType
 {
 	Texture2D,
 	TextureCube
 };
 
-enum UHTextureCompressionSettings
+enum class UHTextureCompressionSettings
 {
 	CompressionNone,
 	BC1,
@@ -31,7 +31,7 @@ enum UHTextureCompressionSettings
 struct UHTextureInfo
 {
 	UHTextureInfo()
-		: UHTextureInfo(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, UH_FORMAT_NONE, VkExtent2D(), VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false)
+		: UHTextureInfo(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, UHTextureFormat::UH_FORMAT_NONE, VkExtent2D(), VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false)
 	{
 	}
 
@@ -64,7 +64,7 @@ struct UHTextureSettings
 	UHTextureSettings()
 		: bIsLinear(false)
 		, bIsNormal(false)
-		, CompressionSetting(CompressionNone)
+		, CompressionSetting(UHTextureCompressionSettings::CompressionNone)
 		, bIsCompressed(false)
 		, bIsHDR(false)
 		, bUseMipmap(true)

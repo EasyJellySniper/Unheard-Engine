@@ -57,15 +57,15 @@ inline void ValidateTextureSetting(UHTextureSettings& InSetting)
 		InSetting.bIsNormal = false;
 
 		// force BC6H compression if it's not uncompressed
-		InSetting.CompressionSetting = (InSetting.CompressionSetting != CompressionNone) ? BC6H : InSetting.CompressionSetting;
+		InSetting.CompressionSetting = (InSetting.CompressionSetting != UHTextureCompressionSettings::CompressionNone) ? UHTextureCompressionSettings::BC6H : InSetting.CompressionSetting;
 	}
-	else if (InSetting.CompressionSetting == BC6H)
+	else if (InSetting.CompressionSetting == UHTextureCompressionSettings::BC6H)
 	{
 		// if it's not a HDR format and still using BC6H, fallback to BC1
-		InSetting.CompressionSetting = BC1;
+		InSetting.CompressionSetting = UHTextureCompressionSettings::BC1;
 	}
 
-	else if (InSetting.CompressionSetting == BC4 || InSetting.CompressionSetting == BC5)
+	else if (InSetting.CompressionSetting == UHTextureCompressionSettings::BC4 || InSetting.CompressionSetting == UHTextureCompressionSettings::BC5)
 	{
 		// force linear if it's BC4 or BC5
 		InSetting.bIsLinear = true;
@@ -73,7 +73,7 @@ inline void ValidateTextureSetting(UHTextureSettings& InSetting)
 	else if (InSetting.bIsNormal)
 	{
 		// force BC5 compression if it's not uncompressed and a normal map
-		InSetting.CompressionSetting = (InSetting.CompressionSetting != CompressionNone) ? BC5 : InSetting.CompressionSetting;
+		InSetting.CompressionSetting = (InSetting.CompressionSetting != UHTextureCompressionSettings::CompressionNone) ? UHTextureCompressionSettings::BC5 : InSetting.CompressionSetting;
 	}
 }
 

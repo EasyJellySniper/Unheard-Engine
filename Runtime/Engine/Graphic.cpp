@@ -1824,7 +1824,7 @@ bool UHGraphic::CreateSwapChain()
 
 	// create render pass for swap chain, it will be blit from other source, so transfer to drc_bit first
 	UHTransitionInfo SwapChainTransition(VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	UHTextureFormat TargetFormat = IsHDRAvailable() ? UH_FORMAT_A2B10G10R10 : UH_FORMAT_BGRA8_SRGB;
+	UHTextureFormat TargetFormat = IsHDRAvailable() ? UHTextureFormat::UH_FORMAT_A2B10G10R10 : UHTextureFormat::UH_FORMAT_BGRA8_SRGB;
 
 	// create swap chain RTs
 	SwapChainRT.resize(ImageCount);

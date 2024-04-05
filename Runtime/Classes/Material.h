@@ -8,7 +8,7 @@
 #include "TextureCube.h"
 #include "GraphNode/MaterialNode.h"
 
-enum UHMaterialVersion
+enum class UHMaterialVersion
 {
 	Initial,
 	GoingBindless,
@@ -150,7 +150,7 @@ private:
 	UHMaterialUsage MaterialUsages;
 
 	UHMaterialProperty MaterialProps;
-	std::string TexFileNames[UHMaterialInputs::MaterialMax];
+	std::string TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::MaterialMax)];
 
 	UniquePtr<UHMaterialNode> MaterialNode;
 	std::vector<UniquePtr<UHGraphNode>> EditNodes;

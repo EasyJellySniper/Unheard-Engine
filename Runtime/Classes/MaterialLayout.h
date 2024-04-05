@@ -13,7 +13,7 @@ const int32_t GSystemPreservedTextureSlots = 2;
 
 // cull mode, can be used as graphic api value
 // the order here is following VkCullModeFlags
-enum UHCullMode
+enum class UHCullMode
 {
 	CullNone,
 	CullFront,
@@ -22,7 +22,7 @@ enum UHCullMode
 };
 
 // blend mode
-enum UHBlendMode
+enum class UHBlendMode
 {
 	Opaque = 0,
 	Masked,
@@ -31,17 +31,8 @@ enum UHBlendMode
 	BlendModeMax
 };
 
-// constant types
-enum UHConstantTypes
-{
-	System = 0,
-	Object,
-	Material,
-	ConstantTypeMax
-};
-
 // UH material inputs used for both runtime and editor
-enum UHMaterialInputs
+enum class UHMaterialInputs
 {
 	Diffuse = 0,
 	Occlusion,
@@ -57,7 +48,7 @@ enum UHMaterialInputs
 	MaterialMax
 };
 
-enum UHMaterialCompileFlag
+enum class UHMaterialCompileFlag
 {
 	UpToDate,
 	FullCompileTemporary,
@@ -75,14 +66,7 @@ struct UHMaterialUsage
 	bool bUseRefraction = false;
 };
 
-enum UHSystemRenderFeatureBits
-{
-	FeatureDepthPrePass = 1 << 0,
-	FeatureEnvCube = 1 << 1,
-	FeatureHDR = 1 << 2,
-};
-
-enum UHMaterialFeatureBits
+enum class UHMaterialFeatureBits
 {
 	MaterialTangentSpace = 1 << 0,
 	MaterialRefraction = 1 << 1,

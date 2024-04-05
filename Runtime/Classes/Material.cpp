@@ -17,7 +17,7 @@ UHMaterial::UHMaterial()
 	: CullMode(UHCullMode::CullNone)
 	, BlendMode(UHBlendMode::Opaque)
 	, MaterialProps(UHMaterialProperty())
-	, CompileFlag(UpToDate)
+	, CompileFlag(UHMaterialCompileFlag::UpToDate)
 	, MaterialUsages(UHMaterialUsage{})
 	, MaterialBufferSize(0)
 {
@@ -50,13 +50,13 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 
 	UHObject::OnLoad(FileIn);
 
-	if (Version >= AddRoughnessTexture)
+	if (Version >= UH_ENUM_VALUE(UHMaterialVersion::AddRoughnessTexture))
 	{
 		UHUtilities::ReadStringData(FileIn, SourcePath);
 	}
 
 	// load referenced texture file name, doesn't read file name for sky cube at the moment
-	const int32_t HighestTexture = Version < AddRoughnessTexture ? Opacity : Roughness;
+	const int32_t HighestTexture = Version < UH_ENUM_VALUE(UHMaterialVersion::AddRoughnessTexture) ? UH_ENUM_VALUE(UHMaterialInputs::Opacity) : UH_ENUM_VALUE(UHMaterialInputs::Roughness);
 	for (int32_t Idx = 0; Idx <= HighestTexture; Idx++)
 	{
 		UHUtilities::ReadStringData(FileIn, TexFileNames[Idx]);
@@ -71,7 +71,7 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	ImportGraphData(FileIn);
 
 	// material constant data
-	if (Version >= UHMaterialVersion::GoingBindless)
+	if (Version >= UH_ENUM_VALUE(UHMaterialVersion::GoingBindless))
 	{
 		FileIn.read(reinterpret_cast<char*>(&MaterialBufferSize), sizeof(MaterialBufferSize));
 	}
@@ -95,7 +95,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 		FileIn.read(reinterpret_cast<char*>(&NodeIdx), sizeof(NodeIdx));
 
 		int32_t OutputIdx = 0;
-		if (Version >= AddRoughnessTexture)
+		if (Version >= UH_ENUM_VALUE(UHMaterialVersion::AddRoughnessTexture))
 		{
 			FileIn.read(reinterpret_cast<char*>(&OutputIdx), sizeof(OutputIdx));
 		}
@@ -131,7 +131,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 			FileIn.read(reinterpret_cast<char*>(&NodeIdx), sizeof(NodeIdx));
 
 			int32_t OutputIdx = 0;
-			if (Version >= AddRoughnessTexture)
+			if (Version >= UH_ENUM_VALUE(UHMaterialVersion::AddRoughnessTexture))
 			{
 				FileIn.read(reinterpret_cast<char*>(&OutputIdx), sizeof(OutputIdx));
 			}
@@ -169,14 +169,14 @@ void UHMaterial::PostImport()
 	EditGUIRelativePos.clear();
 #endif
 
-	if (Version < AddRoughnessTexture)
+	if (Version < UH_ENUM_VALUE(UHMaterialVersion::AddRoughnessTexture))
 	{
 		SourcePath = Name;
 	}
 
 #if WITH_EDITOR
 	// evaluate material constant buffer size for the old assets
-	if (Version < UHMaterialVersion::GoingBindless)
+	if (Version < UH_ENUM_VALUE(UHMaterialVersion::GoingBindless))
 	{
 		GetCBufferDefineCode(MaterialBufferSize);
 	}
@@ -204,7 +204,7 @@ void UHMaterial::SetBlendMode(UHBlendMode InBlendMode)
 
 void UHMaterial::SetTexFileName(UHMaterialInputs TexType, std::string InName)
 {
-	TexFileNames[TexType] = InName;
+	TexFileNames[UH_ENUM_VALUE(TexType)] = InName;
 }
 
 void UHMaterial::SetMaterialBufferSize(size_t InSize)
@@ -231,13 +231,13 @@ void UHMaterial::Export(const std::filesystem::path InPath)
 	std::ofstream FileOut(OutPath, std::ios::out | std::ios::binary);
 
 	// get current version before saving
-	Version = static_cast<UHMaterialVersion>(MaterialVersionMax - 1);
+	Version = UH_ENUM_VALUE(UHMaterialVersion::MaterialVersionMax) - 1;
 	UHObject::OnSave(FileOut);
 
 	UHUtilities::WriteStringData(FileOut, SourcePath);
 
 	// write texture filename used, doesn't write file name for sky cube/metallic at the moment
-	for (int32_t Idx = 0; Idx <= UHMaterialInputs::Roughness; Idx++)
+	for (int32_t Idx = 0; Idx <= UH_ENUM_VALUE(UHMaterialInputs::Roughness); Idx++)
 	{
 		UHUtilities::WriteStringData(FileOut, TexFileNames[Idx]);
 	}
@@ -254,7 +254,7 @@ void UHMaterial::Export(const std::filesystem::path InPath)
 	ExportGraphData(FileOut);
 
 	// new version, going bindless
-	if (Version >= UHMaterialVersion::GoingBindless)
+	if (Version >= UH_ENUM_VALUE(UHMaterialVersion::GoingBindless))
 	{
 		// ensure the MaterialBufferSize is up-to-date before saving
 		GetCBufferDefineCode(MaterialBufferSize);
@@ -447,8 +447,8 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	}
 
 	// update usages before uploading
-	MaterialUsages.bIsTangentSpace = MaterialNode->GetInputs()[Normal]->GetSrcPin() != nullptr;
-	MaterialUsages.bUseRefraction = MaterialNode->GetInputs()[Refraction]->GetSrcPin() != nullptr;
+	MaterialUsages.bIsTangentSpace = MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Normal)]->GetSrcPin() != nullptr;
+	MaterialUsages.bUseRefraction = MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Refraction)]->GetSrcPin() != nullptr;
 
 	// upload data one by one, this must be following the definitions in GetCBufferDefineCode()
 	size_t BufferAddress = 0;
@@ -474,8 +474,8 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 
 	// copy material usages
 	uint32_t UsageValue = 0;
-	UsageValue |= MaterialUsages.bIsTangentSpace ? MaterialTangentSpace : 0;
-	UsageValue |= MaterialUsages.bUseRefraction ? MaterialRefraction : 0;
+	UsageValue |= MaterialUsages.bIsTangentSpace ? UH_ENUM_VALUE_U(UHMaterialFeatureBits::MaterialTangentSpace) : 0;
+	UsageValue |= MaterialUsages.bUseRefraction ? UH_ENUM_VALUE_U(UHMaterialFeatureBits::MaterialRefraction) : 0;
 	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
 	BufferAddress += Stride;
 
@@ -556,7 +556,8 @@ UHMaterialUsage UHMaterial::GetMaterialUsages() const
 
 bool UHMaterial::IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB)
 {
-	return (InA->GetBlendMode() / UHBlendMode::TranditionalAlpha) != (InB->GetBlendMode() / UHBlendMode::TranditionalAlpha);
+	return (UH_ENUM_VALUE(InA->GetBlendMode()) / UH_ENUM_VALUE(UHBlendMode::TranditionalAlpha)) 
+		!= (UH_ENUM_VALUE(InB->GetBlendMode()) / UH_ENUM_VALUE(UHBlendMode::TranditionalAlpha));
 }
 
 UHMaterialCompileFlag UHMaterial::GetCompileFlag() const
@@ -656,7 +657,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	};
 
 	// add diffuse
-	if (TexFileNames[Diffuse].empty())
+	if (TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)].empty())
 	{
 		// Diffuse = Diffuse
 		Pos.x = -GUIToFurtherLeft;
@@ -664,7 +665,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Diffuse), Pos);
 		UHGraphPin* DiffusePin = NewParameterNode->GetOutputs()[0].get();
-		MaterialPins[UHMaterialInputs::Diffuse]->ConnectFrom(DiffusePin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)]->ConnectFrom(DiffusePin);
 	}
 	else
 	{
@@ -674,7 +675,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Diffuse), Pos);
 		UHGraphPin* DiffusePin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = MakeUnique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -683,16 +684,16 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Diffuse], Pos);
+		UHGraphNode* NewTex = AddTextureNode(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)], Pos);
 		UHGraphPin* DiffuseTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[UHMaterialInputs::Diffuse]->ConnectFrom(MathPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(DiffusePin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(DiffuseTexPin);
 	}
 
 	// add occlusion
-	if (TexFileNames[Occlusion].empty())
+	if (TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)].empty())
 	{
 		// Occlusion = Occlusion
 		Pos.x = -GUIToFurtherLeft;
@@ -700,7 +701,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.Occlusion), Pos);
 		UHGraphPin* OcclusionPin = NewParameterNode->GetOutputs()[0].get();
-		MaterialPins[UHMaterialInputs::Occlusion]->ConnectFrom(OcclusionPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)]->ConnectFrom(OcclusionPin);
 	}
 	else
 	{
@@ -710,7 +711,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.Occlusion), Pos);
 		UHGraphPin* OcclusionPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = MakeUnique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -720,16 +721,16 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Occlusion], Pos);
+		UHGraphNode* NewTex = AddTextureNode(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)], Pos);
 		UHGraphPin* OcclusionTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[UHMaterialInputs::Occlusion]->ConnectFrom(MathPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(OcclusionPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(OcclusionTexPin);
 	}
 
 	// add specular
-	if (TexFileNames[Specular].empty())
+	if (TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Specular)].empty())
 	{
 		// Specular = Specular
 		Pos.x = -GUIToFurtherLeft;
@@ -737,7 +738,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Specular), Pos);
 		UHGraphPin* SpecularPin = NewParameterNode->GetOutputs()[0].get();
-		MaterialPins[UHMaterialInputs::Specular]->ConnectFrom(SpecularPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Specular)]->ConnectFrom(SpecularPin);
 	}
 	else
 	{
@@ -747,7 +748,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloat3Node>(MaterialProps.Specular), Pos);
 		UHGraphPin* SpecularPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = MakeUnique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -756,15 +757,15 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Specular], Pos);
+		UHGraphNode* NewTex = AddTextureNode(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Specular)], Pos);
 		UHGraphPin* SpecularTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[UHMaterialInputs::Specular]->ConnectFrom(MathPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Specular)]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(SpecularPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(SpecularTexPin);
 	}
 
-	if (!TexFileNames[Normal].empty())
+	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Normal)].empty())
 	{
 		// Normal = BumpScale * BumpTexture
 		Pos.x = -GUIToFurtherLeft;
@@ -772,7 +773,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.BumpScale), Pos);
 		UHGraphPin* NormalPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = MakeUnique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -781,16 +782,16 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Normal], Pos);
+		UHGraphNode* NewTex = AddTextureNode(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Normal)], Pos);
 		UHGraphPin* NormalTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[UHMaterialInputs::Normal]->ConnectFrom(MathPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Normal)]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(NormalPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(NormalTexPin);
 	}
 
 	// add opacity
-	if (!TexFileNames[Opacity].empty())
+	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Opacity)].empty())
 	{
 		// Opacity = OpacityColor * OpacityTexture
 		Pos.x = -GUIToFurtherLeft;
@@ -798,7 +799,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphNode* NewParameterNode = AddParameterNode(MakeUnique<UHFloatNode>(MaterialProps.Opacity), Pos);
 		UHGraphPin* OpacityPin = NewParameterNode->GetOutputs()[0].get();
 
-		NewNode = MakeUnique<UHMathNode>(Multiply);
+		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
 		EditNodes.push_back(std::move(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
@@ -807,23 +808,23 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepY;
-		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Opacity], Pos);
+		UHGraphNode* NewTex = AddTextureNode(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Opacity)], Pos);
 		UHGraphPin* OpacityTexPin = NewTex->GetOutputs()[0].get();
 
-		MaterialPins[UHMaterialInputs::Opacity]->ConnectFrom(MathPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Opacity)]->ConnectFrom(MathPin);
 		MathPin->GetOriginNode()->GetInputs()[0]->ConnectFrom(OpacityPin);
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(OpacityTexPin);
 	}
 
 	// add roughness
-	if (!TexFileNames[Roughness].empty())
+	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Roughness)].empty())
 	{
 		// Roughness = Roughness
 		Pos.x = -GUIToFurtherLeft;
 		Pos.y += GUIStepYLarger;
-		UHGraphNode* NewTex = AddTextureNode(TexFileNames[Roughness], Pos);
+		UHGraphNode* NewTex = AddTextureNode(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Roughness)], Pos);
 		UHGraphPin* RoughnessTexPin = NewTex->GetOutputs()[1].get();
-		MaterialPins[UHMaterialInputs::Roughness]->ConnectFrom(RoughnessTexPin);
+		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Roughness)]->ConnectFrom(RoughnessTexPin);
 	}
 
 	if (EditGUIRelativePos.size() != EditNodes.size())
@@ -831,7 +832,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHE_LOG("Material: Mismatched EditNodes and EditGUIRelativePos size.\n");
 	}
 
-	if (MaterialNode->GetInputs()[Normal]->GetSrcPin() != nullptr)
+	if (MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Normal)]->GetSrcPin() != nullptr)
 	{
 		MaterialUsages.bIsTangentSpace = true;
 	}

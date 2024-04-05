@@ -10,7 +10,7 @@ static std::optional<XMVECTOR> GWorldRightVec;
 static std::optional<XMVECTOR> GWorldUpVec;
 static std::optional<XMVECTOR> GWorldForwardVec;
 
-enum UHTransformSpace
+enum class UHTransformSpace
 {
 	Local = 0,
 	World

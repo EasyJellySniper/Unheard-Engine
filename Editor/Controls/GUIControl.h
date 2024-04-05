@@ -3,7 +3,7 @@
 #include "../../resource.h"
 #include <functional>
 
-enum UHAutoSizeMethod
+enum class UHAutoSizeMethod
 {
 	AutoSizeNone,
 	AutoSizeX,
@@ -11,7 +11,7 @@ enum UHAutoSizeMethod
 	AutoSizeBoth
 };
 
-enum UHAutoMoveMethod
+enum class UHAutoMoveMethod
 {
 	AutoMoveNone,
 	AutoMoveX,

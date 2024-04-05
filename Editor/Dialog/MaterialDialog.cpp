@@ -11,7 +11,7 @@
 #include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
 #include "StatusDialog.h"
 
-enum UHNodeMenuAction
+enum class UHNodeMenuAction
 {
     NoAction = 50,
     Deletion,
@@ -35,7 +35,7 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , MousePosWhenRightDown(POINT())
     , NodeToDelete(nullptr)
     , PinToDisconnect(nullptr)
-    , NodeMenuAction(UHNodeMenuAction::NoAction)
+    , NodeMenuAction(UH_ENUM_VALUE(UHNodeMenuAction::NoAction))
     , bNeedRepaint(false)
     , CurrentMaterialIndex(-1)
     , CurrentMaterial(nullptr)
@@ -50,20 +50,20 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , bResetWindow(false)
 {
     // create popup menu for node functions, only do these in construction time
-    ParameterMenu.InsertOption("Float", UHGraphNodeType::FloatNode);
-    ParameterMenu.InsertOption("Float2", UHGraphNodeType::Float2Node);
-    ParameterMenu.InsertOption("Float3", UHGraphNodeType::Float3Node);
-    ParameterMenu.InsertOption("Float4", UHGraphNodeType::Float4Node);
+    ParameterMenu.InsertOption("Float", UH_ENUM_VALUE(UHGraphNodeType::FloatNode));
+    ParameterMenu.InsertOption("Float2", UH_ENUM_VALUE(UHGraphNodeType::Float2Node));
+    ParameterMenu.InsertOption("Float3", UH_ENUM_VALUE(UHGraphNodeType::Float3Node));
+    ParameterMenu.InsertOption("Float4", UH_ENUM_VALUE(UHGraphNodeType::Float4Node));
 
-    TextureMenu.InsertOption("Texture2D", UHGraphNodeType::Texture2DNode);
+    TextureMenu.InsertOption("Texture2D", UH_ENUM_VALUE(UHGraphNodeType::Texture2DNode));
 
     AddNodeMenu.InsertOption("Parameter", 0, ParameterMenu.GetMenu());
-    AddNodeMenu.InsertOption("Math", UHGraphNodeType::MathNode);
+    AddNodeMenu.InsertOption("Math", UH_ENUM_VALUE(UHGraphNodeType::MathNode));
     AddNodeMenu.InsertOption("Texture", 0, TextureMenu.GetMenu());
 
     NodeFunctionMenu.InsertOption("Add node", 0, AddNodeMenu.GetMenu());
-    NodeFunctionMenu.InsertOption("Delete node", UHNodeMenuAction::Deletion);
-    NodePinMenu.InsertOption("Disconnect", UHNodeMenuAction::Disconnect);
+    NodeFunctionMenu.InsertOption("Delete node", UH_ENUM_VALUE(UHNodeMenuAction::Deletion));
+    NodePinMenu.InsertOption("Disconnect", UH_ENUM_VALUE(UHNodeMenuAction::Disconnect));
 
     GdiplusStartup(&GdiplusToken, &GdiplusStartupInput, NULL);
 
@@ -161,12 +161,12 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
     // Cull mode list
     if (CurrentMaterial)
     {
-        const std::string CurrCullModeText = UHUtilities::ToStringA(GCullModeNames[CurrentMaterial->GetCullMode()]);
+        const std::string CurrCullModeText = UHUtilities::ToStringA(GCullModeNames[UH_ENUM_VALUE(CurrentMaterial->GetCullMode())]);
         if (ImGui::BeginCombo("Cull Mode", CurrCullModeText.c_str()))
         {
             for (int32_t Idx = 0; Idx < static_cast<int32_t>(GCullModeNames.size()); Idx++)
             {
-                const bool bIsSelected = (CurrentMaterial->GetCullMode() == Idx);
+                const bool bIsSelected = (UH_ENUM_VALUE(CurrentMaterial->GetCullMode()) == Idx);
                 std::string CullModeText = UHUtilities::ToStringA(GCullModeNames[Idx]);
                 if (ImGui::Selectable(CullModeText.c_str(), bIsSelected))
                 {
@@ -180,14 +180,14 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
     // Blend mode list
     if (CurrentMaterial)
     {
-        const std::string CurrBlendModeText = UHUtilities::ToStringA(GBlendModeNames[CurrentMaterial->GetBlendMode()]);
+        const std::string CurrBlendModeText = UHUtilities::ToStringA(GBlendModeNames[UH_ENUM_VALUE(CurrentMaterial->GetBlendMode())]);
         if (ImGui::BeginCombo("Blend Mode", CurrBlendModeText.c_str()))
         {
             if (CurrentMaterial)
             {
                 for (int32_t Idx = 0; Idx < static_cast<int32_t>(GBlendModeNames.size()); Idx++)
                 {
-                    const bool bIsSelected = (CurrentMaterial->GetBlendMode() == Idx);
+                    const bool bIsSelected = (UH_ENUM_VALUE(CurrentMaterial->GetBlendMode()) == Idx);
                     std::string BlendModeText = UHUtilities::ToStringA(GBlendModeNames[Idx]);
                     if (ImGui::Selectable(BlendModeText.c_str(), bIsSelected))
                     {
@@ -263,7 +263,7 @@ void UHMaterialDialog::Init()
     HWND Wnd = Dialog;
     RegisterUniqueActiveDialog(IDD_MATERIAL, this);
 
-    WorkAreaGUI = MakeUnique<UHGroupBox>(GetDlgItem(Wnd, IDC_MATERIAL_GRAPHAREA), UHGUIProperty().SetAutoSize(AutoSizeBoth));
+    WorkAreaGUI = MakeUnique<UHGroupBox>(GetDlgItem(Wnd, IDC_MATERIAL_GRAPHAREA), UHGUIProperty().SetAutoSize(UHAutoSizeMethod::AutoSizeBoth));
     RECT R = WorkAreaGUI->GetCurrentRelativeRect();
     CreateWorkAreaMemDC((int32_t)(R.right - R.left), (int32_t)(R.bottom - R.top));
 
@@ -325,7 +325,7 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
 
     for (size_t Idx = 0; Idx < EditNodes.size(); Idx++)
     {
-        NodeMenuAction = EditNodes[Idx].get()->GetType();
+        NodeMenuAction = UH_ENUM_VALUE(EditNodes[Idx].get()->GetType());
         TryAddNodes(EditNodes[Idx].get(), GUIRelativePos[Idx]);
     }
 
@@ -356,7 +356,7 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
 {
     // Node menu action for adding could be from individual node type
     // return if it's not adding nodes, this also means AddNode needs to be put the bottom of UHNodeMenuAction
-    if (NodeMenuAction < UHNodeMenuAction::AddNode)
+    if (NodeMenuAction < UH_ENUM_VALUE(UHNodeMenuAction::AddNode))
     {
         return;
     }
@@ -367,27 +367,27 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
 
     switch (NodeMenuAction)
     {
-    case UHGraphNodeType::FloatNode:
+    case UH_ENUM_VALUE(UHGraphNodeType::FloatNode):
         NewGUI = MakeUnique<UHFloatNodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float";
         break;
-    case UHGraphNodeType::Float2Node:
+    case UH_ENUM_VALUE(UHGraphNodeType::Float2Node):
         NewGUI = MakeUnique<UHFloat2NodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float2";
         break;
-    case UHGraphNodeType::Float3Node:
+    case UH_ENUM_VALUE(UHGraphNodeType::Float3Node):
         NewGUI = MakeUnique<UHFloat3NodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float3";
         break;
-    case UHGraphNodeType::Float4Node:
+    case UH_ENUM_VALUE(UHGraphNodeType::Float4Node):
         NewGUI = MakeUnique<UHFloat4NodeGUI>(Renderer, CurrentMaterial);
         GUIName = "Float4";
         break;
-    case UHGraphNodeType::MathNode:
+    case UH_ENUM_VALUE(UHGraphNodeType::MathNode):
         NewGUI = MakeUnique<UHMathNodeGUI>();
         GUIName = "Math";
         break;
-    case UHGraphNodeType::Texture2DNode:
+    case UH_ENUM_VALUE(UHGraphNodeType::Texture2DNode):
         NewGUI = MakeUnique<UHTexture2DNodeGUI>(AssetManager, Renderer, CurrentMaterial);
         GUIName = "Texture2D";
         break;
@@ -426,12 +426,12 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
     UHEditorUtil::GetWindowSize(EditNodeGUIs.back()->GetHWND(), R, Dialog);
     InvalidateRect(Dialog, &R, false);
 
-    NodeMenuAction = UHNodeMenuAction::NoAction;
+    NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
 }
 
 void UHMaterialDialog::TryDeleteNodes()
 {
-    if (NodeMenuAction != UHNodeMenuAction::Deletion || NodeToDelete == nullptr)
+    if (NodeMenuAction != UH_ENUM_VALUE(UHNodeMenuAction::Deletion) || NodeToDelete == nullptr)
     {
         return;
     }
@@ -480,14 +480,14 @@ void UHMaterialDialog::TryDeleteNodes()
         }
     }
 
-    NodeMenuAction = UHNodeMenuAction::NoAction;
+    NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
     NodeToDelete = nullptr;
     bNeedRepaint = true;
 }
 
 void UHMaterialDialog::TryDisconnectPin()
 {
-    if (NodeMenuAction != UHNodeMenuAction::Disconnect || PinToDisconnect == nullptr)
+    if (NodeMenuAction != UH_ENUM_VALUE(UHNodeMenuAction::Disconnect) || PinToDisconnect == nullptr)
     {
         return;
     }
@@ -514,7 +514,7 @@ void UHMaterialDialog::TryDisconnectPin()
         }
     }
 
-    NodeMenuAction = UHNodeMenuAction::NoAction;
+    NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
     PinToDisconnect = nullptr;
     bNeedRepaint = true;
 }
@@ -775,7 +775,7 @@ void UHMaterialDialog::ControlRecompileMaterial()
     }
 
     UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
-    Mat->SetCompileFlag(FullCompileTemporary);
+    Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileTemporary);
     RecompileMaterial(CurrentMaterialIndex);
 }
 
@@ -789,7 +789,7 @@ void UHMaterialDialog::ControlResaveMaterial()
     {
         UHStatusDialogScope Status("Saving...");
         UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
-        Mat->SetCompileFlag(FullCompileResave);
+        Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileResave);
         ResaveMaterial(CurrentMaterialIndex);
     }
     MessageBoxA(Dialog, "Current editing material is saved.", "Material Editor", MB_OK);
@@ -811,7 +811,7 @@ void UHMaterialDialog::ControlCullMode(const int32_t InCullMode)
     Mat->SetCullMode(static_cast<UHCullMode>(InCullMode));
 
     // changing cull mode doesn't need a recompiling, just refresh the material shader so they will recreate graphic state
-    Mat->SetCompileFlag(StateChangedOnly);
+    Mat->SetCompileFlag(UHMaterialCompileFlag::StateChangedOnly);
     Renderer->RefreshMaterialShaders(Mat);
 }
 
@@ -831,12 +831,12 @@ void UHMaterialDialog::ControlBlendMode(const int32_t InBlendMode)
 
     Mat->SetBlendMode(NewMode);
     bool bRenderGroupChanged = false;
-    if ((OldMode / UHBlendMode::TranditionalAlpha) != (NewMode / UHBlendMode::TranditionalAlpha))
+    if ((UH_ENUM_VALUE(OldMode) / UH_ENUM_VALUE(UHBlendMode::TranditionalAlpha)) != (UH_ENUM_VALUE(NewMode) / UH_ENUM_VALUE(UHBlendMode::TranditionalAlpha)))
     {
         bRenderGroupChanged = true;
     }
 
-    Mat->SetCompileFlag(FullCompileTemporary);
+    Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileTemporary);
     Renderer->RefreshMaterialShaders(Mat, bRenderGroupChanged);
 }
 
@@ -905,7 +905,7 @@ void UHMaterialDialog::ResaveAllMaterials()
         UHStatusDialogScope Status("Saving...");
         for (int32_t Idx = 0; Idx < static_cast<int32_t>(AssetManager->GetMaterials().size()); Idx++)
         {
-            AssetManager->GetMaterials()[Idx]->SetCompileFlag(FullCompileResave);
+            AssetManager->GetMaterials()[Idx]->SetCompileFlag(UHMaterialCompileFlag::FullCompileResave);
             ResaveMaterial(Idx);
         }
     }

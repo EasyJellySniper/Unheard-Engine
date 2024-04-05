@@ -27,9 +27,9 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
 
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, UH_FORMAT_R8_UNORM, true);
-		GRTSharedTextureRG = GraphicInterface->RequestRenderTexture("RTSharedTextureRG", RenderResolution, UH_FORMAT_RG16F, true);
-		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTSharedTextureFloat", RenderResolution, UH_FORMAT_RGBA16F, true, true);
+		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, UHTextureFormat::UH_FORMAT_R8_UNORM, true);
+		GRTSharedTextureRG = GraphicInterface->RequestRenderTexture("RTSharedTextureRG", RenderResolution, UHTextureFormat::UH_FORMAT_RG16F, true);
+		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTSharedTextureFloat", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA16F, true, true);
 
 		if (!bInitOnly)
 		{
@@ -41,7 +41,7 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 
 void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::UpdateTopLevelAS]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::UpdateTopLevelAS)]);
 	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
 	{
 		return;
@@ -55,7 +55,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingShadow]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingShadow)]);
 	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
 	{
 		return;
@@ -94,7 +94,7 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 
 void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::RayTracingReflection]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingReflection)]);
 	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
 	{
 		return;
@@ -115,7 +115,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	RenderBuilder.BindRTState(RTReflectionShader->GetRTState());
 
 	// trace! it will do full, full temopral or just half base on quality
-	if (RTReflectionQualityRT == UHRTReflectionQuality::RTReflection_Half)
+	if (RTReflectionQualityRT == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_Half))
 	{
 		VkExtent2D HalfRes = RenderResolution;
 		HalfRes.width >>= 1;
@@ -157,7 +157,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 		UHGaussianFilterConstants Constant;
 		Constant.GBlurRadius = 2;
 		Constant.IterationCount = 2;
-		Constant.TempRTFormat = bHDREnabledRT ? UH_FORMAT_RGBA16F : UH_FORMAT_RGBA8_UNORM;
+		Constant.TempRTFormat = bHDREnabledRT ? UHTextureFormat::UH_FORMAT_RGBA16F : UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 		CalculateBlurWeights(Constant.GBlurRadius, Constant.Weights);
 
 		for (uint32_t Mdx = 2; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)

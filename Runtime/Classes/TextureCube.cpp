@@ -4,7 +4,7 @@
 #include "Utility.h"
 
 UHTextureCube::UHTextureCube()
-	: UHTextureCube("", VkExtent2D(), UH_FORMAT_NONE, UHTextureSettings())
+	: UHTextureCube("", VkExtent2D(), UHTextureFormat::UH_FORMAT_NONE, UHTextureSettings())
 {
 
 }
@@ -13,7 +13,7 @@ UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureF
 	: UHTexture(InName, InExtent, InFormat, InSettings)
 	, bIsCubeBuilt(false)
 {
-	TextureType = TextureCube;
+	TextureType = UHTextureType::TextureCube;
 }
 
 void UHTextureCube::ReleaseCPUData()
@@ -110,7 +110,7 @@ void UHTextureCube::Export(std::filesystem::path InCubePath)
 	// open UHTexture file
 	std::ofstream FileOut(InCubePath.string() + GCubemapAssetExtension, std::ios::out | std::ios::binary);
 
-	Version = static_cast<UHTextureVersion>(TextureVersionMax - 1);
+	Version = UH_ENUM_VALUE(UHTextureVersion::TextureVersionMax) - 1;
 	UHObject::OnSave(FileOut);
 
 	// write type and source path
@@ -205,7 +205,7 @@ void UHTextureCube::UploadSlice(UHGraphic* InGfx, UHRenderBuilder& InRenderBuild
 {
 	// copy data to staging buffer first
 	RawStageBuffers[SliceIndex].resize(MipMapCount);
-	const UHTextureFormatData TextureFormatData = GTextureFormatData[ImageFormat];
+	const UHTextureFormatData TextureFormatData = GTextureFormatData[UH_ENUM_VALUE(ImageFormat)];
 	uint64_t MipStartIndex = 0;
 
 	for (uint32_t MipIdx = 0; MipIdx < MipMapCount; MipIdx++)

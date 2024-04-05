@@ -4,7 +4,7 @@
 #include "../CoreGlobals.h"
 
 UHTexture::UHTexture()
-	: UHTexture("", VkExtent2D(), UH_FORMAT_RGBA8_SRGB, UHTextureSettings())
+	: UHTexture("", VkExtent2D(), UHTextureFormat::UH_FORMAT_RGBA8_SRGB, UHTextureSettings())
 {
 
 }
@@ -22,7 +22,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, TextureSettings(InSettings)
 	, MemoryOffset(~0)
 	, MipMapCount(1)
-	, TextureType(Texture2D)
+	, TextureType(UHTextureType::Texture2D)
 	, bCreatePerMipImageView(false)
 {
 #if WITH_EDITOR
@@ -222,11 +222,11 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 
 bool UHTexture::IsDepthFormat() const
 {
-	return ImageFormat == UH_FORMAT_D16
-		|| ImageFormat == UH_FORMAT_D24_S8
-		|| ImageFormat == UH_FORMAT_D32F
-		|| ImageFormat == UH_FORMAT_D32F_S8
-		|| ImageFormat == UH_FORMAT_X8_D24;
+	return ImageFormat == UHTextureFormat::UH_FORMAT_D16
+		|| ImageFormat == UHTextureFormat::UH_FORMAT_D24_S8
+		|| ImageFormat == UHTextureFormat::UH_FORMAT_D32F
+		|| ImageFormat == UHTextureFormat::UH_FORMAT_D32F_S8
+		|| ImageFormat == UHTextureFormat::UH_FORMAT_X8_D24;
 }
 
 bool UHTexture::CreateImageView(VkImageViewType InViewType)

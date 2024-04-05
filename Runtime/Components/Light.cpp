@@ -188,7 +188,7 @@ UHPointLightConstants UHPointLightComponent::GetConstants() const
 UHDebugBoundConstant UHPointLightComponent::GetDebugBoundConst() const
 {
 	UHDebugBoundConstant BoundConst{};
-	BoundConst.BoundType = DebugSphere;
+	BoundConst.BoundType = UHDebugBoundType::DebugSphere;
 	BoundConst.Position = GetPosition();
 	BoundConst.Radius = GetRadius();
 	BoundConst.Color = XMFLOAT3(1, 1, 0);
@@ -323,7 +323,7 @@ UHSpotLightConstants UHSpotLightComponent::GetConstants() const
 UHDebugBoundConstant UHSpotLightComponent::GetDebugBoundConst() const
 {
 	UHDebugBoundConstant BoundConst{};
-	BoundConst.BoundType = DebugCone;
+	BoundConst.BoundType = UHDebugBoundType::DebugCone;
 	BoundConst.Position = GetPosition();
 	BoundConst.Radius = GetRadius();
 	BoundConst.Color = XMFLOAT3(1, 1, 0);

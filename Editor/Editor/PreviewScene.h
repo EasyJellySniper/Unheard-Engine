@@ -6,7 +6,7 @@
 #include "../../../Runtime/Renderer/ShaderClass/MeshPreviewShader.h"
 #include "../../Runtime/Components/Camera.h"
 
-enum UHPreviewSceneType
+enum class UHPreviewSceneType
 {
 	MeshPreview,
 };

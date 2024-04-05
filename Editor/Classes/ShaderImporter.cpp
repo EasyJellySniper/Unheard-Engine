@@ -337,7 +337,7 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		, "//%UHS_INPUT_NormalOnly"
 		, "//%UHS_INPUT_EmissiveOnly"};
 
-	for (int32_t Idx = MaterialInputMax - 1; Idx >= 0 ; Idx--)
+	for (int32_t Idx = UH_ENUM_VALUE(UHMaterialInputType::MaterialInputMax) - 1; Idx >= 0 ; Idx--)
 	{
 		InData.InputType = static_cast<UHMaterialInputType>(Idx);
 		ShaderCode = UHUtilities::StringReplace(ShaderCode, ShaderInputIdentifiers[Idx], InData.MaterialCache->GetMaterialInputCode(InData));
@@ -369,7 +369,7 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 	// deside the output shader path based on the compile flag
 	// Hit compile but not save it, it shall not refresh the regular spv file
 	// regular spv file should be also refreshed when include changes
-	std::string OutputShaderPath = (InData.MaterialCache->GetCompileFlag() == FullCompileResave || InData.MaterialCache->GetCompileFlag() == IncludeChanged)
+	std::string OutputShaderPath = (InData.MaterialCache->GetCompileFlag() == UHMaterialCompileFlag::FullCompileResave || InData.MaterialCache->GetCompileFlag() == UHMaterialCompileFlag::IncludeChanged)
 		? GShaderAssetFolder + OutName + GShaderAssetExtension
 		: TempShaderPath + GShaderAssetExtension;
 

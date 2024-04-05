@@ -7,17 +7,17 @@ UHTexture2DNode::UHTexture2DNode(std::string TexName)
 	: UHGraphNode(true)
 {
 	Name = "Texture2D";
-	NodeType = Texture2DNode;
+	NodeType = UHGraphNodeType::Texture2DNode;
 	TextureIndexInMaterial = UHINDEXNONE;
 
 	Inputs.resize(1);
-	Inputs[0] = MakeUnique<UHGraphPin>("UV", this, Float2Pin);
+	Inputs[0] = MakeUnique<UHGraphPin>("UV", this, UHGraphPinType::Float2Pin);
 
 	Outputs.resize(4);
-	Outputs[0] = MakeUnique<UHGraphPin>("RGB", this, Float3Pin);
-	Outputs[1] = MakeUnique<UHGraphPin>("R", this, FloatPin);
-	Outputs[2] = MakeUnique<UHGraphPin>("G", this, FloatPin);
-	Outputs[3] = MakeUnique<UHGraphPin>("B", this, FloatPin);
+	Outputs[0] = MakeUnique<UHGraphPin>("RGB", this, UHGraphPinType::Float3Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("R", this, UHGraphPinType::FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("G", this, UHGraphPinType::FloatPin);
+	Outputs[3] = MakeUnique<UHGraphPin>("B", this, UHGraphPinType::FloatPin);
 
 	SelectedTexturePathName = TexName;
 }
@@ -67,7 +67,7 @@ std::string UHTexture2DNode::EvalDefinition()
 			if (TextureSettings.bIsNormal)
 			{
 				// insert decode bump normal code if it's normal map
-				const std::string IsBC5 = TextureSettings.CompressionSetting == BC5 ? "true" : "false";
+				const std::string IsBC5 = TextureSettings.CompressionSetting == UHTextureCompressionSettings::BC5 ? "true" : "false";
 				Result += "\tResult_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz, " + IsBC5 + ");\n";
 			}
 
@@ -82,7 +82,7 @@ std::string UHTexture2DNode::EvalDefinition()
 		if (TextureSettings.bIsNormal)
 		{
 			// insert decode bump normal code if it's normal map
-			const std::string IsBC5 = TextureSettings.CompressionSetting == BC5 ? "true" : "false";
+			const std::string IsBC5 = TextureSettings.CompressionSetting == UHTextureCompressionSettings::BC5 ? "true" : "false";
 			Result += "\tResult_" + IDString + ".xyz = DecodeNormal(" + "Result_" + IDString + ".xyz, " + IsBC5 + ");\n";
 		}
 		return Result;

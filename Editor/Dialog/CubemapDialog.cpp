@@ -97,7 +97,7 @@ void UHCubemapDialog::Update(bool& bIsDialogActive)
         }
         ImGui::NewLine();
 
-        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[CurrentEditingSettings.CompressionSetting]);
+        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[UH_ENUM_VALUE(CurrentEditingSettings.CompressionSetting)]);
         ImGui::Text(("Compression Mode:" + CompressionModeTextA).c_str());
 
         ImGui::Text("Source File:");

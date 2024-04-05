@@ -18,7 +18,7 @@ UHMeshDialog::UHMeshDialog(UHAssetManager* InAsset, UHGraphic* InGfx, UHDeferred
 	, CurrentTextureDS(nullptr)
 	, bCreateRendererAfterImport(false)
 {
-	PreviewScene = MakeUnique<UHPreviewScene>(Gfx, MeshPreview);
+	PreviewScene = MakeUnique<UHPreviewScene>(Gfx, UHPreviewSceneType::MeshPreview);
 	FBXImporterInterface = MakeUnique<UHFbxImporter>();
 
 	// setup ImGui texture as well

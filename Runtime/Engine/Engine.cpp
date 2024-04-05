@@ -225,7 +225,7 @@ void UHEngine::Update()
 	if (UHERawInput->IsKeyHold(VK_CONTROL) && UHERawInput->IsKeyUp('v'))
 	{
 		UHEConfig->ToggleVsync();
-		SetResizeReason(ToggleVsync);
+		SetResizeReason(UHEngineResizeReason::ToggleVsync);
 	}
 
 	// update scene

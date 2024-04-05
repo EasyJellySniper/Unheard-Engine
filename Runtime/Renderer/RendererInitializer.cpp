@@ -64,7 +64,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 		PostProcessResults[Idx] = nullptr;
 	}
 
-	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+	for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
 	{
 		GPUTimeQueries[Idx] = nullptr;
 #if WITH_EDITOR
@@ -248,11 +248,11 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	FallbackTexSetting.bIsLinear = true;
 	FallbackTexSetting.bUseMipmap = false;
 
-	const UHTextureFormat FallbackTexFormat = UH_FORMAT_RGBA8_UNORM;
+	const UHTextureFormat FallbackTexFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 
 	// textures
 	{
-		std::vector<uint8_t> TexData(2 * 2 * GTextureFormatData[FallbackTexFormat].ByteSize, 255);
+		std::vector<uint8_t> TexData(2 * 2 * GTextureFormatData[UH_ENUM_VALUE(FallbackTexFormat)].ByteSize, 255);
 
 		UniquePtr<UHTexture2D> FallbackTex = MakeUnique<UHTexture2D>("SystemWhiteTex", "", FallbackTexSize, FallbackTexFormat, FallbackTexSetting);
 		GWhiteTexture = GraphicInterface->RequestTexture2D(FallbackTex, false);
@@ -613,16 +613,16 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 void UHDeferredShadingRenderer::CreateRenderingBuffers()
 {
 	// init formats
-	const UHTextureFormat DiffuseFormat = UH_FORMAT_RGBA8_SRGB;
-	const UHTextureFormat NormalFormat = UH_FORMAT_A2R10G10B10;
-	const UHTextureFormat SpecularFormat = UH_FORMAT_RGBA8_UNORM;
-	const UHTextureFormat SceneResultFormat = UH_FORMAT_RGBA16F;
-	const UHTextureFormat HistoryResultFormat = UH_FORMAT_R11G11B10;
-	const UHTextureFormat SceneMipFormat = UH_FORMAT_R16_UNORM;
-	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UH_FORMAT_X8_D24 : UH_FORMAT_D32F;
-	const UHTextureFormat HDRFormat = UH_FORMAT_RGBA16F;
-	const UHTextureFormat MotionFormat = UH_FORMAT_RG16F;
-	const UHTextureFormat MaskFormat = UH_FORMAT_R8_UNORM;
+	const UHTextureFormat DiffuseFormat = UHTextureFormat::UH_FORMAT_RGBA8_SRGB;
+	const UHTextureFormat NormalFormat = UHTextureFormat::UH_FORMAT_A2R10G10B10;
+	const UHTextureFormat SpecularFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
+	const UHTextureFormat SceneResultFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
+	const UHTextureFormat HistoryResultFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
+	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_R16_UNORM;
+	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UHTextureFormat::UH_FORMAT_X8_D24 : UHTextureFormat::UH_FORMAT_D32F;
+	const UHTextureFormat HDRFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
+	const UHTextureFormat MotionFormat = UHTextureFormat::UH_FORMAT_RG16F;
+	const UHTextureFormat MaskFormat = UHTextureFormat::UH_FORMAT_R8_UNORM;
 
 	// create GBuffer
 	RenderResolution.width = ConfigInterface->RenderingSetting().RenderWidth;
@@ -852,7 +852,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 void UHDeferredShadingRenderer::CreateThreadObjects()
 {
 #if WITH_EDITOR
-	for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+	for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
 	{
 		GPUTimeQueries[Idx] = GraphicInterface->RequestGPUQuery(2, VK_QUERY_TYPE_TIMESTAMP);
 	}
@@ -961,7 +961,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 {
 	// refresh material shader if necessary
 	UHMaterialCompileFlag CompileFlag = Mat->GetCompileFlag();
-	if (CompileFlag == UpToDate)
+	if (CompileFlag == UHMaterialCompileFlag::UpToDate)
 	{
 		return;
 	}
@@ -981,7 +981,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	}
 
 	// recreate shader if need to assign renderer group again
-	if (bNeedReassignRendererGroup || CompileFlag == FullCompileResave || CompileFlag == FullCompileTemporary)
+	if (bNeedReassignRendererGroup || CompileFlag == UHMaterialCompileFlag::FullCompileResave || CompileFlag == UHMaterialCompileFlag::FullCompileTemporary)
 	{
 		for (UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
@@ -993,12 +993,12 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	}
 
 	// update hit group shader as well
-	if (GraphicInterface->IsRayTracingEnabled() && CompileFlag != BindOnly && CompileFlag != StateChangedOnly)
+	if (GraphicInterface->IsRayTracingEnabled() && CompileFlag != UHMaterialCompileFlag::BindOnly && CompileFlag != UHMaterialCompileFlag::StateChangedOnly)
 	{
 		RecreateRTShaders(Mat, false);
 	}
 
-	Mat->SetCompileFlag(UpToDate);
+	Mat->SetCompileFlag(UHMaterialCompileFlag::UpToDate);
 
 	// mark render dirties for re-uploading constant and updating TLAS
 	Mat->SetRenderDirties(true);
@@ -1043,12 +1043,12 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 		}
 
 		// re-bind the parameter
-		ResetMaterialShaders(InRenderer, BindOnly, NewMat->IsOpaque(), false);
+		ResetMaterialShaders(InRenderer, UHMaterialCompileFlag::BindOnly, NewMat->IsOpaque(), false);
 	}
 	else
 	{
 		// state changed (different blendmode), need a recreate
-		ResetMaterialShaders(InRenderer, RendererMaterialChanged, OldMat->IsOpaque(), true);
+		ResetMaterialShaders(InRenderer, UHMaterialCompileFlag::RendererMaterialChanged, OldMat->IsOpaque(), true);
 		RecreateMaterialShaders(InRenderer, NewMat);
 	}
 
@@ -1059,10 +1059,10 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup)
 {
 	const int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
-	const bool bReleaseDescriptorOnly = CompileFlag == RendererMaterialChanged;
+	const bool bReleaseDescriptorOnly = CompileFlag == UHMaterialCompileFlag::RendererMaterialChanged;
 
-	if (bNeedReassignRendererGroup || CompileFlag == RendererMaterialChanged || CompileFlag == FullCompileResave
-		|| CompileFlag == FullCompileTemporary)
+	if (bNeedReassignRendererGroup || CompileFlag == UHMaterialCompileFlag::RendererMaterialChanged || CompileFlag == UHMaterialCompileFlag::FullCompileResave
+		|| CompileFlag == UHMaterialCompileFlag::FullCompileTemporary)
 	{
 		// release shaders if it's re-compiling
 		if (bEnableDepthPrePass)
@@ -1075,7 +1075,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 		SafeReleaseShaderPtr(MotionTranslucentShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 		SafeReleaseShaderPtr(TranslucentPassShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 	}
-	else if (CompileFlag == BindOnly)
+	else if (CompileFlag == UHMaterialCompileFlag::BindOnly)
 	{
 		// bind only
 		if (bIsOpaque)
@@ -1094,7 +1094,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 			TranslucentPassShaders[RendererBufferIndex]->BindParameters(InMeshRenderer);
 		}
 	}
-	else if (CompileFlag == StateChangedOnly)
+	else if (CompileFlag == UHMaterialCompileFlag::StateChangedOnly)
 	{
 		// re-create state only
 		if (bIsOpaque)

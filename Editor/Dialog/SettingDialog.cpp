@@ -89,7 +89,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::Checkbox("Enable Async Compute*", &RenderingSettings.bEnableAsyncCompute);
     if (ImGui::Checkbox("Enable HDR", &RenderingSettings.bEnableHDR))
     {
-        Engine->SetResizeReason(ToggleHDR);
+        Engine->SetResizeReason(UHEngineResizeReason::ToggleHDR);
     }
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
 

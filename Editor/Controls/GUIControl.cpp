@@ -4,8 +4,8 @@
 #include "../../../../Runtime/Classes/Utility.h"
 
 UHGUIProperty::UHGUIProperty()
-	: AutoSize(AutoSizeNone)
-	, AutoMove(AutoMoveNone)
+	: AutoSize(UHAutoSizeMethod::AutoSizeNone)
+	, AutoMove(UHAutoMoveMethod::AutoMoveNone)
 	, InitPosX(0)
 	, InitPosY(0)
 	, InitWidth(0)
@@ -146,15 +146,15 @@ void UHGUIControlBase::Resize(int32_t NewWidth, int32_t NewHeight)
 	// process auto size, minimum size won't be smaller than its original size
 	switch (ControlProperty.AutoSize)
 	{
-	case AutoSizeX:
+	case UHAutoSizeMethod::AutoSizeX:
 		SetWindowPos(ControlObj, nullptr, 0, 0, std::max(ControlW + DeltaW, ControlW), ControlH, SWP_NOMOVE);
 		RedrawWindow(ControlObj, nullptr, nullptr, RDW_INVALIDATE);
 		break;
-	case AutoSizeY:
+	case UHAutoSizeMethod::AutoSizeY:
 		SetWindowPos(ControlObj, nullptr, 0, 0, ControlW, std::max(ControlH + DeltaH, ControlH), SWP_NOMOVE);
 		RedrawWindow(ControlObj, nullptr, nullptr, RDW_INVALIDATE);
 		break;
-	case AutoSizeBoth:
+	case UHAutoSizeMethod::AutoSizeBoth:
 		SetWindowPos(ControlObj, nullptr, 0, 0, std::max(ControlW + DeltaW, ControlW), std::max(ControlH + DeltaH, ControlH), SWP_NOMOVE);
 		RedrawWindow(ControlObj, nullptr, nullptr, RDW_INVALIDATE);
 		break;
@@ -163,15 +163,15 @@ void UHGUIControlBase::Resize(int32_t NewWidth, int32_t NewHeight)
 	// process auto move, minimum position won't be smaller than its original pos
 	switch (ControlProperty.AutoMove)
 	{
-	case AutoMoveX:
+	case UHAutoMoveMethod::AutoMoveX:
 		SetWindowPos(ControlObj, nullptr, std::max(ControlX + DeltaW, ControlX), ControlY, 0, 0, SWP_NOSIZE);
 		RedrawWindow(ControlObj, nullptr, nullptr, RDW_INVALIDATE);
 		break;
-	case AutoMoveY:
+	case UHAutoMoveMethod::AutoMoveY:
 		SetWindowPos(ControlObj, nullptr, ControlX, std::max(ControlY + DeltaH, ControlY), 0, 0, SWP_NOSIZE);
 		RedrawWindow(ControlObj, nullptr, nullptr, RDW_INVALIDATE);
 		break;
-	case AutoMoveBoth:
+	case UHAutoMoveMethod::AutoMoveBoth:
 		SetWindowPos(ControlObj, nullptr, std::max(ControlX + DeltaW, ControlX), std::max(ControlY + DeltaH, ControlY), 0, 0, SWP_NOSIZE);
 		RedrawWindow(ControlObj, nullptr, nullptr, RDW_INVALIDATE);
 		break;

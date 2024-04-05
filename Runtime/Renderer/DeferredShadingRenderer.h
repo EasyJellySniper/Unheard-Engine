@@ -47,7 +47,7 @@
 #endif
 #include "../../Editor/Editor/Profiler.h"
 
-enum UHParallelTask
+enum class UHParallelTask
 {
 	None = -1,
 	FrustumCullingTask,
@@ -351,7 +351,7 @@ private:
 	float RenderThreadTime;
 	int32_t DrawCalls;
 	std::vector<int32_t> ThreadDrawCalls;
-	float GPUTimes[UHRenderPassTypes::UHRenderPassMax];
+	float GPUTimes[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
 	// GUI
 	uint32_t EditorWidthDelta;
@@ -360,7 +360,7 @@ private:
 	static UHDeferredShadingRenderer* SceneRendererEditorOnly;
 	bool bDrawDebugViewRT;
 #endif
-	UHGPUQuery* GPUTimeQueries[UHRenderPassTypes::UHRenderPassMax];
+	UHGPUQuery* GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
 	UniquePtr<UHAccelerationStructure> TopLevelAS[GMaxFrameInFlight];

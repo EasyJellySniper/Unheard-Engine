@@ -5,70 +5,70 @@ UHFloatNode::UHFloatNode(float Default)
 	: UHParameterNode<float>(Default)
 {
 	Name = "Float";
-	NodeType = FloatNode;
+	NodeType = UHGraphNodeType::FloatNode;
 
 	Inputs.resize(1);
-	Inputs[0] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("X", this, UHGraphPinType::FloatPin, true);
 
 	Outputs.resize(1);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, FloatPin);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, UHGraphPinType::FloatPin);
 }
 
 UHFloat2Node::UHFloat2Node(XMFLOAT2 Default)
 	: UHParameterNode<XMFLOAT2>(Default)
 {
 	Name = "Float2";
-	NodeType = Float2Node;
+	NodeType = UHGraphNodeType::Float2Node;
 
 	Inputs.resize(3);
-	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float2Pin);
-	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
-	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, UHGraphPinType::Float2Pin);
+	Inputs[1] = MakeUnique<UHGraphPin>("X", this, UHGraphPinType::FloatPin, true);
+	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, UHGraphPinType::FloatPin, true);
 
 	Outputs.resize(3);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float2Pin);
-	Outputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin);
-	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, UHGraphPinType::Float2Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("X", this, UHGraphPinType::FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, UHGraphPinType::FloatPin);
 }
 
 UHFloat3Node::UHFloat3Node(XMFLOAT3 Default)
 	: UHParameterNode<XMFLOAT3>(Default)
 {
 	Name = "Float3";
-	NodeType = Float3Node;
+	NodeType = UHGraphNodeType::Float3Node;
 
 	Inputs.resize(4);
-	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float3Pin);
-	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
-	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
-	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, UHGraphPinType::Float3Pin);
+	Inputs[1] = MakeUnique<UHGraphPin>("X", this, UHGraphPinType::FloatPin, true);
+	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, UHGraphPinType::FloatPin, true);
+	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, UHGraphPinType::FloatPin, true);
 
 	Outputs.resize(4);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float3Pin);
-	Outputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin);
-	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin);
-	Outputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, UHGraphPinType::Float3Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("X", this, UHGraphPinType::FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, UHGraphPinType::FloatPin);
+	Outputs[3] = MakeUnique<UHGraphPin>("Z", this, UHGraphPinType::FloatPin);
 }
 
 UHFloat4Node::UHFloat4Node(XMFLOAT4 Default)
 	: UHParameterNode<XMFLOAT4>(Default)
 {
 	Name = "Float4";
-	NodeType = Float4Node;
+	NodeType = UHGraphNodeType::Float4Node;
 
 	Inputs.resize(5);
-	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, Float4Pin);
-	Inputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin, true);
-	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin, true);
-	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin, true);
-	Inputs[4] = MakeUnique<UHGraphPin>("W", this, FloatPin, true);
+	Inputs[0] = MakeUnique<UHGraphPin>("Input", this, UHGraphPinType::Float4Pin);
+	Inputs[1] = MakeUnique<UHGraphPin>("X", this, UHGraphPinType::FloatPin, true);
+	Inputs[2] = MakeUnique<UHGraphPin>("Y", this, UHGraphPinType::FloatPin, true);
+	Inputs[3] = MakeUnique<UHGraphPin>("Z", this, UHGraphPinType::FloatPin, true);
+	Inputs[4] = MakeUnique<UHGraphPin>("W", this, UHGraphPinType::FloatPin, true);
 
 	Outputs.resize(5);
-	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, Float4Pin);
-	Outputs[1] = MakeUnique<UHGraphPin>("X", this, FloatPin);
-	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, FloatPin);
-	Outputs[3] = MakeUnique<UHGraphPin>("Z", this, FloatPin);
-	Outputs[4] = MakeUnique<UHGraphPin>("W", this, FloatPin);
+	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, UHGraphPinType::Float4Pin);
+	Outputs[1] = MakeUnique<UHGraphPin>("X", this, UHGraphPinType::FloatPin);
+	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, UHGraphPinType::FloatPin);
+	Outputs[3] = MakeUnique<UHGraphPin>("Z", this, UHGraphPinType::FloatPin);
+	Outputs[4] = MakeUnique<UHGraphPin>("W", this, UHGraphPinType::FloatPin);
 }
 
 std::string UHFloatNode::EvalDefinition()

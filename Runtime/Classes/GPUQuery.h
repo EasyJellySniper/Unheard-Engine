@@ -3,7 +3,7 @@
 #include "../Engine/RenderResource.h"
 #include "RenderBuffer.h"
 
-enum UHGPUQueryState
+enum class UHGPUQueryState
 {
 	Idle = 0,
 	Requested

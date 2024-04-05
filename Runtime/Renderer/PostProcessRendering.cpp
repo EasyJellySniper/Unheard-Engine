@@ -67,14 +67,14 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 	// -------------------------- Tone Mapping --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::ToneMappingPass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ToneMappingPass)]);
 		ToneMapShader->BindInputImage(PostProcessResults[1 - CurrentPostProcessRTIndex], CurrentFrameRT);
 		RenderEffect(ToneMapShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
 	
 	// -------------------------- Temporal AA --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::TemporalAAPass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::TemporalAAPass)]);
 		if (ConfigInterface->RenderingSetting().bTemporalAA)
 		{
 			RenderBuilder.ResourceBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -92,7 +92,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 	// -------------------------- History Result Passes --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::HistoryCopyingPass]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::HistoryCopyingPass)]);
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "History Result Copy");
 
 		// blit to scene history
@@ -125,7 +125,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::PresentToSwapChain]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::PresentToSwapChain)]);
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Scene to SwapChain Pass");
 
 	uint32_t ImageIndex;
@@ -212,7 +212,7 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHRenderBuilder& RenderBui
 	}
 
 	UHDebugBoundConstant BoundConstant = Comp->GetDebugBoundConst();
-	if (BoundConstant.BoundType == DebugNone)
+	if (BoundConstant.BoundType == UHDebugBoundType::DebugNone)
 	{
 		return;
 	}
@@ -236,17 +236,17 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHRenderBuilder& RenderBui
 
 	switch (BoundConstant.BoundType)
 	{
-	case DebugBox:
+	case UHDebugBoundType::DebugBox:
 		// draw 24 points for bounding box, shader will setup the box points
 		RenderBuilder.DrawVertex(24);
 		break;
 
-	case DebugSphere:
+	case UHDebugBoundType::DebugSphere:
 		// draw 360 points for bounding sphere, see DebugBoundShader.hlsl that how circles are drawn
 		RenderBuilder.DrawVertex(360);
 		break;
 
-	case DebugCone:
+	case UHDebugBoundType::DebugCone:
 		// draw 16 points for bounding cone, see DebugBoundShader.hlsl that how a cone is drawn
 		RenderBuilder.DrawVertex(16);
 		break;

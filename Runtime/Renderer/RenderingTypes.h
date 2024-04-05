@@ -140,7 +140,7 @@ struct UHSphericalHarmonicConstants
 	float Weight; // this should be set as 4.0f * PI / SampleCount in C++ side
 };
 
-enum UHRenderPassTypes
+enum class UHRenderPassTypes
 {
 	DepthPrePass = 0,
 	BasePass,
@@ -282,7 +282,7 @@ private:
 };
 
 #if WITH_EDITOR
-enum UHDebugBoundType
+enum class UHDebugBoundType
 {
 	DebugNone = -1,
 	DebugBox,
@@ -309,3 +309,19 @@ struct UHDebugBoundConstant
 	XMFLOAT3 Up;
 };
 #endif
+
+enum class UHSystemRenderFeatureBits
+{
+	FeatureDepthPrePass = 1 << 0,
+	FeatureEnvCube = 1 << 1,
+	FeatureHDR = 1 << 2,
+};
+
+// constant types
+enum class UHConstantTypes
+{
+	System = 0,
+	Object,
+	Material,
+	ConstantTypeMax
+};

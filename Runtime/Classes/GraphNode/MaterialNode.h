@@ -5,7 +5,7 @@
 class UHMaterial;
 struct UHRTMaterialData;
 
-enum UHMaterialInputType
+enum class UHMaterialInputType
 {
 	MaterialInputStandard,
 	MaterialInputOpacityOnly,
@@ -20,7 +20,7 @@ struct UHMaterialCompileData
 public:
 	UHMaterialCompileData()
 		: MaterialCache(nullptr)
-		, InputType(MaterialInputStandard)
+		, InputType(UHMaterialInputType::MaterialInputStandard)
 		, bIsHitGroup(false)
 	{
 	}

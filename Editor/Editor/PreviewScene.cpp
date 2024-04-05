@@ -14,15 +14,15 @@ UHPreviewScene::UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType)
 	, CurrentMesh(nullptr)
 	, PreviewCameraSpeed(5.0f)
 {
-	if (InType == MeshPreview)
+	if (InType == UHPreviewSceneType::MeshPreview)
 	{
 		PreviewExtent.width = 512;
 		PreviewExtent.height = 512;
 	}
 
 	// create preview RT
-	PreviewRT = Gfx->RequestRenderTexture("PreviewRT", PreviewExtent, UH_FORMAT_RGBA8_SRGB);
-	PreviewDepth = Gfx->RequestRenderTexture("PreviewDepthRT", PreviewExtent, UH_FORMAT_D32F);
+	PreviewRT = Gfx->RequestRenderTexture("PreviewRT", PreviewExtent, UHTextureFormat::UH_FORMAT_RGBA8_SRGB);
+	PreviewDepth = Gfx->RequestRenderTexture("PreviewDepthRT", PreviewExtent, UHTextureFormat::UH_FORMAT_D32F);
 
 	UHTransitionInfo Transition = UHTransitionInfo();
 	Transition.FinalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -55,7 +55,7 @@ void UHPreviewScene::Release()
 
 void UHPreviewScene::Render(bool bIsActive)
 {
-	if (PreviewSceneType == MeshPreview && CurrentMesh == nullptr)
+	if (PreviewSceneType == UHPreviewSceneType::MeshPreview && CurrentMesh == nullptr)
 	{
 		return;
 	}

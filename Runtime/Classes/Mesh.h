@@ -9,7 +9,7 @@
 #include "../../UnheardEngine.h"
 #include "AccelerationStructure.h"
 
-enum UHMeshVersion
+enum class UHMeshVersion
 {
 	StoreSourcePath = 1,
 	MeshVersionMax

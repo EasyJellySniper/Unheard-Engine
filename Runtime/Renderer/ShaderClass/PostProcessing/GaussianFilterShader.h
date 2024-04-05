@@ -2,7 +2,7 @@
 #include "../ShaderClass.h"
 
 const int32_t GMaxGaussianFilterRadius = 5;
-enum UHGaussianFilterType
+enum class UHGaussianFilterType
 {
 	FilterHorizontal = 0,
 	FilterVertical
@@ -18,7 +18,7 @@ struct UHGaussianFilterConstants
 	// following 3 won't be used by shader
 	int32_t IterationCount;
 	int32_t InputMip = 0;
-	UHTextureFormat TempRTFormat = UH_FORMAT_RGBA16F;
+	UHTextureFormat TempRTFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
 };
 
 class UHGaussianFilterShader : public UHShaderClass

@@ -84,7 +84,7 @@ void UHFloatNodeGUI::Update()
 	// mark compile flag as bind only if this is connecting to others
 	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
 	{
-		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
 		Renderer->RefreshMaterialShaders(MaterialCache);
 	}
@@ -103,7 +103,7 @@ void UHFloat2NodeGUI::Update()
 	// mark compile flag as bind only if this is connecting to others
 	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
 	{
-		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
 		Renderer->RefreshMaterialShaders(MaterialCache);
 	}
@@ -122,7 +122,7 @@ void UHFloat3NodeGUI::Update()
 	// mark compile flag as bind only if this is connecting to others
 	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
 	{
-		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
 		Renderer->RefreshMaterialShaders(MaterialCache);
 	}
@@ -141,7 +141,7 @@ void UHFloat4NodeGUI::Update()
 	// mark compile flag as bind only if this is connecting to others
 	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
 	{
-		MaterialCache->SetCompileFlag(BindOnly);
+		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
 		Renderer->RefreshMaterialShaders(MaterialCache);
 	}

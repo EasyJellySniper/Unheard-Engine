@@ -216,7 +216,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	Rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	Rasterizer.polygonMode = (InInfo.bDrawWireFrame) ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
 	Rasterizer.lineWidth = 1.0f;
-	Rasterizer.cullMode = RenderPassInfo.CullMode;
+	Rasterizer.cullMode = static_cast<VkCullModeFlags>(RenderPassInfo.CullMode);
 	Rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	Rasterizer.depthBiasEnable = VK_FALSE;
 	Rasterizer.depthBiasConstantFactor = 0.0f; // Optional

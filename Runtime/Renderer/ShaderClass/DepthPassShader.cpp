@@ -6,9 +6,9 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 	: UHShaderClass(InGfx, Name, typeid(UHDepthPassShader), InMat, InRenderPass)
 {
 	// Depth pass: Bind all constants, visiable in VS/PS only
-	for (int32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
+	for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHConstantTypes::ConstantTypeMax); Idx++)
 	{
-		if (Idx != UHConstantTypes::Material)
+		if (Idx != UH_ENUM_VALUE(UHConstantTypes::Material))
 		{
 			AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 		}

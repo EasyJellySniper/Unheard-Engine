@@ -13,18 +13,18 @@ UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 	Name = "Material Inputs";
 
 	// declare the input pins for material node
-	Inputs.resize(UHMaterialInputs::MaterialMax);
-	Inputs[UHMaterialInputs::Diffuse] = MakeUnique<UHGraphPin>("Diffuse (RGB)", this, Float3Pin);
-	Inputs[UHMaterialInputs::Occlusion] = MakeUnique<UHGraphPin>("Occlusion (R)", this, FloatPin);
-	Inputs[UHMaterialInputs::Specular] = MakeUnique<UHGraphPin>("Specular (RGB)", this, Float3Pin);
-	Inputs[UHMaterialInputs::Normal] = MakeUnique<UHGraphPin>("Normal (RGB)", this, Float3Pin);
-	Inputs[UHMaterialInputs::Opacity] = MakeUnique<UHGraphPin>("Opacity (R)", this, FloatPin);
-	Inputs[UHMaterialInputs::Metallic] = MakeUnique<UHGraphPin>("Metallic (R)", this, FloatPin);
-	Inputs[UHMaterialInputs::Roughness] = MakeUnique<UHGraphPin>("Roughness (R)", this, FloatPin);
-	Inputs[UHMaterialInputs::FresnelFactor] = MakeUnique<UHGraphPin>("Fresnel Factor (R)", this, FloatPin);
-	Inputs[UHMaterialInputs::ReflectionFactor] = MakeUnique<UHGraphPin>("Reflection Factor (R)", this, FloatPin);
-	Inputs[UHMaterialInputs::Emissive] = MakeUnique<UHGraphPin>("Emissive (RGB)", this, Float3Pin);
-	Inputs[UHMaterialInputs::Refraction] = MakeUnique<UHGraphPin>("Refraction (R)", this, FloatPin);
+	Inputs.resize(UH_ENUM_VALUE(UHMaterialInputs::MaterialMax));
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)] = MakeUnique<UHGraphPin>("Diffuse (RGB)", this, UHGraphPinType::Float3Pin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)] = MakeUnique<UHGraphPin>("Occlusion (R)", this, UHGraphPinType::FloatPin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Specular)] = MakeUnique<UHGraphPin>("Specular (RGB)", this, UHGraphPinType::Float3Pin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Normal)] = MakeUnique<UHGraphPin>("Normal (RGB)", this, UHGraphPinType::Float3Pin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Opacity)] = MakeUnique<UHGraphPin>("Opacity (R)", this, UHGraphPinType::FloatPin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Metallic)] = MakeUnique<UHGraphPin>("Metallic (R)", this, UHGraphPinType::FloatPin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Roughness)] = MakeUnique<UHGraphPin>("Roughness (R)", this, UHGraphPinType::FloatPin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::FresnelFactor)] = MakeUnique<UHGraphPin>("Fresnel Factor (R)", this, UHGraphPinType::FloatPin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::ReflectionFactor)] = MakeUnique<UHGraphPin>("Reflection Factor (R)", this, UHGraphPinType::FloatPin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Emissive)] = MakeUnique<UHGraphPin>("Emissive (RGB)", this, UHGraphPinType::Float3Pin);
+	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Refraction)] = MakeUnique<UHGraphPin>("Refraction (R)", this, UHGraphPinType::FloatPin);
 }
 
 void CollectTexDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTracing, int32_t& TextureIndexInMaterial
@@ -39,7 +39,7 @@ void CollectTexDefinitions(const UHGraphPin* Pin, const bool bIsCompilingRayTrac
 	InputNode->SetIsCompilingRayTracing(bIsCompilingRayTracing);
 
 	// prevent redefinition with table
-	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == UHGraphNodeType::Texture2DNode)
 	{
 		// set texture index in material so I can index in ray tracing shader properly
 		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
@@ -80,7 +80,7 @@ void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingR
 		bool bFound = false;
 		switch (InputNode->GetType())
 		{
-		case FloatNode:
+		case UHGraphNodeType::FloatNode:
 		{
 			UHFloatNode* Node = static_cast<UHFloatNode*>(InputNode);
 			Node->SetDataIndexInMaterial(DataIndexInMaterial);
@@ -88,7 +88,7 @@ void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingR
 			bFound = true;
 			break;
 		}
-		case Float2Node:
+		case UHGraphNodeType::Float2Node:
 		{
 			UHFloat2Node* Node = static_cast<UHFloat2Node*>(InputNode);
 			Node->SetDataIndexInMaterial(DataIndexInMaterial);
@@ -96,7 +96,7 @@ void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingR
 			bFound = true;
 			break;
 		}
-		case Float3Node:
+		case UHGraphNodeType::Float3Node:
 		{
 			UHFloat3Node* Node = static_cast<UHFloat3Node*>(InputNode);
 			Node->SetDataIndexInMaterial(DataIndexInMaterial);
@@ -104,7 +104,7 @@ void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingR
 			bFound = true;
 			break;
 		}
-		case Float4Node:
+		case UHGraphNodeType::Float4Node:
 		{
 			UHFloat4Node* Node = static_cast<UHFloat4Node*>(InputNode);
 			Node->SetDataIndexInMaterial(DataIndexInMaterial);
@@ -136,7 +136,7 @@ void CollectParameterDefinitions(const UHGraphPin* Pin, const bool bIsCompilingR
 void UHMaterialNode::InsertOpacityCode(std::string& Code) const
 {
 	std::string EndOfLine = ";\n";
-	if (UHGraphPin* Opacity = Inputs[UHMaterialInputs::Opacity]->GetSrcPin())
+	if (UHGraphPin* Opacity = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Opacity)]->GetSrcPin())
 	{
 		Code += "\tInput.Opacity = saturate(" + Opacity->GetOriginNode()->EvalHLSL(Opacity) + ".r)" + EndOfLine;
 	}
@@ -149,7 +149,7 @@ void UHMaterialNode::InsertOpacityCode(std::string& Code) const
 void UHMaterialNode::InsertNormalCode(std::string& Code) const
 {
 	std::string EndOfLine = ";\n";
-	if (UHGraphPin* Normal = Inputs[UHMaterialInputs::Normal]->GetSrcPin())
+	if (UHGraphPin* Normal = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Normal)]->GetSrcPin())
 	{
 		Code += "\tInput.Normal = " + Normal->GetOriginNode()->EvalHLSL(Normal) + ".rgb" + EndOfLine;
 	}
@@ -162,7 +162,7 @@ void UHMaterialNode::InsertNormalCode(std::string& Code) const
 void UHMaterialNode::InsertRoughnessCode(std::string& Code) const
 {
 	std::string EndOfLine = ";\n";
-	if (UHGraphPin* Roughness = Inputs[UHMaterialInputs::Roughness]->GetSrcPin())
+	if (UHGraphPin* Roughness = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Roughness)]->GetSrcPin())
 	{
 		Code += "\tInput.Roughness = saturate(" + Roughness->GetOriginNode()->EvalHLSL(Roughness) + ".r)" + EndOfLine;
 	}
@@ -175,7 +175,7 @@ void UHMaterialNode::InsertRoughnessCode(std::string& Code) const
 void UHMaterialNode::InsertEmissiveCode(std::string& Code) const
 {
 	std::string EndOfLine = ";\n";
-	if (UHGraphPin* Emissive = Inputs[UHMaterialInputs::Emissive]->GetSrcPin())
+	if (UHGraphPin* Emissive = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Emissive)]->GetSrcPin())
 	{
 		Code += "\tInput.Emissive = " + Emissive->GetOriginNode()->EvalHLSL(Emissive) + ".rgb" + EndOfLine;
 	}
@@ -198,7 +198,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 
 	// set texture index data in material
 	int32_t TextureIndexInMaterial = 0;
-	for (int32_t Idx = 0; Idx < UHMaterialInputs::MaterialMax; Idx++)
+	for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHMaterialInputs::MaterialMax); Idx++)
 	{
 		CollectTexDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, TextureIndexInMaterial, Definitions, DefinitionTable);
 	}
@@ -213,7 +213,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 		// @TODO: Custom sampler index?
 		int32_t DataIndexInMaterial = (Definitions.size() > 0) ? /*2 */ TextureIndexInMaterial + GRTMaterialDataStartIndex : GRTMaterialDataStartIndex;
 
-		for (int32_t Idx = 0; Idx < UHMaterialInputs::MaterialMax; Idx++)
+		for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHMaterialInputs::MaterialMax); Idx++)
 		{
 			CollectParameterDefinitions(Inputs[Idx].get(), CompileData.bIsHitGroup, DataIndexInMaterial, Definitions, DefinitionTable);
 		}
@@ -240,7 +240,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	Code += "\n\tUHMaterialInputs Input = (UHMaterialInputs)0;\n";
 
 	// ************** Early return if it needs normal only ************** //
-	if (CompileData.InputType == MaterialInputNormalOnly)
+	if (CompileData.InputType == UHMaterialInputType::MaterialInputNormalOnly)
 	{
 		InsertNormalCode(Code);
 		Code += ReturnCode;
@@ -248,7 +248,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// ************** Early return if it needs opacity only ************** //
-	if (CompileData.InputType == MaterialInputOpacityOnly)
+	if (CompileData.InputType == UHMaterialInputType::MaterialInputOpacityOnly)
 	{
 		InsertOpacityCode(Code);
 		Code += ReturnCode;
@@ -256,7 +256,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// ************** Early return if it needs opacity+normal+roughness only ************** //
-	if (CompileData.InputType == MaterialInputOpacityNormalRoughOnly)
+	if (CompileData.InputType == UHMaterialInputType::MaterialInputOpacityNormalRoughOnly)
 	{
 		InsertOpacityCode(Code);
 		InsertNormalCode(Code);
@@ -266,7 +266,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// ************** Early return if it needs emissive only ************** //
-	if (CompileData.InputType == MaterialInputEmissiveOnly)
+	if (CompileData.InputType == UHMaterialInputType::MaterialInputEmissiveOnly)
 	{
 		InsertEmissiveCode(Code);
 		Code += ReturnCode;
@@ -274,7 +274,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// Diffuse
-	if (UHGraphPin* DiffuseSrc = Inputs[UHMaterialInputs::Diffuse]->GetSrcPin())
+	if (UHGraphPin* DiffuseSrc = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)]->GetSrcPin())
 	{
 		Code += "\tInput.Diffuse = " + DiffuseSrc->GetOriginNode()->EvalHLSL(DiffuseSrc) + ".rgb" + EndOfLine;
 	}
@@ -284,7 +284,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// Occlusion
-	if (UHGraphPin* Occlusion = Inputs[UHMaterialInputs::Occlusion]->GetSrcPin())
+	if (UHGraphPin* Occlusion = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)]->GetSrcPin())
 	{
 		Code += "\tInput.Occlusion = saturate(" + Occlusion->GetOriginNode()->EvalHLSL(Occlusion) + ".r)" + EndOfLine;
 	}
@@ -294,7 +294,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// Specular
-	if (UHGraphPin* Specular = Inputs[UHMaterialInputs::Specular]->GetSrcPin())
+	if (UHGraphPin* Specular = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Specular)]->GetSrcPin())
 	{
 		Code += "\tInput.Specular = saturate(" + Specular->GetOriginNode()->EvalHLSL(Specular) + ".rgb)" + EndOfLine;
 	}
@@ -313,7 +313,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	InsertOpacityCode(Code);
 
 	// Metallic
-	if (UHGraphPin* Metallic = Inputs[UHMaterialInputs::Metallic]->GetSrcPin())
+	if (UHGraphPin* Metallic = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Metallic)]->GetSrcPin())
 	{
 		Code += "\tInput.Metallic = saturate(" + Metallic->GetOriginNode()->EvalHLSL(Metallic) + ".r)" + EndOfLine;
 	}
@@ -323,7 +323,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// FresnelFactor
-	if (UHGraphPin* FresnelFactor = Inputs[UHMaterialInputs::FresnelFactor]->GetSrcPin())
+	if (UHGraphPin* FresnelFactor = Inputs[UH_ENUM_VALUE(UHMaterialInputs::FresnelFactor)]->GetSrcPin())
 	{
 		Code += "\tInput.FresnelFactor = saturate(" + FresnelFactor->GetOriginNode()->EvalHLSL(FresnelFactor) + ".r)" + EndOfLine;
 	}
@@ -333,7 +333,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	}
 
 	// ReflectionFactor
-	if (UHGraphPin* ReflectionFactor = Inputs[UHMaterialInputs::ReflectionFactor]->GetSrcPin())
+	if (UHGraphPin* ReflectionFactor = Inputs[UH_ENUM_VALUE(UHMaterialInputs::ReflectionFactor)]->GetSrcPin())
 	{
 		Code += "\tInput.ReflectionFactor = max(" + ReflectionFactor->GetOriginNode()->EvalHLSL(ReflectionFactor) + ".r, 0)" + EndOfLine;
 	}
@@ -345,7 +345,7 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	InsertEmissiveCode(Code);
 
 	// Refraction, available for translucent objects only
-	if (UHGraphPin* Refraction = Inputs[UHMaterialInputs::Refraction]->GetSrcPin())
+	if (UHGraphPin* Refraction = Inputs[UH_ENUM_VALUE(UHMaterialInputs::Refraction)]->GetSrcPin())
 	{
 		if (CompileData.MaterialCache->GetBlendMode() > UHBlendMode::Masked)
 		{
@@ -402,7 +402,7 @@ void CollectTextureIndexInternal(const UHGraphPin* Pin, std::string& Code, std::
 	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
 
 	// prevent redefinition with table
-	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == UHGraphNodeType::Texture2DNode)
 	{
 		Code += "\tint Node_" + std::to_string(InputNode->GetId()) + "_Index;\n";
 		OutSize += sizeof(float);
@@ -437,7 +437,7 @@ void CollectTextureNameInternal(const UHGraphPin* Pin, std::vector<std::string>&
 	UHGraphNode* InputNode = Pin->GetSrcPin()->GetOriginNode();
 
 	// prevent redefinition with table
-	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == Texture2DNode)
+	if (OutDefTable.find(InputNode->GetId()) == OutDefTable.end() && InputNode->GetType() == UHGraphNodeType::Texture2DNode)
 	{
 		UHTexture2DNode* TexNode = static_cast<UHTexture2DNode*>(InputNode);
 		std::string TexName = TexNode->GetSelectedTexturePathName();
@@ -517,28 +517,28 @@ void CollectParameterInternal(const UHGraphPin* Pin, std::string& Code, std::uno
 		// add parameter code based on type
 		switch (InputNode->GetType())
 		{
-		case FloatNode:
+		case UHGraphNodeType::FloatNode:
 		{
 			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float));
 			Code += "\tfloat Node_" + std::to_string(InputNode->GetId()) + ";\n";
 			OutSize += sizeof(float);
 			break;
 		}
-		case Float2Node:
+		case UHGraphNodeType::Float2Node:
 		{
 			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float) * 2);
 			Code += "\tfloat2 Node_" + std::to_string(InputNode->GetId()) + ";\n";
 			OutSize += sizeof(float) * 2;
 			break;
 		}
-		case Float3Node:
+		case UHGraphNodeType::Float3Node:
 		{
 			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float) * 3);
 			Code += "\tfloat3 Node_" + std::to_string(InputNode->GetId()) + ";\n";
 			OutSize += sizeof(float) * 3;
 			break;
 		}
-		case Float4Node:
+		case UHGraphNodeType::Float4Node:
 		{
 			ParameterPadding(Code, OutSize, PaddingNo, sizeof(float) * 4);
 			Code += "\tfloat4 Node_" + std::to_string(InputNode->GetId()) + ";\n";
@@ -583,7 +583,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		// add parameter code based on type
 		switch (InputNode->GetType())
 		{
-		case FloatNode:
+		case UHGraphNodeType::FloatNode:
 		{
 			CopyAddressPadding(BufferAddress, sizeof(float));
 			float Val = ((UHFloatNode*)InputNode)->GetValue();
@@ -591,7 +591,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 			BufferAddress += sizeof(float);
 			break;
 		}
-		case Float2Node:
+		case UHGraphNodeType::Float2Node:
 		{
 			CopyAddressPadding(BufferAddress, sizeof(float) * 2);
 			XMFLOAT2 Val = ((UHFloat2Node*)InputNode)->GetValue();
@@ -599,7 +599,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 			BufferAddress += sizeof(float) * 2;
 			break;
 		}
-		case Float3Node:
+		case UHGraphNodeType::Float3Node:
 		{
 			CopyAddressPadding(BufferAddress, sizeof(float) * 3);
 			XMFLOAT3 Val = ((UHFloat3Node*)InputNode)->GetValue();
@@ -607,7 +607,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 			BufferAddress += sizeof(float) * 3;
 			break;
 		}
-		case Float4Node:
+		case UHGraphNodeType::Float4Node:
 		{
 			CopyAddressPadding(BufferAddress, sizeof(float) * 4);
 			XMFLOAT4 Val = ((UHFloat4Node*)InputNode)->GetValue();
@@ -651,28 +651,28 @@ void CopyRTParameterInternal(const UHGraphPin* Pin, UHRTMaterialData& MaterialDa
 		// add parameter code based on type
 		switch (InputNode->GetType())
 		{
-		case FloatNode:
+		case UHGraphNodeType::FloatNode:
 		{
 			float Val = ((UHFloatNode*)InputNode)->GetValue();
 			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float), &Val, sizeof(float));
 			DstIndex++;
 			break;
 		}
-		case Float2Node:
+		case UHGraphNodeType::Float2Node:
 		{
 			XMFLOAT2 Val = ((UHFloat2Node*)InputNode)->GetValue();
 			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 2, &Val, sizeof(float) * 2);
 			DstIndex += 2;
 			break;
 		}
-		case Float3Node:
+		case UHGraphNodeType::Float3Node:
 		{
 			XMFLOAT3 Val = ((UHFloat3Node*)InputNode)->GetValue();
 			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 3, &Val, sizeof(float) * 3);
 			DstIndex += 3;
 			break;
 		}
-		case Float4Node:
+		case UHGraphNodeType::Float4Node:
 		{
 			XMFLOAT4 Val = ((UHFloat4Node*)InputNode)->GetValue();
 			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 4, &Val, sizeof(float) * 4);

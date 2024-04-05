@@ -44,9 +44,9 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 	, bHasDepthPrePass(bEnableDepthPrePass)
 {
 	// Motion pass: constants + opacity image for cutoff (if there is any)
-	for (uint32_t Idx = 0; Idx < UHConstantTypes::ConstantTypeMax; Idx++)
+	for (uint32_t Idx = 0; Idx < UH_ENUM_VALUE(UHConstantTypes::ConstantTypeMax); Idx++)
 	{
-		if (Idx != UHConstantTypes::Material)
+		if (Idx != UH_ENUM_VALUE(UHConstantTypes::Material))
 		{
 			AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 		}

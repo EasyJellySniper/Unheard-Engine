@@ -41,6 +41,9 @@ inline std::mutex GLogMutex;
 
 #endif
 
+#define UH_ENUM_VALUE(x) static_cast<int32_t>(x)
+#define UH_ENUM_VALUE_U(x) static_cast<uint32_t>(x)
+
 inline void UHE_LOG(std::wstring InString)
 {
 #if WITH_EDITOR

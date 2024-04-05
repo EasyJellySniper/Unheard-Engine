@@ -98,12 +98,12 @@ void UHTextureDialog::Update(bool& bIsDialogActive)
         }
         ImGui::NewLine();
 
-        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[CurrentEditingSettings.CompressionSetting]);
+        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[UH_ENUM_VALUE(CurrentEditingSettings.CompressionSetting)]);
         if (ImGui::BeginCombo("Compression Mode", CompressionModeTextA.c_str()))
         {
             for (size_t Idx = 0; Idx < GCompressionModeText.size(); Idx++)
             {
-                const bool bIsSelected = (CurrentEditingSettings.CompressionSetting == Idx);
+                const bool bIsSelected = (UH_ENUM_VALUE(CurrentEditingSettings.CompressionSetting) == Idx);
                 std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[Idx]);
                 if (ImGui::Selectable(CompressionModeTextA.c_str(), bIsSelected))
                 {

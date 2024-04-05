@@ -1,5 +1,5 @@
 #pragma once
-#include <cstdint>
+#include "../../UnheardEngine.h"
 
 // file to define all kinds of setting
 
@@ -55,13 +55,13 @@ public:
 	float ImageMemoryBudgetMB;
 };
 
-enum UHRTShadowQuality
+enum class UHRTShadowQuality
 {
 	RTShadow_Full,
 	RTShadow_Half
 };
 
-enum UHRTReflectionQuality
+enum class UHRTReflectionQuality
 {
 	RTReflection_FullNative,
 	RTReflection_FullTemporal,
@@ -83,9 +83,9 @@ public:
 		, bEnableDepthPrePass(false)
 		, ParallelThreads(0)
 		, RTCullingRadius(100.0f)
-		, RTShadowQuality(RTShadow_Half)
+		, RTShadowQuality(UH_ENUM_VALUE(UHRTShadowQuality::RTShadow_Half))
 		, RTShadowTMax(100.0f)
-		, RTReflectionQuality(RTReflection_FullTemporal)
+		, RTReflectionQuality(UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
 		, RTReflectionTMax(100)
 		, RTReflectionSmoothCutoff(0.5f)
 		, bEnableAsyncCompute(false)

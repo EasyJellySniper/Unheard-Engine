@@ -90,12 +90,12 @@ void UHTextureCreationDialog::ShowTexture2DCreationUI()
     {
         ImGui::TableNextColumn();
 
-        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[CurrentEditingSettings.CompressionSetting]);
+        std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[UH_ENUM_VALUE(CurrentEditingSettings.CompressionSetting)]);
         if (ImGui::BeginCombo("Compression Mode", CompressionModeTextA.c_str()))
         {
             for (size_t Idx = 0; Idx < GCompressionModeText.size(); Idx++)
             {
-                const bool bIsSelected = (CurrentEditingSettings.CompressionSetting == Idx);
+                const bool bIsSelected = (UH_ENUM_VALUE(CurrentEditingSettings.CompressionSetting) == Idx);
                 std::string CompressionModeTextA = UHUtilities::ToStringA(GCompressionModeText[Idx]);
                 if (ImGui::Selectable(CompressionModeTextA.c_str(), bIsSelected))
                 {
@@ -297,10 +297,10 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         OutputExtent.height = Size;
 
         UHTextureSettings Settings = InputTexture->GetTextureSettings();
-        UHTextureFormat UncompressedFormat = UH_FORMAT_RGBA8_UNORM;
+        UHTextureFormat UncompressedFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
         if (Settings.bIsHDR)
         {
-            UncompressedFormat = UH_FORMAT_RGBA16F;
+            UncompressedFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
         }
 
         // Step 1 ------------------------------------------------- Convert panorama to individual cube slice RT
@@ -400,7 +400,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
         // Step 3 ------------------------------------------------- Copy from RT slices to regular slices
         Settings.bIsCompressed = false;
-        Settings.CompressionSetting = CompressionNone;
+        Settings.CompressionSetting = UHTextureCompressionSettings::CompressionNone;
 
         UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
         for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -432,7 +432,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             Slices[Idx]->SetMipmapGenerated(true);
 
             // recreate slices if compression is needed
-            if (InputTexture->GetTextureSettings().CompressionSetting != CompressionNone)
+            if (InputTexture->GetTextureSettings().CompressionSetting != UHTextureCompressionSettings::CompressionNone)
             {
                 Slices[Idx]->SetTextureSettings(InputTexture->GetTextureSettings());
                 Slices[Idx]->Recreate(false);
@@ -501,10 +501,10 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
         // Step 1 ------------------------------------------------- Blit to cubemap RT for smoothing the cube edge
         UHTextureSettings Settings = Slices[0]->GetTextureSettings();
-        UHTextureFormat UncompressedFormat = UH_FORMAT_RGBA8_UNORM;
+        UHTextureFormat UncompressedFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
         if (Settings.bIsHDR)
         {
-            UncompressedFormat = UH_FORMAT_RGBA16F;
+            UncompressedFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
         }
 
         for (int32_t Idx = 0; Idx < 6; Idx++)

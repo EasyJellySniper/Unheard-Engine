@@ -237,9 +237,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	// pack system rendering feature data
 	uint32_t FeatureData = 0;
-	FeatureData |= (bEnableDepthPrePass) ? FeatureDepthPrePass : 0;
-	FeatureData |= (SkyCube != nullptr) ? FeatureEnvCube : 0;
-	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? FeatureHDR : 0;
+	FeatureData |= (bEnableDepthPrePass) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureDepthPrePass) : 0;
+	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
+	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.GDirectionalShadowRayTMax = ConfigInterface->RenderingSetting().RTShadowTMax;
@@ -597,7 +597,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 		#if WITH_EDITOR
 			// get GPU times
-			for (int32_t Idx = 0; Idx < UHRenderPassMax; Idx++)
+			for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
 			{
 				GPUTimes[Idx] = GPUTimeQueries[Idx]->GetTimeStamp(SceneRenderBuilder.GetCmdList());
 			}

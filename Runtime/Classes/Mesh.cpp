@@ -305,7 +305,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 
 	UHObject::OnLoad(FileIn);
 
-	if (Version >= StoreSourcePath)
+	if (Version >= UH_ENUM_VALUE(UHMeshVersion::StoreSourcePath))
 	{
 		UHUtilities::ReadStringData(FileIn, SourcePath);
 	}
@@ -348,7 +348,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	MeshBound = BoundingBox(MeshCenter, MeshExtent);
 
 	CheckAndConvertToIndices16();
-	if (Version < StoreSourcePath)
+	if (Version < UH_ENUM_VALUE(UHMeshVersion::StoreSourcePath))
 	{
 		SourcePath = Name;
 	}
@@ -441,7 +441,7 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 
 	// open UHMesh file
 	std::ofstream FileOut(OutPath.string(), std::ios::out | std::ios::binary);
-	Version = UHMeshVersion::MeshVersionMax - 1;
+	Version = UH_ENUM_VALUE(UHMeshVersion::MeshVersionMax) - 1;
 	UHObject::OnSave(FileOut);
 
 	UHUtilities::WriteStringData(FileOut, SourcePath);

@@ -15,7 +15,7 @@ UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHText
 // Similar as the implementation of UHTexture2D
 void UHRenderTexture::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 {
-	if (!TextureSettings.bUseMipmap || !GTextureFormatData[ImageFormat].bCanGenerateMipmap)
+	if (!TextureSettings.bUseMipmap || !GTextureFormatData[UH_ENUM_VALUE(ImageFormat)].bCanGenerateMipmap)
 	{
 		return;
 	}

@@ -2,7 +2,7 @@
 #include "../../../../UnheardEngine.h"
 #include "GraphNode.h"
 
-enum UHMathNodeOperator
+enum class UHMathNodeOperator
 {
 	Add,
 	Subtract,

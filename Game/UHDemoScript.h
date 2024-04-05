@@ -5,7 +5,7 @@
 #include "../Runtime/Components/MeshRenderer.h"
 #include "../Runtime/Components/Camera.h"
 
-enum UHDemoType
+enum class UHDemoType
 {
 	DayTest,
 	PointLightNight,

@@ -51,7 +51,7 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 {
 	// generate SH9, this doesn't need to be called every frame
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::GenerateSH9]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::GenerateSH9)]);
 	if (!bIsSkyLightEnabledRT || !bNeedGenerateSH9RT)
 	{
 		return;
@@ -69,7 +69,7 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 
 void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UHRenderPassTypes::SkyPass]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SkyPass)]);
 	if (!bIsSkyLightEnabledRT)
 	{
 		return;

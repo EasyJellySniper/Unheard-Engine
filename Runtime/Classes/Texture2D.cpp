@@ -7,7 +7,7 @@
 #include "TextureCompressor.h"
 
 UHTexture2D::UHTexture2D()
-	: UHTexture2D("", "", VkExtent2D(), UH_FORMAT_RGBA8_SRGB, UHTextureSettings())
+	: UHTexture2D("", "", VkExtent2D(), UHTextureFormat::UH_FORMAT_RGBA8_SRGB, UHTextureSettings())
 {
 
 }
@@ -17,7 +17,7 @@ UHTexture2D::UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2
 	, bSharedMemory(true)
 {
 	SourcePath = InSourcePath;
-	TextureType = Texture2D;
+	TextureType = UHTextureType::Texture2D;
 }
 
 void UHTexture2D::ReleaseCPUTextureData()
@@ -75,7 +75,7 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 	}
 	Release();
 	TextureSettings.bIsCompressed = false;
-	ImageFormat = UH_FORMAT_NONE;
+	ImageFormat = UHTextureFormat::UH_FORMAT_NONE;
 	CreateTexture(bSharedMemory);
 
 	// upload the 1st slice and generate mip map
@@ -93,8 +93,10 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 	TextureData = ReadbackTextureData();
 
 	// since the mip map generation can't be done in block compression, always process compression after raw data is done
-	const int32_t RawByteSize = (TextureSettings.bIsHDR) ? GTextureFormatData[UH_FORMAT_RGBA16F].ByteSize : GTextureFormatData[UH_FORMAT_RGBA8_UNORM].ByteSize;
-	if (TextureSettings.CompressionSetting != CompressionNone)
+	const int32_t RawByteSize = (TextureSettings.bIsHDR) ? GTextureFormatData[UH_ENUM_VALUE(UHTextureFormat::UH_FORMAT_RGBA16F)].ByteSize 
+		: GTextureFormatData[UH_ENUM_VALUE(UHTextureFormat::UH_FORMAT_RGBA8_UNORM)].ByteSize;
+
+	if (TextureSettings.CompressionSetting != UHTextureCompressionSettings::CompressionNone)
 	{
 		std::vector<uint64_t> CompressedData;
 		uint64_t MipStartIndex = 0;
@@ -107,23 +109,23 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 
 			switch (TextureSettings.CompressionSetting)
 			{
-			case BC1:
+			case UHTextureCompressionSettings::BC1:
 				CompressedMipData = UHTextureCompressor::CompressBC1(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
-			case BC3:
+			case UHTextureCompressionSettings::BC3:
 				CompressedMipData = UHTextureCompressor::CompressBC3(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
-			case BC4:
+			case UHTextureCompressionSettings::BC4:
 				CompressedMipData = UHTextureCompressor::CompressBC4(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
-			case BC5:
+			case UHTextureCompressionSettings::BC5:
 				CompressedMipData = UHTextureCompressor::CompressBC5(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
-			case BC6H:
+			case UHTextureCompressionSettings::BC6H:
 				CompressedMipData = UHTextureCompressor::CompressBC6H(ImageExtent.width >> Idx, ImageExtent.height >> Idx, MipData, GfxCache);
 				break;
 
@@ -218,7 +220,7 @@ void UHTexture2D::Export(std::filesystem::path InTexturePath)
 	// open UHTexture file
 	std::ofstream FileOut(InTexturePath.string() + GTextureAssetExtension, std::ios::out | std::ios::binary);
 
-	Version = static_cast<UHTextureVersion>(TextureVersionMax - 1);
+	Version = UH_ENUM_VALUE(UHTextureVersion::TextureVersionMax) - 1;
 	UHObject::OnSave(FileOut);
 
 	// write type and source path
@@ -259,7 +261,7 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder
 
 	// copy data to staging buffer first
 	RawStageBuffers.resize(GetMipMapCount());
-	const UHTextureFormatData TextureFormatData = GTextureFormatData[ImageFormat];
+	const UHTextureFormatData TextureFormatData = GTextureFormatData[UH_ENUM_VALUE(ImageFormat)];
 	uint64_t MipStartIndex = 0;
 
 	for (uint32_t MipIdx = 0; MipIdx < GetMipMapCount(); MipIdx++)
@@ -318,7 +320,7 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder
 
 void UHTexture2D::GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder)
 {
-	if (bIsMipMapGenerated || !TextureSettings.bUseMipmap || !GTextureFormatData[ImageFormat].bCanGenerateMipmap)
+	if (bIsMipMapGenerated || !TextureSettings.bUseMipmap || !GTextureFormatData[UH_ENUM_VALUE(ImageFormat)].bCanGenerateMipmap)
 	{
 		return;
 	}
@@ -369,9 +371,9 @@ bool UHTexture2D::CreateTexture(bool bFromSharedMemory)
 	Info.ReboundOffset = MemoryOffset;
 	bSharedMemory = bFromSharedMemory;
 
-	if (ImageFormat == UH_FORMAT_NONE)
+	if (ImageFormat == UHTextureFormat::UH_FORMAT_NONE)
 	{
-		ImageFormat = (TextureSettings.bIsLinear) ? UH_FORMAT_RGBA8_UNORM : UH_FORMAT_RGBA8_SRGB;
+		ImageFormat = (TextureSettings.bIsLinear) ? UHTextureFormat::UH_FORMAT_RGBA8_UNORM : UHTextureFormat::UH_FORMAT_RGBA8_SRGB;
 		Info.Format = ImageFormat;
 	}
 
@@ -379,24 +381,24 @@ bool UHTexture2D::CreateTexture(bool bFromSharedMemory)
 	{
 		switch (TextureSettings.CompressionSetting)
 		{
-		case BC1:
-			Info.Format = (TextureSettings.bIsLinear) ? UH_FORMAT_BC1_UNORM : UH_FORMAT_BC1_SRGB;
+		case UHTextureCompressionSettings::BC1:
+			Info.Format = (TextureSettings.bIsLinear) ? UHTextureFormat::UH_FORMAT_BC1_UNORM : UHTextureFormat::UH_FORMAT_BC1_SRGB;
 			break;
 
-		case BC3:
-			Info.Format = (TextureSettings.bIsLinear) ? UH_FORMAT_BC3_UNORM : UH_FORMAT_BC3_SRGB;
+		case UHTextureCompressionSettings::BC3:
+			Info.Format = (TextureSettings.bIsLinear) ? UHTextureFormat::UH_FORMAT_BC3_UNORM : UHTextureFormat::UH_FORMAT_BC3_SRGB;
 			break;
 
-		case BC4:
-			Info.Format = UH_FORMAT_BC4;
+		case UHTextureCompressionSettings::BC4:
+			Info.Format = UHTextureFormat::UH_FORMAT_BC4;
 			break;
 
-		case BC5:
-			Info.Format = UH_FORMAT_BC5;
+		case UHTextureCompressionSettings::BC5:
+			Info.Format = UHTextureFormat::UH_FORMAT_BC5;
 			break;
 
-		case BC6H:
-			Info.Format = UH_FORMAT_BC6H;
+		case UHTextureCompressionSettings::BC6H:
+			Info.Format = UHTextureFormat::UH_FORMAT_BC6H;
 			break;
 
 		default:
@@ -405,7 +407,7 @@ bool UHTexture2D::CreateTexture(bool bFromSharedMemory)
 	}
 	else if (TextureSettings.bIsHDR)
 	{
-		Info.Format = UH_FORMAT_RGBA16F;
+		Info.Format = UHTextureFormat::UH_FORMAT_RGBA16F;
 	}
 
 	return Create(Info, (bFromSharedMemory) ? GfxCache->GetImageSharedMemory() : nullptr);
