@@ -249,6 +249,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.RTReflectionQuality = ConfigInterface->RenderingSetting().RTReflectionQuality;
 	SystemConstantsCPU.RTReflectionRayTMax = ConfigInterface->RenderingSetting().RTReflectionTMax;
 	SystemConstantsCPU.RTReflectionSmoothCutoff = ConfigInterface->RenderingSetting().RTReflectionSmoothCutoff;
+	SystemConstantsCPU.GFinalReflectionStrength = ConfigInterface->RenderingSetting().FinalReflectionStrength;
 	SystemConstantsCPU.GEnvCubeMipMapCount = (SkyCube != nullptr) ? static_cast<float>(SkyCube->GetMipMapCount()) : 0;
 	SystemConstantsCPU.GRefractionClearIndex = RefractionClearIndex;
 	SystemConstantsCPU.GRefractionBlurIndex = RefractionBlurredIndex;

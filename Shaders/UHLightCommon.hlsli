@@ -9,13 +9,13 @@ struct UHLightInfo
     float ShadowMask;
 };
 
-float3 SchlickFresnel(float3 SpecColor, float LdotH)
+float3 SchlickFresnel(float3 R0, float LdotH)
 {
     float CosIncidentAngle = LdotH;
 
     // pow5 F0 is used
     float F0 = 1.0f - CosIncidentAngle;
-    float3 ReflectPercent = SpecColor + (1.0f - SpecColor) * (F0 * F0 * F0 * F0 * F0);
+    float3 ReflectPercent = R0 + (1.0f - R0) * (F0 * F0 * F0 * F0 * F0);
 
     return ReflectPercent;
 }

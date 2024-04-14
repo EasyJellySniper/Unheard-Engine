@@ -80,6 +80,8 @@ struct UHSystemConstants
 	uint32_t GDefaultAnisoSamplerIndex;
 	uint32_t GRefractionClearIndex;
 	uint32_t GRefractionBlurIndex;
+
+	float GFinalReflectionStrength;
 };
 
 struct UHObjectConstants

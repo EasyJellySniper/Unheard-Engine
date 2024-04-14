@@ -427,10 +427,6 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			// bump scale
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->BumpFactor;
 			MatProps.BumpScale = static_cast<float>(FbxDouble1.Get());
-
-			// Display the Reflectivity
-			FbxDouble1 = ((FbxSurfacePhong*)Mat)->ReflectionFactor;
-			MatProps.ReflectionFactor = static_cast<float>(FbxDouble1.Get());
 		}
 		else if (Mat->GetClassId().Is(FbxSurfaceLambert::ClassId))
 		{

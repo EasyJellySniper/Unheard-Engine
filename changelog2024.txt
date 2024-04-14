@@ -127,3 +127,11 @@ Finalized RT reflection implementation.
 
 05-04-2024:
 Refactored all plain enums as enum classes.
+
+07-04-2024:
+Code refactor for material properties. UHMaterialProperty is now only an intermediary struct and temporarily used in fbx import.
+Removed reflection factor node too.
+
+14-04-2024:
+Add a reflection strength parameter for scaling the intensity of reflection.
+Refactor the way to read data from ini.

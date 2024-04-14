@@ -1,7 +1,10 @@
 #include "Utility.h"
+#include <unordered_map>
 
 namespace UHUtilities
 {
+	std::unordered_map<size_t, size_t> IniSectionCache;
+
 	// generic write string data
 	void WriteStringData(std::ofstream& FileOut, std::string InString)
 	{
@@ -122,17 +125,23 @@ namespace UHUtilities
 		FileOut << "[" << InSection << "]\n";
 	}
 
-	bool SeekINISection(std::ifstream& FileIn, std::string Section)
+	size_t SeekINISection(std::ifstream& FileIn, std::string Section)
 	{
 		// this function will move the file pos to section
 		FileIn.seekg(0);
+
+		// early out if section has been cached
+		const size_t SectionHash = StringToHash(Section);
+		if (IniSectionCache.find(SectionHash) != IniSectionCache.end())
+		{
+			return IniSectionCache[SectionHash];
+		}
 
 		std::string Line;
 		std::string SectionFound;
 		while (std::getline(FileIn, Line))
 		{
 			Line = RemoveChars(Line, " \t");
-
 			if (Line.find('[') != std::string::npos && Line.find(']') != std::string::npos)
 			{
 				SectionFound = Line.substr(1, Line.length() - 2);
@@ -140,11 +149,14 @@ namespace UHUtilities
 
 			if (SectionFound == Section)
 			{
-				return true;
+				// cache the section pos
+				const size_t CurrentPos = FileIn.tellg();
+				IniSectionCache[StringToHash(Section)] = CurrentPos;
+				return CurrentPos;
 			}
 		}
 
-		return false;
+		return std::string::npos;
 	}
 
 	// djb2 string to hash, reference: http://www.cse.yorku.ca/~oz/hash.html

@@ -22,7 +22,6 @@ UHMaterialNode::UHMaterialNode(UHMaterial* InMat)
 	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Metallic)] = MakeUnique<UHGraphPin>("Metallic (R)", this, UHGraphPinType::FloatPin);
 	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Roughness)] = MakeUnique<UHGraphPin>("Roughness (R)", this, UHGraphPinType::FloatPin);
 	Inputs[UH_ENUM_VALUE(UHMaterialInputs::FresnelFactor)] = MakeUnique<UHGraphPin>("Fresnel Factor (R)", this, UHGraphPinType::FloatPin);
-	Inputs[UH_ENUM_VALUE(UHMaterialInputs::ReflectionFactor)] = MakeUnique<UHGraphPin>("Reflection Factor (R)", this, UHGraphPinType::FloatPin);
 	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Emissive)] = MakeUnique<UHGraphPin>("Emissive (RGB)", this, UHGraphPinType::Float3Pin);
 	Inputs[UH_ENUM_VALUE(UHMaterialInputs::Refraction)] = MakeUnique<UHGraphPin>("Refraction (R)", this, UHGraphPinType::FloatPin);
 }
@@ -330,16 +329,6 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 	else
 	{
 		Code += "\tInput.FresnelFactor = 0.0f" + EndOfLine;
-	}
-
-	// ReflectionFactor
-	if (UHGraphPin* ReflectionFactor = Inputs[UH_ENUM_VALUE(UHMaterialInputs::ReflectionFactor)]->GetSrcPin())
-	{
-		Code += "\tInput.ReflectionFactor = max(" + ReflectionFactor->GetOriginNode()->EvalHLSL(ReflectionFactor) + ".r, 0)" + EndOfLine;
-	}
-	else
-	{
-		Code += "\tInput.ReflectionFactor = 0.5f" + EndOfLine;
 	}
 
 	InsertEmissiveCode(Code);

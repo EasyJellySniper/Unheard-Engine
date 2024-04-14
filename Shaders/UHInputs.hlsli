@@ -130,6 +130,8 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     uint GDefaultAnisoSamplerIndex;
     uint GRefractionClearIndex;
     uint GRefractionBlurIndex;
+	
+    float GFinalReflectionStrength;
 }
 
 // IT means inverse-transposed

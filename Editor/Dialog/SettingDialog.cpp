@@ -92,6 +92,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
         Engine->SetResizeReason(UHEngineResizeReason::ToggleHDR);
     }
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
+    ImGui::InputFloat("Final Reflection Strength", &RenderingSettings.FinalReflectionStrength);
 
     // raytracing settings
     ImGui::NewLine();

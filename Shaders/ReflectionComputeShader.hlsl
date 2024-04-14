@@ -56,7 +56,7 @@ void ReflectionCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
     // reflection from dynamic source (such as ray tracing)
     float4 DynamicReflection = RTReflection.SampleLevel(LinearClampped, UV, SpecMip);
     IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);
-    IndirectSpecular *= SpecFade * Fresnel * Occlusion;
+    IndirectSpecular *= SpecFade * Fresnel * Occlusion * GFinalReflectionStrength;
     
     // add indirect specular
     SceneResult[DTid.xy] = float4(CurrSceneData.rgb + IndirectSpecular, CurrSceneData.a);

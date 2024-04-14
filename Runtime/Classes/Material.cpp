@@ -16,10 +16,13 @@
 UHMaterial::UHMaterial()
 	: CullMode(UHCullMode::CullNone)
 	, BlendMode(UHBlendMode::Opaque)
-	, MaterialProps(UHMaterialProperty())
+	, CutoffValue(0.33f)
 	, CompileFlag(UHMaterialCompileFlag::UpToDate)
 	, MaterialUsages(UHMaterialUsage{})
 	, MaterialBufferSize(0)
+#if WITH_EDITOR
+	, MaterialProps(UHMaterialProperty())
+#endif
 {
 	MaterialNode = MakeUnique<UHMaterialNode>(this);
 	DefaultMaterialNodePos.x = 544;
@@ -64,7 +67,7 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 
 	FileIn.read(reinterpret_cast<char*>(&CullMode), sizeof(CullMode));
 	FileIn.read(reinterpret_cast<char*>(&BlendMode), sizeof(BlendMode));
-	FileIn.read(reinterpret_cast<char*>(&MaterialProps), sizeof(MaterialProps));
+	FileIn.read(reinterpret_cast<char*>(&CutoffValue), sizeof(CutoffValue));
 
 	// material graph data
 	UHUtilities::ReadStringVectorData(FileIn, RegisteredTextureNames);
@@ -186,205 +189,9 @@ void UHMaterial::PostImport()
 	AllocateRTMaterialBuffer();
 }
 
-#if WITH_EDITOR
-
-void UHMaterial::SetCullMode(UHCullMode InCullMode)
-{
-	// use for initialization at the moment
-	// need to support runtime change in the future
-	CullMode = InCullMode;
-}
-
-void UHMaterial::SetBlendMode(UHBlendMode InBlendMode)
-{
-	// use for initialization at the moment
-	// need to support runtime change in the future
-	BlendMode = InBlendMode;
-}
-
-void UHMaterial::SetTexFileName(UHMaterialInputs TexType, std::string InName)
-{
-	TexFileNames[UH_ENUM_VALUE(TexType)] = InName;
-}
-
-void UHMaterial::SetMaterialBufferSize(size_t InSize)
-{
-	if (MaterialBufferSize != InSize)
-	{
-		MaterialBufferSize = InSize;
-		// resize data buffer as well
-		AllocateMaterialBuffer();
-	}
-}
-
-void UHMaterial::Export(const std::filesystem::path InPath)
-{
-	// export UH Material
-	// 
-	// create folder if it's not existed
-	if (!std::filesystem::exists(GMaterialAssetPath))
-	{
-		std::filesystem::create_directories(GMaterialAssetPath);
-	}
-
-	const std::string OutPath = InPath.empty() ? GMaterialAssetPath + SourcePath + GMaterialAssetExtension : InPath.string();
-	std::ofstream FileOut(OutPath, std::ios::out | std::ios::binary);
-
-	// get current version before saving
-	Version = UH_ENUM_VALUE(UHMaterialVersion::MaterialVersionMax) - 1;
-	UHObject::OnSave(FileOut);
-
-	UHUtilities::WriteStringData(FileOut, SourcePath);
-
-	// write texture filename used, doesn't write file name for sky cube/metallic at the moment
-	for (int32_t Idx = 0; Idx <= UH_ENUM_VALUE(UHMaterialInputs::Roughness); Idx++)
-	{
-		UHUtilities::WriteStringData(FileOut, TexFileNames[Idx]);
-	}
-
-	// write cullmode and blend mode
-	FileOut.write(reinterpret_cast<const char*>(&CullMode), sizeof(CullMode));
-	FileOut.write(reinterpret_cast<const char*>(&BlendMode), sizeof(BlendMode));
-
-	// write constants
-	FileOut.write(reinterpret_cast<const char*>(&MaterialProps), sizeof(MaterialProps));
-
-	// material graph data
-	UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
-	ExportGraphData(FileOut);
-
-	// new version, going bindless
-	if (Version >= UH_ENUM_VALUE(UHMaterialVersion::GoingBindless))
-	{
-		// ensure the MaterialBufferSize is up-to-date before saving
-		GetCBufferDefineCode(MaterialBufferSize);
-		FileOut.write(reinterpret_cast<const char*>(&MaterialBufferSize), sizeof(MaterialBufferSize));
-	}
-
-	FileOut.close();
-}
-
-void UHMaterial::ExportGraphData(std::ofstream& FileOut)
-{
-	// export graph data, format as follow
-	// 1 Number of material inputs
-	// 2 Connection states, the index to EditNode array
-	// 3 All edit node type
-	// 4 Node inputs and connection states
-	//	 = Number of inputs
-	//	 = Connection states
-	//   = The value of the Node
-	// 3 & 4 are separated since it needs initalize the node first before setting connection states
-
-	auto FindEditNodeIndex = [this](UHGraphPin* InPin, int32_t &OutputIdx)
-	{
-		int32_t NodeIdx = UHINDEXNONE;
-		OutputIdx = 0;
-
-		if (InPin)
-		{
-			for (size_t Idx = 0; Idx < EditNodes.size(); Idx++)
-			{
-				if (InPin->GetOriginNode()->GetId() == EditNodes[Idx]->GetId())
-				{
-					for (const UniquePtr<UHGraphPin>& Output : EditNodes[Idx]->GetOutputs())
-					{
-						if (Output.get() == InPin)
-						{
-							break;
-						}
-						OutputIdx++;
-					}
-					NodeIdx = static_cast<int32_t>(Idx);
-					break;
-				}
-			}
-		}
-
-		return NodeIdx;
-	};
-
-	// 1 & 2
-	const std::vector<UniquePtr<UHGraphPin>>& Inputs = MaterialNode->GetInputs();
-	size_t NumMaterialInputs = Inputs.size();
-	FileOut.write(reinterpret_cast<const char*>(&NumMaterialInputs), sizeof(NumMaterialInputs));
-
-	for (size_t Idx = 0; Idx < NumMaterialInputs; Idx++)
-	{
-		int32_t OutputIdx;
-		int32_t NodeIdx = FindEditNodeIndex(Inputs[Idx]->GetSrcPin(), OutputIdx);
-		FileOut.write(reinterpret_cast<const char*>(&NodeIdx), sizeof(NodeIdx));
-		FileOut.write(reinterpret_cast<const char*>(&OutputIdx), sizeof(OutputIdx));
-	}
-
-	// 3
-	size_t NumEditNodes = EditNodes.size();
-	FileOut.write(reinterpret_cast<const char*>(&NumEditNodes), sizeof(NumEditNodes));
-
-	for (size_t Idx = 0; Idx < NumEditNodes; Idx++)
-	{
-		UHGraphNodeType Type = EditNodes[Idx]->GetType();
-		FileOut.write(reinterpret_cast<const char*>(&Type), sizeof(Type));
-		EditNodes[Idx]->OutputData(FileOut);
-	}
-
-	// 4
-	for (size_t Idx = 0; Idx < NumEditNodes; Idx++)
-	{
-		size_t NumInputs = EditNodes[Idx]->GetInputs().size();
-		FileOut.write(reinterpret_cast<const char*>(&NumInputs), sizeof(NumInputs));
-
-		const std::vector<UniquePtr<UHGraphPin>>& NodeInputs = EditNodes[Idx]->GetInputs();
-		for (size_t Jdx = 0; Jdx < NumInputs; Jdx++)
-		{
-			int32_t OutputIdx;
-			int32_t NodeIdx = FindEditNodeIndex(NodeInputs[Jdx]->GetSrcPin(), OutputIdx);
-			FileOut.write(reinterpret_cast<const char*>(&NodeIdx), sizeof(NodeIdx));
-			FileOut.write(reinterpret_cast<const char*>(&OutputIdx), sizeof(OutputIdx));
-		}
-	}
-
-	// GUI pos data
-	UHUtilities::WriteVectorData(FileOut, EditGUIRelativePos);
-	FileOut.write(reinterpret_cast<const char*>(&DefaultMaterialNodePos), sizeof(DefaultMaterialNodePos));
-}
-
-std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
-{
-	OutSize = 0;
-
-	// get texture define code
-	std::string Code;
-	MaterialNode->CollectTextureIndex(Code, OutSize);
-	MaterialNode->CollectMaterialParameter(Code, OutSize);
-
-	// constant from system
-	Code += "\tfloat GCutoff;\n";
-	Code += "\tint GBlendMode;\n";
-	Code += "\tuint GMaterialFeature;\n";
-
-	OutSize += sizeof(float) * 3;
-	
-	return Code;
-}
-
-std::string UHMaterial::GetMaterialInputCode(UHMaterialCompileData InData)
-{
-	MaterialNode->SetMaterialCompileData(InData);
-	return MaterialNode->EvalHLSL(nullptr);
-}
-
-#endif
-
 void UHMaterial::SetName(std::string InName)
 {
 	Name = InName;
-}
-
-void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
-{
-	MaterialProps = InProp;
-	SetRenderDirties(true);
 }
 
 void UHMaterial::SetIsSkybox(bool InFlag)
@@ -465,7 +272,7 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	MaterialNode->CopyMaterialParameter(MaterialConstantsCPU, BufferAddress);
 
 	// fill cutoff
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaterialProps.Cutoff, Stride);
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &CutoffValue, Stride);
 	BufferAddress += Stride;
 
 	// copy blend mode
@@ -492,7 +299,7 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 
 		// copy cutoff
 		memset(&MaterialRTDataCPU, 0, sizeof(UHRTMaterialData));
-		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &MaterialProps.Cutoff, Stride);
+		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &CutoffValue, Stride);
 
 		// copy blend mode
 		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &BlendMode, Stride);
@@ -537,11 +344,6 @@ UHCullMode UHMaterial::GetCullMode() const
 UHBlendMode UHMaterial::GetBlendMode() const
 {
 	return BlendMode;
-}
-
-UHMaterialProperty UHMaterial::GetMaterialProps() const
-{
-	return MaterialProps;
 }
 
 bool UHMaterial::IsOpaque() const
@@ -591,13 +393,210 @@ UHRenderBuffer<UHRTMaterialData>* UHMaterial::GetRTMaterialDataGPU(int32_t CurrF
 
 bool UHMaterial::operator==(const UHMaterial& InMat)
 {
-	return InMat.GetName() == Name
-		&& InMat.GetCullMode() == CullMode
-		&& InMat.GetBlendMode() == BlendMode
-		&& InMat.GetMaterialProps() == MaterialProps;
+	return InMat.Name == Name
+		&& InMat.CullMode == CullMode
+		&& InMat.BlendMode == BlendMode
+		&& InMat.CutoffValue == InMat.CutoffValue;
 }
 
 #if WITH_EDITOR
+
+void UHMaterial::SetCullMode(UHCullMode InCullMode)
+{
+	// use for initialization at the moment
+	// need to support runtime change in the future
+	CullMode = InCullMode;
+}
+
+void UHMaterial::SetBlendMode(UHBlendMode InBlendMode)
+{
+	// use for initialization at the moment
+	// need to support runtime change in the future
+	BlendMode = InBlendMode;
+}
+
+void UHMaterial::SetTexFileName(UHMaterialInputs TexType, std::string InName)
+{
+	TexFileNames[UH_ENUM_VALUE(TexType)] = InName;
+}
+
+void UHMaterial::SetMaterialBufferSize(size_t InSize)
+{
+	if (MaterialBufferSize != InSize)
+	{
+		MaterialBufferSize = InSize;
+		// resize data buffer as well
+		AllocateMaterialBuffer();
+	}
+}
+
+void UHMaterial::Export(const std::filesystem::path InPath)
+{
+	// export UH Material
+	// 
+	// create folder if it's not existed
+	if (!std::filesystem::exists(GMaterialAssetPath))
+	{
+		std::filesystem::create_directories(GMaterialAssetPath);
+	}
+
+	const std::string OutPath = InPath.empty() ? GMaterialAssetPath + SourcePath + GMaterialAssetExtension : InPath.string();
+	std::ofstream FileOut(OutPath, std::ios::out | std::ios::binary);
+
+	// get current version before saving
+	Version = UH_ENUM_VALUE(UHMaterialVersion::MaterialVersionMax) - 1;
+	UHObject::OnSave(FileOut);
+
+	UHUtilities::WriteStringData(FileOut, SourcePath);
+
+	// write texture filename used, doesn't write file name for sky cube/metallic at the moment
+	for (int32_t Idx = 0; Idx <= UH_ENUM_VALUE(UHMaterialInputs::Roughness); Idx++)
+	{
+		UHUtilities::WriteStringData(FileOut, TexFileNames[Idx]);
+	}
+
+	// write properties
+	FileOut.write(reinterpret_cast<const char*>(&CullMode), sizeof(CullMode));
+	FileOut.write(reinterpret_cast<const char*>(&BlendMode), sizeof(BlendMode));
+	FileOut.write(reinterpret_cast<const char*>(&CutoffValue), sizeof(CutoffValue));
+
+	// material graph data
+	UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
+	ExportGraphData(FileOut);
+
+	// new version, going bindless
+	if (Version >= UH_ENUM_VALUE(UHMaterialVersion::GoingBindless))
+	{
+		// ensure the MaterialBufferSize is up-to-date before saving
+		GetCBufferDefineCode(MaterialBufferSize);
+		FileOut.write(reinterpret_cast<const char*>(&MaterialBufferSize), sizeof(MaterialBufferSize));
+	}
+
+	FileOut.close();
+}
+
+void UHMaterial::ExportGraphData(std::ofstream& FileOut)
+{
+	// export graph data, format as follow
+	// 1 Number of material inputs
+	// 2 Connection states, the index to EditNode array
+	// 3 All edit node type
+	// 4 Node inputs and connection states
+	//	 = Number of inputs
+	//	 = Connection states
+	//   = The value of the Node
+	// 3 & 4 are separated since it needs initalize the node first before setting connection states
+
+	auto FindEditNodeIndex = [this](UHGraphPin* InPin, int32_t& OutputIdx)
+		{
+			int32_t NodeIdx = UHINDEXNONE;
+			OutputIdx = 0;
+
+			if (InPin)
+			{
+				for (size_t Idx = 0; Idx < EditNodes.size(); Idx++)
+				{
+					if (InPin->GetOriginNode()->GetId() == EditNodes[Idx]->GetId())
+					{
+						for (const UniquePtr<UHGraphPin>& Output : EditNodes[Idx]->GetOutputs())
+						{
+							if (Output.get() == InPin)
+							{
+								break;
+							}
+							OutputIdx++;
+						}
+						NodeIdx = static_cast<int32_t>(Idx);
+						break;
+					}
+				}
+			}
+
+			return NodeIdx;
+		};
+
+	// 1 & 2
+	const std::vector<UniquePtr<UHGraphPin>>& Inputs = MaterialNode->GetInputs();
+	size_t NumMaterialInputs = Inputs.size();
+	FileOut.write(reinterpret_cast<const char*>(&NumMaterialInputs), sizeof(NumMaterialInputs));
+
+	for (size_t Idx = 0; Idx < NumMaterialInputs; Idx++)
+	{
+		int32_t OutputIdx;
+		int32_t NodeIdx = FindEditNodeIndex(Inputs[Idx]->GetSrcPin(), OutputIdx);
+		FileOut.write(reinterpret_cast<const char*>(&NodeIdx), sizeof(NodeIdx));
+		FileOut.write(reinterpret_cast<const char*>(&OutputIdx), sizeof(OutputIdx));
+	}
+
+	// 3
+	size_t NumEditNodes = EditNodes.size();
+	FileOut.write(reinterpret_cast<const char*>(&NumEditNodes), sizeof(NumEditNodes));
+
+	for (size_t Idx = 0; Idx < NumEditNodes; Idx++)
+	{
+		UHGraphNodeType Type = EditNodes[Idx]->GetType();
+		FileOut.write(reinterpret_cast<const char*>(&Type), sizeof(Type));
+		EditNodes[Idx]->OutputData(FileOut);
+	}
+
+	// 4
+	for (size_t Idx = 0; Idx < NumEditNodes; Idx++)
+	{
+		size_t NumInputs = EditNodes[Idx]->GetInputs().size();
+		FileOut.write(reinterpret_cast<const char*>(&NumInputs), sizeof(NumInputs));
+
+		const std::vector<UniquePtr<UHGraphPin>>& NodeInputs = EditNodes[Idx]->GetInputs();
+		for (size_t Jdx = 0; Jdx < NumInputs; Jdx++)
+		{
+			int32_t OutputIdx;
+			int32_t NodeIdx = FindEditNodeIndex(NodeInputs[Jdx]->GetSrcPin(), OutputIdx);
+			FileOut.write(reinterpret_cast<const char*>(&NodeIdx), sizeof(NodeIdx));
+			FileOut.write(reinterpret_cast<const char*>(&OutputIdx), sizeof(OutputIdx));
+		}
+	}
+
+	// GUI pos data
+	UHUtilities::WriteVectorData(FileOut, EditGUIRelativePos);
+	FileOut.write(reinterpret_cast<const char*>(&DefaultMaterialNodePos), sizeof(DefaultMaterialNodePos));
+}
+
+std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
+{
+	OutSize = 0;
+
+	// get texture define code
+	std::string Code;
+	MaterialNode->CollectTextureIndex(Code, OutSize);
+	MaterialNode->CollectMaterialParameter(Code, OutSize);
+
+	// constant from system
+	Code += "\tfloat GCutoff;\n";
+	Code += "\tint GBlendMode;\n";
+	Code += "\tuint GMaterialFeature;\n";
+
+	OutSize += sizeof(float) * 3;
+
+	return Code;
+}
+
+std::string UHMaterial::GetMaterialInputCode(UHMaterialCompileData InData)
+{
+	MaterialNode->SetMaterialCompileData(InData);
+	return MaterialNode->EvalHLSL(nullptr);
+}
+
+void UHMaterial::SetMaterialProps(UHMaterialProperty InProp)
+{
+	MaterialProps = InProp;
+	SetRenderDirties(true);
+}
+
+UHMaterialProperty UHMaterial::GetMaterialProps() const
+{
+	return MaterialProps;
+}
+
+
 void UHMaterial::GenerateDefaultMaterialNodes()
 {
 	// generate default material graph

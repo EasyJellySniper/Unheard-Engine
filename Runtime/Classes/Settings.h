@@ -88,6 +88,7 @@ public:
 		, RTReflectionQuality(UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
 		, RTReflectionTMax(100)
 		, RTReflectionSmoothCutoff(0.5f)
+		, FinalReflectionStrength(0.75f)
 		, bEnableAsyncCompute(false)
 		, bEnableHDR(false)
 	{
@@ -115,6 +116,7 @@ public:
 	int32_t RTReflectionQuality;
 	float RTReflectionTMax;
 	float RTReflectionSmoothCutoff;
+	float FinalReflectionStrength;
 
 	bool bEnableAsyncCompute;
 	bool bEnableHDR;

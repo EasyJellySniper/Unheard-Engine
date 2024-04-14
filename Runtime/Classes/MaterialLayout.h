@@ -42,7 +42,6 @@ enum class UHMaterialInputs
 	Metallic,
 	Roughness,
 	FresnelFactor,
-	ReflectionFactor,
 	Emissive,
 	Refraction,
 	MaterialMax

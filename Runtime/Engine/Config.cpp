@@ -17,52 +17,56 @@ void UHConfigManager::LoadConfig()
 	std::ifstream FileIn(L"UHESettings.ini", std::ios::in);
 	if (FileIn.is_open())
 	{
-		if (UHUtilities::SeekINISection(FileIn, "PresentationSettings"))
+		// presentation settings
+		std::string Section = "PresentationSettings";
 		{
-			PresentationSettings.WindowWidth = UHUtilities::ReadINIData<int32_t>(FileIn, "WindowWidth");
-			PresentationSettings.WindowHeight = UHUtilities::ReadINIData<int32_t>(FileIn, "WindowHeight");
-			PresentationSettings.bVsync = UHUtilities::ReadINIData<int32_t>(FileIn, "bVsync");
-			PresentationSettings.bFullScreen = UHUtilities::ReadINIData<int32_t>(FileIn, "bFullScreen");
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "WindowWidth", PresentationSettings.WindowWidth);
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "WindowHeight", PresentationSettings.WindowHeight);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bVsync", PresentationSettings.bVsync);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bFullScreen", PresentationSettings.bFullScreen);
 		}
 
-		if (UHUtilities::SeekINISection(FileIn, "EngineSettings"))
+		// engine settings
+		Section = "EngineSettings";
 		{
-			EngineSettings.DefaultCameraMoveSpeed = UHUtilities::ReadINIData<float>(FileIn, "DefaultCameraMoveSpeed");
-			EngineSettings.MouseRotationSpeed = UHUtilities::ReadINIData<float>(FileIn, "MouseRotationSpeed");
-			EngineSettings.ForwardKey = UHUtilities::ReadINIData<char>(FileIn, "ForwardKey");
-			EngineSettings.BackKey = UHUtilities::ReadINIData<char>(FileIn, "BackKey");
-			EngineSettings.LeftKey = UHUtilities::ReadINIData<char>(FileIn, "LeftKey");
-			EngineSettings.RightKey = UHUtilities::ReadINIData<char>(FileIn, "RightKey");
-			EngineSettings.DownKey = UHUtilities::ReadINIData<char>(FileIn, "DownKey");
-			EngineSettings.UpKey = UHUtilities::ReadINIData<char>(FileIn, "UpKey");
-			EngineSettings.FPSLimit = UHUtilities::ReadINIData<float>(FileIn, "FPSLimit");
-			EngineSettings.MeshBufferMemoryBudgetMB = UHUtilities::ReadINIData<float>(FileIn, "MeshBufferMemoryBudgetMB");
-			EngineSettings.ImageMemoryBudgetMB = UHUtilities::ReadINIData<float>(FileIn, "ImageMemoryBudgetMB");
+			UHUtilities::ReadINIData<float>(FileIn, Section, "DefaultCameraMoveSpeed", EngineSettings.DefaultCameraMoveSpeed);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "MouseRotationSpeed", EngineSettings.MouseRotationSpeed);
+			UHUtilities::ReadINIData<char>(FileIn, Section, "ForwardKey", EngineSettings.ForwardKey);
+			UHUtilities::ReadINIData<char>(FileIn, Section, "BackKey", EngineSettings.BackKey);
+			UHUtilities::ReadINIData<char>(FileIn, Section, "LeftKey", EngineSettings.LeftKey);
+			UHUtilities::ReadINIData<char>(FileIn, Section, "RightKey", EngineSettings.RightKey);
+			UHUtilities::ReadINIData<char>(FileIn, Section, "DownKey", EngineSettings.DownKey);
+			UHUtilities::ReadINIData<char>(FileIn, Section, "UpKey", EngineSettings.UpKey);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "FPSLimit", EngineSettings.FPSLimit);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "MeshBufferMemoryBudgetMB", EngineSettings.MeshBufferMemoryBudgetMB);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "ImageMemoryBudgetMB", EngineSettings.ImageMemoryBudgetMB);
 
 			// clamp a few parameters
 			EngineSettings.MeshBufferMemoryBudgetMB = std::clamp(EngineSettings.MeshBufferMemoryBudgetMB, 0.1f, std::numeric_limits<float>::max());
 			EngineSettings.ImageMemoryBudgetMB = std::clamp(EngineSettings.ImageMemoryBudgetMB, 256.0f, std::numeric_limits<float>::max());
 		}
 
-		if (UHUtilities::SeekINISection(FileIn, "RenderingSettings"))
+		// rendering settings
+		Section = "RenderingSettings";
 		{
-			RenderingSettings.RenderWidth = UHUtilities::ReadINIData<int32_t>(FileIn, "RenderWidth");
-			RenderingSettings.RenderHeight = UHUtilities::ReadINIData<int32_t>(FileIn, "RenderHeight");
-			RenderingSettings.bTemporalAA = UHUtilities::ReadINIData<int32_t>(FileIn, "bTemporalAA");
-			RenderingSettings.bEnableRayTracing = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableRayTracing");
-			RenderingSettings.bEnableGPULabeling = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPULabeling");
-			RenderingSettings.bEnableLayerValidation = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableLayerValidation");
-			RenderingSettings.bEnableGPUTiming = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableGPUTiming");
-			RenderingSettings.bEnableDepthPrePass = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableDepthPrePass");
-			RenderingSettings.ParallelThreads = UHUtilities::ReadINIData<int32_t>(FileIn, "ParallelThreads");
-			RenderingSettings.RTCullingRadius = UHUtilities::ReadINIData<float>(FileIn, "RTCullingRadius");
-			RenderingSettings.RTShadowQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTShadowQuality");
-			RenderingSettings.RTShadowTMax = UHUtilities::ReadINIData<float>(FileIn, "RTShadowTMax");
-			RenderingSettings.RTReflectionQuality = UHUtilities::ReadINIData<int32_t>(FileIn, "RTReflectionQuality");
-			RenderingSettings.RTReflectionTMax = UHUtilities::ReadINIData<float>(FileIn, "RTReflectionTMax");
-			RenderingSettings.RTReflectionSmoothCutoff = UHUtilities::ReadINIData<float>(FileIn, "RTReflectionSmoothCutoff");
-			RenderingSettings.bEnableAsyncCompute = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableAsyncCompute");
-			RenderingSettings.bEnableHDR = UHUtilities::ReadINIData<int32_t>(FileIn, "bEnableHDR");
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RenderWidth", RenderingSettings.RenderWidth);
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RenderHeight", RenderingSettings.RenderHeight);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bTemporalAA", RenderingSettings.bTemporalAA);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableRayTracing", RenderingSettings.bEnableRayTracing);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableGPULabeling", RenderingSettings.bEnableGPULabeling);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableLayerValidation", RenderingSettings.bEnableLayerValidation);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableGPUTiming", RenderingSettings.bEnableGPUTiming);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableDepthPrePass", RenderingSettings.bEnableDepthPrePass);
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "ParallelThreads", RenderingSettings.ParallelThreads);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "RTCullingRadius", RenderingSettings.RTCullingRadius);
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RTShadowQuality", RenderingSettings.RTShadowQuality);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "RTShadowTMax", RenderingSettings.RTShadowTMax);
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RTReflectionQuality", RenderingSettings.RTReflectionQuality);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "RTReflectionTMax", RenderingSettings.RTReflectionTMax);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "RTReflectionSmoothCutoff", RenderingSettings.RTReflectionSmoothCutoff);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "FinalReflectionStrength", RenderingSettings.FinalReflectionStrength);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableHDR", RenderingSettings.bEnableHDR);
 
 			// clamp a few parameters
 			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
@@ -116,6 +120,7 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "RTReflectionQuality", RenderingSettings.RTReflectionQuality);
 		UHUtilities::WriteINIData(FileOut, "RTReflectionTMax", RenderingSettings.RTReflectionTMax);
 		UHUtilities::WriteINIData(FileOut, "RTReflectionSmoothCutoff", RenderingSettings.RTReflectionSmoothCutoff);
+		UHUtilities::WriteINIData(FileOut, "FinalReflectionStrength", RenderingSettings.FinalReflectionStrength);
 		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 		UHUtilities::WriteINIData(FileOut, "bEnableHDR", RenderingSettings.bEnableHDR);
 	}

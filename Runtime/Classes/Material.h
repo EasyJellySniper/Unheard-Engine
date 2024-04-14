@@ -16,7 +16,8 @@ enum class UHMaterialVersion
 	MaterialVersionMax
 };
 
-// UH material property, for CPU use
+// UH material property, for import use
+#if WITH_EDITOR
 struct UHMaterialProperty
 {
 	UHMaterialProperty()
@@ -31,9 +32,7 @@ struct UHMaterialProperty
 		Roughness = 1.0f;
 		Specular = XMFLOAT3(0.5f, 0.5f, 0.5f);
 		BumpScale = 1.0f;
-		Cutoff = 0.33f;
 		FresnelFactor = 0.0f;
-		ReflectionFactor = 1.0f;
 	}
 
 	bool operator==(const UHMaterialProperty& InProp)
@@ -47,9 +46,7 @@ struct UHMaterialProperty
 			&& InProp.Opacity == Opacity
 			&& InProp.EmissiveIntensity == EmissiveIntensity
 			&& InProp.BumpScale == BumpScale
-			&& InProp.Cutoff == Cutoff
-			&& InProp.FresnelFactor == FresnelFactor
-			&& InProp.ReflectionFactor == ReflectionFactor;
+			&& InProp.FresnelFactor == FresnelFactor;
 	}
 
 	XMFLOAT3 Diffuse;
@@ -61,10 +58,9 @@ struct UHMaterialProperty
 	float Metallic;
 	float Roughness;
 	float BumpScale;
-	float Cutoff;
 	float FresnelFactor;
-	float ReflectionFactor;
 };
+#endif
 
 // material data, max available number of scalars are 128 for now, the shader needs to match this number
 static const int32_t GMaxRTMaterialDataSlot = 128;
@@ -84,21 +80,7 @@ public:
 	void ImportGraphData(std::ifstream& FileIn);
 	void PostImport();
 
-#if WITH_EDITOR
-	// setting cull mode & blend mode is only available in editor
-	void SetCullMode(UHCullMode InCullMode);
-	void SetBlendMode(UHBlendMode InBlendMode);
-
-	void SetTexFileName(UHMaterialInputs TexType, std::string InName);
-	void SetMaterialBufferSize(size_t InSize);
-	void Export(const std::filesystem::path InPath = "");
-	void ExportGraphData(std::ofstream& FileOut);
-	std::string GetCBufferDefineCode(size_t& OutSize);
-	std::string GetMaterialInputCode(UHMaterialCompileData InData);
-#endif
-
 	void SetName(std::string InName);
-	void SetMaterialProps(UHMaterialProperty InProp);
 	void SetIsSkybox(bool InFlag);
 	void SetCompileFlag(UHMaterialCompileFlag InFlag);
 	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
@@ -110,7 +92,6 @@ public:
 	std::string GetSourcePath() const;
 	UHCullMode GetCullMode() const;
 	UHBlendMode GetBlendMode() const;
-	UHMaterialProperty GetMaterialProps() const;
 	UHMaterialCompileFlag GetCompileFlag() const;
 	std::filesystem::path GetPath() const;
 	bool IsOpaque() const;
@@ -125,6 +106,20 @@ public:
 	bool operator==(const UHMaterial& InMat);
 
 #if WITH_EDITOR
+	// setting cull mode & blend mode is only available in editor
+	void SetCullMode(UHCullMode InCullMode);
+	void SetBlendMode(UHBlendMode InBlendMode);
+
+	void SetTexFileName(UHMaterialInputs TexType, std::string InName);
+	void SetMaterialBufferSize(size_t InSize);
+	void Export(const std::filesystem::path InPath = "");
+	void ExportGraphData(std::ofstream& FileOut);
+	std::string GetCBufferDefineCode(size_t& OutSize);
+	std::string GetMaterialInputCode(UHMaterialCompileData InData);
+
+	void SetMaterialProps(UHMaterialProperty InProp);
+	UHMaterialProperty GetMaterialProps() const;
+
 	void GenerateDefaultMaterialNodes();
 	UniquePtr<UHMaterialNode>& GetMaterialNode();
 	std::vector<UniquePtr<UHGraphNode>>& GetEditNodes();
@@ -144,12 +139,11 @@ private:
 	// material state variables
 	UHCullMode CullMode;
 	UHBlendMode BlendMode;
+	float CutoffValue;
 
 	// material flags
 	UHMaterialCompileFlag CompileFlag;
 	UHMaterialUsage MaterialUsages;
-
-	UHMaterialProperty MaterialProps;
 	std::string TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::MaterialMax)];
 
 	UniquePtr<UHMaterialNode> MaterialNode;
@@ -167,4 +161,8 @@ private:
 
 	UHRTMaterialData MaterialRTDataCPU;
 	UniquePtr<UHRenderBuffer<UHRTMaterialData>> MaterialRTDataGPU[GMaxFrameInFlight];
+
+#if WITH_EDITOR
+	UHMaterialProperty MaterialProps;
+#endif
 };

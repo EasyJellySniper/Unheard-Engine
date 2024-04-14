@@ -130,7 +130,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     
     float4 DynamicReflection = ScreenReflectionTexture.SampleLevel(UHSamplerTable[GLinearClampSamplerIndex], ScreenUV, SpecMip);
     IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);
-    IndirectSpecular *= SpecFade * Fresnel * Occlusion;
+    IndirectSpecular *= SpecFade * Fresnel * Occlusion * GFinalReflectionStrength;
 
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
 	// sample shadows

@@ -201,14 +201,24 @@ namespace UHUtilities
 		FileOut << Key << "=" << std::to_string(Value) << std::endl;
 	}
 
-	bool SeekINISection(std::ifstream& FileIn, std::string Section);
+	size_t SeekINISection(std::ifstream& FileIn, std::string Section);
 
 	template<typename T>
-	inline T ReadINIData(std::ifstream& FileIn, std::string Key)
+	inline void ReadINIData(std::ifstream& FileIn, std::string Section, std::string Key, T& OutValue)
 	{
 		// this function simply reads ini data, doesn't consider comment yet
-		// works on number value only as well
-		// assume SeekSection() is already called
+		const size_t StartPos = SeekINISection(FileIn, Section);
+		if (StartPos == std::string::npos)
+		{
+			return;
+		}
+
+		if (!FileIn.good())
+		{
+			// in case setting are not found (new value)
+			FileIn.clear();
+		}
+		FileIn.seekg(StartPos);
 
 		std::string KeyFound;
 		std::string ValueFound;
@@ -226,15 +236,15 @@ namespace UHUtilities
 
 				if (KeyFound == Key)
 				{
-					// return value with string to double anyway
+					// string to double anyway
 					// then cast it to target type
-					return static_cast<T>(std::stod(ValueFound));
+					OutValue = static_cast<T>(std::stod(ValueFound));
+					return;
 				}
 			}
 		}
 
-		// no value found, also the worst case of this reader
-		return -1;
+		// no value found, the OutValue will remain the same
 	}
 
 	// djb2 string to hash, reference: http://www.cse.yorku.ca/~oz/hash.html
