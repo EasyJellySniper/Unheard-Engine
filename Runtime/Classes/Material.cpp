@@ -283,6 +283,7 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	uint32_t UsageValue = 0;
 	UsageValue |= MaterialUsages.bIsTangentSpace ? UH_ENUM_VALUE_U(UHMaterialFeatureBits::MaterialTangentSpace) : 0;
 	UsageValue |= MaterialUsages.bUseRefraction ? UH_ENUM_VALUE_U(UHMaterialFeatureBits::MaterialRefraction) : 0;
+
 	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
 	BufferAddress += Stride;
 

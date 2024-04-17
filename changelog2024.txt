@@ -135,3 +135,8 @@ Removed reflection factor node too.
 14-04-2024:
 Add a reflection strength parameter for scaling the intensity of reflection.
 Refactor the way to read data from ini.
+
+17-04-2024:
+Fixed a subtle bug in RT hit group shader. It didn't properly cancel a flag since HLSL considers macro defined integer as signed.
+Casting to uint solves the issue. Also exposed the cutoff value in material editor.
+Now, only opaque object can reach closest shader. So I removed the redundant check there.

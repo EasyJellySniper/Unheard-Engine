@@ -175,11 +175,7 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
             }
             ImGui::EndCombo();
         }
-    }
 
-    // Blend mode list
-    if (CurrentMaterial)
-    {
         const std::string CurrBlendModeText = UHUtilities::ToStringA(GBlendModeNames[UH_ENUM_VALUE(CurrentMaterial->GetBlendMode())]);
         if (ImGui::BeginCombo("Blend Mode", CurrBlendModeText.c_str()))
         {
@@ -197,7 +193,22 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
             }
             ImGui::EndCombo();
         }
+
+        // Material properties
+        bool bHasPropertyChanged = false;
+        if (ImGui::InputFloat("Cutoff", &CurrentMaterial->CutoffValue))
+        {
+            bHasPropertyChanged = true;
+        }
+
+        if (bHasPropertyChanged)
+        {
+            CurrentMaterial->SetRenderDirties(true);
+            CurrentMaterial->SetRayTracingDirties(true);
+            CurrentMaterial->SetMotionDirties(true);
+        }
     }
+
     DialogSize = ImGui::GetWindowSize();
     bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     ImGui::End();

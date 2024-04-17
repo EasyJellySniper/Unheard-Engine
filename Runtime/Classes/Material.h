@@ -164,5 +164,6 @@ private:
 
 #if WITH_EDITOR
 	UHMaterialProperty MaterialProps;
+	friend class UHMaterialDialog;
 #endif
 };

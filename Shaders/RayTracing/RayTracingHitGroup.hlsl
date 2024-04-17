@@ -277,27 +277,18 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
 [shader("closesthit")]
 void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
+    // closest hit shader, only opaque objects will reach here
     float PrevHitT = Payload.HitT;
 	Payload.HitT = RayTCurrent();
-	
-    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
-    bool bIsOpaque = MatData.Data[1] <= UH_ISMASKED;
 
-	// set alpha to 1 and cancel the flag of hit translucent if the closest one is opaque
-    if (bIsOpaque)
+	// set alpha to 1 and cancel the flag of hit translucent if it's behind this opaque object
+    Payload.HitAlpha = 1.0f;
+    if ((Payload.PayloadData & PAYLOAD_HITTRANSLUCENT) && Payload.HitT <= PrevHitT)
     {
-        Payload.HitAlpha = 1.0f;
-        
-        // see if we need to cancel the hit translucent flag, in case the translucent object behind a object is traced
-        if ((Payload.PayloadData & PAYLOAD_HITTRANSLUCENT) && Payload.HitT <= PrevHitT)
-        {
-            Payload.PayloadData &= ~PAYLOAD_HITTRANSLUCENT;
-        }
+        Payload.PayloadData &= ~uint(PAYLOAD_HITTRANSLUCENT);
     }
-	
-	// following calculation is for reflection
-    // also early out for translucent as it's processed in any hit shader
-    if ((Payload.PayloadData & PAYLOAD_ISREFLECTION) == 0 || !bIsOpaque)
+
+    if ((Payload.PayloadData & PAYLOAD_ISREFLECTION) == 0)
 	{
 		return;
 	}
