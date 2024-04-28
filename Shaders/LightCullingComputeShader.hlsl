@@ -21,10 +21,10 @@ groupshared uint GTileLightCount;
 void CalcFrustumPlanes(uint TileX, uint TileY, float MinZ, float MaxZ, out float4 Plane[6])
 {
 	// tile position in screen space
-    float X = TileX * UHLIGHTCULLING_TILE;
-    float Y = TileY * UHLIGHTCULLING_TILE;
-    float RX = (TileX + 1) * UHLIGHTCULLING_TILE;
-    float RY = (TileY + 1) * UHLIGHTCULLING_TILE;
+    float X = TileToCoordX(TileX);
+    float Y = TileToCoordY(TileY);
+    float RX = TileToCoordX(TileX + 1);
+    float RY = TileToCoordY(TileY + 1);
 
 	// frustum corner (at far plane) - LB RB LT RT, do not set z as zero since system uses infinite far z
     Plane[0] = float4(X, Y, 0.0001f, 1.0f);
@@ -79,10 +79,10 @@ void CalcFrustumPlanes(uint TileX, uint TileY, float MinZ, float MaxZ, out float
 void CalcFrustumCorners(uint TileX, uint TileY, float MinZ, float MaxZ, out float3 Corners[8])
 {
     // tile position in screen space
-    float X = TileX * UHLIGHTCULLING_TILE;
-    float Y = TileY * UHLIGHTCULLING_TILE;
-    float RX = (TileX + 1) * UHLIGHTCULLING_TILE;
-    float RY = (TileY + 1) * UHLIGHTCULLING_TILE;
+    float X = TileToCoordX(TileX);
+    float Y = TileToCoordY(TileY);
+    float RX = TileToCoordX(TileX + 1);
+    float RY = TileToCoordY(TileY + 1);
 
 	// frustum corners - LB RB LT RT, at the near and far
     Corners[0] = float3(X, Y, MinZ);
@@ -145,7 +145,7 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     float4 TileFrustum[6];
     CalcFrustumPlanes(Gid.x, Gid.y, MaxDepth, MinDepth, TileFrustum);
     
-    for (uint LightIdx = GIndex; LightIdx < GNumPointLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
+    for (uint LightIdx = GIndex; LightIdx < GNumPointLights; LightIdx += UHLIGHTCULLING_TILEX * UHLIGHTCULLING_TILEY)
     {
         UHPointLight PointLight = UHPointLights[LightIdx];
         UHBRANCH
@@ -260,7 +260,7 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     float3 TileCornersWorld[8];
     CalcFrustumCorners(Gid.x, Gid.y, MaxDepth, MinDepth, TileCornersWorld);
     
-    for (uint LightIdx = GIndex; LightIdx < GNumSpotLights; LightIdx += UHLIGHTCULLING_TILE * UHLIGHTCULLING_TILE)
+    for (uint LightIdx = GIndex; LightIdx < GNumSpotLights; LightIdx += UHLIGHTCULLING_TILEX * UHLIGHTCULLING_TILEY)
     {
         UHSpotLight SpotLight = UHSpotLights[LightIdx];
         UHBRANCH
@@ -312,7 +312,7 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
 
 // this time the numthreads follows tile setting instead of regular thread group 2D definition
 // note that it's culling at half resolution
-[numthreads(UHLIGHTCULLING_TILE, UHLIGHTCULLING_TILE, 1)]
+[numthreads(UHLIGHTCULLING_TILEX, UHLIGHTCULLING_TILEY, 1)]
 void LightCullingCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GIndex : SV_GroupIndex)
 {
     if (DTid.x * UHLIGHTCULLING_UPSCALE >= GResolution.x || DTid.y * UHLIGHTCULLING_UPSCALE >= GResolution.y)

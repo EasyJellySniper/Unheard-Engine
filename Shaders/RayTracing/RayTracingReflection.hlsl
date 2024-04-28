@@ -279,8 +279,8 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldP
     // for point lights and spot lights, fetch from tile-based light if it's inside screen
     // otherwise, fetch from the closest lights to current camera for now, this can be improved by 3D culling instead in the future
     uint2 PixelCoord = uint2(ScreenUV * GResolution.xy);
-    uint TileX = PixelCoord.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileY = PixelCoord.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileX = CoordToTileX(PixelCoord.x);
+    uint TileY = CoordToTileY(PixelCoord.y);
     uint TileIndex = TileX + TileY * GLightTileCountX;
     float AttenNoise = GetAttenuationNoise(PixelCoord.xy);
     

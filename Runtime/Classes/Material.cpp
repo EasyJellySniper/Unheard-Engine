@@ -22,6 +22,7 @@ UHMaterial::UHMaterial()
 	, MaterialBufferSize(0)
 #if WITH_EDITOR
 	, MaterialProps(UHMaterialProperty())
+	, bIsMaterialNodeDirty(false)
 #endif
 {
 	MaterialNode = MakeUnique<UHMaterialNode>(this);
@@ -874,6 +875,11 @@ POINT UHMaterial::GetDefaultMaterialNodePos()
 void UHMaterial::SetSourcePath(const std::string InPath)
 {
 	SourcePath = InPath;
+}
+
+bool UHMaterial::IsMaterialNodeDirty() const
+{
+	return bIsMaterialNodeDirty;
 }
 
 #endif

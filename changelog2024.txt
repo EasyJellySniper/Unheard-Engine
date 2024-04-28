@@ -140,3 +140,11 @@ Refactor the way to read data from ini.
 Fixed a subtle bug in RT hit group shader. It didn't properly cancel a flag since HLSL considers macro defined integer as signed.
 Casting to uint solves the issue. Also exposed the cutoff value in material editor.
 Now, only opaque object can reach closest shader. So I removed the redundant check there.
+
+23-04-2024:
+Enable /MP compile flag for faster compilation in project.
+Add dirty state hint for materials.
+
+28-04-2024:
+Refactored light culling parameters.
+Added a few more shader includes in case they're changed but not compiled.

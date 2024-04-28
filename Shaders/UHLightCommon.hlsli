@@ -1,3 +1,7 @@
+#define UHLIGHTCULLING_TILEX 16
+#define UHLIGHTCULLING_TILEY 16
+#define UHLIGHTCULLING_UPSCALE 2
+
 struct UHLightInfo
 {
     float3 LightColor;
@@ -65,4 +69,24 @@ uint GetSpotLightOffset(uint InIndex)
 bool HasLighting()
 {
     return GNumDirLights > 0 || GNumPointLights > 0 || GNumSpotLights > 0;
+}
+
+uint CoordToTileX(uint InX)
+{
+    return InX / UHLIGHTCULLING_TILEX / UHLIGHTCULLING_UPSCALE;
+}
+
+uint CoordToTileY(uint InY)
+{
+    return InY / UHLIGHTCULLING_TILEY / UHLIGHTCULLING_UPSCALE;
+}
+
+float TileToCoordX(uint InX)
+{
+    return InX * UHLIGHTCULLING_TILEX;
+}
+
+float TileToCoordY(uint InY)
+{
+    return InY * UHLIGHTCULLING_TILEY;
 }

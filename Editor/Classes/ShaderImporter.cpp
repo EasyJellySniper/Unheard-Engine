@@ -11,6 +11,9 @@ UHShaderImporter::UHShaderImporter()
 {
 	ShaderIncludes.push_back("UHInputs.hlsli");
 	ShaderIncludes.push_back("UHCommon.hlsli");
+	ShaderIncludes.push_back("UHLightCommon.hlsli");
+	ShaderIncludes.push_back("UHMaterialCommon.hlsli");
+	ShaderIncludes.push_back("UHSphericalHamonricCommon.hlsli");
 	ShaderIncludes.push_back("RayTracing/UHRTCommon.hlsli");
 }
 

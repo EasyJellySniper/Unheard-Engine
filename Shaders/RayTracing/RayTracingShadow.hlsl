@@ -96,8 +96,8 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
     
 	// ------------------------------------------------------------------------------------------ Point Light Tracing
     uint2 TileCoordinate = PixelCoord.xy;
-    uint TileX = TileCoordinate.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileY = TileCoordinate.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileX = CoordToTileX(TileCoordinate.x);
+    uint TileY = CoordToTileY(TileCoordinate.y);
     uint TileIndex = TileX + TileY * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint LightCount = (bIsTranslucent) ? PointLightListTrans.Load(TileOffset) : PointLightList.Load(TileOffset);

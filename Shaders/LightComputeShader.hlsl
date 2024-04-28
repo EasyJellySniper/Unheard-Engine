@@ -76,8 +76,8 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	
     // ------------------------------------------------------------------------------------------ point lights accumulation
 	// point lights accumulation, fetch the tile index here, note that the system culls at half resolution
-    uint TileX = DTid.x / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileY = DTid.y / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileX = CoordToTileX(DTid.x);
+    uint TileY = CoordToTileY(DTid.y);
     uint TileIndex = TileX + TileY * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightList.Load(TileOffset);

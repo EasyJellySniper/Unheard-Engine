@@ -42,6 +42,11 @@ void UHTexture2DNodeGUI::SetDefaultValueFromGUI()
 
 void UHTexture2DNodeGUI::OnSelectCombobox()
 {
+	if (MaterialCache->IsMaterialNodeDirty())
+	{
+		return;
+	}
+
 	SetDefaultValueFromGUI();
 
 	// mark compile flag as bind only if this is connecting to others

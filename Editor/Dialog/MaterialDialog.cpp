@@ -131,7 +131,13 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
         for (int32_t Idx = 0; Idx < static_cast<int32_t>(Materials.size()); Idx++)
         {
             bool bIsSelected = (CurrentMaterialIndex == Idx);
-            if (ImGui::Selectable(Materials[Idx]->GetSourcePath().c_str(), &bIsSelected))
+            std::string SourcePath = Materials[Idx]->GetSourcePath();
+            if (Materials[Idx]->bIsMaterialNodeDirty)
+            {
+                SourcePath = "*" + SourcePath;
+            }
+
+            if (ImGui::Selectable(SourcePath.c_str(), &bIsSelected))
             {
                 SelectMaterial(Idx);
                 CurrentMaterialIndex = Idx;
@@ -437,6 +443,7 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
     UHEditorUtil::GetWindowSize(EditNodeGUIs.back()->GetHWND(), R, Dialog);
     InvalidateRect(Dialog, &R, false);
 
+    CurrentMaterial->bIsMaterialNodeDirty = true;
     NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
 }
 
@@ -491,6 +498,7 @@ void UHMaterialDialog::TryDeleteNodes()
         }
     }
 
+    CurrentMaterial->bIsMaterialNodeDirty = true;
     NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
     NodeToDelete = nullptr;
     bNeedRepaint = true;
@@ -525,6 +533,7 @@ void UHMaterialDialog::TryDisconnectPin()
         }
     }
 
+    CurrentMaterial->bIsMaterialNodeDirty = true;
     NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
     PinToDisconnect = nullptr;
     bNeedRepaint = true;
@@ -642,6 +651,8 @@ void UHMaterialDialog::TryConnectNodes()
             }
         }
     }
+
+    CurrentMaterial->bIsMaterialNodeDirty = true;
 
     // clear the selection in the end
     GPinSelectInfo->bReadyForConnect = false;
@@ -788,6 +799,7 @@ void UHMaterialDialog::ControlRecompileMaterial()
     UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
     Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileTemporary);
     RecompileMaterial(CurrentMaterialIndex);
+    CurrentMaterial->bIsMaterialNodeDirty = false;
 }
 
 void UHMaterialDialog::ControlResaveMaterial()
@@ -904,10 +916,12 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
         }
     }
 
-    AssetManager->GetMaterials()[MatIndex]->Export();
+    UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
+    Mat->Export();
 
     // request a compile after exporting, so the shader cache will get proper material file mod time
     RecompileMaterial(MatIndex);
+    Mat->bIsMaterialNodeDirty = false;
 }
 
 void UHMaterialDialog::ResaveAllMaterials()

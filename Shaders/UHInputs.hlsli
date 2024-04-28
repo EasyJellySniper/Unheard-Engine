@@ -39,8 +39,6 @@
 
 #define UHTHREAD_GROUP2D_X 8
 #define UHTHREAD_GROUP2D_Y 8
-#define UHLIGHTCULLING_TILE 16
-#define UHLIGHTCULLING_UPSCALE 2
 
 // system feature bits
 #define UH_DEPTH_PREPASS 1 << 0

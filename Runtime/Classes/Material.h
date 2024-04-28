@@ -129,6 +129,8 @@ public:
 	void SetDefaultMaterialNodePos(POINT InPos);
 	POINT GetDefaultMaterialNodePos();
 	void SetSourcePath(const std::string InPath);
+
+	bool IsMaterialNodeDirty() const;
 #endif
 
 private:
@@ -164,6 +166,7 @@ private:
 
 #if WITH_EDITOR
 	UHMaterialProperty MaterialProps;
+	bool bIsMaterialNodeDirty;
 	friend class UHMaterialDialog;
 #endif
 };

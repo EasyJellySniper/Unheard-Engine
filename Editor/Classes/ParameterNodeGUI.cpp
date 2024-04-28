@@ -81,6 +81,11 @@ void UHFloatNodeGUI::Update()
 		return;
 	}
 
+	if (MaterialCache->IsMaterialNodeDirty())
+	{
+		return;
+	}
+
 	// mark compile flag as bind only if this is connecting to others
 	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
 	{
@@ -96,6 +101,11 @@ void UHFloat2NodeGUI::Update()
 	SetDefaultValueFromGUI();
 
 	if (MathHelpers::IsVectorEqual(Val, Node->GetValue()))
+	{
+		return;
+	}
+
+	if (MaterialCache->IsMaterialNodeDirty())
 	{
 		return;
 	}
@@ -119,6 +129,11 @@ void UHFloat3NodeGUI::Update()
 		return;
 	}
 
+	if (MaterialCache->IsMaterialNodeDirty())
+	{
+		return;
+	}
+
 	// mark compile flag as bind only if this is connecting to others
 	if (Node->GetOutputs()[0]->GetDestPins().size() > 0)
 	{
@@ -134,6 +149,11 @@ void UHFloat4NodeGUI::Update()
 	SetDefaultValueFromGUI();
 
 	if (MathHelpers::IsVectorEqual(Val, Node->GetValue()))
+	{
+		return;
+	}
+
+	if (MaterialCache->IsMaterialNodeDirty())
 	{
 		return;
 	}

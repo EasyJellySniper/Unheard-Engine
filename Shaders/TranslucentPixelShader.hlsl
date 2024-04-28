@@ -104,7 +104,9 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     
         // Use the scene color for refraction, the original BaseColor will be used as tint color instead
         // Roughness will be used as a factor for lerp clear/blurred scene
-        float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, SmoothnessSquare * SmoothnessSquare);
+        // Also, prevent sampling blurred scene for distant pixels. Hard-code max distance 250 for now.
+        float DistFactor = saturate(EyeLength * 0.004f);
+        float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, max(SmoothnessSquare * SmoothnessSquare, DistFactor));
         float3 RefractionResult = RefractionColor * BaseColor;
         RefractionResult += MaterialInput.Emissive.rgb;
     
@@ -160,8 +162,8 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	
 	// ------------------------------------------------------------------------------------------ point lights accumulation
 	// point lights accumulation, fetch the tile index here, note that the system culls at half resolution
-    uint TileX = uint(Vin.Position.x + 0.5f) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
-    uint TileY = uint(Vin.Position.y + 0.5f) / UHLIGHTCULLING_TILE / UHLIGHTCULLING_UPSCALE;
+    uint TileX = CoordToTileX(uint(Vin.Position.x + 0.5f));
+    uint TileY = CoordToTileY(uint(Vin.Position.y + 0.5f));
     uint TileIndex = TileX + TileY * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightListTrans.Load(TileOffset);
