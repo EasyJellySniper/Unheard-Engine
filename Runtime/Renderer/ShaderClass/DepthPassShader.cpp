@@ -29,6 +29,12 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 
 void UHDepthPassShader::OnCompile()
 {
+	// early out if cached
+	if (GetState() != nullptr)
+	{
+		return;
+	}
+
 	if (MaterialCache->GetBlendMode() == UHBlendMode::Masked)
 	{
 		UHMaterialCompileData Data;

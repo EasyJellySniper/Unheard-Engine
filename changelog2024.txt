@@ -148,3 +148,13 @@ Add dirty state hint for materials.
 28-04-2024:
 Refactored light culling parameters.
 Added a few more shader includes in case they're changed but not compiled.
+
+04-05-2024:
+Optimized shader loading time. From 2 seconds to 0.2 seconds with cache!
+Recreating RT material is the next to be optimized.
+Find that GVkCreateRayTracingPipelinesKHR is the one that costs too much time.
+Optimized RT shaders by async creation. Though this makes RT show up later.
+
+05-05-2024:
+Finished optimizing RT shader creation.
+Optimized the texture reference check too, from 1.5 seconds to 0.04 seconds!

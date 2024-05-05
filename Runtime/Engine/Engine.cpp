@@ -117,7 +117,6 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	{
 		UHE_LOG(L"Can't initialize renderer class!\n");
 	}
-	UHERenderer->SetCurrentScene(CurrentScene.get());
 
 #if WITH_EDITOR
 	// init editor instance
@@ -428,7 +427,6 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 	{
 		UHE_LOG(L"Can't initialize renderer class!\n");
 	}
-	UHERenderer->SetCurrentScene(CurrentScene.get());
 
 #if WITH_EDITOR
 	UHEEditor->RefreshWorldDialog();

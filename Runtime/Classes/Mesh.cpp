@@ -29,6 +29,7 @@ UHMesh::UHMesh(std::string InName)
 	, HighestIndex(-1)
 	, bIndexBuffer32Bit(false)
 	, MeshBound(BoundingBox())
+	, bHasInitialized(false)
 {
 	Name = InName;
 }
@@ -37,11 +38,7 @@ UHMesh::UHMesh(std::string InName)
 void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 {
 	// prevent duplicate creation
-	if (PositionBuffer != nullptr 
-		&& (IndexBuffer != nullptr || IndexBuffer16 != nullptr)
-		&& UV0Buffer != nullptr
-		&& NormalBuffer != nullptr
-		&& TangentBuffer != nullptr)
+	if (bHasInitialized)
 	{
 		return;
 	}
@@ -109,6 +106,8 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 	{
 		IndexBuffer16->UploadAllDataShared(GetIndicesData16().data(), SharedMemory);
 	}
+
+	bHasInitialized = true;
 }
 
 // create bottom level AS for the mesh
@@ -158,6 +157,9 @@ void UHMesh::Release()
 
 	UH_SAFE_RELEASE(BottomLevelAS);
 	BottomLevelAS.reset();
+
+	// in case re-init is needed.
+	bHasInitialized = false;
 }
 
 void UHMesh::SetPositionData(std::vector<XMFLOAT3> InData)

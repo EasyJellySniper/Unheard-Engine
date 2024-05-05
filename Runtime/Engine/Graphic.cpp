@@ -107,6 +107,16 @@ bool UHGraphic::InitGraphics(HWND Hwnd)
 
 		ImageSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, ImageMemoryType);
 		MeshBufferSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, BufferMemoryType);
+
+		// reserve pools for faster allocation
+		ShaderPools.reserve(std::numeric_limits<int16_t>::max());
+		StatePools.reserve(1024);
+		RTPools.reserve(64);
+		SamplerPools.reserve(64);
+		Texture2DPools.reserve(1024);
+		TextureCubePools.reserve(1024);
+		MaterialPools.reserve(1024);
+		QueryPools.reserve(std::numeric_limits<int16_t>::max());
 	}
 
 	return bInitSuccess;

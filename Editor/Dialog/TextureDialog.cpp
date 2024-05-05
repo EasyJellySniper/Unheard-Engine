@@ -258,7 +258,7 @@ void UHTextureDialog::ControlApply()
             if (UHMaterial* Mat = static_cast<UHMaterial*>(MatObj))
             {
                 Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileTemporary);
-                Renderer->RefreshMaterialShaders(Mat);
+                Renderer->RefreshMaterialShaders(Mat, false, false);
             }
         }
     }

@@ -320,7 +320,21 @@ uint32_t UHShaderClass::GetMissShader() const
 
 UHGraphicState* UHShaderClass::GetState() const
 {
-	return (MaterialCache) ? GMaterialStateTable[MaterialCache->GetId()][TypeIndexCache] : GGraphicStateTable[GetId()];
+	if (MaterialCache)
+	{
+		const uint32_t MatId = MaterialCache->GetId();
+		if (GMaterialStateTable.find(MatId) != GMaterialStateTable.end())
+		{
+			if (GMaterialStateTable[MatId].find(TypeIndexCache) != GMaterialStateTable[MatId].end())
+			{
+				return GMaterialStateTable[MaterialCache->GetId()][TypeIndexCache];
+			}
+		}
+
+		return nullptr;
+	}
+
+	return GGraphicStateTable[GetId()];
 }
 
 UHGraphicState* UHShaderClass::GetRTState() const

@@ -48,6 +48,7 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , WindowWidth(0.0f)
     , WindowHeight(0.0f)
     , bResetWindow(false)
+    , bIsInitializing(false)
 {
     // create popup menu for node functions, only do these in construction time
     ParameterMenu.InsertOption("Float", UH_ENUM_VALUE(UHGraphNodeType::FloatNode));
@@ -323,6 +324,7 @@ void UHMaterialDialog::OnDrawing(HDC Hdc)
 
 void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
 {
+    bIsInitializing = true;
     CurrentMaterial = AssetManager->GetMaterials()[MatIndex];
 
     // initialize GUI
@@ -367,6 +369,8 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
             }
         }
     }
+
+    bIsInitializing = false;
 }
 
 void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
@@ -443,7 +447,7 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
     UHEditorUtil::GetWindowSize(EditNodeGUIs.back()->GetHWND(), R, Dialog);
     InvalidateRect(Dialog, &R, false);
 
-    CurrentMaterial->bIsMaterialNodeDirty = true;
+    CurrentMaterial->bIsMaterialNodeDirty = !bIsInitializing;
     NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
 }
 
@@ -498,7 +502,7 @@ void UHMaterialDialog::TryDeleteNodes()
         }
     }
 
-    CurrentMaterial->bIsMaterialNodeDirty = true;
+    CurrentMaterial->bIsMaterialNodeDirty = !bIsInitializing;
     NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
     NodeToDelete = nullptr;
     bNeedRepaint = true;
@@ -533,7 +537,7 @@ void UHMaterialDialog::TryDisconnectPin()
         }
     }
 
-    CurrentMaterial->bIsMaterialNodeDirty = true;
+    CurrentMaterial->bIsMaterialNodeDirty = !bIsInitializing;
     NodeMenuAction = UH_ENUM_VALUE(UHNodeMenuAction::NoAction);
     PinToDisconnect = nullptr;
     bNeedRepaint = true;
@@ -652,7 +656,7 @@ void UHMaterialDialog::TryConnectNodes()
         }
     }
 
-    CurrentMaterial->bIsMaterialNodeDirty = true;
+    CurrentMaterial->bIsMaterialNodeDirty = !bIsInitializing;
 
     // clear the selection in the end
     GPinSelectInfo->bReadyForConnect = false;
@@ -798,7 +802,7 @@ void UHMaterialDialog::ControlRecompileMaterial()
 
     UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
     Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileTemporary);
-    RecompileMaterial(CurrentMaterialIndex);
+    RecompileMaterial(CurrentMaterialIndex, false);
     CurrentMaterial->bIsMaterialNodeDirty = false;
 }
 
@@ -813,7 +817,7 @@ void UHMaterialDialog::ControlResaveMaterial()
         UHStatusDialogScope Status("Saving...");
         UHMaterial* Mat = AssetManager->GetMaterials()[CurrentMaterialIndex];
         Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileResave);
-        ResaveMaterial(CurrentMaterialIndex);
+        ResaveMaterial(CurrentMaterialIndex, false);
     }
     MessageBoxA(Dialog, "Current editing material is saved.", "Material Editor", MB_OK);
 }
@@ -835,7 +839,7 @@ void UHMaterialDialog::ControlCullMode(const int32_t InCullMode)
 
     // changing cull mode doesn't need a recompiling, just refresh the material shader so they will recreate graphic state
     Mat->SetCompileFlag(UHMaterialCompileFlag::StateChangedOnly);
-    Renderer->RefreshMaterialShaders(Mat);
+    Renderer->RefreshMaterialShaders(Mat, false, false);
 }
 
 void UHMaterialDialog::ControlBlendMode(const int32_t InBlendMode)
@@ -860,10 +864,10 @@ void UHMaterialDialog::ControlBlendMode(const int32_t InBlendMode)
     }
 
     Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileTemporary);
-    Renderer->RefreshMaterialShaders(Mat, bRenderGroupChanged);
+    Renderer->RefreshMaterialShaders(Mat, bRenderGroupChanged, false);
 }
 
-void UHMaterialDialog::RecompileMaterial(int32_t MatIndex)
+void UHMaterialDialog::RecompileMaterial(int32_t MatIndex, bool bDelayRTShaderCreation)
 {
     if (MatIndex == UHINDEXNONE)
     {
@@ -879,10 +883,10 @@ void UHMaterialDialog::RecompileMaterial(int32_t MatIndex)
     }
 
     UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
-    Renderer->RefreshMaterialShaders(Mat);
+    Renderer->RefreshMaterialShaders(Mat, false, bDelayRTShaderCreation);
 }
 
-void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
+void UHMaterialDialog::ResaveMaterial(int32_t MatIndex, bool bDelayRTShaderCreation)
 {
     if (MatIndex == UHINDEXNONE)
     {
@@ -920,7 +924,7 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex)
     Mat->Export();
 
     // request a compile after exporting, so the shader cache will get proper material file mod time
-    RecompileMaterial(MatIndex);
+    RecompileMaterial(MatIndex, bDelayRTShaderCreation);
     Mat->bIsMaterialNodeDirty = false;
 }
 
@@ -931,8 +935,11 @@ void UHMaterialDialog::ResaveAllMaterials()
         for (int32_t Idx = 0; Idx < static_cast<int32_t>(AssetManager->GetMaterials().size()); Idx++)
         {
             AssetManager->GetMaterials()[Idx]->SetCompileFlag(UHMaterialCompileFlag::FullCompileResave);
-            ResaveMaterial(Idx);
+            ResaveMaterial(Idx, true);
         }
+
+        // recreate RT shaders in one go, much faster
+        Renderer->RecreateRTShaders(AssetManager->GetMaterials(), false);
     }
 
     MessageBoxA(Dialog, "All materials are saved.", "Material Editor", MB_OK);

@@ -94,6 +94,7 @@ private:
 	XMFLOAT3 MeshCenter;
 	int32_t HighestIndex;
 	bool bIndexBuffer32Bit;
+	bool bHasInitialized;
 
 	// GPU VB/IB buffer
 	UniquePtr<UHRenderBuffer<XMFLOAT3>> PositionBuffer;

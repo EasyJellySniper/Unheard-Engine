@@ -35,11 +35,16 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 void UHBasePassShader::OnCompile()
 {
+	// early out if cached
+	if (GetState() != nullptr)
+	{
+		return;
+	}
+
 	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0");
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;
 	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data);
-
 	
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache

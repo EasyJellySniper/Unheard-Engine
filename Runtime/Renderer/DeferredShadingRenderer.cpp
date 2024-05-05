@@ -1,10 +1,5 @@
 #include "DeferredShadingRenderer.h"
 
-void UHDeferredShadingRenderer::SetCurrentScene(UHScene* InScene)
-{
-	CurrentScene = InScene;
-}
-
 UHScene* UHDeferredShadingRenderer::GetCurrentScene() const
 {
 	return CurrentScene;
@@ -89,6 +84,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bHDREnabledRT = GraphicInterface->IsHDRAvailable();
 	RTCullingDistanceRT = ConfigInterface->RenderingSetting().RTCullingRadius;
 	RTReflectionQualityRT = ConfigInterface->RenderingSetting().RTReflectionQuality;
+	bIsRaytracingEnableRT = GraphicInterface->IsRayTracingEnabled() && bIsRTShadowShaderReady && bIsRTReflectionShaderReady;
 
 	if (SkyMeshRT == nullptr)
 	{

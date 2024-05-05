@@ -42,7 +42,7 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 {
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::UpdateTopLevelAS)]);
-	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
+	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
 	{
 		return;
 	}
@@ -56,8 +56,12 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingShadow)]);
-	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
+	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
 	{
+		if (GRTShadowResult != nullptr)
+		{
+			RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 		return;
 	}
 
@@ -95,8 +99,16 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingReflection)]);
-	if (!GraphicInterface->IsRayTracingEnabled() || RTInstanceCount == 0)
+	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
 	{
+		if (GRTReflectionResult != nullptr)
+		{
+			for (uint32_t Mdx = 0; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)
+			{
+				RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx));
+			}
+			RenderBuilder.FlushResourceBarrier();
+		}
 		return;
 	}
 

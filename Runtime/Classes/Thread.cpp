@@ -8,6 +8,11 @@ UHThread::UHThread()
 
 }
 
+UHThread::~UHThread()
+{
+	EndThread();
+}
+
 // begin thread, called during initialization, don't try to begin a new one every frame!
 void UHThread::BeginThread(std::thread InObj, uint32_t AffinityCore)
 {

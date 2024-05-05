@@ -46,6 +46,12 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 
 void UHTranslucentPassShader::OnCompile()
 {
+	// early out if cached
+	if (GetState() != nullptr)
+	{
+		return;
+	}
+
 	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0");
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;

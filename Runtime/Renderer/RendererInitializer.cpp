@@ -1,5 +1,6 @@
 #include "DeferredShadingRenderer.h"
 #include "DescriptorHelper.h"
+#include <unordered_set>
 
 // all init/create/release implementations of DeferredShadingRenderer are put here
 #if WITH_EDITOR
@@ -58,6 +59,9 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, bHDREnabledRT(false)
 	, RTCullingDistanceRT(0.0f)
 	, RTReflectionQualityRT(0)
+	, bIsRaytracingEnableRT(false)
+	, bIsRTShadowShaderReady(false)
+	, bIsRTReflectionShaderReady(false)
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
@@ -124,7 +128,7 @@ void UHDeferredShadingRenderer::Release()
 	// wait device to finish before release
 	GraphicInterface->WaitGPU();
 
-	// end render thread
+	// end threads
 	RenderThread->WaitTask();
 	RenderThread->EndThread();
 	for (auto& WorkerThread : WorkerThreads)
@@ -132,6 +136,9 @@ void UHDeferredShadingRenderer::Release()
 		WorkerThread->EndThread();
 	}
 	WorkerThreads.clear();
+
+	CreateRTShadowShaderThread.reset();
+	CreateRTReflectionShaderThread.reset();
 
 	RelaseRenderingBuffers();
 	ReleaseDataBuffers();
@@ -170,12 +177,17 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 		UHMaterial* Mat = Renderer->GetMaterial();
 		Mesh->CreateGPUBuffers(GraphicInterface);
 
-		if (!Mat->GetMaterialUsages().bIsSkybox)
+		if (!Mat->GetMaterialUsages().bIsSkybox && GraphicInterface->IsRayTracingEnabled())
 		{
 			Mesh->CreateBottomLevelAS(GraphicInterface, CreationCmd);
 		}
 	}
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
+
+	if (!GraphicInterface->IsRayTracingEnabled())
+	{
+		return;
+	}
 
 	// create top level AS after bottom level AS is done
 	// can't be created in the same command line!! All bottom level AS must be created before creating top level AS
@@ -198,21 +210,24 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	}
 }
 
-void UHDeferredShadingRenderer::CheckTextureReference(UHMaterial* InMat)
+void UHDeferredShadingRenderer::CheckTextureReference(std::vector<UHMaterial*> InMats)
 {
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	UHRenderBuilder RenderBuilder(GraphicInterface, CreationCmd);
 
-	for (const std::string RegisteredTexture : InMat->GetRegisteredTextureNames())
+	for (size_t Idx = 0; Idx < InMats.size(); Idx++)
 	{
-		UHTexture2D* Tex = AssetManagerInterface->GetTexture2D(RegisteredTexture);
-		if (Tex)
+		for (const std::string RegisteredTexture : InMats[Idx]->GetRegisteredTextureNames())
 		{
-			Tex->UploadToGPU(GraphicInterface, RenderBuilder);
+			UHTexture2D* Tex = AssetManagerInterface->GetTexture2D(RegisteredTexture);
+			if (Tex)
+			{
+				Tex->UploadToGPU(GraphicInterface, RenderBuilder);
+			}
 		}
-	}
 
-	AssetManagerInterface->MapTextureIndex(InMat);
+		AssetManagerInterface->MapTextureIndex(InMats[Idx]);
+	}
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 }
 
@@ -221,12 +236,23 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	// instead of uploading to GPU right after import, I choose to upload textures if they're really in use
 	// this makes workflow complicated but good for GPU memory
 
-	// Step1: uploading all textures which are really using for rendering
+
+	// Step1: uploading all textures which are really used for rendering
+	std::vector<UHMaterial*> Mats;
+	std::unordered_set<uint32_t> MatTable;
+
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
+		// gather the materials
 		UHMaterial* Mat = Renderer->GetMaterial();
-		CheckTextureReference(Mat);
+		if (MatTable.find(Mat->GetId()) == MatTable.end())
+		{
+			MatTable.insert(Mat->GetId());
+			Mats.push_back(Mat);
+		}
 	}
+
+	CheckTextureReference(Mats);
 	
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	UHRenderBuilder RenderBuilder(GraphicInterface, CreationCmd);
@@ -239,7 +265,7 @@ void UHDeferredShadingRenderer::PrepareTextures()
 
 
 	// Next, allocate system fallback textures
-	// Might worth to implement a wrapper for this
+	// @TODO: Might worth to implement a wrapper for this, or save as engine assets
 	VkExtent2D FallbackTexSize{};
 	FallbackTexSize.width = 2;
 	FallbackTexSize.height = 2;
@@ -312,7 +338,16 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	SamplerTable = MakeUnique<UHSamplerTable>(GraphicInterface, "SamplerTable");
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout()};
 
-	// this loop will create all material shaders
+	// create all material shaders
+	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
+	{
+		DepthPassShaders.reserve(std::numeric_limits<int16_t>::max());
+	}
+	BasePassShaders.reserve(std::numeric_limits<int16_t>::max());
+	MotionOpaqueShaders.reserve(std::numeric_limits<int16_t>::max());
+	MotionTranslucentShaders.reserve(std::numeric_limits<int16_t>::max());
+	TranslucentPassShaders.reserve(std::numeric_limits<int16_t>::max());
+
 	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
@@ -349,7 +384,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		RecreateRTShaders(nullptr, true);
+		RecreateRTShaders(std::vector<UHMaterial*>(), true);
 		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
 	}
 
@@ -523,9 +558,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		Textures.push_back(GSceneVertexNormal);
 		RTTextureTable->BindImage(Textures, 0);
 
-		RTShadowShader->BindParameters();
 		SoftRTShadowShader->BindParameters();
-		RTReflectionShader->BindParameters();
 	}
 
 	// ------------------------------------------------ debug passes descriptor update
@@ -957,7 +990,7 @@ UHDeferredShadingRenderer* UHDeferredShadingRenderer::GetRendererEditorOnly()
 	return SceneRendererEditorOnly;
 }
 
-void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNeedReassignRendererGroup)
+void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNeedReassignRendererGroup, bool bDelayRTShaderCreation)
 {
 	// refresh material shader if necessary
 	UHMaterialCompileFlag CompileFlag = Mat->GetCompileFlag();
@@ -967,7 +1000,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	}
 
 	GraphicInterface->WaitGPU();
-	CheckTextureReference(Mat);
+	CheckTextureReference(std::vector<UHMaterial*>{ Mat });
 
 	const bool bIsOpaque = Mat->IsOpaque();
 
@@ -993,9 +1026,13 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	}
 
 	// update hit group shader as well
-	if (GraphicInterface->IsRayTracingEnabled() && CompileFlag != UHMaterialCompileFlag::BindOnly && CompileFlag != UHMaterialCompileFlag::StateChangedOnly)
+	if (GraphicInterface->IsRayTracingEnabled() 
+		&& CompileFlag != UHMaterialCompileFlag::BindOnly 
+		&& CompileFlag != UHMaterialCompileFlag::StateChangedOnly
+		&& !bDelayRTShaderCreation)
 	{
-		RecreateRTShaders(Mat, false);
+		std::vector<UHMaterial*> Mats{ Mat };
+		RecreateRTShaders(Mats, false);
 	}
 
 	Mat->SetCompileFlag(UHMaterialCompileFlag::UpToDate);
@@ -1162,7 +1199,7 @@ void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRend
 
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
-		RecreateRTShaders(nullptr, true);
+		RecreateRTShaders(std::vector<UHMaterial*>(), true);
 	}
 	UpdateDescriptors();
 }
@@ -1197,7 +1234,7 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 	InMeshRenderer->SetRayTracingDirties(true);
 }
 
-void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat, bool bRecreateTable)
+void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable)
 {
 	if (bRecreateTable)
 	{
@@ -1232,9 +1269,12 @@ void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat, bool bRecre
 		RTDefaultHitGroupShader = MakeUnique<UHRTDefaultHitGroupShader>(GraphicInterface, "RTDefaultHitGroupShader", CurrentScene->GetMaterials());
 	}
 
-	if (InMat)
+	for (size_t Idx = 0; Idx < InMats.size(); Idx++)
 	{
-		RTDefaultHitGroupShader->UpdateHitShader(GraphicInterface, InMat);
+		if (InMats[Idx])
+		{
+			RTDefaultHitGroupShader->UpdateHitShader(GraphicInterface, InMats[Idx]);
+		}
 	}
 
 	const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable->GetDescriptorSetLayout()
@@ -1247,14 +1287,36 @@ void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat, bool bRecre
 		, RTMaterialDataTable->GetDescriptorSetLayout()
 		, RTTextureTable->GetDescriptorSetLayout() };
 
+
+	// create RT shaders in async, which will call vkCreateRayTracingPipelinesKHR.
+	// That is unexpectedly slow if there're too many AS.
 	UH_SAFE_RELEASE(RTShadowShader);
-	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
-		, Layouts);
-
 	UH_SAFE_RELEASE(RTReflectionShader);
-	RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
-		, Layouts);
 
+	CreateRTShadowShaderThread = MakeUnique<UHThread>();
+	CreateRTReflectionShaderThread = MakeUnique<UHThread>();
+	bIsRTShadowShaderReady = false;
+	bIsRTReflectionShaderReady = false;
+
+	CreateRTShadowShaderThread->BeginThread(
+		std::thread([this, Layouts]()
+		{
+			RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+				, Layouts);
+			RTShadowShader->BindParameters();
+			bIsRTShadowShaderReady = true;
+		}
+	));
+
+	CreateRTReflectionShaderThread->BeginThread(
+		std::thread([this, Layouts]()
+			{
+				RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+					, Layouts);
+				RTReflectionShader->BindParameters();
+				bIsRTReflectionShaderReady = true;
+			}
+	));
 
 	// setup RT descriptor sets that will be used in rendering
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
@@ -1269,6 +1331,6 @@ void UHDeferredShadingRenderer::RecreateRTShaders(UHMaterial* InMat, bool bRecre
 			, RTIndicesTable->GetDescriptorSet(Idx)
 			, RTIndicesTypeTable->GetDescriptorSet(Idx)
 			, RTMaterialDataTable->GetDescriptorSet(Idx)
-			, RTTextureTable->GetDescriptorSet(Idx)};
+			, RTTextureTable->GetDescriptorSet(Idx) };
 	}
 }

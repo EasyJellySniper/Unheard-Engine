@@ -45,8 +45,8 @@ public:
 
 	void Init();
 	void CreateWorkAreaMemDC(int32_t Width, int32_t Height);
-	void RecompileMaterial(int32_t MatIndex);
-	void ResaveMaterial(int32_t MatIndex);
+	void RecompileMaterial(int32_t MatIndex, bool bDelayRTShaderCreation);
+	void ResaveMaterial(int32_t MatIndex, bool bDelayRTShaderCreation);
 	void ResaveAllMaterials();
 
 private:
@@ -104,6 +104,7 @@ private:
 	float WindowWidth;
 	float WindowHeight;
 	bool bResetWindow;
+	bool bIsInitializing;
 
 	UHAssetManager* AssetManager;
 	UHDeferredShadingRenderer* Renderer;

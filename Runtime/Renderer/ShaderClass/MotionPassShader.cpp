@@ -67,6 +67,12 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 
 void UHMotionObjectPassShader::OnCompile()
 {
+	// early out if cached
+	if (GetState() != nullptr)
+	{
+		return;
+	}
+
 	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0");
 
 	UHMaterialCompileData Data;

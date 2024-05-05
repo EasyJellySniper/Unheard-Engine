@@ -3,7 +3,7 @@
 UHRenderBuilder::UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder)
 	: Gfx(InGraphic)
 	, CmdList(InCommandBuffer)
-	, LogicalDevice(InGraphic->GetLogicalDevice())
+	, LogicalDevice(InGraphic ? InGraphic->GetLogicalDevice() : nullptr)
 	, bIsCompute(bIsComputeBuilder)
 	, PrevViewport(VkExtent2D())
 	, PrevScissor(VkExtent2D())

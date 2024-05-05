@@ -91,7 +91,7 @@ void UHFloatNodeGUI::Update()
 	{
 		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
-		Renderer->RefreshMaterialShaders(MaterialCache);
+		Renderer->RefreshMaterialShaders(MaterialCache, false, false);
 	}
 }
 
@@ -115,7 +115,7 @@ void UHFloat2NodeGUI::Update()
 	{
 		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
-		Renderer->RefreshMaterialShaders(MaterialCache);
+		Renderer->RefreshMaterialShaders(MaterialCache, false, false);
 	}
 }
 
@@ -139,7 +139,7 @@ void UHFloat3NodeGUI::Update()
 	{
 		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
-		Renderer->RefreshMaterialShaders(MaterialCache);
+		Renderer->RefreshMaterialShaders(MaterialCache, false, false);
 	}
 }
 
@@ -163,7 +163,7 @@ void UHFloat4NodeGUI::Update()
 	{
 		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
-		Renderer->RefreshMaterialShaders(MaterialCache);
+		Renderer->RefreshMaterialShaders(MaterialCache, false, false);
 	}
 }
 

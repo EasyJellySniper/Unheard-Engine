@@ -66,7 +66,6 @@ public:
 	bool Initialize(UHScene* InScene);
 	void Release();
 
-	void SetCurrentScene(UHScene* InScene);
 	UHScene* GetCurrentScene() const;
 	void SetSwapChainReset(bool bInFlag);
 	bool IsNeedReset();
@@ -92,14 +91,14 @@ public:
 
 	static UHDeferredShadingRenderer* GetRendererEditorOnly();
 	void RefreshSkyLight(bool bNeedRecompile);
-	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup = false);
+	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup, bool bDelayRTShaderCreation);
 	void OnRendererMaterialChanged(UHMeshRendererComponent* InRenderer, UHMaterial* OldMat, UHMaterial* NewMat);
 
 	void ResetMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup);
 	void AppendMeshRenderers(const std::vector<UHMeshRendererComponent*> InRenderers);
 #endif
 	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
-	void RecreateRTShaders(UHMaterial* InMat, bool bRecreateTable);
+	void RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable);
 
 	void CalculateBlurWeights(const int32_t InRadius, float* OutWeights);
 	bool DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, std::string InName
@@ -115,7 +114,7 @@ private:
 	void PrepareMeshes();
 
 	// prepare textures
-	void CheckTextureReference(UHMaterial* InMat);
+	void CheckTextureReference(std::vector<UHMaterial*> InMats);
 	void PrepareTextures();
 
 	// prepare samplers
@@ -381,6 +380,11 @@ private:
 	UniquePtr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
 
 	uint32_t RTInstanceCount;
+	bool bIsRaytracingEnableRT;
+	std::atomic_bool bIsRTShadowShaderReady;
+	std::atomic_bool bIsRTReflectionShaderReady;
+	UniquePtr<UHThread> CreateRTShadowShaderThread;
+	UniquePtr<UHThread> CreateRTReflectionShaderThread;
 
 	// -------------------------------------------- Culling related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;

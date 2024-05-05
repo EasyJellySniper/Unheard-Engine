@@ -7,6 +7,7 @@ class UHThread
 {
 public:
 	UHThread();
+	~UHThread();
 
 	// kick off a thread with or without affinity setting
 	void BeginThread(std::thread InObj, uint32_t AffinityCore);

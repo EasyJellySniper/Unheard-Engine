@@ -54,7 +54,7 @@ void UHTexture2DNodeGUI::OnSelectCombobox()
 	{
 		MaterialCache->SetCompileFlag(UHMaterialCompileFlag::BindOnly);
 		MaterialCache->SetRenderDirties(true);
-		Renderer->RefreshMaterialShaders(MaterialCache);
+		Renderer->RefreshMaterialShaders(MaterialCache, false, false);
 	}
 }
 
