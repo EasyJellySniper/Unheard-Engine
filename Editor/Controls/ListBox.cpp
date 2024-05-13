@@ -2,7 +2,7 @@
 
 #if WITH_EDITOR
 #include <windowsx.h>
-#include "../../../../Runtime/Classes/Utility.h"
+#include "Runtime/Classes/Utility.h"
 
 UHListBox::UHListBox(HWND InControl, UHGUIProperty InProperties)
 	: UHGUIControlBase(InControl, InProperties)

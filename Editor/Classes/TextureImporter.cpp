@@ -2,7 +2,7 @@
 
 #if WITH_EDITOR
 #include "../../Runtime/Classes/AssetPath.h"
-#include "../../../Runtime/Engine/Graphic.h"
+#include "Runtime/Engine/Graphic.h"
 #define IMATH_HALF_NO_LOOKUP_TABLE
 #include <ImfRgbaFile.h>
 #include <ImfArray.h>

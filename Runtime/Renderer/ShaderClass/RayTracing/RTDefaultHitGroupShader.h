@@ -1,6 +1,6 @@
 #pragma once
 #include "../ShaderClass.h"
-#include "../../../Classes/Material.h"
+#include "Runtime/Classes/Material.h"
 
 class UHRTDefaultHitGroupShader : public UHShaderClass
 {

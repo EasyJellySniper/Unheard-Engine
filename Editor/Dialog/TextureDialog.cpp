@@ -4,11 +4,11 @@
 
 #include "../Classes/EditorUtils.h"
 #include "../../resource.h"
-#include "../../../Runtime/Engine/Asset.h"
-#include "../../../Runtime/Classes/Texture2D.h"
-#include "../../../Runtime/Renderer/RenderBuilder.h"
-#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
-#include "../../../Runtime/Classes/AssetPath.h"
+#include "Runtime/Engine/Asset.h"
+#include "Runtime/Classes/Texture2D.h"
+#include "Runtime/Renderer/RenderBuilder.h"
+#include "Runtime/Renderer/DeferredShadingRenderer.h"
+#include "Runtime/Classes/AssetPath.h"
 #include <filesystem>
 #include "StatusDialog.h"
 

@@ -1,9 +1,9 @@
 #include "MaterialImporter.h"
 
 #if WITH_EDITOR
-#include "../../../Runtime/Classes/AssetPath.h"
-#include "../../../../Runtime/Classes/Utility.h"
-#include "../../../Runtime/Classes/Material.h"
+#include "Runtime/Classes/AssetPath.h"
+#include "Runtime/Classes/Utility.h"
+#include "Runtime/Classes/Material.h"
 
 UHMaterialImporter::UHMaterialImporter()
 {

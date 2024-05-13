@@ -6,8 +6,8 @@
 #include <memory>
 #include <fbxsdk.h>
 #include <filesystem>	// for list all files under a directory and subdirectory, C++17 feature
-#include "../../../Runtime/Classes/Mesh.h"
-#include "../../../Runtime/Classes/Material.h"
+#include "Runtime/Classes/Mesh.h"
+#include "Runtime/Classes/Material.h"
 
 class UHFbxImporter
 {

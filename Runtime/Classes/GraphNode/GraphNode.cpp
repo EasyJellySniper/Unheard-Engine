@@ -1,6 +1,6 @@
 #include "GraphNode.h"
 #if WITH_EDITOR
-#include "../../../Editor/Classes/GraphNodeGUI.h"
+#include "Editor/Classes/GraphNodeGUI.h"
 #endif
 
 UHGraphNode::UHGraphNode(bool bInCanBeDeleted)

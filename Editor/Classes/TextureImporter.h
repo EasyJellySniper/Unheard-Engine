@@ -3,7 +3,7 @@
 
 #if WITH_EDITOR
 
-#include "../../../Runtime/Classes/Utility.h"
+#include "Runtime/Classes/Utility.h"
 #include <string>
 #include <vector>
 #include <filesystem>

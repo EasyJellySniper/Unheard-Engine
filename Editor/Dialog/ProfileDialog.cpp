@@ -2,7 +2,7 @@
 
 #if WITH_EDITOR
 #include "../Editor/Profiler.h"
-#include "../../../Runtime/Engine/Config.h"
+#include "Runtime/Engine/Config.h"
 
 UHProfileDialog::UHProfileDialog()
     : UHDialog(nullptr, nullptr)

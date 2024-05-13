@@ -1,9 +1,9 @@
 #include "SettingDialog.h"
 
 #if WITH_EDITOR
-#include "../../../Runtime/Engine/Config.h"
-#include "../../../Runtime/Engine/Engine.h"
-#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "Runtime/Engine/Config.h"
+#include "Runtime/Engine/Engine.h"
+#include "Runtime/Renderer/DeferredShadingRenderer.h"
 
 UHSettingDialog::UHSettingDialog(UHConfigManager* InConfig, UHEngine* InEngine, UHDeferredShadingRenderer* InRenderer)
 	: UHDialog(nullptr, nullptr)

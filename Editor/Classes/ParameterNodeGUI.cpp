@@ -2,8 +2,8 @@
 
 #if WITH_EDITOR
 #include "EditorUtils.h"
-#include "../../../../Runtime/Classes/Utility.h"
-#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "Runtime/Classes/Utility.h"
+#include "Runtime/Renderer/DeferredShadingRenderer.h"
 
 UHFloatNodeGUI::UHFloatNodeGUI(UHDeferredShadingRenderer* InRenderer, UHMaterial* InMat)
 	: Node(nullptr)

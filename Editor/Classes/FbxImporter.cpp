@@ -2,8 +2,8 @@
 
 #if WITH_EDITOR
 #include <fstream>
-#include "../../../Runtime/Classes/Utility.h"
-#include "../../../Runtime/Classes/AssetPath.h"
+#include "Runtime/Classes/Utility.h"
+#include "Runtime/Classes/AssetPath.h"
 
 UHFbxImporter::UHFbxImporter()
 {

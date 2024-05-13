@@ -3,19 +3,19 @@
 #if WITH_EDITOR
 #include "../../resource.h"
 #include "../Classes/EditorUtils.h"
-#include "../../../Runtime/Classes/Utility.h"
+#include "Runtime/Classes/Utility.h"
 #include <filesystem>
 #include "TextureDialog.h"
 #include "CubemapDialog.h"
-#include "../../../Runtime/Classes/AssetPath.h"
-#include "../../../Runtime/Engine/Asset.h"
-#include "../../../Runtime/Engine/Graphic.h"
-#include "../../../Runtime/Renderer/RenderBuilder.h"
-#include "../../../Runtime/Renderer/RendererShared.h"
+#include "Runtime/Classes/AssetPath.h"
+#include "Runtime/Engine/Asset.h"
+#include "Runtime/Engine/Graphic.h"
+#include "Runtime/Renderer/RenderBuilder.h"
+#include "Runtime/Renderer/RendererShared.h"
 #include "StatusDialog.h"
-#include "../../../Runtime/Renderer/ShaderClass/PanoramaToCubemapShader.h"
-#include "../../../Runtime/Renderer/ShaderClass/SmoothCubemapShader.h"
-#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "Runtime/Renderer/ShaderClass/PanoramaToCubemapShader.h"
+#include "Runtime/Renderer/ShaderClass/SmoothCubemapShader.h"
+#include "Runtime/Renderer/DeferredShadingRenderer.h"
 
 struct UHPanoramaData
 {

@@ -3,7 +3,7 @@
 
 #if WITH_EDITOR
 #include "GraphNodeGUI.h"
-#include "../../../Runtime/Classes/GraphNode/MathNode.h"
+#include "Runtime/Classes/GraphNode/MathNode.h"
 
 class UHMathNodeGUI : public UHGraphNodeGUI
 {

@@ -3,13 +3,13 @@
 #if WITH_EDITOR
 
 #include "../../resource.h"
-#include "../../../Runtime/Engine/Engine.h"
-#include "../../../Runtime/Engine/Config.h"
-#include "../../../Runtime/Renderer/DeferredShadingRenderer.h"
+#include "Runtime/Engine/Engine.h"
+#include "Runtime/Engine/Config.h"
+#include "Runtime/Renderer/DeferredShadingRenderer.h"
 #include "../../Runtime/Engine/Input.h"
 #include "Profiler.h"
 #include "../Classes/EditorUtils.h"
-#include "../../../Runtime/Classes/AssetPath.h"
+#include "Runtime/Classes/AssetPath.h"
 #include "../Dialog/StatusDialog.h"
 
 UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer

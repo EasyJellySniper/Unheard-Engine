@@ -4,7 +4,7 @@
 #if WITH_EDITOR
 #include <filesystem>
 #include <vector>
-#include "../../../Runtime/Classes/Utility.h"
+#include "Runtime/Classes/Utility.h"
 
 class UHMaterial;
 struct UHMaterialCompileData;

@@ -1,5 +1,5 @@
 #pragma once
-#include "../../../../UnheardEngine.h"
+#include "UnheardEngine.h"
 #include "GraphNode.h"
 #include "../Types.h"
 #include "../MaterialLayout.h"

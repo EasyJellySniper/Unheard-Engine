@@ -4,7 +4,7 @@
 #if WITH_EDITOR
 #include <unordered_map>
 #include <memory>
-#include "../../../Runtime/Engine/GameTimer.h"
+#include "Runtime/Engine/GameTimer.h"
 #include "../Dialog/ProfileDialog.h"
 #include "../Dialog/SettingDialog.h"
 #include "../Dialog/MaterialDialog.h"

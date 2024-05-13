@@ -1,5 +1,5 @@
 #pragma once
-#include "../../../../Runtime/Classes/Types.h"
+#include "Runtime/Classes/Types.h"
 
 // this should be sync with the define in the shader
 struct UHDefaultPayload

@@ -5,7 +5,7 @@
 #include "../../UnheardEngine.h"
 
 #if WITH_EDITOR
-#include "../../../Runtime/Renderer/RenderingTypes.h"
+#include "Runtime/Renderer/RenderingTypes.h"
 #endif
 
 #define STATIC_CLASS_ID(x) static const uint32_t ClassId = x;
