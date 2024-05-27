@@ -92,6 +92,7 @@ void UHBasePassShader::RecreateOcclusionState()
 	OcclusionState = nullptr;
 
 	UHRenderPassInfo PassInfo = MaterialPassInfo;
+	PassInfo.RenderPass = RenderPassCache;
 	PassInfo.DepthInfo.bEnableDepthWrite = false;
 	PassInfo.DepthInfo.DepthFunc = VK_COMPARE_OP_GREATER_OR_EQUAL;
 	PassInfo.bEnableColorWrite = false;

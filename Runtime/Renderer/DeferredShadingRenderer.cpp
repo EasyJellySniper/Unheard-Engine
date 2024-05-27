@@ -28,6 +28,17 @@ void UHDeferredShadingRenderer::Resize()
 	CreateRenderPasses();
 	CreateRenderFrameBuffers();
 
+	ReleaseRayTracingBuffers();
+	ResizeRayTracingBuffers(true);
+	RTShadowShader->BindParameters();
+	RTReflectionShader->BindParameters();
+
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+	{
+		ReleaseOcclusionQuery();
+		CreateOcclusionQuery();
+	}
+
 	// need to rewrite descriptors after resize
 	UpdateDescriptors();
 
