@@ -116,22 +116,26 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(TriCount) + ")");
 
-		if (!bEnableHWOcclusionRT || TriCount < OcclusionThresholdRT || (bEnableHWOcclusionRT && OcclusionResult[PrevFrame][RendererIdx] > 0))
+		// occlusion test for big meshes
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		if (bOcclusionTest)
 		{
-			// draw visible complex mesh or small mesh
-			const UHTranslucentPassShader* TranslucentShader = TranslucentPassShaders[RendererIdx].get();
-			RenderBuilder.BindGraphicState(TranslucentShader->GetState());
-			RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-			RenderBuilder.BindIndexBuffer(Mesh);
-			RenderBuilder.BindDescriptorSet(TranslucentShader->GetPipelineLayout(), TranslucentShader->GetDescriptorSet(CurrentFrameRT));
-
-			RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+			RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
+			RenderBuilder.BeginPredication(RendererIdx, OcclusionResultGPU[PrevFrame]->GetBuffer());
 		}
 
-		if (bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT)
+		// draw mesh
+		const UHTranslucentPassShader* TranslucentShader = TranslucentPassShaders[RendererIdx].get();
+		RenderBuilder.BindGraphicState(TranslucentShader->GetState());
+		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(Mesh);
+		RenderBuilder.BindDescriptorSet(TranslucentShader->GetPipelineLayout(), TranslucentShader->GetDescriptorSet(CurrentFrameRT));
+
+		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+
+		if (bOcclusionTest)
 		{
-			// draw bounding box and test for big meshes regardless if it's occluded
-			RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
+			RenderBuilder.EndPredication();
 
 			const UHTranslucentPassShader* BaseShader = TranslucentOcclusionShaders[RendererIdx].get();
 			RenderBuilder.BindGraphicState(BaseShader->GetOcclusionState());

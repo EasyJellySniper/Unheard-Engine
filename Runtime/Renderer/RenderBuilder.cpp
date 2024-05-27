@@ -762,3 +762,19 @@ void UHRenderBuilder::EndOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx)
 
 	vkCmdEndQuery(CmdList, InQuery->GetQueryPool(), Idx);
 }
+
+void UHRenderBuilder::BeginPredication(uint32_t Idx, VkBuffer InBuffer, bool bReversed)
+{
+	VkConditionalRenderingBeginInfoEXT Info{};
+	Info.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
+	Info.offset = Idx * 4;
+	Info.buffer = InBuffer;
+	Info.flags = bReversed ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0;
+
+	GVkCmdBeginConditionalRenderingEXT(CmdList, &Info);
+}
+
+void UHRenderBuilder::EndPredication()
+{
+	GVkCmdEndConditionalRenderingEXT(CmdList);
+}

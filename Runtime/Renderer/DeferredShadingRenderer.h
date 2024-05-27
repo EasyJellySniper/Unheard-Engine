@@ -409,7 +409,7 @@ private:
 	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
 
 	UHGPUQuery* OcclusionQuery[GMaxFrameInFlight];
-	std::vector<uint32_t> OcclusionResult[GMaxFrameInFlight];
+	UniquePtr<UHRenderBuffer<uint32_t>> OcclusionResultGPU[GMaxFrameInFlight];
 
 	// caches
 	std::unordered_map<uint32_t, UHRenderTexture*> TempRenderTextures;

@@ -193,14 +193,14 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 
 		const UHMotionObjectPassShader* MotionShader = MotionOpaqueShaders[RendererIdx].get();
 
-		// skip drawing if it's occluded
-		if (bEnableHWOcclusionRT && OcclusionResult[PrevFrame][RendererIdx] == 0 && TriCount >= OcclusionThresholdRT)
-		{
-			continue;
-		}
-
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+			std::to_string(TriCount) + ")");
+
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		if (bOcclusionTest)
+		{
+			RenderBuilder.BeginPredication(RendererIdx, OcclusionResultGPU[PrevFrame]->GetBuffer());
+		}
 
 		// bind pipelines
 		RenderBuilder.BindGraphicState(MotionShader->GetState());
@@ -210,6 +210,10 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 
 		// draw call
 		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		if (bOcclusionTest)
+		{
+			RenderBuilder.EndPredication();
+		}
 
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 		Renderer->SetMotionDirty(false, CurrentFrameRT);
@@ -268,14 +272,14 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 
 		const UHMotionObjectPassShader* MotionShader = MotionTranslucentShaders[RendererIdx].get();
 
-		// skip drawing if it's occluded
-		if (bEnableHWOcclusionRT && OcclusionResult[PrevFrame][RendererIdx] == 0 && TriCount >= OcclusionThresholdRT)
-		{
-			continue;
-		}
-
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+			std::to_string(TriCount) + ")");
+
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		if (bOcclusionTest)
+		{
+			RenderBuilder.BeginPredication(RendererIdx, OcclusionResultGPU[PrevFrame]->GetBuffer());
+		}
 
 		// bind pipelines
 		RenderBuilder.BindGraphicState(MotionShader->GetState());
@@ -285,6 +289,11 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 
 		// draw call
 		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		if (bOcclusionTest)
+		{
+			RenderBuilder.EndPredication();
+		}
+
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	}
 

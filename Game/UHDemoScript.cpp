@@ -25,7 +25,7 @@ void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 {
 	if (TestType == UHDemoType::DayTest)
 	{
-		InEngine->OnLoadScene("Assets/Scenes/VikingHouses.uhscene");
+		InEngine->OnLoadScene("Assets/Scenes/VikingWithStones.uhscene");
 	}
 	else if (TestType == UHDemoType::PointLightNight)
 	{

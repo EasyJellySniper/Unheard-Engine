@@ -45,7 +45,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_EXT_hdr_metadata"
 		, "VK_KHR_dynamic_rendering"
 		, "VK_KHR_synchronization2"
-		, "VK_KHR_push_descriptor" };
+		, "VK_KHR_push_descriptor"
+		, "VK_EXT_conditional_rendering" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -363,6 +364,8 @@ bool UHGraphic::CreateInstance()
 	GVkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetRayTracingShaderGroupHandlesKHR");
 	GVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetInstanceProcAddr(VulkanInstance, "vkSetHdrMetadataEXT");
 	GVkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdPushDescriptorSetKHR");
+	GVkCmdBeginConditionalRenderingEXT = (PFN_vkCmdBeginConditionalRenderingEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginConditionalRenderingEXT");
+	GVkCmdEndConditionalRenderingEXT = (PFN_vkCmdEndConditionalRenderingEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndConditionalRenderingEXT");
 
 	return true;
 }

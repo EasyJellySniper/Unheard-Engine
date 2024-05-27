@@ -913,11 +913,9 @@ void UHDeferredShadingRenderer::CreateOcclusionQuery()
 	{
 		if (Count > 0)
 		{
+			// will do predication rendering on GPU instead of traditional readback
 			OcclusionQuery[Idx] = GraphicInterface->RequestGPUQuery(Count, VK_QUERY_TYPE_OCCLUSION);
-			OcclusionResult[Idx].resize(Count);
-
-			// in case of first-time occluding, set it as non-zero intentionally
-			std::fill(OcclusionResult[Idx].begin(), OcclusionResult[Idx].end(), 1);
+			OcclusionResultGPU[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>(Count, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		}
 	}
 
@@ -966,10 +964,10 @@ void UHDeferredShadingRenderer::ReleaseOcclusionQuery()
 		{
 			GraphicInterface->RequestReleaseGPUQuery(OcclusionQuery[Idx]);
 			OcclusionQuery[Idx] = nullptr;
-			OcclusionResult[Idx].clear();
 		}
 
 		UH_SAFE_RELEASE(GOcclusionConstantBuffer[Idx]);
+		UH_SAFE_RELEASE(OcclusionResultGPU[Idx]);
 	}
 
 	OcclusionConstantsCPU.clear();

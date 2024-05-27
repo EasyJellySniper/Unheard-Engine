@@ -138,6 +138,10 @@ public:
 	void BeginOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx);
 	void EndOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx);
 
+	// predication
+	void BeginPredication(uint32_t Idx, VkBuffer InBuffer, bool bReversed = false);
+	void EndPredication();
+
 #if WITH_EDITOR
 	int32_t DrawCalls;
 	int32_t OccludedCalls;

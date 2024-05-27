@@ -118,22 +118,26 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(TriCount) + ")");
 
-		if (!bEnableHWOcclusionRT || TriCount < OcclusionThresholdRT || (bEnableHWOcclusionRT && OcclusionResult[PrevFrame][RendererIdx] > 0))
+		// occlusion test for big meshes
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		if (bOcclusionTest)
 		{
-			// draw visible complex mesh or small mesh
-			const UHBasePassShader* BaseShader = BasePassShaders[RendererIdx].get();
-			RenderBuilder.BindGraphicState(BaseShader->GetState());
-			RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-			RenderBuilder.BindIndexBuffer(Mesh);
-			RenderBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
-
-			RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
-		}
-		
-		if (bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT)
-		{
-			// draw bounding box and test for big meshes regardless if it's occluded
 			RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
+			RenderBuilder.BeginPredication(RendererIdx, OcclusionResultGPU[PrevFrame]->GetBuffer());
+		}
+
+		// draw mesh
+		const UHBasePassShader* BaseShader = BasePassShaders[RendererIdx].get();
+		RenderBuilder.BindGraphicState(BaseShader->GetState());
+		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(Mesh);
+		RenderBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
+
+		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+
+		if (bOcclusionTest)
+		{
+			RenderBuilder.EndPredication();
 
 			const UHBasePassShader* BaseShader = BaseOcclusionShaders[RendererIdx].get();
 			RenderBuilder.BindGraphicState(BaseShader->GetOcclusionState());

@@ -46,7 +46,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         // other CPU stats
         CPUStatTex << "--Misc CPU stats--\n";
         CPUStatTex << "Number of draw calls: " << Stats.DrawCallCount << "\n";
-        CPUStatTex << "Number of occluded calls: " << Stats.OccludedCallCount << "\n";
+        CPUStatTex << "Number of occlusion tests: " << Stats.OccludedCallCount << "\n";
         CPUStatTex << "Number of graphic states: " << Stats.PSOCount << "\n";
         CPUStatTex << "Shader Variants: " << Stats.ShaderCount << "\n";
         CPUStatTex << "Render Target in use: " << Stats.RTCount << "\n";
