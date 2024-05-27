@@ -33,14 +33,14 @@ void UHReflectionPassShader::OnCompile()
 	CreateComputeState(Info);
 }
 
-void UHReflectionPassShader::BindParameters()
+void UHReflectionPassShader::BindParameters(const bool bIsRaytracingEnableRT)
 {
 	BindConstant(GSystemConstantBuffer, 0);
 	BindRWImage(GSceneResult, 1);
 	BindImage(GetGBuffersSRV(), 2);
 
 	BindSkyCube();
-	if (Gfx->IsRayTracingEnabled())
+	if (bIsRaytracingEnableRT)
 	{
 		BindImage(GRTReflectionResult, 4);
 	}

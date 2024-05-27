@@ -144,7 +144,8 @@ struct UHSphericalHarmonicConstants
 
 enum class UHRenderPassTypes
 {
-	DepthPrePass = 0,
+	OcclusionReset = 0,
+	DepthPrePass,
 	BasePass,
 	UpdateTopLevelAS,
 	GenerateSH9,
@@ -205,6 +206,7 @@ struct UHRenderPassInfo
 	bool bDrawLine;
 	bool bDrawWireFrame;
 	bool bForceBlendOff;
+	bool bEnableColorWrite;
 };
 
 // compute pass info for setup compute states

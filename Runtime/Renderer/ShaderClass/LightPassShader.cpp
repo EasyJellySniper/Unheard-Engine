@@ -38,7 +38,7 @@ void UHLightPassShader::OnCompile()
 	CreateComputeState(Info);
 }
 
-void UHLightPassShader::BindParameters()
+void UHLightPassShader::BindParameters(const bool bIsRaytracingEnableRT)
 {
 	BindConstant(GSystemConstantBuffer, 0);
 	BindStorage(GDirectionalLightBuffer, 1, 0, true);
@@ -48,7 +48,7 @@ void UHLightPassShader::BindParameters()
 	BindImage(GetGBuffersSRV(), 4);
 	BindRWImage(GSceneResult, 5);
 
-	if (Gfx->IsRayTracingEnabled())
+	if (bIsRaytracingEnableRT)
 	{
 		BindImage(GRTShadowResult, 6);
 	}

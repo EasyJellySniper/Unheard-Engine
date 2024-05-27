@@ -177,6 +177,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 		RenderBuilder.BindDescriptorSet(MotionOpaqueShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
+	const uint32_t PrevFrame = (CurrentFrameRT - 1) % GMaxFrameInFlight;
 	for (int32_t I = StartIdx; I < EndIdx; I++)
 	{
 		UHMeshRendererComponent* Renderer = OpaquesToRender[I];
@@ -187,9 +188,16 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 		}
 
 		UHMesh* Mesh = Renderer->GetMesh();
-		int32_t RendererIdx = Renderer->GetBufferDataIndex();
+		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
+		const int32_t TriCount = Mesh->GetIndicesCount() / 3;
 
 		const UHMotionObjectPassShader* MotionShader = MotionOpaqueShaders[RendererIdx].get();
+
+		// skip drawing if it's occluded
+		if (bEnableHWOcclusionRT && OcclusionResult[PrevFrame][RendererIdx] == 0 && TriCount >= OcclusionThresholdRT)
+		{
+			continue;
+		}
 
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
@@ -244,6 +252,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 
 	// draw reversely since translucents are sort back-to-front
 	// I want front-to-back order in motion pass for translucents
+	const uint32_t PrevFrame = (CurrentFrameRT - 1) % GMaxFrameInFlight;
 	for (int32_t I = EndIdx - 1; I >= StartIdx; I--)
 	{
 		UHMeshRendererComponent* Renderer = TranslucentsToRender[I];
@@ -254,9 +263,16 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 		}
 
 		UHMesh* Mesh = Renderer->GetMesh();
-		int32_t RendererIdx = Renderer->GetBufferDataIndex();
+		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
+		const int32_t TriCount = Mesh->GetIndicesCount() / 3;
 
 		const UHMotionObjectPassShader* MotionShader = MotionTranslucentShaders[RendererIdx].get();
+
+		// skip drawing if it's occluded
+		if (bEnableHWOcclusionRT && OcclusionResult[PrevFrame][RendererIdx] == 0 && TriCount >= OcclusionThresholdRT)
+		{
+			continue;
+		}
 
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(Mesh->GetIndicesCount() / 3) + ")");

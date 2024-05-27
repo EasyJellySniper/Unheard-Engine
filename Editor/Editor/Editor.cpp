@@ -59,6 +59,7 @@ void UHEditor::OnEditorUpdate()
     }
 
     Input->SetInputEnabled(!bIsDialogActive);
+    UHGameTimerScope::ClearRegisteredGameTime();
 }
 
 void UHEditor::OnEditorMove()

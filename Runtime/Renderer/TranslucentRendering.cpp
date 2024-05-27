@@ -44,6 +44,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				ThreadDrawCalls[I] = 0;
+				ThreadOccludedCalls[I] = 0;
 			}
 #endif
 
@@ -63,6 +64,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
 				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+				RenderBuilder.OccludedCalls += ThreadOccludedCalls[I];
 			}
 #endif
 			// execute all recorded batches
@@ -87,6 +89,7 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	InheritanceInfo.renderPass = TranslucentPassObj.RenderPass;
 	InheritanceInfo.framebuffer = TranslucentPassObj.FrameBuffer;
+	InheritanceInfo.occlusionQueryEnable = bEnableHWOcclusionRT;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, TranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
@@ -101,26 +104,44 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 		RenderBuilder.BindDescriptorSet(TranslucentPassShaders.begin()->second->GetPipelineLayout(), TextureTableSets, GTextureTableSpace);
 	}
 
+	const uint32_t PrevFrame = (CurrentFrameRT - 1) % GMaxFrameInFlight;
 	for (int32_t I = StartIdx; I < EndIdx; I++)
 	{
 		const UHMeshRendererComponent* Renderer = TranslucentsToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
+		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
 		UHMesh* Mesh = Renderer->GetMesh();
-		int32_t RendererIdx = Renderer->GetBufferDataIndex();
-
-		const UHTranslucentPassShader* TranslucentShader = TranslucentPassShaders[RendererIdx].get();
+		const int32_t TriCount = Mesh->GetIndicesCount() / 3;
 
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
-			std::to_string(Mesh->GetIndicesCount() / 3) + ")");
+			std::to_string(TriCount) + ")");
 
-		// bind pipelines
-		RenderBuilder.BindGraphicState(TranslucentShader->GetState());
-		RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
-		RenderBuilder.BindIndexBuffer(Mesh);
-		RenderBuilder.BindDescriptorSet(TranslucentShader->GetPipelineLayout(), TranslucentShader->GetDescriptorSet(CurrentFrameRT));
+		if (!bEnableHWOcclusionRT || TriCount < OcclusionThresholdRT || (bEnableHWOcclusionRT && OcclusionResult[PrevFrame][RendererIdx] > 0))
+		{
+			// draw visible complex mesh or small mesh
+			const UHTranslucentPassShader* TranslucentShader = TranslucentPassShaders[RendererIdx].get();
+			RenderBuilder.BindGraphicState(TranslucentShader->GetState());
+			RenderBuilder.BindVertexBuffer(Mesh->GetPositionBuffer()->GetBuffer());
+			RenderBuilder.BindIndexBuffer(Mesh);
+			RenderBuilder.BindDescriptorSet(TranslucentShader->GetPipelineLayout(), TranslucentShader->GetDescriptorSet(CurrentFrameRT));
 
-		// draw call
-		RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+			RenderBuilder.DrawIndexed(Mesh->GetIndicesCount());
+		}
+
+		if (bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT)
+		{
+			// draw bounding box and test for big meshes regardless if it's occluded
+			RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
+
+			const UHTranslucentPassShader* BaseShader = TranslucentOcclusionShaders[RendererIdx].get();
+			RenderBuilder.BindGraphicState(BaseShader->GetOcclusionState());
+			RenderBuilder.BindVertexBuffer(SkyMeshRT->GetPositionBuffer()->GetBuffer());
+			RenderBuilder.BindIndexBuffer(SkyMeshRT);
+			RenderBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
+
+			RenderBuilder.DrawIndexed(SkyMeshRT->GetIndicesCount(), true);
+			RenderBuilder.EndOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
+		}
 
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	}
@@ -128,5 +149,6 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 	RenderBuilder.EndCommandBuffer();
 #if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
+	ThreadOccludedCalls[ThreadIdx] += RenderBuilder.OccludedCalls;
 #endif
 }

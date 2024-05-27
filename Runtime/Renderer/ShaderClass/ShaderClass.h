@@ -170,6 +170,7 @@ public:
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrameRT);
 	void RecreateMaterialState();
 	void SetNewMaterialCache(UHMaterial* InMat);
+	void SetNewRenderPass(VkRenderPass InRenderPass);
 
 	uint32_t GetRayGenShader() const;
 	std::vector<uint32_t> GetClosestShaders() const;

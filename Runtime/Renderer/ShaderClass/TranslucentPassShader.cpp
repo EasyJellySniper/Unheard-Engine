@@ -2,8 +2,10 @@
 #include "../../Components/MeshRenderer.h"
 #include "../RendererShared.h"
 
+UHGraphicState* UHTranslucentPassShader::OcclusionState = nullptr;
+
 UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat
-	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
+	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts, bool bInOcclusionTest)
 	: UHShaderClass(InGfx, Name, typeid(UHTranslucentPassShader), InMat, InRenderPass)
 {
 	// sys, obj, mat consts
@@ -40,6 +42,7 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
+	bOcclusionTest = bInOcclusionTest;
 	CreateMaterialDescriptor(ExtraLayouts);
 	OnCompile();
 }
@@ -49,6 +52,11 @@ void UHTranslucentPassShader::OnCompile()
 	// early out if cached
 	if (GetState() != nullptr)
 	{
+		// restore cached value
+		const UHRenderPassInfo& PassInfo = GetState()->GetRenderPassInfo();
+		ShaderVS = PassInfo.VS;
+		ShaderPS = PassInfo.PS;
+		MaterialPassInfo = PassInfo;
 		return;
 	}
 
@@ -68,13 +76,25 @@ void UHTranslucentPassShader::OnCompile()
 		, 1
 		, PipelineLayout);
 
+	if (OcclusionState == nullptr)
+	{
+		UHRenderPassInfo PassInfo = MaterialPassInfo;
+		PassInfo.DepthInfo.bEnableDepthWrite = false;
+		PassInfo.DepthInfo.DepthFunc = VK_COMPARE_OP_GREATER_OR_EQUAL;
+		PassInfo.bEnableColorWrite = false;
+		PassInfo.BlendMode = UHBlendMode::Opaque;
+		PassInfo.CullMode = UHCullMode::CullNone;
+		PassInfo.PS = UHINDEXNONE;
+		OcclusionState = Gfx->RequestGraphicState(PassInfo);
+	}
+
 	RecreateMaterialState();
 }
 
-void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
+void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRenderer, const bool bIsRaytracingEnableRT)
 {
 	BindConstant(GSystemConstantBuffer, 0);
-	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
+	BindConstant(bOcclusionTest ? GOcclusionConstantBuffer : GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	UHMesh* Mesh = InRenderer->GetMesh();
@@ -87,7 +107,7 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 	BindStorage(GPointLightBuffer, 7, 0, true);
 	BindStorage(GSpotLightBuffer, 8, 0, true);
 
-	if (Gfx->IsRayTracingEnabled())
+	if (bIsRaytracingEnableRT)
 	{
 		BindImage(GRTShadowResult, 9);
 		BindImage(GRTReflectionResult, 10);
@@ -107,4 +127,24 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 void UHTranslucentPassShader::BindSkyCube()
 {
 	BindImage(GSkyLightCube, 14);
+}
+
+void UHTranslucentPassShader::RecreateOcclusionState()
+{
+	Gfx->RequestReleaseGraphicState(OcclusionState);
+	OcclusionState = nullptr;
+
+	UHRenderPassInfo PassInfo = MaterialPassInfo;
+	PassInfo.DepthInfo.bEnableDepthWrite = false;
+	PassInfo.DepthInfo.DepthFunc = VK_COMPARE_OP_GREATER_OR_EQUAL;
+	PassInfo.bEnableColorWrite = false;
+	PassInfo.BlendMode = UHBlendMode::Opaque;
+	PassInfo.CullMode = UHCullMode::CullNone;
+	PassInfo.PS = UHINDEXNONE;
+	OcclusionState = Gfx->RequestGraphicState(PassInfo);
+}
+
+UHGraphicState* UHTranslucentPassShader::GetOcclusionState() const
+{
+	return OcclusionState;
 }

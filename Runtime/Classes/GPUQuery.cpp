@@ -100,6 +100,16 @@ float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 #endif
 }
 
+VkQueryPool UHGPUQuery::GetQueryPool() const
+{
+	return QueryPool;
+}
+
+uint32_t UHGPUQuery::GetQueryCount() const
+{
+	return QueryCount;
+}
+
 UHGPUTimeQueryScope::UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery)
 	: Cmd(InCmd), GPUTimeQuery(InQuery)
 {

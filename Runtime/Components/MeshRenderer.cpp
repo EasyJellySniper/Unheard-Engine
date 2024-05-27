@@ -47,8 +47,13 @@ void UHMeshRendererComponent::Update()
 		// update renderer bound as well
 		const BoundingBox& MeshBound = MeshCache->GetMeshBound();
 		const XMFLOAT4X4& World = GetWorldMatrix();
-		const XMMATRIX W = XMLoadFloat4x4(&World);
+		XMMATRIX W = XMLoadFloat4x4(&World);
 		MeshBound.Transform(RendererBound, XMMatrixTranspose(W));
+
+		// calculate world bound matrix, this matrix is mainly for bounding box rendering (e.g. occlusion test), rotation isn't needed
+		W = XMMatrixTranspose(XMMatrixTranslation(RendererBound.Center.x, RendererBound.Center.y, RendererBound.Center.z))
+			* XMMatrixTranspose(XMMatrixScaling(RendererBound.Extents.x * 2.0f, RendererBound.Extents.y * 2.0f, RendererBound.Extents.z * 2.0f));
+		XMStoreFloat4x4(&WorldBoundMatrix, W);
 	}
 }
 
@@ -170,6 +175,11 @@ BoundingBox UHMeshRendererComponent::GetRendererBound() const
 float UHMeshRendererComponent::GetSquareDistanceToMainCam() const
 {
 	return SquareDistanceToMainCam;
+}
+
+XMFLOAT4X4 UHMeshRendererComponent::GetWorldBoundMatrix() const
+{
+	return WorldBoundMatrix;
 }
 
 void UHMeshRendererComponent::SetVisible(bool bVisible)

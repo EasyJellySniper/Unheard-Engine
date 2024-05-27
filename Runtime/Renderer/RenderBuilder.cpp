@@ -13,6 +13,7 @@ UHRenderBuilder::UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommand
 	, PrevIndexBufferSource(nullptr)
 #if WITH_EDITOR
 	, DrawCalls(0)
+	, OccludedCalls(0)
 #endif
 {
 	// resource barrier lookup build, not the best way but can get rid of plenty if-else blocks
@@ -76,7 +77,11 @@ void UHRenderBuilder::BeginCommandBuffer(VkCommandBufferInheritanceInfo* InInfo)
 	// assume secondary cmd is in render pass
 	if (InInfo != nullptr)
 	{
-		BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		if (InInfo->renderPass != nullptr)
+		{
+			BeginInfo.flags |= VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+		}
 		BeginInfo.pInheritanceInfo = InInfo;
 	}
 
@@ -341,12 +346,19 @@ void UHRenderBuilder::DrawVertex(uint32_t VertexCount)
 }
 
 // draw indexed
-void UHRenderBuilder::DrawIndexed(uint32_t IndicesCount)
+void UHRenderBuilder::DrawIndexed(uint32_t IndicesCount, bool bOcclusionTest)
 {
 	vkCmdDrawIndexed(CmdList, IndicesCount, 1, 0, 0, 0);
 
 #if WITH_EDITOR
-	DrawCalls++;
+	if (bOcclusionTest)
+	{
+		OccludedCalls++;
+	}
+	else
+	{
+		DrawCalls++;
+	}
 #endif
 }
 
@@ -717,4 +729,36 @@ void UHRenderBuilder::ClearRenderTexture(UHRenderTexture* InTexture)
 void UHRenderBuilder::Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz)
 {
 	vkCmdDispatch(CmdList, Gx, Gy, Gz);
+}
+
+// occlusion query functions
+void UHRenderBuilder::ResetOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx, uint32_t Count)
+{
+	if (InQuery == nullptr)
+	{
+		return;
+	}
+
+	vkCmdResetQueryPool(CmdList, InQuery->GetQueryPool(), Idx, Count);
+}
+
+void UHRenderBuilder::BeginOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx)
+{
+	if (InQuery == nullptr)
+	{
+		return;
+	}
+
+	// set VK_QUERY_CONTROL_PRECISE_BIT when necessary
+	vkCmdBeginQuery(CmdList, InQuery->GetQueryPool(), Idx, 0);
+}
+
+void UHRenderBuilder::EndOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx)
+{
+	if (InQuery == nullptr)
+	{
+		return;
+	}
+
+	vkCmdEndQuery(CmdList, InQuery->GetQueryPool(), Idx);
 }

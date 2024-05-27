@@ -20,9 +20,9 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
     // convert stats to string and display them
     const UHStatistics& Stats = InProfiler->GetStatistics();
 
-    if (InGameTimer->GetTotalTime() > 1)
+    if (InGameTimer->GetTotalTime() > 1.0f)
     {
-        // CPU stat section
+        // CPU stats section
         CPUStatTex.str("");
         CPUStatTex.clear();
         CPUStatTex << "--CPU Profiles--\n";
@@ -30,8 +30,23 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << "Render Thread Time: " << std::fixed << std::setprecision(4) << Stats.RenderThreadTime << " ms\n";
         CPUStatTex << "Total CPU Time: " << std::fixed << std::setprecision(4) << Stats.TotalTime << " ms\n";
         CPUStatTex << "FPS: " << std::setprecision(4) << Stats.FPS << "\n\n";
+
+        // flush scoped time if there is any
+        const auto& CPUScopeStats = UHGameTimerScope::GetResiteredGameTime();
+        for (size_t Idx = 0; Idx < CPUScopeStats.size(); Idx++)
+        {
+            CPUStatTex << CPUScopeStats[Idx].first << ": " << std::setprecision(4) << CPUScopeStats[Idx].second << " ms\n";
+        }
+
+        if (CPUScopeStats.size() > 0)
+        {
+            CPUStatTex << "\n";
+        }
         
+        // other CPU stats
+        CPUStatTex << "--Misc CPU stats--\n";
         CPUStatTex << "Number of draw calls: " << Stats.DrawCallCount << "\n";
+        CPUStatTex << "Number of occluded calls: " << Stats.OccludedCallCount << "\n";
         CPUStatTex << "Number of graphic states: " << Stats.PSOCount << "\n";
         CPUStatTex << "Shader Variants: " << Stats.ShaderCount << "\n";
         CPUStatTex << "Render Target in use: " << Stats.RTCount << "\n";
@@ -41,7 +56,8 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << "Number of materials: " << Stats.MateralCount << "\n";
 
         // GPU stat section
-        std::string GPUStatStrings[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)] = { "Depth Pre Pass"
+        std::string GPUStatStrings[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)] = { "OcclusionReset"
+            , "Depth Pre Pass"
             , "Base Pass"
             , "Update Top Level AS"
             , "GenerateSH9"
@@ -57,7 +73,8 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
             , "Tone Mapping"
             , "Temporal AA"
             , "History Copying"
-            , "Present SwapChain"};
+            , "Present SwapChain"
+        };
 
         float TotalGPUTime = 0.0f;
         GPUStatTex.str("");

@@ -3,7 +3,7 @@
 void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilder)
 {
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::DepthPrePass)]);
-	if (CurrentScene == nullptr || !bEnableDepthPrePass)
+	if (CurrentScene == nullptr || !bEnableDepthPrepassRT)
 	{
 		return;
 	}

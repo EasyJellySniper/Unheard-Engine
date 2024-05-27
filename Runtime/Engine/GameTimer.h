@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <chrono>
+#include <utility>
+#include <vector>
 
 // Game timer based on chrono 
 // Each time is stored as milliseconds
@@ -32,3 +34,22 @@ private:
 	bool bStopped;
 };
 
+// simple scoped timer
+class UHGameTimerScope : public UHGameTimer
+{
+public:
+	UHGameTimerScope(std::string InName, bool bPrintTimeAfterStop);
+	~UHGameTimerScope();
+
+	static std::vector<std::pair<std::string, float>> GetResiteredGameTime();
+	static void ClearRegisteredGameTime();
+
+private:
+	bool bPrintTimeAfterStop;
+	std::string Name;
+
+#if WITH_EDITOR
+	// editor only registered game time, which will be displayed in profile
+	static std::vector<std::pair<std::string, float>> RegisteredGameTime;
+#endif
+};

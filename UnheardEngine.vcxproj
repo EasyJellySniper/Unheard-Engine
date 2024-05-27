@@ -445,6 +445,7 @@
     <ClCompile Include="Runtime\Engine\Engine.cpp" />
     <ClCompile Include="Runtime\Engine\Input.cpp" />
     <ClCompile Include="Editor\Classes\FbxImporter.cpp" />
+    <ClCompile Include="Runtime\Renderer\OcclusionPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\ReflectionPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\RenderBuilder.cpp" />
     <ClCompile Include="Runtime\Classes\Shader.cpp" />

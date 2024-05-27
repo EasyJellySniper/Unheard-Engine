@@ -90,7 +90,7 @@ public:
 	void DrawVertex(uint32_t VertexCount);
 
 	// draw index
-	void DrawIndexed(uint32_t IndicesCount);
+	void DrawIndexed(uint32_t IndicesCount, bool bOcclusionTest = false);
 
 	// bind descriptors
 	void BindDescriptorSet(VkPipelineLayout InLayout, VkDescriptorSet InSet);
@@ -133,8 +133,14 @@ public:
 	// dispatch call
 	void Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz);
 
+	// occlusion query
+	void ResetOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx, uint32_t Count);
+	void BeginOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx);
+	void EndOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx);
+
 #if WITH_EDITOR
 	int32_t DrawCalls;
+	int32_t OccludedCalls;
 #endif
 
 private:

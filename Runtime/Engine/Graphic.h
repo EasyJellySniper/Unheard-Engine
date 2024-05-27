@@ -134,6 +134,7 @@ public:
 
 	// create query pool
 	UHGPUQuery* RequestGPUQuery(uint32_t Count, VkQueryType QueueType);
+	void RequestReleaseGPUQuery(UHGPUQuery* InQuery);
 
 	// request a managed render texture
 	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite = false, bool bUseMipmap = false);
@@ -261,6 +262,7 @@ public:
 	uint32_t GetMinImageCount() const;
 	bool RecreateImGui();
 	VkPipeline GetImGuiPipeline() const;
+	void SetDepthPrepassActive(bool bInFlag);
 #endif
 
 private:

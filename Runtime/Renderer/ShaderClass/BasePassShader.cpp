@@ -2,10 +2,11 @@
 #include "../../Components/MeshRenderer.h"
 #include "../RendererShared.h"
 
-UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
-	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
+UHGraphicState* UHBasePassShader::OcclusionState = nullptr;
+
+UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts
+	, bool bInOcclusionTest)
 	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat, InRenderPass)
-	, bHasDepthPrePass(bEnableDepthPrePass)
 {
 	// DeferredPass: Bind all constants, visiable in VS/PS only
 	for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHConstantTypes::ConstantTypeMax); Idx++)
@@ -29,15 +30,21 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
+	bOcclusionTest = bInOcclusionTest;
 	CreateMaterialDescriptor(ExtraLayouts);
 	OnCompile();
 }
 
 void UHBasePassShader::OnCompile()
 {
-	// early out if cached
-	if (GetState() != nullptr)
+	// early out if cached and depth write state didn't change
+	if (GetState() != nullptr && GetState()->GetRenderPassInfo().DepthInfo.bEnableDepthWrite == !Gfx->IsDepthPrePassEnabled())
 	{
+		// restore cached value
+		const UHRenderPassInfo& PassInfo = GetState()->GetRenderPassInfo();
+		ShaderVS = PassInfo.VS;
+		ShaderPS = PassInfo.PS;
+		MaterialPassInfo = PassInfo;
 		return;
 	}
 
@@ -49,7 +56,7 @@ void UHBasePassShader::OnCompile()
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
 		// adjust depth info based on depth pre pass setting
-		, UHDepthInfo(true, !bHasDepthPrePass, (bHasDepthPrePass) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
+		, UHDepthInfo(true, !Gfx->IsDepthPrePassEnabled(), (Gfx->IsDepthPrePassEnabled()) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
 		, MaterialCache->GetCullMode()
 		, MaterialCache->GetBlendMode()
 		, ShaderVS
@@ -63,7 +70,7 @@ void UHBasePassShader::OnCompile()
 void UHBasePassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(GSystemConstantBuffer, 0);
-	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
+	BindConstant(bOcclusionTest ? GOcclusionConstantBuffer : GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	UHMesh* Mesh = InRenderer->GetMesh();
@@ -77,4 +84,24 @@ void UHBasePassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 void UHBasePassShader::BindSkyCube()
 {
 	BindImage(GSkyLightCube, 6);
+}
+
+void UHBasePassShader::RecreateOcclusionState()
+{
+	Gfx->RequestReleaseGraphicState(OcclusionState);
+	OcclusionState = nullptr;
+
+	UHRenderPassInfo PassInfo = MaterialPassInfo;
+	PassInfo.DepthInfo.bEnableDepthWrite = false;
+	PassInfo.DepthInfo.DepthFunc = VK_COMPARE_OP_GREATER_OR_EQUAL;
+	PassInfo.bEnableColorWrite = false;
+	PassInfo.BlendMode = UHBlendMode::Opaque;
+	PassInfo.CullMode = UHCullMode::CullNone;
+	PassInfo.PS = UHINDEXNONE;
+	OcclusionState = Gfx->RequestGraphicState(PassInfo);
+}
+
+UHGraphicState* UHBasePassShader::GetOcclusionState() const
+{
+	return OcclusionState;
 }

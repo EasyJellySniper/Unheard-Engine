@@ -26,6 +26,7 @@ public:
 	UHObjectConstants GetConstants() const;
 	BoundingBox GetRendererBound() const;
 	float GetSquareDistanceToMainCam() const;
+	XMFLOAT4X4 GetWorldBoundMatrix() const;
 
 	void SetVisible(bool bVisible);
 	bool IsVisible() const;
@@ -46,6 +47,8 @@ private:
 	bool bIsVisible;
 	BoundingBox RendererBound;
 	float SquareDistanceToMainCam;
+
+	XMFLOAT4X4 WorldBoundMatrix;
 
 #if WITH_EDITOR
 	bool bIsVisibleEditor;

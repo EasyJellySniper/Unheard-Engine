@@ -79,6 +79,9 @@ public:
 	// only resize RT buffers
 	void ReleaseRayTracingBuffers();
 	void ResizeRayTracingBuffers(bool bInitOnly);
+
+	// update descriptors
+	void UpdateDescriptors();
 	void UpdateTextureDescriptors();
 
 #if WITH_EDITOR
@@ -87,6 +90,7 @@ public:
 
 	float GetRenderThreadTime() const;
 	int32_t GetDrawCallCount() const;
+	int32_t GetOccludedCallCount() const;
 	float* GetGPUTimes();
 
 	static UHDeferredShadingRenderer* GetRendererEditorOnly();
@@ -96,6 +100,8 @@ public:
 
 	void ResetMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterialCompileFlag CompileFlag, bool bIsOpaque, bool bNeedReassignRendererGroup);
 	void AppendMeshRenderers(const std::vector<UHMeshRendererComponent*> InRenderers);
+
+	void ToggleDepthPrepass();
 #endif
 	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
 	void RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable);
@@ -104,6 +110,14 @@ public:
 	bool DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, std::string InName
 		, UHTexture* Input, UHRenderTexture* Output
 		, UHGaussianFilterConstants Constants);
+
+	// occlusion query
+	void CreateOcclusionQuery();
+	void ReleaseOcclusionQuery();
+
+	// async compute queue
+	bool CreateAsyncComputeQueue();
+	void ReleaseAsyncComputeQueue();
 
 private:
 	/************************************************ functions ************************************************/
@@ -125,9 +139,6 @@ private:
 
 	// init queue submitters
 	bool InitQueueSubmitters();
-
-	// update descriptors
-	void UpdateDescriptors();
 
 	// release shaders
 	void ReleaseShaders();
@@ -176,6 +187,7 @@ private:
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
 	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
+	void OcclusionQueryReset(UHRenderBuilder& RenderBuilder);
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
@@ -219,7 +231,6 @@ private:
 	VkExtent2D RTShadowExtent;
 
 	// queue submitter
-	bool bEnableAsyncComputeGT;
 	bool bEnableAsyncComputeRT;
 	UHQueueSubmitter AsyncComputeQueue;
 	UHQueueSubmitter SceneRenderQueue;
@@ -251,6 +262,9 @@ private:
 	bool bHasRefractionMaterialGT;
 	bool bHasRefractionMaterialRT;
 	bool bHDREnabledRT;
+	bool bEnableHWOcclusionRT;
+	bool bEnableDepthPrepassRT;
+	int32_t OcclusionThresholdRT;
 	float RTCullingDistanceRT;
 	int32_t RTReflectionQualityRT;
 
@@ -262,6 +276,7 @@ private:
 
 	// object & material constants, I'll create constant buffer which are big enough for all renderers
 	std::vector<UHObjectConstants> ObjectConstantsCPU;
+	std::vector<UHObjectConstants> OcclusionConstantsCPU;
 
 	// light buffers, this will be used as structure buffer instead of constant
 	std::vector<UHDirectionalLightConstants> DirLightConstantsCPU;
@@ -286,11 +301,11 @@ private:
 	// -------------------------------------------- Depth Pass -------------------------------------------- //
 	std::unordered_map<int32_t, UniquePtr<UHDepthPassShader>> DepthPassShaders;
 	UHRenderPassObject DepthPassObj;
-	bool bEnableDepthPrePass;
 
 	// -------------------------------------------- Base Pass -------------------------------------------- //
 	// store different base pass object, the id is renderer data index
 	std::unordered_map<int32_t, UniquePtr<UHBasePassShader>> BasePassShaders;
+	std::unordered_map<int32_t, UniquePtr<UHBasePassShader>> BaseOcclusionShaders;
 	UHRenderPassObject BasePassObj;
 
 	// -------------------------------------------- Light and Light Culling Pass -------------------------------------------- //
@@ -323,6 +338,7 @@ private:
 
 	// -------------------------------------------- Translucent Pass -------------------------------------------- //
 	std::unordered_map<int32_t, UniquePtr<UHTranslucentPassShader>> TranslucentPassShaders;
+	std::unordered_map<int32_t, UniquePtr<UHTranslucentPassShader>> TranslucentOcclusionShaders;
 	UHRenderPassObject TranslucentPassObj;
 
 	// -------------------------------------------- Post processing Pass -------------------------------------------- //
@@ -349,7 +365,9 @@ private:
 	// profiles
 	float RenderThreadTime;
 	int32_t DrawCalls;
+	int32_t OccludedCalls;
 	std::vector<int32_t> ThreadDrawCalls;
+	std::vector<int32_t> ThreadOccludedCalls;
 	float GPUTimes[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
 	// GUI
@@ -389,6 +407,9 @@ private:
 	// -------------------------------------------- Culling related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
 	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
+
+	UHGPUQuery* OcclusionQuery[GMaxFrameInFlight];
+	std::vector<uint32_t> OcclusionResult[GMaxFrameInFlight];
 
 	// caches
 	std::unordered_map<uint32_t, UHRenderTexture*> TempRenderTextures;

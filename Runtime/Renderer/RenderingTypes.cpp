@@ -38,6 +38,7 @@ UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDept
 	, bDrawLine(false)
 	, bDrawWireFrame(false)
 	, bForceBlendOff(false)
+	, bEnableColorWrite(true)
 {
 
 }

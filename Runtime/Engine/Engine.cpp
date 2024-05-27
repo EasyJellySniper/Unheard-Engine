@@ -227,6 +227,14 @@ void UHEngine::Update()
 		SetResizeReason(UHEngineResizeReason::ToggleVsync);
 	}
 
+	// occlusion toggling
+	if (UHERawInput->IsKeyHold(VK_CONTROL) && UHERawInput->IsKeyUp('o'))
+	{
+		UHEConfig->RenderingSetting().bEnableHardwareOcclusion = !UHEConfig->RenderingSetting().bEnableHardwareOcclusion;
+		UHEGraphic->WaitGPU();
+		UHEConfig->RenderingSetting().bEnableHardwareOcclusion ? UHERenderer->CreateOcclusionQuery() : UHERenderer->ReleaseOcclusionQuery();
+	}
+
 	// update scene
 	CurrentScene->Update();
 
@@ -476,6 +484,7 @@ void UHEngine::EndProfile()
 	}
 
 	Stats.DrawCallCount = UHERenderer->GetDrawCallCount();
+	Stats.OccludedCallCount = UHERenderer->GetOccludedCallCount();
 	Stats.PSOCount = static_cast<int32_t>(UHEGraphic->StatePools.size());
 	Stats.ShaderCount = static_cast<int32_t>(UHEGraphic->ShaderPools.size());
 	Stats.RTCount = static_cast<int32_t>(UHEGraphic->RTPools.size());

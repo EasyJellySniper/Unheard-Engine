@@ -45,7 +45,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_EXT_hdr_metadata"
 		, "VK_KHR_dynamic_rendering"
 		, "VK_KHR_synchronization2"
-		, "VK_KHR_push_descriptor"};
+		, "VK_KHR_push_descriptor" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -1010,6 +1010,19 @@ UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 	return QueryPools.back().get();
 }
 
+void UHGraphic::RequestReleaseGPUQuery(UHGPUQuery* InQuery)
+{
+	int32_t Idx = UHUtilities::FindIndex<UHGPUQuery>(QueryPools, *InQuery);
+	if (Idx == UHINDEXNONE)
+	{
+		return;
+	}
+
+	QueryPools[Idx]->Release();
+	QueryPools[Idx].reset();
+	UHUtilities::RemoveByIndex(QueryPools, Idx);
+}
+
 // request render texture, this also sets device info to it
 UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite, bool bUseMipmap)
 {
@@ -1756,6 +1769,11 @@ bool UHGraphic::RecreateImGui()
 VkPipeline UHGraphic::GetImGuiPipeline() const
 {
 	return ImGuiPipeline;
+}
+
+void UHGraphic::SetDepthPrepassActive(bool bInFlag)
+{
+	bEnableDepthPrePass = bInFlag;
 }
 #endif
 

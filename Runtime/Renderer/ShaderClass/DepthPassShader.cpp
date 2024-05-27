@@ -32,6 +32,11 @@ void UHDepthPassShader::OnCompile()
 	// early out if cached
 	if (GetState() != nullptr)
 	{
+		// restore cached value
+		const UHRenderPassInfo& PassInfo = GetState()->GetRenderPassInfo();
+		ShaderVS = PassInfo.VS;
+		ShaderPS = PassInfo.PS;
+		MaterialPassInfo = PassInfo;
 		return;
 	}
 

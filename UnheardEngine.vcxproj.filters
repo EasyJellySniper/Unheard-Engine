@@ -782,6 +782,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\OcclusionPassRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">

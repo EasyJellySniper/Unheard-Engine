@@ -21,6 +21,9 @@ public:
 	void EndTimeStamp(VkCommandBuffer InBuffer);
 	float GetTimeStamp(VkCommandBuffer InBuffer);
 
+	VkQueryPool GetQueryPool() const;
+	uint32_t GetQueryCount() const;
+
 private:
 	uint32_t QueryCount;
 	UHGPUQueryState State;

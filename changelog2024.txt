@@ -158,3 +158,18 @@ Optimized RT shaders by async creation. Though this makes RT show up later.
 05-05-2024:
 Finished optimizing RT shader creation.
 Optimized the texture reference check too, from 1.5 seconds to 0.04 seconds!
+
+18-05-2024:
+Started implementing occlusion query. The execution time of getting back result is far faster than I expected.
+Also started organizing the setting apply, aim for no-relaunch-apply when setting changed.
+
+19-05-2024:
+Made depth prepass toggable in flight.
+
+26-05-2024:
+Support scoped CPU timing. Optimized occlusion query reset time.
+I think occlusion query is done. But the perf gain isn't bigger than it costs, also one-frame delay is obvious.
+Need a few more works.
+
+27-05-2024:
+Finished the HW occlusion query. Despite it didn't benefit much in current scene. Default as disabled now.

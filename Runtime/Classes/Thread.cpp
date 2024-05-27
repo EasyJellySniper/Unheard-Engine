@@ -18,15 +18,18 @@ void UHThread::BeginThread(std::thread InObj, uint32_t AffinityCore)
 {
 	ThreadObj = std::move(InObj);
 
+	// modern OS should be smart enough for thread control, uncomment for test purpose
+	// I find manually setting it introduces weird stuttering in some hardwares...
+	 
 	// set affinity
-	uint32_t NumCores = std::thread::hardware_concurrency();
-	AffinityCore = AffinityCore % NumCores;
+	//uint32_t NumCores = std::thread::hardware_concurrency();
+	//AffinityCore = AffinityCore % NumCores;
 
-	DWORD_PTR Result = SetThreadAffinityMask(ThreadObj.native_handle(), DWORD_PTR(1) << AffinityCore);
-	if (Result == 0)
-	{
-		UHE_LOG("Failed to set affinity for thread!\n");
-	}
+	//DWORD_PTR Result = SetThreadAffinityMask(ThreadObj.native_handle(), DWORD_PTR(1) << AffinityCore);
+	//if (Result == 0)
+	//{
+	//	UHE_LOG("Failed to set affinity for thread!\n");
+	//}
 }
 
 void UHThread::BeginThread(std::thread InObj)

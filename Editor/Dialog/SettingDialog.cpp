@@ -78,19 +78,44 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     }
 
     ImGui::Checkbox("Enable TAA", &RenderingSettings.bTemporalAA);
-    ImGui::Checkbox("Enable RayTracing*", &RenderingSettings.bEnableRayTracing);
+    if (ImGui::Checkbox("Enable RayTracing*", &RenderingSettings.bEnableRayTracing))
+    {
+        Engine->GetGfx()->WaitGPU();
+        DeferredRenderer->UpdateDescriptors();
+    }
+
     ImGui::Checkbox("Enable GPU Labeling (For RenderDoc debugging)", &RenderingSettings.bEnableGPULabeling);
     ImGui::Checkbox("Enable Layer Validation*", &RenderingSettings.bEnableLayerValidation);
     if (ImGui::Checkbox("Enable GPU Timing", &RenderingSettings.bEnableGPUTiming))
     {
         GEnableGPUTiming = RenderingSettings.bEnableGPUTiming;
     }
-    ImGui::Checkbox("Enable Depth Pre Pass*", &RenderingSettings.bEnableDepthPrePass);
-    ImGui::Checkbox("Enable Async Compute*", &RenderingSettings.bEnableAsyncCompute);
+
+    if (ImGui::Checkbox("Enable Depth Pre Pass", &RenderingSettings.bEnableDepthPrePass))
+    {
+        Engine->GetGfx()->WaitGPU();
+        Engine->GetGfx()->SetDepthPrepassActive(RenderingSettings.bEnableDepthPrePass);
+        DeferredRenderer->ToggleDepthPrepass();
+    }
+
+    if (ImGui::Checkbox("Enable Async Compute", &RenderingSettings.bEnableAsyncCompute))
+    {
+        Engine->GetGfx()->WaitGPU();
+        RenderingSettings.bEnableAsyncCompute ? (void)DeferredRenderer->CreateAsyncComputeQueue() : DeferredRenderer->ReleaseAsyncComputeQueue();
+    }
+
     if (ImGui::Checkbox("Enable HDR", &RenderingSettings.bEnableHDR))
     {
         Engine->SetResizeReason(UHEngineResizeReason::ToggleHDR);
     }
+
+    if (ImGui::Checkbox("Enable Hardware Occlusion", &RenderingSettings.bEnableHardwareOcclusion))
+    {
+        Engine->GetGfx()->WaitGPU();
+        RenderingSettings.bEnableHardwareOcclusion ? DeferredRenderer->CreateOcclusionQuery() : DeferredRenderer->ReleaseOcclusionQuery();
+    }
+    ImGui::InputInt("Occlusion triangle threshold", &RenderingSettings.OcclusionTriangleThreshold);
+
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
     ImGui::InputFloat("Final Reflection Strength", &RenderingSettings.FinalReflectionStrength);
 

@@ -38,10 +38,8 @@ void UHMotionCameraPassShader::BindParameters()
 	BindSampler(GPointClampedSampler, 2);
 }
 
-UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, bool bEnableDepthPrePass
-	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
+UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHMotionObjectPassShader), InMat, InRenderPass)
-	, bHasDepthPrePass(bEnableDepthPrePass)
 {
 	// Motion pass: constants + opacity image for cutoff (if there is any)
 	for (uint32_t Idx = 0; Idx < UH_ENUM_VALUE(UHConstantTypes::ConstantTypeMax); Idx++)
@@ -67,9 +65,17 @@ UHMotionObjectPassShader::UHMotionObjectPassShader(UHGraphic* InGfx, std::string
 
 void UHMotionObjectPassShader::OnCompile()
 {
-	// early out if cached
-	if (GetState() != nullptr)
+	const bool bIsTranslucent = MaterialCache->GetBlendMode() > UHBlendMode::Masked;
+	const VkCompareOp DepthCompareOp = (Gfx->IsDepthPrePassEnabled() && !bIsTranslucent) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL;
+
+	// early out if cached and depth compare op didn't change
+	if (GetState() != nullptr && GetState()->GetRenderPassInfo().DepthInfo.DepthFunc == DepthCompareOp)
 	{
+		// restore cached value
+		const UHRenderPassInfo& PassInfo = GetState()->GetRenderPassInfo();
+		ShaderVS = PassInfo.VS;
+		ShaderPS = PassInfo.PS;
+		MaterialPassInfo = PassInfo;
 		return;
 	}
 
@@ -80,10 +86,8 @@ void UHMotionObjectPassShader::OnCompile()
 	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data);
 
 	// states, enable depth test, and write depth for translucent object only
-	const bool bIsTranslucent = MaterialCache->GetBlendMode() > UHBlendMode::Masked;
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache,
-		UHDepthInfo(true, bIsTranslucent
-			, (bHasDepthPrePass && !bIsTranslucent) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER_OR_EQUAL)
+		UHDepthInfo(true, bIsTranslucent, DepthCompareOp)
 		, MaterialCache->GetCullMode()
 		, MaterialCache->GetBlendMode()
 		, ShaderVS

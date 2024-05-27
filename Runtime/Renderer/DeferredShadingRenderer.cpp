@@ -77,14 +77,20 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	FrameNumberRT = GFrameNumber;
 	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
 	bIsSwapChainResetRT = bIsSwapChainResetGT;
-	bEnableAsyncComputeRT = bEnableAsyncComputeGT;
+	bEnableAsyncComputeRT = ConfigInterface->RenderingSetting().bEnableAsyncCompute;
 	bIsRenderingEnabledRT = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
 	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
 	bHasRefractionMaterialRT = bHasRefractionMaterialGT;
 	bHDREnabledRT = GraphicInterface->IsHDRAvailable();
 	RTCullingDistanceRT = ConfigInterface->RenderingSetting().RTCullingRadius;
 	RTReflectionQualityRT = ConfigInterface->RenderingSetting().RTReflectionQuality;
-	bIsRaytracingEnableRT = GraphicInterface->IsRayTracingEnabled() && bIsRTShadowShaderReady && bIsRTReflectionShaderReady;
+
+	// at least make it 'toggleable' partially
+	bIsRaytracingEnableRT = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled() && bIsRTShadowShaderReady && bIsRTReflectionShaderReady;
+
+	bEnableHWOcclusionRT = ConfigInterface->RenderingSetting().bEnableHardwareOcclusion;
+	OcclusionThresholdRT = ConfigInterface->RenderingSetting().OcclusionTriangleThreshold;
+	bEnableDepthPrepassRT = GraphicInterface->IsDepthPrePassEnabled();
 
 	if (SkyMeshRT == nullptr)
 	{
@@ -161,6 +167,11 @@ int32_t UHDeferredShadingRenderer::GetDrawCallCount() const
 	return DrawCalls;
 }
 
+int32_t UHDeferredShadingRenderer::GetOccludedCallCount() const
+{
+	return OccludedCalls;
+}
+
 float* UHDeferredShadingRenderer::GetGPUTimes()
 {
 	return &GPUTimes[0];
@@ -233,7 +244,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	// pack system rendering feature data
 	uint32_t FeatureData = 0;
-	FeatureData |= (bEnableDepthPrePass) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureDepthPrePass) : 0;
+	FeatureData |= (GraphicInterface->IsDepthPrePassEnabled()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureDepthPrePass) : 0;
 	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
@@ -264,7 +275,14 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			UHMeshRendererComponent* Renderer = Renderers[Idx];
 			if (Renderer->IsRenderDirty(CurrentFrameGT))
 			{
-				ObjectConstantsCPU[Renderer->GetBufferDataIndex()] = Renderer->GetConstants();
+				UHObjectConstants Constant = Renderer->GetConstants();
+				ObjectConstantsCPU[Renderer->GetBufferDataIndex()] = Constant;
+
+				if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+				{
+					Constant.GWorld = Renderer->GetWorldBoundMatrix();
+					OcclusionConstantsCPU[Renderer->GetBufferDataIndex()] = Constant;
+				}
 				Renderer->SetRenderDirty(false, CurrentFrameGT);
 			}
 
@@ -276,7 +294,12 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 				Mat->SetRenderDirty(false, CurrentFrameGT);
 			}
 		}
+
 		GObjectConstantBuffer[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
+		if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+		{
+			GOcclusionConstantBuffer[CurrentFrameGT]->UploadAllData(OcclusionConstantsCPU.data());
+		}
 	}
 
 	// upload directional light data
@@ -565,6 +588,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 					SceneRenderBuilder.FlushResourceBarrier();
 				}
 
+				OcclusionQueryReset(SceneRenderBuilder);
 				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
@@ -624,12 +648,13 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		// profile ends before Present() call, since it contains vsync time
 		RenderThreadTime = RenderThreadProfile.GetDiff() * 1000.0f;
 		DrawCalls = SceneRenderBuilder.DrawCalls;
+		OccludedCalls = SceneRenderBuilder.OccludedCalls;
 	#endif
 
 		// wait until the previous presentation is done, to prevent glitches on some hardwares
 		if (bIsPresentedPreviously && !bIsSwapChainResetRT)
 		{
-			SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[1 - CurrentFrameRT]);
+			SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[(CurrentFrameRT - 1) % GMaxFrameInFlight]);
 		}
 
 		// present

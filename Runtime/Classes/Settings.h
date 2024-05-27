@@ -91,6 +91,8 @@ public:
 		, FinalReflectionStrength(0.75f)
 		, bEnableAsyncCompute(false)
 		, bEnableHDR(false)
+		, bEnableHardwareOcclusion(true)
+		, OcclusionTriangleThreshold(5000)
 	{
 
 	}
@@ -120,4 +122,6 @@ public:
 
 	bool bEnableAsyncCompute;
 	bool bEnableHDR;
+	bool bEnableHardwareOcclusion;
+	int32_t OcclusionTriangleThreshold;
 };

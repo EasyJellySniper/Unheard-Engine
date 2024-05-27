@@ -298,6 +298,11 @@ void UHShaderClass::SetNewMaterialCache(UHMaterial* InMat)
 	MaterialCache = InMat;
 }
 
+void UHShaderClass::SetNewRenderPass(VkRenderPass InRenderPass)
+{
+	RenderPassCache = InRenderPass;
+}
+
 uint32_t UHShaderClass::GetRayGenShader() const
 {
 	return RayGenShader;

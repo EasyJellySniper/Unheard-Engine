@@ -1,5 +1,11 @@
 #include "GameTimer.h"
-#include "../../framework.h"
+#include "framework.h"
+#include "UnheardEngine.h"
+
+#if WITH_EDITOR
+	std::mutex GTimeScopeLock;
+	std::vector<std::pair<std::string, float>> UHGameTimerScope::RegisteredGameTime;
+#endif
 
 UHGameTimer::UHGameTimer()
 	: DeltaTime(0.0)
@@ -107,4 +113,47 @@ void UHGameTimer::Tick()
 		double DesiredDeltaTime = 0.01666666666666666666666666666667;
 		DeltaTime = DesiredDeltaTime;
 	}
+}
+
+// UHGameTimerScope
+UHGameTimerScope::UHGameTimerScope(std::string InName, bool bPrintTimeAfterStop)
+{
+#if WITH_EDITOR
+	this->bPrintTimeAfterStop = bPrintTimeAfterStop;
+	Name = InName;
+	Reset();
+	Start();
+#endif
+}
+
+UHGameTimerScope::~UHGameTimerScope()
+{
+#if WITH_EDITOR
+	Stop();
+
+	const float TotalTime = GetTotalTime() * 1000.0f;
+	if (bPrintTimeAfterStop)
+	{
+		UHE_LOG(Name + " takes " + std::to_string(TotalTime) + " ms.\n");
+	}
+
+	std::unique_lock<std::mutex> Lock(GTimeScopeLock);
+	RegisteredGameTime.push_back(std::make_pair(Name, TotalTime));
+#endif
+}
+
+std::vector<std::pair<std::string, float>> UHGameTimerScope::GetResiteredGameTime()
+{
+#if WITH_EDITOR
+	std::unique_lock<std::mutex> Lock(GTimeScopeLock);
+	return RegisteredGameTime;
+#endif
+}
+
+void UHGameTimerScope::ClearRegisteredGameTime()
+{
+#if WITH_EDITOR
+	std::unique_lock<std::mutex> Lock(GTimeScopeLock);
+	RegisteredGameTime.clear();
+#endif
 }

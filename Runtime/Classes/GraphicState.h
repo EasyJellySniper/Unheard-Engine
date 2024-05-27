@@ -19,6 +19,7 @@ public:
 
 	VkPipeline GetPassPipeline() const;
 	VkPipeline GetRTPipeline() const;
+	UHRenderPassInfo GetRenderPassInfo() const;
 
 	bool operator==(const UHGraphicState& InState);
 
