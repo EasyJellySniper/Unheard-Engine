@@ -3,9 +3,6 @@
 #include "../DescriptorHelper.h"
 #include <typeindex>
 
-extern std::unordered_map<uint32_t, UHGraphicState*> GGraphicStateTable;
-extern std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> GMaterialStateTable;
-
 // 32 byte structure for shader table record
 struct UHShaderRecord
 {
@@ -19,8 +16,10 @@ class UHShaderClass : public UHObject
 public:
 	UHShaderClass(UHGraphic* InGfx, std::string Name, std::type_index InType, UHMaterial* InMat = nullptr, VkRenderPass InRenderPass = nullptr);
 
-	virtual void Release(bool bDescriptorOnly = false);
+	virtual void Release();
 	virtual void OnCompile() = 0;
+	void ReleaseDescriptor();
+	static void ClearGlobalLayoutCache(UHGraphic* InGfx);
 
 	template <typename T>
 	void BindConstant(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
@@ -193,10 +192,7 @@ protected:
 
 	// create descriptor, call this after shader class is done adding the layout binding
 	// each shader is default to one layout, but it can use additional layouts
-	void CreateDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts = std::vector<VkDescriptorSetLayout>());
-
-	// create descriptor but for material
-	void CreateMaterialDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts = std::vector<VkDescriptorSetLayout>());
+	void CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout> AdditionalLayouts = std::vector<VkDescriptorSetLayout>());
 
 	// create state functions
 	void CreateGraphicState(UHRenderPassInfo InInfo);
@@ -241,5 +237,14 @@ protected:
 	std::vector<VkWriteDescriptorSet> PushDescriptorSets;
 	std::vector<VkDescriptorImageInfo> PushImageInfos;
 	std::vector<VkDescriptorBufferInfo> PushBufferInfos;
-};
 
+private:
+	// layout won't change for the same shaders and can be cached
+	static std::unordered_map<std::type_index, VkDescriptorSetLayout> DescriptorSetLayoutTable;
+	static std::unordered_map<std::type_index, VkPipelineLayout> PipelineLayoutTable;
+
+	// graphic state table, the material is a bit more complicated since it could be involded in different passes
+	static std::unordered_map<uint32_t, UHGraphicState*> GraphicStateTable;
+	static std::unordered_map<uint32_t, std::unordered_map<std::type_index, UHGraphicState*>> MaterialStateTable;
+	static std::unordered_map<uint32_t, UHComputeState*> ComputeStateTable;
+};

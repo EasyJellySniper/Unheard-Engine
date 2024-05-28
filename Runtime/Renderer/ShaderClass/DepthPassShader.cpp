@@ -22,7 +22,7 @@ UHDepthPassShader::UHDepthPassShader(UHGraphic* InGfx, std::string Name, VkRende
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
-	CreateMaterialDescriptor(ExtraLayouts);
+	CreateLayoutAndDescriptor(ExtraLayouts);
 
 	OnCompile();
 }

@@ -43,7 +43,7 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	bOcclusionTest = bInOcclusionTest;
-	CreateMaterialDescriptor(ExtraLayouts);
+	CreateLayoutAndDescriptor(ExtraLayouts);
 	OnCompile();
 }
 

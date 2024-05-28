@@ -166,6 +166,8 @@ void UHDeferredShadingRenderer::Release()
 	{
 		ReleaseAsyncComputeQueue();
 	}
+
+	UHShaderClass::ClearGlobalLayoutCache(GraphicInterface);
 }
 
 void UHDeferredShadingRenderer::PrepareMeshes()
@@ -975,13 +977,13 @@ void UHDeferredShadingRenderer::ReleaseOcclusionQuery()
 	// release shaders
 	for (auto& Shader : BaseOcclusionShaders)
 	{
-		Shader.second->Release(true);
+		Shader.second->ReleaseDescriptor();
 	}
 	BaseOcclusionShaders.clear();
 
 	for (auto& Shader : TranslucentOcclusionShaders)
 	{
-		Shader.second->Release(true);
+		Shader.second->ReleaseDescriptor();
 	}
 	TranslucentOcclusionShaders.clear();
 }
@@ -1099,7 +1101,7 @@ void SafeReleaseShaderPtr(std::unordered_map<int32_t, T>& InMap, const int32_t I
 {
 	if (InMap.find(InIndex) != InMap.end())
 	{
-		InMap[InIndex]->Release(bDescriptorOnly);
+		bDescriptorOnly ? InMap[InIndex]->ReleaseDescriptor() : InMap[InIndex]->Release();
 	}
 }
 

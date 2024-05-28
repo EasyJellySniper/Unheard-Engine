@@ -12,7 +12,7 @@ UHRTReflectionMipmap::UHRTReflectionMipmap(UHGraphic* InGfx, std::string Name)
 	PushConstantRange.size = sizeof(UHMipmapConstants);
 	bPushDescriptor = true;
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 }
 

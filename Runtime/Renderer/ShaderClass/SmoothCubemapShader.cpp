@@ -13,7 +13,7 @@ UHSmoothCubemapShader::UHSmoothCubemapShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 }
 

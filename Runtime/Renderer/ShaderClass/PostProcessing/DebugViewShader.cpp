@@ -10,15 +10,15 @@ UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRende
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 
 	DebugViewData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 }
 
-void UHDebugViewShader::Release(bool bDescriptorOnly)
+void UHDebugViewShader::Release()
 {
-	UHShaderClass::Release(bDescriptorOnly);
+	UHShaderClass::Release();
 	UH_SAFE_RELEASE(DebugViewData);
 }
 

@@ -9,7 +9,7 @@ public:
 	{
 		// simply create layout with number of meshes
 		AddLayoutBinding(NumOfMaterials, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
-		CreateDescriptor();
+		CreateLayoutAndDescriptor();
 	}
 
 	virtual void OnCompile() override {}

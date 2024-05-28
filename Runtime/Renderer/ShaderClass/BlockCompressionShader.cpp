@@ -9,7 +9,7 @@ UHBlockCompressionShader::UHBlockCompressionShader(UHGraphic* InGfx, std::string
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 }
 
@@ -33,7 +33,7 @@ UHBlockCompressionNewShader::UHBlockCompressionNewShader(UHGraphic* InGfx, std::
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 }
 

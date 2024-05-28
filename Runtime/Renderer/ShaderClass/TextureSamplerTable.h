@@ -14,7 +14,7 @@ public:
 		: UHShaderClass(InGfx, Name, typeid(UHTextureTable), nullptr)
 	{
 		AddLayoutBinding(GTextureTableSize, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 0);
-		CreateDescriptor();
+		CreateLayoutAndDescriptor();
 	}
 
 	virtual void OnCompile() override {}
@@ -28,7 +28,7 @@ public:
 		: UHShaderClass(InGfx, Name, typeid(UHSamplerTable), nullptr)
 	{
 		AddLayoutBinding(GSamplerTableSize, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER, 0);
-		CreateDescriptor();
+		CreateLayoutAndDescriptor();
 	}
 
 	virtual void OnCompile() override {}

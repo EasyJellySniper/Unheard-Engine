@@ -5,7 +5,7 @@ class UHSphericalHarmonicShader : public UHShaderClass
 {
 public:
 	UHSphericalHarmonicShader(UHGraphic* InGfx, std::string Name);
-	virtual void Release(bool bDescriptorOnly = false) override;
+	virtual void Release() override;
 	virtual void OnCompile() override;
 
 	UHRenderBuffer<UHSphericalHarmonicConstants>* GetSH9Constants(const int32_t FrameIdx) const;

@@ -9,7 +9,7 @@ UHDebugBoundShader::UHDebugBoundShader(UHGraphic* InGfx, std::string Name, VkRen
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
@@ -18,9 +18,9 @@ UHDebugBoundShader::UHDebugBoundShader(UHGraphic* InGfx, std::string Name, VkRen
 	}
 }
 
-void UHDebugBoundShader::Release(bool bDescriptorOnly)
+void UHDebugBoundShader::Release()
 {
-	UHShaderClass::Release(bDescriptorOnly);
+	UHShaderClass::Release();
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		UH_SAFE_RELEASE(DebugBoundData[Idx]);

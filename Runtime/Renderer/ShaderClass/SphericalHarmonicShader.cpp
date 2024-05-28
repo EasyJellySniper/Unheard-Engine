@@ -9,7 +9,7 @@ UHSphericalHarmonicShader::UHSphericalHarmonicShader(UHGraphic* InGfx, std::stri
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
@@ -18,9 +18,9 @@ UHSphericalHarmonicShader::UHSphericalHarmonicShader(UHGraphic* InGfx, std::stri
 	}
 }
 
-void UHSphericalHarmonicShader::Release(bool bDescriptorOnly)
+void UHSphericalHarmonicShader::Release()
 {
-	UHShaderClass::Release(bDescriptorOnly);
+	UHShaderClass::Release();
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{

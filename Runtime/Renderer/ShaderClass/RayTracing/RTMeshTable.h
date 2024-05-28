@@ -9,7 +9,7 @@ public:
 	{
 		// simply create layout with number of meshes
 		AddLayoutBinding(NumOfMeshes, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
-		CreateDescriptor();
+		CreateLayoutAndDescriptor();
 	}
 
 	virtual void OnCompile() override {}
@@ -23,7 +23,7 @@ public:
 	{
 		// simply create layout with number of meshes
 		AddLayoutBinding(NumOfMeshes, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
-		CreateDescriptor();
+		CreateLayoutAndDescriptor();
 	}
 
 	virtual void OnCompile() override {}
@@ -36,7 +36,7 @@ public:
 		: UHShaderClass(InGfx, Name, typeid(UHRTIndicesTypeTable), nullptr)
 	{
 		AddLayoutBinding(1, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
-		CreateDescriptor();
+		CreateLayoutAndDescriptor();
 	}
 
 	virtual void OnCompile() override {}

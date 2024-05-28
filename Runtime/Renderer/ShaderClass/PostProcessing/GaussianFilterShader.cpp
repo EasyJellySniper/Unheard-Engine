@@ -16,7 +16,7 @@ UHGaussianFilterShader::UHGaussianFilterShader(UHGraphic* InGfx, std::string Nam
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	bPushDescriptor = true;
 
-	CreateDescriptor();
+	CreateLayoutAndDescriptor();
 	OnCompile();
 }
 

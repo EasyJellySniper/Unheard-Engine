@@ -173,3 +173,6 @@ Need a few more works.
 
 27-05-2024:
 Finished the HW occlusion query. Despite it didn't benefit much in current scene. Default as disabled now.
+
+28-05-2024:
+Refactored those ugly global tables in the UHShaderClass. Made it simpler.

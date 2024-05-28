@@ -43,7 +43,7 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
-	CreateDescriptor(ExtraLayouts);
+	CreateLayoutAndDescriptor(ExtraLayouts);
 
 	ClosestHitIDs = InClosestHits;
 	AnyHitIDs = InAnyHits;

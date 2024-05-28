@@ -31,7 +31,7 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	bOcclusionTest = bInOcclusionTest;
-	CreateMaterialDescriptor(ExtraLayouts);
+	CreateLayoutAndDescriptor(ExtraLayouts);
 	OnCompile();
 }
 
