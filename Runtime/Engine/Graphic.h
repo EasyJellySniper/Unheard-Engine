@@ -241,6 +241,7 @@ public:
 	bool IsHDRAvailable() const;
 	bool Is24BitDepthSupported() const;
 	bool IsAMDIntegratedGPU() const;
+	bool IsMeshShaderSupported() const;
 
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
@@ -373,6 +374,7 @@ private:
 	bool bSupportHDR;
 	bool bSupport24BitDepth;
 	bool bIsAMDIntegratedGPU;
+	bool bSupportMeshShader;
 
 protected:
 	// system managed pools

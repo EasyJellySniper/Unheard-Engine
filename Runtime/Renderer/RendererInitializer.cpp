@@ -955,6 +955,9 @@ void UHDeferredShadingRenderer::CreateOcclusionQuery()
 		BaseOcclusionShaders.begin()->second->RecreateOcclusionState();
 		TranslucentOcclusionShaders.begin()->second->RecreateOcclusionState();
 		UpdateDescriptors();
+
+		const uint32_t PrevFrame = (CurrentFrameGT - 1) % GMaxFrameInFlight;
+		vkResetQueryPool(GraphicInterface->GetLogicalDevice(), OcclusionQuery[PrevFrame]->GetQueryPool(), 0, OcclusionQuery[PrevFrame]->GetQueryCount());
 	}
 }
 
@@ -1348,6 +1351,7 @@ void UHDeferredShadingRenderer::ToggleDepthPrepass()
 
 	for (auto& Shader : MotionOpaqueShaders)
 	{
+		Shader.second->SetNewRenderPass(MotionOpaquePassObj.RenderPass);
 		Shader.second->OnCompile();
 	}
 	UpdateDescriptors();

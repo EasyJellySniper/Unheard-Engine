@@ -19,7 +19,9 @@ public:
 	virtual void Release();
 	virtual void OnCompile() = 0;
 	void ReleaseDescriptor();
+
 	static void ClearGlobalLayoutCache(UHGraphic* InGfx);
+	static bool IsDescriptorLayoutValid(std::type_index InType);
 
 	template <typename T>
 	void BindConstant(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)

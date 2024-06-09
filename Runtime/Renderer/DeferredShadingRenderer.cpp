@@ -30,8 +30,6 @@ void UHDeferredShadingRenderer::Resize()
 
 	ReleaseRayTracingBuffers();
 	ResizeRayTracingBuffers(true);
-	RTShadowShader->BindParameters();
-	RTReflectionShader->BindParameters();
 
 	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
@@ -591,7 +589,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 			if (bIsRenderingEnabledRT)
 			{
-				// first-chance resource barriers
+				// first-chance resource barriers and resets
 				if (!bIsPresentedPreviously || bIsSwapChainResetRT)
 				{
 					SceneRenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));

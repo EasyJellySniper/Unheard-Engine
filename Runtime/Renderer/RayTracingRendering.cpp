@@ -35,6 +35,8 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 		{
 			// need to rewrite descriptors after resize
 			UpdateDescriptors();
+			RTShadowShader->BindParameters();
+			RTReflectionShader->BindParameters();
 		}
 	}
 }

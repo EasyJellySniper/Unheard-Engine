@@ -27,6 +27,11 @@ void UHShaderClass::ClearGlobalLayoutCache(UHGraphic* InGfx)
 	PipelineLayoutTable.clear();
 }
 
+bool UHShaderClass::IsDescriptorLayoutValid(std::type_index InType)
+{
+	return DescriptorSetLayoutTable.find(InType) != DescriptorSetLayoutTable.end();
+}
+
 UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_index InType, UHMaterial* InMat, VkRenderPass InRenderPass)
 	: Gfx(InGfx)
 	, Name(InName)

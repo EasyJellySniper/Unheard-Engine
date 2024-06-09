@@ -66,6 +66,12 @@ void UHPreviewScene::Render(bool bIsActive)
 		UpdateCamera();
 	}
 
+	if (!UHShaderClass::IsDescriptorLayoutValid(typeid(UHMeshPreviewShader)))
+	{
+		MeshPreviewShader->Release();
+		MeshPreviewShader = MakeUnique<UHMeshPreviewShader>(Gfx, "MeshPreviewShader", PreviewRenderPass.RenderPass);
+	}
+
 	XMFLOAT4X4 ViewProj = PreviewCamera->GetViewProjMatrixNonJittered();
 	MeshPreviewData->UploadData(&ViewProj, 0);
 	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0);

@@ -26,6 +26,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bSupportHDR(false)
 	, bSupport24BitDepth(true)
 	, bIsAMDIntegratedGPU(false)
+	, bSupportMeshShader(false)
 #if WITH_EDITOR
 	, ImGuiDescriptorPool(nullptr)
 	, ImGuiPipeline(nullptr)
@@ -46,7 +47,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_dynamic_rendering"
 		, "VK_KHR_synchronization2"
 		, "VK_KHR_push_descriptor"
-		, "VK_EXT_conditional_rendering" };
+		, "VK_EXT_conditional_rendering"
+		, "VK_EXT_mesh_shader" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -572,11 +574,16 @@ bool UHGraphic::CreateLogicalDevice()
 	RobustnessFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
 	RobustnessFeatures.pNext = &VK13Features;
 
+	// mesh shader feature check
+	VkPhysicalDeviceMeshShaderFeaturesEXT MeshShaderFeatures{};
+	MeshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+	MeshShaderFeatures.pNext = &RobustnessFeatures;
+
 	// device feature needs to assign in fature 2
 	VkPhysicalDeviceFeatures2 PhyFeatures{};
 	PhyFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	PhyFeatures.features = DeviceFeatures;
-	PhyFeatures.pNext = &RobustnessFeatures;
+	PhyFeatures.pNext = &MeshShaderFeatures;
 
 	vkGetPhysicalDeviceFeatures2(PhysicalDevice, &PhyFeatures);
 
@@ -592,6 +599,11 @@ bool UHGraphic::CreateLogicalDevice()
 		VkFormatProperties FormatProps{};
 		vkGetPhysicalDeviceFormatProperties(PhysicalDevice, VK_FORMAT_X8_D24_UNORM_PACK32, &FormatProps);
 		bSupport24BitDepth = FormatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+		// mesh shader support, disable others usage for now
+		bSupportMeshShader = MeshShaderFeatures.meshShader;
+		MeshShaderFeatures.multiviewMeshShader = false;
+		MeshShaderFeatures.primitiveFragmentShadingRateMeshShader = false;
 	}
 
 	// get RT feature props
@@ -1588,6 +1600,11 @@ bool UHGraphic::Is24BitDepthSupported() const
 bool UHGraphic::IsAMDIntegratedGPU() const
 {
 	return bIsAMDIntegratedGPU;
+}
+
+bool UHGraphic::IsMeshShaderSupported() const
+{
+	return bSupportMeshShader;
 }
 
 std::vector<UHSampler*> UHGraphic::GetSamplers() const
