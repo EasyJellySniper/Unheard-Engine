@@ -63,7 +63,9 @@ bool UHRenderPassInfo::operator==(const UHRenderPassInfo& InInfo)
 		&& InInfo.RTCount == RTCount
 		&& InInfo.PipelineLayout == PipelineLayout
 		&& InInfo.bDrawLine == bDrawLine
-		&& InInfo.bDrawWireFrame == bDrawWireFrame;
+		&& InInfo.bDrawWireFrame == bDrawWireFrame
+		&& InInfo.bForceBlendOff == bForceBlendOff
+		&& InInfo.bEnableColorWrite == bEnableColorWrite;
 }
 
 

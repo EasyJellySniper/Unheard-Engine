@@ -57,10 +57,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_pipeline_library" };
 
 	// push ray tracing extension
-	if (bEnableRayTracing)
-	{
-		DeviceExtensions.insert(DeviceExtensions.end(), RayTracingExtensions.begin(), RayTracingExtensions.end());
-	}
+	DeviceExtensions.insert(DeviceExtensions.end(), RayTracingExtensions.begin(), RayTracingExtensions.end());
 }
 
 uint32_t GetMemoryTypeIndex(VkPhysicalDeviceMemoryProperties InProps, VkMemoryPropertyFlags InFlags)
@@ -1391,6 +1388,7 @@ void UHGraphic::RequestReleaseShader(uint32_t InShaderID)
 		if (Idx != UHINDEXNONE)
 		{
 			ShaderPools[Idx]->Release();
+			ShaderPools[Idx].reset();
 			UHUtilities::RemoveByIndex(ShaderPools, Idx);
 		}
 	}
@@ -1399,12 +1397,14 @@ void UHGraphic::RequestReleaseShader(uint32_t InShaderID)
 // request a Graphic State object and return
 UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 {
+	std::unique_lock<std::mutex> Lock(Mutex);
 	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>(InInfo);
 
 	// check cached state first
 	int32_t Idx = UHUtilities::FindIndex(StatePools, *NewState.get());
 	if (Idx != UHINDEXNONE)
 	{
+		StatePools[Idx]->IncreaseRefCount();
 		return StatePools[Idx].get();
 	}
 
@@ -1415,12 +1415,14 @@ UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 		return nullptr;
 	}
 
+	NewState->IncreaseRefCount();
 	StatePools.push_back(std::move(NewState));
 	return StatePools.back().get();
 }
 
 void UHGraphic::RequestReleaseGraphicState(UHGraphicState* InState)
 {
+	std::unique_lock<std::mutex> Lock(Mutex);
 	if (InState == nullptr)
 	{
 		return;
@@ -1429,19 +1431,28 @@ void UHGraphic::RequestReleaseGraphicState(UHGraphicState* InState)
 	int32_t Idx = UHUtilities::FindIndex(StatePools, *InState);
 	if (Idx != UHINDEXNONE)
 	{
-		StatePools[Idx]->Release();
-		UHUtilities::RemoveByIndex(StatePools, Idx);
+		// since a graphic state could be referenced by multiple shader record
+		// only release and remove it from the pool when ref count = 0
+		InState->DecreaseRefCount();
+		if (InState->GetRefCount() == 0)
+		{
+			StatePools[Idx]->Release();
+			StatePools[Idx].reset();
+			UHUtilities::RemoveByIndex(StatePools, Idx);
+		}
 	}
 }
 
 UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 {
+	std::unique_lock<std::mutex> Lock(Mutex);
 	UniquePtr<UHGraphicState> NewState = MakeUnique<UHGraphicState>(InInfo);
 
 	// check cached state first
 	int32_t Idx = UHUtilities::FindIndex(StatePools, *NewState.get());
 	if (Idx != UHINDEXNONE)
 	{
+		StatePools[Idx]->IncreaseRefCount();
 		return StatePools[Idx].get();
 	}
 
@@ -1453,18 +1464,21 @@ UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 		return nullptr;
 	}
 
+	NewState->IncreaseRefCount();
 	StatePools.push_back(std::move(NewState));
 	return StatePools.back().get();
 }
 
 UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 {
+	std::unique_lock<std::mutex> Lock(Mutex);
 	UniquePtr<UHComputeState> NewState = MakeUnique<UHComputeState>(InInfo);
 
 	// check cached state first
 	int32_t Idx = UHUtilities::FindIndex(StatePools, *NewState.get());
 	if (Idx != UHINDEXNONE)
 	{
+		StatePools[Idx]->IncreaseRefCount();
 		return StatePools[Idx].get();
 	}
 
@@ -1476,6 +1490,7 @@ UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 		return nullptr;
 	}
 
+	NewState->IncreaseRefCount();
 	StatePools.push_back(std::move(NewState));
 	return StatePools.back().get();
 }

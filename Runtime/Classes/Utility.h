@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include "Types.h"
+#include <unordered_map>
 
 // a header for utilities
 namespace UHUtilities
@@ -113,9 +114,24 @@ namespace UHUtilities
 		for (size_t Idx = 0; Idx < InVector.size(); Idx++)
 		{
 			// in case the input T is a pointer, needs to compare value
-			if (*InVector[Idx] == InElement)
+			if (InVector[Idx] != nullptr && *InVector[Idx] == InElement)
 			{
 				return static_cast<int32_t>(Idx);
+			}
+		}
+
+		return -1;
+	}
+
+	// find index by element in a unordered_map, unique pointer version
+	template<class T1, class T2>
+	inline int32_t FindIndex(const std::unordered_map<T1, std::unique_ptr<T2>>& InMap, const T2& InElement)
+	{
+		for (auto& Map : InMap)
+		{
+			if (Map.second != nullptr && *Map.second == InElement)
+			{
+				return static_cast<int32_t>(Map.first);
 			}
 		}
 

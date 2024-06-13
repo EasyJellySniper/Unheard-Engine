@@ -107,6 +107,12 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 		IndexBuffer16->UploadAllDataShared(GetIndicesData16().data(), SharedMemory);
 	}
 
+	// create meshlet if MS supported
+	if (InGfx->IsMeshShaderSupported())
+	{
+		CreateMeshlets(InGfx);
+	}
+
 	bHasInitialized = true;
 }
 
@@ -133,6 +139,8 @@ void UHMesh::ReleaseCPUMeshData()
 
 	IndicesData.clear();
 	IndicesData16.clear();
+
+	MeshletsData.clear();
 }
 
 void UHMesh::Release()
@@ -157,6 +165,9 @@ void UHMesh::Release()
 
 	UH_SAFE_RELEASE(BottomLevelAS);
 	BottomLevelAS.reset();
+
+	UH_SAFE_RELEASE(MeshletsGPU);
+	MeshletsGPU.reset();
 
 	// in case re-init is needed.
 	bHasInitialized = false;
@@ -509,4 +520,37 @@ void UHMesh::CheckAndConvertToIndices16()
 			IndicesData16[Idx] = static_cast<uint16_t>(IndicesData[Idx]);
 		}
 	}
+}
+
+void UHMesh::CreateMeshlets(UHGraphic* InGfx)
+{
+	// calculate number of meshlets by primitive count and round up
+	const uint32_t NumMeshlets = MathHelpers::RoundUpDivide(IndiceCount / 3, MaxPrimitivePerMeshlet);
+
+	int32_t LocalPrimitiveCount = IndiceCount / 3;
+	int32_t LocalVertexCount = VertexCount;
+	for (uint32_t Idx = 0; Idx < NumMeshlets; Idx++)
+	{
+		UHMeshlet Meshlet{};
+		Meshlet.PrimitiveCount = std::min(MaxPrimitivePerMeshlet, (uint32_t)LocalPrimitiveCount);
+		Meshlet.PrimitiveOffset = Idx > 0 ? MeshletsData[Idx - 1].PrimitiveCount : 0;
+
+		if (LocalVertexCount > 0)
+		{
+			Meshlet.VertexCount = std::min(MaxVertexPerMeshlet, (uint32_t)LocalVertexCount);
+			Meshlet.VertexOffset = Idx > 0 ? MeshletsData[Idx - 1].VertexCount : 0;
+		}
+
+		MeshletsData.push_back(Meshlet);
+
+		LocalVertexCount -= MaxVertexPerMeshlet;
+		LocalPrimitiveCount -= MaxPrimitivePerMeshlet;
+		if (LocalPrimitiveCount <= 0)
+		{
+			break;
+		}
+	}
+
+	MeshletsGPU = InGfx->RequestRenderBuffer<UHMeshlet>(MeshletsData.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	MeshletsGPU->UploadAllData(MeshletsData.data());
 }

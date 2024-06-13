@@ -224,15 +224,6 @@ namespace MathHelpers
 
         return static_cast<float>(V);
     }
-
-    int32_t RoundUpDivide(int32_t InVal, int32_t Divisor)
-    {
-        if (Divisor == 0)
-        {
-            return InVal;
-        }
-        return (InVal + Divisor) / Divisor;
-    }
 }
 
 // operator for XMFLOAT3 multipication

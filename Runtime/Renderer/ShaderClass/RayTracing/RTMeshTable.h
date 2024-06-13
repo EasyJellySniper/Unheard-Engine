@@ -4,11 +4,11 @@
 class UHRTVertexTable : public UHShaderClass
 {
 public:
-	UHRTVertexTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfMeshes)
+	UHRTVertexTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfInstances)
 		: UHShaderClass(InGfx, Name, typeid(UHRTVertexTable), nullptr)
 	{
-		// simply create layout with number of meshes
-		AddLayoutBinding(NumOfMeshes, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
+		// simply create layout with number of instances
+		AddLayoutBinding(NumOfInstances, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
 		CreateLayoutAndDescriptor();
 	}
 
@@ -18,22 +18,22 @@ public:
 class UHRTIndicesTable : public UHShaderClass
 {
 public:
-	UHRTIndicesTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfMeshes)
+	UHRTIndicesTable(UHGraphic* InGfx, std::string Name, uint32_t NumOfInstances)
 		: UHShaderClass(InGfx, Name, typeid(UHRTIndicesTable), nullptr)
 	{
-		// simply create layout with number of meshes
-		AddLayoutBinding(NumOfMeshes, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
+		// simply create layout with number of instances
+		AddLayoutBinding(NumOfInstances, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
 		CreateLayoutAndDescriptor();
 	}
 
 	virtual void OnCompile() override {}
 };
 
-class UHRTIndicesTypeTable : public UHShaderClass
+class UHRTMeshInstanceTable : public UHShaderClass
 {
 public:
-	UHRTIndicesTypeTable(UHGraphic* InGfx, std::string Name)
-		: UHShaderClass(InGfx, Name, typeid(UHRTIndicesTypeTable), nullptr)
+	UHRTMeshInstanceTable(UHGraphic* InGfx, std::string Name)
+		: UHShaderClass(InGfx, Name, typeid(UHRTMeshInstanceTable), nullptr)
 	{
 		AddLayoutBinding(1, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0);
 		CreateLayoutAndDescriptor();

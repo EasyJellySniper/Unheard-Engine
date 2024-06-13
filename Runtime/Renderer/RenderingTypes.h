@@ -329,3 +329,10 @@ enum class UHConstantTypes
 	Material,
 	ConstantTypeMax
 };
+
+// mesh instance data
+struct UHMeshInstance
+{
+	uint32_t MeshIndex;
+	uint32_t IndiceType;
+};

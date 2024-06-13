@@ -95,7 +95,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RTReflectionQualityRT = ConfigInterface->RenderingSetting().RTReflectionQuality;
 
 	// at least make it 'toggleable' partially
-	bIsRaytracingEnableRT = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled() && bIsRTShadowShaderReady && bIsRTReflectionShaderReady;
+	bIsRaytracingEnableRT = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
 
 	bEnableHWOcclusionRT = ConfigInterface->RenderingSetting().bEnableHardwareOcclusion;
 	OcclusionThresholdRT = ConfigInterface->RenderingSetting().OcclusionTriangleThreshold;

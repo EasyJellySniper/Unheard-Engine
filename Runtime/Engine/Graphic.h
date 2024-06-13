@@ -375,6 +375,7 @@ private:
 	bool bSupport24BitDepth;
 	bool bIsAMDIntegratedGPU;
 	bool bSupportMeshShader;
+	std::mutex Mutex;
 
 protected:
 	// system managed pools

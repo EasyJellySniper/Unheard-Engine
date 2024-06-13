@@ -392,17 +392,13 @@ private:
 	UniquePtr<UHRTVertexTable> RTNormalTable;
 	UniquePtr<UHRTVertexTable> RTTangentTable;
 	UniquePtr<UHRTIndicesTable> RTIndicesTable;
-	UniquePtr<UHRTIndicesTypeTable> RTIndicesTypeTable;
+	UniquePtr<UHRTMeshInstanceTable> RTMeshInstanceTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
 	UniquePtr<UHRTTextureTable> RTTextureTable;
-	UniquePtr<UHRenderBuffer<int32_t>> IndicesTypeBuffer;
+	UniquePtr<UHRenderBuffer<UHMeshInstance>> RTMeshInstanceBuffer;
 
 	uint32_t RTInstanceCount;
 	bool bIsRaytracingEnableRT;
-	std::atomic_bool bIsRTShadowShaderReady;
-	std::atomic_bool bIsRTReflectionShaderReady;
-	UniquePtr<UHThread> CreateRTShadowShaderThread;
-	UniquePtr<UHThread> CreateRTReflectionShaderThread;
 
 	// -------------------------------------------- Culling related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
@@ -413,4 +409,8 @@ private:
 
 	// caches
 	std::unordered_map<uint32_t, UHRenderTexture*> TempRenderTextures;
+
+	// -------------------------------------------- Mesh shader related -------------------------------------------- //
+	uint32_t MeshInstanceCount;
+	std::vector<UHMesh*> MeshInUse;
 };

@@ -8,15 +8,19 @@
 Texture2D UHTextureTable[] : register(t0, space1);
 SamplerState UHSamplerTable[] : register(t0, space2);
 
-// VB & IB data, access them with InstanceIndex()
-StructuredBuffer<float2> UHUV0Table[] : register(t0, space3);
-StructuredBuffer<float3> UHNormalTable[] : register(t0, space4);
-StructuredBuffer<float4> UHTangentTable[] : register(t0, space5);
-ByteAddressBuffer UHIndicesTable[] : register(t0, space6);
+// mesh instance data, access it with InstanceIndex() first, then use the info stored for other indexing or condition
+struct MeshInstanceData
+{
+    uint MeshIndex;
+    uint IndiceType;
+};
+StructuredBuffer<MeshInstanceData> UHMeshInstances : register(t0, space3);
 
-// there is no way to differentiate index type in DXR system for now, bind another indices type buffer
-// 0 for 16-bit index, 1 for 32-bit index, access via InstanceIndex()
-ByteAddressBuffer UHIndicesType : register(t0, space7);
+// VB & IB data, access them with MeshInstanceData.MeshIndex
+StructuredBuffer<float2> UHUV0Table[] : register(t0, space4);
+StructuredBuffer<float3> UHNormalTable[] : register(t0, space5);
+StructuredBuffer<float4> UHTangentTable[] : register(t0, space6);
+ByteAddressBuffer UHIndicesTable[] : register(t0, space7);
 
 // another descriptor array for matching, since Vulkan doesn't implement local descriptor yet, I need this to fetch data
 // access via InstanceID()[0] first, the data will be filled by the systtem on C++ side
@@ -88,14 +92,14 @@ UHMaterialInputs GetMaterialInput(float2 UV0, float MipLevel, out MaterialUsage 
 	//%UHS_INPUT
 }
 
-uint3 GetIndex(in uint InstanceIndex, in uint PrimIndex)
+uint3 GetIndex(in uint PrimIndex)
 {
-    ByteAddressBuffer Indices = UHIndicesTable[InstanceIndex];
-    int IndiceType = UHIndicesType.Load(InstanceIndex * 4);
+    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
+    ByteAddressBuffer Indices = UHIndicesTable[MeshInstance.MeshIndex];
 	
     // get index data based on indice type, it can be 16 or 32 bit
     uint3 Index;
-    if (IndiceType == 1)
+    if (MeshInstance.IndiceType == 1)
     {
         uint IbStride = 4;
         Index[0] = Indices.Load(PrimIndex * 3 * IbStride);
@@ -128,11 +132,12 @@ uint3 GetIndex(in uint InstanceIndex, in uint PrimIndex)
 	return Index;
 }
 
-float2 GetHitUV0(uint InstanceIndex, uint PrimIndex, Attribute Attr)
+float2 GetHitUV0(uint PrimIndex, Attribute Attr)
 {
-    uint3 Index = GetIndex(InstanceIndex, PrimIndex);
+    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
+    uint3 Index = GetIndex(PrimIndex);
 
-    StructuredBuffer<float2> UV0 = UHUV0Table[InstanceIndex];
+    StructuredBuffer<float2> UV0 = UHUV0Table[MeshInstance.MeshIndex];
 	float2 OutUV = 0;
 
 	// interpolate data according to barycentric coordinate
@@ -142,11 +147,12 @@ float2 GetHitUV0(uint InstanceIndex, uint PrimIndex, Attribute Attr)
 	return OutUV;
 }
 
-float3 GetHitNormal(uint InstanceIndex, uint PrimIndex, Attribute Attr)
+float3 GetHitNormal(uint PrimIndex, Attribute Attr)
 {
-    uint3 Index = GetIndex(InstanceIndex, PrimIndex);
+    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
+    uint3 Index = GetIndex(PrimIndex);
     
-    StructuredBuffer<float3> Normal = UHNormalTable[InstanceIndex];
+    StructuredBuffer<float3> Normal = UHNormalTable[MeshInstance.MeshIndex];
     float3 OutNormal = float3(0, 0, 1);
     
     OutNormal = Normal[Index[0]] + Attr.Bary.x * (Normal[Index[1]] - Normal[Index[0]])
@@ -155,11 +161,12 @@ float3 GetHitNormal(uint InstanceIndex, uint PrimIndex, Attribute Attr)
     return OutNormal;
 }
 
-float4 GetHitTangent(uint InstanceIndex, uint PrimIndex, Attribute Attr)
+float4 GetHitTangent(uint PrimIndex, Attribute Attr)
 {
-    uint3 Index = GetIndex(InstanceIndex, PrimIndex);
+    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
+    uint3 Index = GetIndex(PrimIndex);
     
-    StructuredBuffer<float4> Tangent = UHTangentTable[InstanceIndex];
+    StructuredBuffer<float4> Tangent = UHTangentTable[MeshInstance.MeshIndex];
     float4 OutTangent = float4(1, 0, 0, 1);
     
     OutTangent = Tangent[Index[0]] + Attr.Bary.x * (Tangent[Index[1]] - Tangent[Index[0]])
@@ -180,13 +187,13 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     bool bInsideScreen = IsUVInsideScreen(ScreenUV);
 	
 	// fetch material data
-    float2 UV0 = GetHitUV0(InstanceIndex(), PrimitiveIndex(), Attr);
+    float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
     float MipLevel = Payload.MipLevel;
     SamplerState PointClampSampler = UHSamplerTable[GPointClampSamplerIndex];
         
     // normal calculation, fetch the vertex normal
     bool bIsFrontFace = (HitKind() == HIT_KIND_TRIANGLE_FRONT_FACE);
-    float3 VertexNormal = GetHitNormal(InstanceIndex(), PrimitiveIndex(), Attr);
+    float3 VertexNormal = GetHitNormal(PrimitiveIndex(), Attr);
         
     // for normal transform, inverse-transposed world matrix is needed to deal with non-uniform scaling
     // so use WorldToObject3x4 instead
@@ -242,7 +249,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
             RefractScale *= BumpNormal.xy;
             
 		    // tangent to world space
-            float4 VertexTangent = GetHitTangent(InstanceIndex(), PrimitiveIndex(), Attr);
+            float4 VertexTangent = GetHitTangent(PrimitiveIndex(), Attr);
             VertexTangent.xyz = mul(VertexTangent.xyz, (float3x3)ObjectToWorld3x4());
             
             float3 Binormal = cross(VertexNormal, VertexTangent.xyz) * VertexTangent.w;
@@ -302,7 +309,7 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
 	// fetch material data and cutoff if it's alpha test
-	float2 UV0 = GetHitUV0(InstanceIndex(), PrimitiveIndex(), Attr);
+	float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
 	
     MaterialUsage Usages = (MaterialUsage)0;
     UHMaterialInputs MaterialInput = GetMaterialOpacity(UV0, Payload.MipLevel, Usages);

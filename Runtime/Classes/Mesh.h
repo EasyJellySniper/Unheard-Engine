@@ -8,6 +8,7 @@
 #include "Object.h"
 #include "../../UnheardEngine.h"
 #include "AccelerationStructure.h"
+#include "Runtime/Renderer/RenderingTypes.h"
 
 enum class UHMeshVersion
 {
@@ -17,8 +18,27 @@ enum class UHMeshVersion
 
 class UHGraphic;
 
+// Meshlet structure, for now it simply stores the vert/prim count and offset
+struct UHMeshlet
+{
+public:
+	UHMeshlet()
+		: VertexCount(0)
+		, VertexOffset(0)
+		, PrimitiveCount(0)
+		, PrimitiveOffset(0)
+	{
+
+	}
+
+	uint32_t VertexCount;
+	uint32_t VertexOffset;
+	uint32_t PrimitiveCount;
+	uint32_t PrimitiveOffset;
+};
+
 // Mesh class of unheard engine
-class UHMesh : public UHObject
+class UHMesh : public UHObject, public UHRenderState
 {
 public:
 	UHMesh();
@@ -74,6 +94,7 @@ public:
 
 private:
 	void CheckAndConvertToIndices16();
+	void CreateMeshlets(UHGraphic* InGfx);
 
 	std::string ImportedMaterialName;
 	XMFLOAT3 ImportedTranslation;
@@ -108,4 +129,11 @@ private:
 
 	// bound of the mesh
 	BoundingBox MeshBound;
+
+	// meshlet stuff, a mesh can be divided into multiple meshlets
+	static const uint32_t MaxVertexPerMeshlet = 256;
+	static const uint32_t MaxPrimitivePerMeshlet = 256;
+
+	std::vector<UHMeshlet> MeshletsData;
+	UniquePtr<UHRenderBuffer<UHMeshlet>> MeshletsGPU;
 };

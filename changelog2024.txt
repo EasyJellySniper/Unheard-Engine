@@ -180,3 +180,10 @@ Refactored those ugly global tables in the UHShaderClass. Made it simpler.
 09-06-2024:
 Vulkan SDK upgrade for mesh shaders. (1.3.283.0)
 Fixed up a few validation errors and bugs after upgrading.
+
+11-06-2024:
+Started adding meshlet data structures.
+Also considering if I can reuse the mesh table layouts from RT for mesh shader.
+
+13-06-2024:
+Fixed the state recreation bug. Added a reference count method before release/erase a state record.
