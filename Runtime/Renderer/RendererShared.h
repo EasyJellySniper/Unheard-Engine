@@ -58,3 +58,10 @@ extern UHTexture2D* GWhiteTexture;
 extern UHTextureCube* GBlackCube;
 
 extern std::vector<UHTexture*> GetGBuffersSRV();
+
+// --------------------------- mesh shader data
+// AS Parameter for use
+extern std::vector<UniquePtr<UHRenderBuffer<UHASParameter>>> GAmplificationParameters;
+
+// renderer instances buffer for use, it would be updated every frame so make it ring buffer
+extern std::vector<UniquePtr<UHRenderBuffer<UHRendererInstance>>> GMeshShaderInstances[GMaxFrameInFlight];

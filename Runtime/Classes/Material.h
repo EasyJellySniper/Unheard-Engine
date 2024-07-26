@@ -73,6 +73,7 @@ struct UHRTMaterialData
 class UHMaterial : public UHRenderResource, public UHRenderState
 {
 public:
+	STATIC_CLASS_ID(35123443)
 	UHMaterial();
 	~UHMaterial();
 

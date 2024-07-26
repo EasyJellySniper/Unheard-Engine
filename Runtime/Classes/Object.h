@@ -24,6 +24,7 @@ public:
 	uint32_t GetId() const;
 	UUID GetRuntimeGuid() const;
 	std::string GetName() const;
+	uint32_t GetObjectClassId() const;
 
 	bool operator==(const UHObject& InObj);
 
@@ -34,6 +35,7 @@ protected:
 
 	// for file versioning
 	int32_t Version;
+	uint32_t ObjectClassIdInternal;
 
 private:
 	// runtime id used for general purpose
@@ -55,3 +57,16 @@ inline T* SafeGetObjectFromTable(uint32_t Id)
 
 	return static_cast<T*>(GObjectTable[Id]);
 }
+
+template <typename T>
+inline T* CastObject(UHObject* InObj)
+{
+	if (InObj->GetObjectClassId() == T::ClassId)
+	{
+		return static_cast<T*>(InObj);
+	}
+
+	return nullptr;
+}
+
+#define STATIC_CLASS_ID(x) static const uint32_t ClassId = x;

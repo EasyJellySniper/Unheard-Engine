@@ -61,6 +61,7 @@ public:
 
 	uint32_t GetVertexCount() const;
 	uint32_t GetIndicesCount() const;
+	uint32_t GetMeshletCount() const;
 	bool IsIndexBufer32Bit() const;
 
 	std::string GetImportedMaterialName() const;
@@ -74,6 +75,7 @@ public:
 	UHRenderBuffer<XMFLOAT2>* GetUV0Buffer() const;
 	UHRenderBuffer<XMFLOAT3>* GetNormalBuffer() const;
 	UHRenderBuffer<XMFLOAT4>* GetTangentBuffer() const;
+	UHRenderBuffer<UHMeshlet>* GetMeshletBuffer() const;
 
 	UHRenderBuffer<uint32_t>* GetIndexBuffer() const;
 	UHRenderBuffer<uint16_t>* GetIndexBuffer16() const;
@@ -131,9 +133,10 @@ private:
 	BoundingBox MeshBound;
 
 	// meshlet stuff, a mesh can be divided into multiple meshlets
-	static const uint32_t MaxVertexPerMeshlet = 256;
-	static const uint32_t MaxPrimitivePerMeshlet = 256;
+	static const uint32_t MaxVertexPerMeshlet = 128;
+	static const uint32_t MaxPrimitivePerMeshlet = 128;
 
+	uint32_t NumMeshlets;
 	std::vector<UHMeshlet> MeshletsData;
-	UniquePtr<UHRenderBuffer<UHMeshlet>> MeshletsGPU;
+	UniquePtr<UHRenderBuffer<UHMeshlet>> MeshletBuffer;
 };

@@ -187,3 +187,28 @@ Also considering if I can reuse the mesh table layouts from RT for mesh shader.
 
 13-06-2024:
 Fixed the state recreation bug. Added a reference count method before release/erase a state record.
+
+23-06-2024:
+Implemented base amplification shader and depth mesh shader.
+Reorganzied mesh tables, they can be used in mesh shader too.
+Next is to create pipeline state with AS/MS in Vulkan.
+
+13-07-2024:
+Upgrade DXC and make AS/MS compilation work.
+Add "-HV 2018" for compatibility, too much place to maintain with 2021 as default.
+Add -fspv-extension=SPV_EXT_mesh_shader and -fspv-extension=SPV_EXT_descriptor_indexing so the implementation knows to use EXT mesh shader instead of NV.
+Should I switch object constant to storage buffer depends on how it progresses.
+
+14-07-2024:
+Prepare works for mesh shader constants. Refactored object casting functions.
+I shouldn't just use static_cast for UHObject! Next thing to do is organizing instances and dispatch mesh!
+
+21-07-2024:
+Organized AS/MS parameters for material. Removed IA stage input when mesh shader is applied.
+Ready to organize renderer instances after culling / sorting.
+
+25-07-2024:
+Finished collecting the mesh shader instances, it's ready for the dispatch.
+I find I can also replace the unordered_map by vector for shaders.
+Not sure why I thought the map is better before? I should always use vector if the access index always starts at 0.
+And only use map for lookup.

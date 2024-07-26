@@ -28,7 +28,7 @@ void UHScene::OnSave(std::ofstream& OutStream)
 	int32_t ComponentCount = 0;
 	for (size_t Idx = 0; Idx < ComponentPools.size(); Idx++)
 	{
-		if (ComponentPools[Idx]->GetComponentClassId() != UHGameScript::ClassId)
+		if (ComponentPools[Idx]->GetObjectClassId() != UHGameScript::ClassId)
 		{
 			ComponentCount++;
 		}
@@ -39,7 +39,7 @@ void UHScene::OnSave(std::ofstream& OutStream)
 	OutStream.write(reinterpret_cast<const char*>(&ComponentCount), sizeof(ComponentCount));
 	for (size_t Idx = 0; Idx < ComponentPools.size(); Idx++)
 	{
-		const uint32_t ClassId = ComponentPools[Idx]->GetComponentClassId();
+		const uint32_t ClassId = ComponentPools[Idx]->GetObjectClassId();
 		if (ClassId != UHGameScript::ClassId)
 		{
 			OutStream.write(reinterpret_cast<const char*>(&ClassId), sizeof(ClassId));
@@ -97,7 +97,7 @@ void UHScene::Initialize(UHAssetManager* InAsset, UHGraphic* InGfx, UHConfigMana
 	// after initialization actions
 	for (UniquePtr<UHComponent>& Component : ComponentPools)
 	{
-		if (Component->GetComponentClassId() == UHMeshRendererComponent::ClassId)
+		if (Component->GetObjectClassId() == UHMeshRendererComponent::ClassId)
 		{
 			AddMeshRenderer((UHMeshRendererComponent*)Component.get());
 		}
@@ -119,6 +119,7 @@ void UHScene::Release()
 
 void UHScene::Update()
 {
+	UHGameTimerScope Scope("SceneUpdate", false);
 	UpdateCamera();
 
 	// for objects won't update per-frame, conditionally call update, save ~0.2ms time for me

@@ -122,7 +122,7 @@ void UHWorldDialog::RefreshObjectList()
 		SceneObjects.clear();
 		for (UniquePtr<UHComponent>& Comp : Renderer->GetCurrentScene()->GetAllCompoments())
 		{
-			if (Comp->GetComponentClassId() != UHGameScript::ClassId)
+			if (Comp->GetObjectClassId() != UHGameScript::ClassId)
 			{
 				SceneObjects.push_back(Comp.get());
 			}

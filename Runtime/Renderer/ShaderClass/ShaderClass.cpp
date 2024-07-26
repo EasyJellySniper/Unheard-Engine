@@ -40,11 +40,13 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, MaterialPassInfo(UHRenderPassInfo())
 	, PipelineLayout(nullptr)
 	, DescriptorPool(nullptr)
-	, ShaderVS(-1)
-	, ShaderPS(-1)
-	, ShaderCS(-1)
-	, RayGenShader(-1)
-	, MissShader(-1)
+	, ShaderVS(UHINDEXNONE)
+	, ShaderPS(UHINDEXNONE)
+	, ShaderCS(UHINDEXNONE)
+	, RayGenShader(UHINDEXNONE)
+	, MissShader(UHINDEXNONE)
+	, ShaderAS(UHINDEXNONE)
+	, ShaderMS(UHINDEXNONE)
 	, RTState(nullptr)
 	, RayGenTable(nullptr)
 	, HitGroupTable(nullptr)
@@ -275,6 +277,8 @@ void UHShaderClass::RecreateMaterialState()
 		, ShaderPS
 		, PrevPassInfo.RTCount
 		, PipelineLayout);
+	MaterialPassInfo.AS = ShaderAS;
+	MaterialPassInfo.MS = ShaderMS;
 
 	MaterialPassInfo.bForceBlendOff = PrevPassInfo.bForceBlendOff;
 

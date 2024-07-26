@@ -48,6 +48,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_synchronization2"
 		, "VK_KHR_push_descriptor"
 		, "VK_EXT_conditional_rendering"
+		, "VK_EXT_descriptor_indexing"
 		, "VK_EXT_mesh_shader" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
@@ -606,10 +607,16 @@ bool UHGraphic::CreateLogicalDevice()
 	// get RT feature props
 	VkPhysicalDeviceRayTracingPipelinePropertiesKHR RTPropsFeatures{};
 	RTPropsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+	
+	// get mesh shader props
+	VkPhysicalDeviceMeshShaderPropertiesEXT MeshPropsFeatures{};
+	MeshPropsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
+	RTPropsFeatures.pNext = &MeshPropsFeatures;
 
 	VkPhysicalDeviceProperties2 Props2{};
 	Props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 	Props2.pNext = &RTPropsFeatures;
+
 	vkGetPhysicalDeviceProperties2(PhysicalDevice, &Props2);
 	ShaderRecordSize = RTPropsFeatures.shaderGroupHandleSize;
 	GPUTimeStampPeriod = Props2.properties.limits.timestampPeriod;

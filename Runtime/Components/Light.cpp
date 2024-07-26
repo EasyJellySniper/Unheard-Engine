@@ -26,7 +26,7 @@ void UHLightBase::SetIntensity(float InIntensity)
 UHDirectionalLightComponent::UHDirectionalLightComponent()
 {
 	SetName("DirectionalLightComponent" + std::to_string(GetId()));
-	ComponentClassIdInternal = ClassId;
+	ObjectClassIdInternal = ClassId;
 }
 
 void UHDirectionalLightComponent::Update()
@@ -112,7 +112,7 @@ UHPointLightComponent::UHPointLightComponent()
 	: Radius(50.0f)
 {
 	SetName("PointLightComponent" + std::to_string(GetId()));
-	ComponentClassIdInternal = ClassId;
+	ObjectClassIdInternal = ClassId;
 }
 
 void UHPointLightComponent::Update()
@@ -226,7 +226,7 @@ UHSpotLightComponent::UHSpotLightComponent()
 	, InnerAngle(90.0f * 0.9f)
 {
 	SetName("SpotLightComponent" + std::to_string(GetId()));
-	ComponentClassIdInternal = ClassId;
+	ObjectClassIdInternal = ClassId;
 }
 
 void UHSpotLightComponent::Update()

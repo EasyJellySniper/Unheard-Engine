@@ -14,6 +14,7 @@ UHObject::UHObject()
 
 	UuidCreate(&RuntimeGuid);
 	Version = 0;
+	ObjectClassIdInternal = 0;
 }
 
 void UHObject::OnSave(std::ofstream& OutStream)
@@ -98,6 +99,11 @@ UUID UHObject::GetRuntimeGuid() const
 std::string UHObject::GetName() const
 {
 	return Name;
+}
+
+uint32_t UHObject::GetObjectClassId() const
+{
+	return ObjectClassIdInternal;
 }
 
 bool UHObject::operator==(const UHObject& InObj)

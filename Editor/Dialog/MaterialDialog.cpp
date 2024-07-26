@@ -940,6 +940,7 @@ void UHMaterialDialog::ResaveAllMaterials()
 
         // recreate RT shaders in one go, much faster
         Renderer->RecreateRTShaders(AssetManager->GetMaterials(), false);
+        Renderer->UpdateDescriptors();
     }
 
     MessageBoxA(Dialog, "All materials are saved.", "Material Editor", MB_OK);

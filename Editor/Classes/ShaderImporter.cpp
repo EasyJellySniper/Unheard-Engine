@@ -15,6 +15,7 @@ UHShaderImporter::UHShaderImporter()
 	ShaderIncludes.push_back("UHMaterialCommon.hlsli");
 	ShaderIncludes.push_back("UHSphericalHamonricCommon.hlsli");
 	ShaderIncludes.push_back("RayTracing/UHRTCommon.hlsli");
+	ShaderIncludes.push_back("UHMeshShaderCommon.hlsli");
 }
 
 void UHShaderImporter::LoadShaderCache()
@@ -276,9 +277,17 @@ void UHShaderImporter::CompileHLSL(std::string InShaderName, std::filesystem::pa
 	std::string CompileCmd = " -spirv -T " + ProfileName + " -E " + EntryName + " "
 		+ QuoteMark + std::filesystem::absolute(InSource).string() + QuoteMark
 		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
+		+ " -HV 2018 "
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
 		+ " -fspv-target-env=vulkan1.1spirv1.4 ";
+
+	// mesh shader extension
+	if (UHUtilities::StringFind(ProfileName, "as_") || UHUtilities::StringFind(ProfileName, "ms_"))
+	{
+		CompileCmd += " -fspv-extension=SPV_EXT_mesh_shader ";
+		CompileCmd += " -fspv-extension=SPV_EXT_descriptor_indexing ";
+	}
 
 	// add define command lines
 	for (const std::string& Define : Defines)
@@ -381,9 +390,17 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 	std::string CompileCmd = " -spirv -T " + ProfileName + " -E " + EntryName + " "
 		+ QuoteMark + std::filesystem::absolute(TempShaderPath + GRawShaderExtension).string() + QuoteMark
 		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
+		+ " -HV 2018 "
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
 		+ " -fspv-target-env=vulkan1.1spirv1.4 ";
+
+	// mesh shader extension
+	if (UHUtilities::StringFind(ProfileName, "as_") || UHUtilities::StringFind(ProfileName, "ms_"))
+	{
+		CompileCmd += " -fspv-extension=SPV_EXT_mesh_shader ";
+		CompileCmd += " -fspv-extension=SPV_EXT_descriptor_indexing ";
+	}
 
 	// add define command lines
 	for (const std::string& Define : Defines)

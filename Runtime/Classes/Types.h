@@ -18,8 +18,6 @@ using UniquePtr = std::unique_ptr<T>;
 
 #define MakeUnique std::make_unique
 #define StdBind std::bind
-#define UHSTRINGA "std::string"
-#define UHSTRINGW "std::wstring"
 #define UHINDEXNONE -1
 
 namespace MathHelpers

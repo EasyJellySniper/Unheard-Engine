@@ -8,8 +8,6 @@
 #include "Runtime/Renderer/RenderingTypes.h"
 #endif
 
-#define STATIC_CLASS_ID(x) static const uint32_t ClassId = x;
-
 // base component class of UH, each components are unique
 class UHComponent : public UHObject
 {
@@ -24,7 +22,6 @@ public:
 
 	void SetIsEnabled(bool bInFlag);
 	bool IsEnabled() const;
-	uint32_t GetComponentClassId() const;
 
 #if WITH_EDITOR
 	virtual UHDebugBoundConstant GetDebugBoundConst() const { return UHDebugBoundConstant{}; }
@@ -33,7 +30,6 @@ public:
 
 protected:
 	bool bIsEnabled;
-	uint32_t ComponentClassIdInternal;
 };
 
 template <typename T>

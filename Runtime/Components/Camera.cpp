@@ -29,7 +29,7 @@ UHCameraComponent::UHCameraComponent()
 #endif
 {
 	SetName("CameraComponent" + std::to_string(GetId()));
-	ComponentClassIdInternal = ClassId;
+	ObjectClassIdInternal = ClassId;
 }
 
 void UHCameraComponent::Update()

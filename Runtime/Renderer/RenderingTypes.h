@@ -91,7 +91,7 @@ struct UHObjectConstants
 	XMFLOAT4X4 GPrevWorld;
 	uint32_t InstanceIndex;
 	uint32_t GNeedWorldTBN;
-	
+
 	// align to 256 bytes
 	float CPUPadding[14];
 };
@@ -200,6 +200,8 @@ struct UHRenderPassInfo
 	uint32_t VS;
 	uint32_t PS;
 	uint32_t GS;
+	uint32_t AS;
+	uint32_t MS;
 	int32_t RTCount;
 	VkPipelineLayout PipelineLayout;
 
@@ -335,4 +337,25 @@ struct UHMeshInstance
 {
 	uint32_t MeshIndex;
 	uint32_t IndiceType;
+};
+
+// renderer instance data
+struct UHRendererInstance
+{
+	uint32_t RendererIndex;
+	uint32_t MeshIndex;
+	uint32_t NumMeshlets;
+	uint32_t IndiceType;
+};
+
+// amplification shader parameters
+struct UHASParameter
+{
+	UHASParameter()
+		: MaxInstances(0)
+	{
+
+	}
+
+	uint32_t MaxInstances;
 };

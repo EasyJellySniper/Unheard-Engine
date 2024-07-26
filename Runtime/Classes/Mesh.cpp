@@ -30,6 +30,7 @@ UHMesh::UHMesh(std::string InName)
 	, bIndexBuffer32Bit(false)
 	, MeshBound(BoundingBox())
 	, bHasInitialized(false)
+	, NumMeshlets(0)
 {
 	Name = InName;
 }
@@ -166,8 +167,8 @@ void UHMesh::Release()
 	UH_SAFE_RELEASE(BottomLevelAS);
 	BottomLevelAS.reset();
 
-	UH_SAFE_RELEASE(MeshletsGPU);
-	MeshletsGPU.reset();
+	UH_SAFE_RELEASE(MeshletBuffer);
+	MeshletBuffer.reset();
 
 	// in case re-init is needed.
 	bHasInitialized = false;
@@ -231,6 +232,11 @@ uint32_t UHMesh::GetIndicesCount() const
 	return IndiceCount;
 }
 
+uint32_t UHMesh::GetMeshletCount() const
+{
+	return NumMeshlets;
+}
+
 bool UHMesh::IsIndexBufer32Bit() const
 {
 	return bIndexBuffer32Bit;
@@ -284,6 +290,11 @@ UHRenderBuffer<XMFLOAT3>* UHMesh::GetNormalBuffer() const
 UHRenderBuffer<XMFLOAT4>* UHMesh::GetTangentBuffer() const
 {
 	return TangentBuffer.get();
+}
+
+UHRenderBuffer<UHMeshlet>* UHMesh::GetMeshletBuffer() const
+{
+	return MeshletBuffer.get();
 }
 
 UHRenderBuffer<uint32_t>* UHMesh::GetIndexBuffer() const
@@ -525,7 +536,7 @@ void UHMesh::CheckAndConvertToIndices16()
 void UHMesh::CreateMeshlets(UHGraphic* InGfx)
 {
 	// calculate number of meshlets by primitive count and round up
-	const uint32_t NumMeshlets = MathHelpers::RoundUpDivide(IndiceCount / 3, MaxPrimitivePerMeshlet);
+	NumMeshlets = MathHelpers::RoundUpDivide(IndiceCount / 3, MaxPrimitivePerMeshlet);
 
 	int32_t LocalPrimitiveCount = IndiceCount / 3;
 	int32_t LocalVertexCount = VertexCount;
@@ -551,6 +562,6 @@ void UHMesh::CreateMeshlets(UHGraphic* InGfx)
 		}
 	}
 
-	MeshletsGPU = InGfx->RequestRenderBuffer<UHMeshlet>(MeshletsData.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-	MeshletsGPU->UploadAllData(MeshletsData.data());
+	MeshletBuffer = InGfx->RequestRenderBuffer<UHMeshlet>(MeshletsData.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	MeshletBuffer->UploadAllData(MeshletsData.data());
 }

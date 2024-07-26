@@ -122,7 +122,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 		TestSpotLights.clear();
 		for (UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
-			if (Comp->GetComponentClassId() == UHSpotLightComponent::ClassId)
+			if (Comp->GetObjectClassId() == UHSpotLightComponent::ClassId)
 			{
 				TestSpotLights.push_back((UHSpotLightComponent*)Comp.get());
 			}
@@ -136,7 +136,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 		TestPointLightOrigin.clear();
 		for (UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
-			if (Comp->GetComponentClassId() == UHPointLightComponent::ClassId)
+			if (Comp->GetObjectClassId() == UHPointLightComponent::ClassId)
 			{
 				TestPointLights.push_back((UHPointLightComponent*)Comp.get());
 				TestPointLightOrigin.push_back(((UHPointLightComponent*)Comp.get())->GetPosition());
@@ -147,7 +147,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	for (UniquePtr<UHComponent>& Comp : SceneComponents)
 	{
-		if (Comp->GetComponentClassId() == UHMeshRendererComponent::ClassId)
+		if (Comp->GetObjectClassId() == UHMeshRendererComponent::ClassId)
 		{
 			UHMeshRendererComponent* MRC = (UHMeshRendererComponent*)Comp.get();
 			if (UHUtilities::StringFind(MRC->GetName(), "1893"))

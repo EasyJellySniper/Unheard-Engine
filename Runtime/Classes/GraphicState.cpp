@@ -124,21 +124,53 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 
 	/*** cache variables for compare ***/
 	RenderPassInfo = InInfo;
+	bool bHasVertexShader = (RenderPassInfo.VS != UHINDEXNONE);
 	bool bHasPixelShader = (RenderPassInfo.PS != UHINDEXNONE);
 	bool bHasGeometryShader = (RenderPassInfo.GS != UHINDEXNONE);
+	bool bHasAmplificationShader = (RenderPassInfo.AS != UHINDEXNONE);
+	bool bHasMeshShader = (RenderPassInfo.MS != UHINDEXNONE);
 
 	// lookup shader in object table
 	const UHShader* VS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.VS);
 	const UHShader* PS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.PS);
 	const UHShader* GS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.GS);
+	const UHShader* AS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.AS);
+	const UHShader* MS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.MS);
 
 	/*** Shader Stage setup, in UHEngine, all states must have at least one VS and PS (or CS) ***/
-	std::string VSEntryName = VS->GetEntryName();
 	VkPipelineShaderStageCreateInfo VSStageInfo{};
-	VSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	VSStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	VSStageInfo.module = VS->GetShader();
-	VSStageInfo.pName = VSEntryName.c_str();
+	std::string VSEntryName;
+	if (bHasVertexShader)
+	{
+		VSEntryName = VS->GetEntryName();
+		VSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		VSStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		VSStageInfo.module = VS->GetShader();
+		VSStageInfo.pName = VSEntryName.c_str();
+	}
+
+	VkPipelineShaderStageCreateInfo ASStageInfo{};
+	std::string ASEntryName;
+	if (bHasAmplificationShader)
+	{
+		ASEntryName = AS->GetEntryName();
+		ASStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		// In Vulkan, AS shader is treated as task shader
+		ASStageInfo.stage = VK_SHADER_STAGE_TASK_BIT_EXT;
+		ASStageInfo.module = AS->GetShader();
+		ASStageInfo.pName = ASEntryName.c_str();
+	}
+
+	VkPipelineShaderStageCreateInfo MSStageInfo{};
+	std::string MSEntryName;
+	if (bHasMeshShader)
+	{
+		MSEntryName = MS->GetEntryName();
+		MSStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		MSStageInfo.stage = VK_SHADER_STAGE_MESH_BIT_EXT;
+		MSStageInfo.module = MS->GetShader();
+		MSStageInfo.pName = MSEntryName.c_str();
+	}
 
 	VkPipelineShaderStageCreateInfo PSStageInfo{};
 	std::string PSEntryName;
@@ -162,8 +194,23 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		GSStageInfo.pName = GSEntryName.c_str();
 	}
 
-	// collect shader stage
-	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages = { VSStageInfo };
+	// collect shader stage, now the VS is not must-have now as it could be a mesh shader
+	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages;
+	if (bHasVertexShader)
+	{
+		ShaderStages.push_back(VSStageInfo);
+	}
+
+	if (bHasAmplificationShader)
+	{
+		ShaderStages.push_back(ASStageInfo);
+	}
+
+	if (bHasMeshShader)
+	{
+		ShaderStages.push_back(MSStageInfo);
+	}
+
 	if (bHasPixelShader)
 	{
 		ShaderStages.push_back(PSStageInfo);
@@ -260,8 +307,14 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	PipelineInfo.stageCount = static_cast<uint32_t>(ShaderStages.size());
 	PipelineInfo.pStages = ShaderStages.data();
-	PipelineInfo.pVertexInputState = &VertexInputInfo;
-	PipelineInfo.pInputAssemblyState = &InputAssembly;
+
+	if (!bHasMeshShader)
+	{
+		// Does not need IA stage if mesh shader is presented, bind it otherwise.
+		PipelineInfo.pVertexInputState = &VertexInputInfo;
+		PipelineInfo.pInputAssemblyState = &InputAssembly;
+	}
+
 	PipelineInfo.pViewportState = &ViewportState;
 	PipelineInfo.pRasterizationState = &Rasterizer;
 	PipelineInfo.pMultisampleState = &Multisampling;

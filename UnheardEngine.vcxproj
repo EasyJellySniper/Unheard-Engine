@@ -339,7 +339,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\MeshTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
@@ -514,6 +514,7 @@
     </None>
     <None Include="Shaders\UHLightCommon.hlsli" />
     <None Include="Shaders\UHMaterialCommon.hlsli" />
+    <None Include="Shaders\UHMeshShaderCommon.hlsli" />
     <None Include="Shaders\UHSphericalHamonricCommon.hlsli" />
     <None Include="ThirdParty\ImGui\backends\vulkan\generate_spv.sh" />
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.frag" />
@@ -682,6 +683,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\RayTracing\RTReflectionMipmap.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\BaseAmplificationShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\DepthMeshShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

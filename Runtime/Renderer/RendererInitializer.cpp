@@ -204,7 +204,7 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	}
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 
-	if (!GraphicInterface->IsRayTracingEnabled())
+	if (!GraphicInterface->IsRayTracingEnabled() || MeshInstanceCount == 0)
 	{
 		return;
 	}
@@ -227,6 +227,17 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 		{
 			Renderer->GetMesh()->GetBottomLevelAS()->ReleaseScratch();
 		}
+	}
+
+	// create mesh tables
+	if (GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled())
+	{
+		PositionTable = MakeUnique<UHMeshTable>(GraphicInterface, "PositionTable", MeshInstanceCount);
+		UV0Table = MakeUnique<UHMeshTable>(GraphicInterface, "UV0Table", MeshInstanceCount);
+		NormalTable = MakeUnique<UHMeshTable>(GraphicInterface, "NormalTable", MeshInstanceCount);
+		TangentTable = MakeUnique<UHMeshTable>(GraphicInterface, "TangentTable", MeshInstanceCount);
+		IndicesTable = MakeUnique<UHMeshTable>(GraphicInterface, "IndicesTable", MeshInstanceCount);
+		MeshletTable = MakeUnique<UHMeshTable>(GraphicInterface, "MeshletTable", MeshInstanceCount);
 	}
 }
 
@@ -359,7 +370,9 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout()};
 
 	// create all material shaders
+#if WITH_RELEASE
 	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
+#endif
 	{
 		DepthPassShaders.reserve(std::numeric_limits<int16_t>::max());
 	}
@@ -375,6 +388,26 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		{
 			RecreateMaterialShaders(Renderer, Mat);
 		}
+	}
+
+	MeshShaderInstancesCounter.resize(CurrentScene->GetMaterialCount());
+	MeshShaderInstancesCPU.resize(CurrentScene->GetMaterialCount());
+	GAmplificationParameters.resize(CurrentScene->GetMaterialCount());
+	SortedMeshShaderGroupIndex.resize(CurrentScene->GetMaterialCount());
+	DepthMeshShaders.resize(CurrentScene->GetMaterialCount());
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		GMeshShaderInstances[Idx].resize(CurrentScene->GetMaterialCount());
+	}
+
+	for (UHMaterial* Mat : CurrentScene->GetMaterials())
+	{
+		if (Mat->GetMaterialUsages().bIsSkybox)
+		{
+			continue;
+		}
+		RecreateMeshShaders(Mat);
 	}
 
 	// light culling and pass shaders
@@ -458,6 +491,17 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 	}
 
+	// ------------------------------------------------ Material shader descriptor update
+	for (const UHMaterial* Mat : CurrentScene->GetMaterials())
+	{
+		if (Mat->GetMaterialUsages().bIsSkybox)
+		{
+			continue;
+		}
+
+		DepthMeshShaders[Mat->GetBufferDataIndex()]->BindParameters();
+	}
+
 	// ------------------------------------------------ Lighting culling descriptor update
 	LightCullingShader->BindParameters();
 
@@ -513,40 +557,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// ------------------------------------------------ ray tracing pass descriptor update
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		// bind VB/IB table
-		std::vector<UHRenderBuffer<XMFLOAT2>*> UVs;
-		std::vector<UHRenderBuffer<XMFLOAT3>*> Normals;
-		std::vector<UHRenderBuffer<XMFLOAT4>*> Tangents;
-		std::vector<VkDescriptorBufferInfo> IndicesInfo;
-
-		// setup mesh data array to bind
-		for (uint32_t Idx = 0; Idx < MeshInstanceCount; Idx++)
-		{
-			const UHMesh* Mesh = MeshInUse[Idx];
-			UVs.push_back(Mesh->GetUV0Buffer());
-			Normals.push_back(Mesh->GetNormalBuffer());
-			Tangents.push_back(Mesh->GetTangentBuffer());
-
-			// collect index buffer info based on index type
-			VkDescriptorBufferInfo NewInfo{};
-			if (Mesh->IsIndexBufer32Bit())
-			{
-				NewInfo.buffer = Mesh->GetIndexBuffer()->GetBuffer();
-				NewInfo.range = Mesh->GetIndexBuffer()->GetBufferSize();
-			}
-			else
-			{
-				NewInfo.buffer = Mesh->GetIndexBuffer16()->GetBuffer();
-				NewInfo.range = Mesh->GetIndexBuffer16()->GetBufferSize();
-			}
-			IndicesInfo.push_back(NewInfo);
-		}
-
-		RTUVTable->BindStorage(UVs, 0);
-		RTNormalTable->BindStorage(Normals, 0);
-		RTTangentTable->BindStorage(Tangents, 0);
-		RTIndicesTable->BindStorage(IndicesInfo, 0);
-
 		// collect & upload mesh instance data
 		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
 		std::vector<UHMeshInstance> MeshInstances;
@@ -595,6 +605,51 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		RTReflectionShader->BindParameters();
 	}
 
+	// ------------------------------------------------ mesh table descriptor update
+	if ((GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
+		|| (GraphicInterface->IsMeshShaderSupported() && MeshInstanceCount > 0))
+	{
+		// bind VB/IB table for RT or mesh shader use
+		std::vector<UHRenderBuffer<XMFLOAT3>*> Positions;
+		std::vector<UHRenderBuffer<XMFLOAT2>*> UVs;
+		std::vector<UHRenderBuffer<XMFLOAT3>*> Normals;
+		std::vector<UHRenderBuffer<XMFLOAT4>*> Tangents;
+		std::vector<VkDescriptorBufferInfo> IndicesInfo;
+		std::vector<UHRenderBuffer<UHMeshlet>*> Meshlets;
+
+		// setup mesh data array to bind
+		for (uint32_t Idx = 0; Idx < MeshInstanceCount; Idx++)
+		{
+			const UHMesh* Mesh = MeshInUse[Idx];
+			Positions.push_back(Mesh->GetPositionBuffer());
+			UVs.push_back(Mesh->GetUV0Buffer());
+			Normals.push_back(Mesh->GetNormalBuffer());
+			Tangents.push_back(Mesh->GetTangentBuffer());
+			Meshlets.push_back(Mesh->GetMeshletBuffer());
+
+			// collect index buffer info based on index type
+			VkDescriptorBufferInfo NewInfo{};
+			if (Mesh->IsIndexBufer32Bit())
+			{
+				NewInfo.buffer = Mesh->GetIndexBuffer()->GetBuffer();
+				NewInfo.range = Mesh->GetIndexBuffer()->GetBufferSize();
+			}
+			else
+			{
+				NewInfo.buffer = Mesh->GetIndexBuffer16()->GetBuffer();
+				NewInfo.range = Mesh->GetIndexBuffer16()->GetBufferSize();
+			}
+			IndicesInfo.push_back(NewInfo);
+		}
+
+		PositionTable->BindStorage(Positions, 0);
+		UV0Table->BindStorage(UVs, 0);
+		NormalTable->BindStorage(Normals, 0);
+		TangentTable->BindStorage(Tangents, 0);
+		IndicesTable->BindStorage(IndicesInfo, 0);
+		MeshletTable->BindStorage(Meshlets, 0);
+	}
+
 	// ------------------------------------------------ debug passes descriptor update
 #if WITH_EDITOR
 	DebugViewShader->BindParameters();
@@ -616,6 +671,12 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 			Shader.second->Release();
 		}
 		DepthPassShaders.clear();
+
+		for (auto& Shader : DepthMeshShaders)
+		{
+			Shader->Release();
+		}
+		DepthMeshShaders.clear();
 	}
 
 	for (auto& Shader : BasePassShaders)
@@ -655,15 +716,21 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	GaussianFilterHShader->Release();
 	GaussianFilterVShader->Release();
 
+	if (GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled())
+	{
+		UH_SAFE_RELEASE(PositionTable);
+		UH_SAFE_RELEASE(UV0Table);
+		UH_SAFE_RELEASE(NormalTable);
+		UH_SAFE_RELEASE(TangentTable);
+		UH_SAFE_RELEASE(IndicesTable);
+		UH_SAFE_RELEASE(MeshletTable);
+	}
+
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
 		UH_SAFE_RELEASE(RTShadowShader);
 		UH_SAFE_RELEASE(RTReflectionShader);
-		UH_SAFE_RELEASE(RTUVTable);
-		UH_SAFE_RELEASE(RTNormalTable);
-		UH_SAFE_RELEASE(RTTangentTable);
-		UH_SAFE_RELEASE(RTIndicesTable);
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
 		UH_SAFE_RELEASE(RTMaterialDataTable);
 		UH_SAFE_RELEASE(RTTextureTable);
@@ -897,18 +964,13 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		return;
 	}
 
-	// create twice large buffer in editor intentionally, so appending more renderers don't need a re-allocation that fast
-#if WITH_EDITOR
-	const size_t RendererCount = CurrentScene->GetAllRendererCount() * 2;
-#else
 	const size_t RendererCount = CurrentScene->GetAllRendererCount();
-#endif
 
 	// create constants and buffers
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		GSystemConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSystemConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-		GObjectConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		GObjectConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		GDirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		GPointLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHPointLightConstants>(CurrentScene->GetPointLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		GSpotLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSpotLightConstants>(CurrentScene->GetSpotLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
@@ -1071,6 +1133,23 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 
 	UH_SAFE_RELEASE(RTMeshInstanceBuffer);
 	UH_SAFE_RELEASE(GSH9Data);
+
+	for (auto& Param : GAmplificationParameters)
+	{
+		Param->Release();
+	}
+	GAmplificationParameters.clear();
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		for (auto& Instance : GMeshShaderInstances[Idx])
+		{
+			Instance->Release();
+		}
+		GMeshShaderInstances[Idx].clear();
+	}
+	MeshShaderInstancesCPU.clear();
+	MeshShaderInstancesCounter.clear();
 }
 
 void UHDeferredShadingRenderer::UpdateTextureDescriptors()
@@ -1116,9 +1195,8 @@ void UHDeferredShadingRenderer::UpdateTextureDescriptors()
 	SamplerTable->BindSampler(Samplers, 0);
 }
 
-#if WITH_EDITOR
-template <typename T>
-void SafeReleaseShaderPtr(std::unordered_map<int32_t, T>& InMap, const int32_t InIndex, bool bDescriptorOnly)
+template <typename T1, typename T2>
+void SafeReleaseShaderPtr(std::unordered_map<T1, T2>& InMap, const T1 InIndex, bool bDescriptorOnly)
 {
 	if (InMap.find(InIndex) != InMap.end())
 	{
@@ -1126,6 +1204,7 @@ void SafeReleaseShaderPtr(std::unordered_map<int32_t, T>& InMap, const int32_t I
 	}
 }
 
+#if WITH_EDITOR
 UHDeferredShadingRenderer* UHDeferredShadingRenderer::GetRendererEditorOnly()
 {
 	return SceneRendererEditorOnly;
@@ -1147,7 +1226,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 
 	for (UHObject* RendererObj : Mat->GetReferenceObjects())
 	{
-		if (UHMeshRendererComponent* Renderer = static_cast<UHMeshRendererComponent*>(RendererObj))
+		if (UHMeshRendererComponent* Renderer = CastObject<UHMeshRendererComponent>(RendererObj))
 		{
 			ResetMaterialShaders(Renderer, CompileFlag, bIsOpaque, bNeedReassignRendererGroup);
 			Renderer->SetRenderDirties(true);
@@ -1159,7 +1238,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	{
 		for (UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
-			if (UHMeshRendererComponent* Renderer = static_cast<UHMeshRendererComponent*>(RendererObj))
+			if (UHMeshRendererComponent* Renderer = CastObject<UHMeshRendererComponent>(RendererObj))
 			{
 				RecreateMaterialShaders(Renderer, Mat);
 			}
@@ -1313,12 +1392,12 @@ void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRend
 	// data buffer recreating
 	if (CurrentScene->GetAllRendererCount() > ObjectConstantsCPU.size())
 	{
-		const size_t RendererCount = CurrentScene->GetAllRendererCount() * 2;
+		const size_t RendererCount = CurrentScene->GetAllRendererCount();
 		ObjectConstantsCPU.resize(RendererCount);
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
 			UH_SAFE_RELEASE(GObjectConstantBuffer[Idx]);
-			GObjectConstantBuffer[Idx]->CreateBuffer(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			GObjectConstantBuffer[Idx]->CreateBuffer(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		}
 	}
 
@@ -1406,6 +1485,53 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 	InMeshRenderer->SetRayTracingDirties(true);
 }
 
+void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
+{
+	// only create when mesh shader is supported
+	if (!GraphicInterface->IsMeshShaderSupported())
+	{
+		return;
+	}
+
+	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout()
+		, SamplerTable->GetDescriptorSetLayout()
+		, MeshletTable->GetDescriptorSetLayout()
+		, PositionTable->GetDescriptorSetLayout()
+		, UV0Table->GetDescriptorSetLayout()
+		, IndicesTable->GetDescriptorSetLayout()
+	};
+
+	const uint32_t MatDataIndex = InMat->GetBufferDataIndex();
+	UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
+	DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
+
+	// create AS parameter buffer
+	UH_SAFE_RELEASE(GAmplificationParameters[MatDataIndex]);
+	GAmplificationParameters[MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHASParameter>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+	UHASParameter Parameter{};
+	const std::vector<UHObject*>& Objects = InMat->GetReferenceObjects();
+	for (UHObject* Obj : Objects)
+	{
+		if (UHMeshRendererComponent* Renderer = CastObject<UHMeshRendererComponent>(Obj))
+		{
+			Parameter.MaxInstances++;
+		}
+	}
+	GAmplificationParameters[MatDataIndex]->UploadData(&Parameter, 0);
+
+	// create mesh shader instances buffer
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(GMeshShaderInstances[Idx][MatDataIndex]);
+		GMeshShaderInstances[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHRendererInstance>(Parameter.MaxInstances, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	}
+
+	MeshShaderInstancesCPU[MatDataIndex].clear();
+	MeshShaderInstancesCPU[MatDataIndex].resize(Parameter.MaxInstances);
+	MeshShaderInstancesCounter[MatDataIndex] = 0;
+}
+
 void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable)
 {
 	if (!ConfigInterface->RenderingSetting().bEnableRayTracing)
@@ -1415,22 +1541,9 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 
 	if (bRecreateTable)
 	{
-		// buffer for storing mesh vertex and indices
-		UH_SAFE_RELEASE(RTUVTable);
-		RTUVTable = MakeUnique<UHRTVertexTable>(GraphicInterface, "RTUVTable", MeshInstanceCount);
-
-		UH_SAFE_RELEASE(RTNormalTable);
-		RTNormalTable = MakeUnique<UHRTVertexTable>(GraphicInterface, "RTNormalTable", MeshInstanceCount);
-
-		UH_SAFE_RELEASE(RTTangentTable);
-		RTTangentTable = MakeUnique<UHRTVertexTable>(GraphicInterface, "RTTangentTable", MeshInstanceCount);
-
-		UH_SAFE_RELEASE(RTIndicesTable);
-		RTIndicesTable = MakeUnique<UHRTIndicesTable>(GraphicInterface, "RTIndicesTable", MeshInstanceCount);
-
 		// buffer for storing index type, used in hit group shader
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
-		RTMeshInstanceTable = MakeUnique<UHRTMeshInstanceTable>(GraphicInterface, "RTMeshInstanceTable");
+		RTMeshInstanceTable = MakeUnique<UHMeshTable>(GraphicInterface, "RTMeshInstanceTable", 1);
 
 		UH_SAFE_RELEASE(RTMeshInstanceBuffer);
 		RTMeshInstanceBuffer = GraphicInterface->RequestRenderBuffer<UHMeshInstance>(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
@@ -1457,10 +1570,10 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 	const std::vector<VkDescriptorSetLayout> Layouts = { TextureTable->GetDescriptorSetLayout()
 		, SamplerTable->GetDescriptorSetLayout()
 		, RTMeshInstanceTable->GetDescriptorSetLayout()
-		, RTUVTable->GetDescriptorSetLayout()
-		, RTNormalTable->GetDescriptorSetLayout()
-		, RTTangentTable->GetDescriptorSetLayout()
-		, RTIndicesTable->GetDescriptorSetLayout()
+		, UV0Table->GetDescriptorSetLayout()
+		, NormalTable->GetDescriptorSetLayout()
+		, TangentTable->GetDescriptorSetLayout()
+		, IndicesTable->GetDescriptorSetLayout()
 		, RTMaterialDataTable->GetDescriptorSetLayout()
 		, RTTextureTable->GetDescriptorSetLayout() };
 
@@ -1481,10 +1594,10 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 			, TextureTable->GetDescriptorSet(Idx)
 			, SamplerTable->GetDescriptorSet(Idx)
 			, RTMeshInstanceTable->GetDescriptorSet(Idx)
-			, RTUVTable->GetDescriptorSet(Idx)
-			, RTNormalTable->GetDescriptorSet(Idx)
-			, RTTangentTable->GetDescriptorSet(Idx)
-			, RTIndicesTable->GetDescriptorSet(Idx)
+			, UV0Table->GetDescriptorSet(Idx)
+			, NormalTable->GetDescriptorSet(Idx)
+			, TangentTable->GetDescriptorSet(Idx)
+			, IndicesTable->GetDescriptorSet(Idx)
 			, RTMaterialDataTable->GetDescriptorSet(Idx)
 			, RTTextureTable->GetDescriptorSet(Idx) };
 	}

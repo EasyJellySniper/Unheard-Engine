@@ -70,6 +70,7 @@ void UHDeferredShadingRenderer::Update()
 	FrustumCulling();
 	CollectVisibleRenderer();
 	SortRenderingComponents();
+	CollectMeshShaderInstance();
 }
 
 void UHDeferredShadingRenderer::NotifyRenderThread()
@@ -190,6 +191,8 @@ float* UHDeferredShadingRenderer::GetGPUTimes()
 
 void UHDeferredShadingRenderer::UploadDataBuffers()
 {
+	UHGameTimerScope Scope("UploadDataBuffers", false);
+
 	UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	if (!CurrentCamera)
 	{
@@ -368,6 +371,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 void UHDeferredShadingRenderer::FrustumCulling()
 {
+	UHGameTimerScope Scope("FrustumCulling", false);
+
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	if (!CurrentCamera)
 	{
@@ -424,6 +429,8 @@ void UHDeferredShadingRenderer::FrustumCullingTask(int32_t ThreadIdx)
 
 void UHDeferredShadingRenderer::CollectVisibleRenderer()
 {
+	UHGameTimerScope Scope("CollectVisibleRenderer", false);
+
 	// recommend to reserve capacity during initialization
 	OpaquesToRender.clear();
 	const std::vector<UHMeshRendererComponent*>& OpaqueRenderers = CurrentScene->GetOpaqueRenderers();
@@ -448,6 +455,8 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 
 void UHDeferredShadingRenderer::SortRenderingComponents()
 {
+	UHGameTimerScope Scope("SortRenderingComponents", false);
+
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
 	if (!CurrentCamera || !CurrentScene)
 	{
@@ -483,6 +492,59 @@ void UHDeferredShadingRenderer::SortRenderingComponents()
 				break;
 			}
 		}
+	}
+}
+
+void UHDeferredShadingRenderer::CollectMeshShaderInstance()
+{
+	UHGameTimerScope Scope("CollectMeshShaderInstance", false);
+
+	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
+	if (!CurrentCamera || !CurrentScene || !GraphicInterface->IsMeshShaderSupported())
+	{
+		return;
+	}
+
+	if (!CurrentCamera->IsEnabled())
+	{
+		return;
+	}
+
+	// reset all counters & clear sorted visiable mesh shader group index
+	memset(MeshShaderInstancesCounter.data(), 0, MeshShaderInstancesCounter.size() * sizeof(int32_t));
+	SortedMeshShaderGroupIndex.clear();
+
+	// collect visible mesh shader instances for opaque objects
+	for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
+	{
+		UHRendererInstance Instance{};
+		Instance.RendererIndex = Renderer->GetBufferDataIndex();
+
+		const UHMesh* Mesh = Renderer->GetMesh();
+		Instance.IndiceType = Mesh->IsIndexBufer32Bit() ? 1 : 0;
+		Instance.MeshIndex = Mesh->GetBufferDataIndex();
+		Instance.NumMeshlets = Mesh->GetMeshletCount();
+
+		// set the instance to the corresponding material and it's current rendering index
+		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
+		const int32_t NewIndex = MeshShaderInstancesCounter[MatDataIndex]++;
+		MeshShaderInstancesCPU[MatDataIndex][NewIndex] = Instance;
+
+		// system will dispatch opaque renderer front-to-back for each material group
+		// but the group isn't sorted, so add the material data index to the list when first instance is occurred.
+		if (NewIndex == 0)
+		{
+			SortedMeshShaderGroupIndex.push_back(MatDataIndex);
+		}
+	}
+
+	// mesh shader group size shouldn't be bigger than total material count
+	assert(SortedMeshShaderGroupIndex.size() < CurrentScene->GetMaterialCount());
+
+	// upload mesh shader instances
+	for (size_t Idx = 0; Idx < MeshShaderInstancesCPU.size(); Idx++)
+	{
+		GMeshShaderInstances[CurrentFrameGT][Idx]->UploadAllData(MeshShaderInstancesCPU[Idx].data());
 	}
 }
 

@@ -33,7 +33,7 @@
 #include "ShaderClass/RayTracing/RTShadowShader.h"
 #include "ShaderClass/RayTracing/RTReflectionShader.h"
 #include "ShaderClass/TextureSamplerTable.h"
-#include "ShaderClass/RayTracing/RTMeshTable.h"
+#include "ShaderClass/MeshTable.h"
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 #include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 #include "ShaderClass/SphericalHarmonicShader.h"
@@ -104,6 +104,7 @@ public:
 	void ToggleDepthPrepass();
 #endif
 	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
+	void RecreateMeshShaders(UHMaterial* InMat);
 	void RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable);
 
 	void CalculateBlurWeights(const int32_t InRadius, float* OutWeights);
@@ -176,6 +177,9 @@ private:
 
 	// sort rendering components
 	void SortRenderingComponents();
+
+	// collect mesh shader instance
+	void CollectMeshShaderInstance();
 
 	// get light culling tile count
 	void GetLightCullingTileCount(uint32_t& TileCountX, uint32_t& TileCountY);
@@ -388,11 +392,7 @@ private:
 	UniquePtr<UHRTReflectionShader> RTReflectionShader;
 	std::vector<VkDescriptorSet> RTDescriptorSets[GMaxFrameInFlight];
 
-	UniquePtr<UHRTVertexTable> RTUVTable;
-	UniquePtr<UHRTVertexTable> RTNormalTable;
-	UniquePtr<UHRTVertexTable> RTTangentTable;
-	UniquePtr<UHRTIndicesTable> RTIndicesTable;
-	UniquePtr<UHRTMeshInstanceTable> RTMeshInstanceTable;
+	UniquePtr<UHMeshTable> RTMeshInstanceTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
 	UniquePtr<UHRTTextureTable> RTTextureTable;
 	UniquePtr<UHRenderBuffer<UHMeshInstance>> RTMeshInstanceBuffer;
@@ -411,6 +411,19 @@ private:
 	std::unordered_map<uint32_t, UHRenderTexture*> TempRenderTextures;
 
 	// -------------------------------------------- Mesh shader related -------------------------------------------- //
+	UniquePtr<UHMeshTable> PositionTable;
+	UniquePtr<UHMeshTable> UV0Table;
+	UniquePtr<UHMeshTable> NormalTable;
+	UniquePtr<UHMeshTable> TangentTable;
+	UniquePtr<UHMeshTable> IndicesTable;
+	UniquePtr<UHMeshTable> MeshletTable;
+
 	uint32_t MeshInstanceCount;
 	std::vector<UHMesh*> MeshInUse;
+
+	// access following data with material's buffer data index
+	std::vector<int32_t> MeshShaderInstancesCounter;
+	std::vector<int32_t> SortedMeshShaderGroupIndex;
+	std::vector<std::vector<UHRendererInstance>> MeshShaderInstancesCPU;
+	std::vector<UniquePtr<UHDepthMeshShader>> DepthMeshShaders;
 };

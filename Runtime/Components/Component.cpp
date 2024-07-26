@@ -2,7 +2,6 @@
 
 UHComponent::UHComponent()
 	: bIsEnabled(true)
-	, ComponentClassIdInternal(0)
 {
 
 }
@@ -27,11 +26,6 @@ void UHComponent::SetIsEnabled(bool bInFlag)
 bool UHComponent::IsEnabled() const
 {
 	return bIsEnabled;
-}
-
-uint32_t UHComponent::GetComponentClassId() const
-{
-	return ComponentClassIdInternal;
 }
 
 #if WITH_EDITOR

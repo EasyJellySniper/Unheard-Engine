@@ -226,6 +226,9 @@ protected:
 	std::vector<uint32_t> ClosestHitShaders;
 	std::vector<uint32_t> AnyHitShaders;
 	uint32_t MissShader;
+	uint32_t ShaderAS;
+	uint32_t ShaderMS;
+
 	UHGraphicState* RTState;
 
 	// shader table

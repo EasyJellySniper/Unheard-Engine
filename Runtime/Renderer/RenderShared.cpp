@@ -46,6 +46,9 @@ UHTexture2D* GBlackTexture;
 UHTexture2D* GWhiteTexture;
 UHTextureCube* GBlackCube;
 
+std::vector<UniquePtr<UHRenderBuffer<UHASParameter>>> GAmplificationParameters;
+std::vector<UniquePtr<UHRenderBuffer<UHRendererInstance>>> GMeshShaderInstances[GMaxFrameInFlight];
+
 inline std::vector<UHTexture*> GetGBuffersSRV()
 {
 	// get the GBuffer used in SRV

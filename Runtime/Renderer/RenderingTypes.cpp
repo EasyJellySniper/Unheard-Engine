@@ -32,7 +32,9 @@ UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDept
 	, DepthInfo(InDepthInfo)
 	, VS(InVS)
 	, PS(InPS)
-	, GS(-1)
+	, GS(UHINDEXNONE)
+	, AS(UHINDEXNONE)
+	, MS(UHINDEXNONE)
 	, RTCount(InRTCount)
 	, PipelineLayout(InPipelineLayout)
 	, bDrawLine(false)
@@ -45,14 +47,11 @@ UHRenderPassInfo::UHRenderPassInfo(VkRenderPass InRenderPass, UHDepthInfo InDept
 
 bool UHRenderPassInfo::operator==(const UHRenderPassInfo& InInfo)
 {
-	bool bVSEqual = true;
-	bVSEqual = (InInfo.VS == VS);
-
-	bool bPSEqual = true;
-	bPSEqual = (InInfo.PS == PS);
-
-	bool bGSEqual = true;
-	bGSEqual = (InInfo.GS == GS);
+	bool bVSEqual = (InInfo.VS == VS);
+	bool bPSEqual = (InInfo.PS == PS);
+	bool bGSEqual = (InInfo.GS == GS);
+	bool bASEqual = (InInfo.AS == AS);
+	bool bMSEqual = (InInfo.MS == MS);
 
 	return InInfo.CullMode == CullMode
 		&& InInfo.BlendMode == BlendMode
@@ -60,6 +59,7 @@ bool UHRenderPassInfo::operator==(const UHRenderPassInfo& InInfo)
 		&& bVSEqual
 		&& bPSEqual
 		&& bGSEqual
+		&& bMSEqual
 		&& InInfo.RTCount == RTCount
 		&& InInfo.PipelineLayout == PipelineLayout
 		&& InInfo.bDrawLine == bDrawLine

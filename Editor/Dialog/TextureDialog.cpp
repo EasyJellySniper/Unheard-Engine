@@ -255,7 +255,7 @@ void UHTextureDialog::ControlApply()
         // if normal is changed, all materials are referencing this texture needs a recompile
         for (UHObject* MatObj : CurrentTexture->GetReferenceObjects())
         {
-            if (UHMaterial* Mat = static_cast<UHMaterial*>(MatObj))
+            if (UHMaterial* Mat = CastObject<UHMaterial>(MatObj))
             {
                 Mat->SetCompileFlag(UHMaterialCompileFlag::FullCompileTemporary);
                 Renderer->RefreshMaterialShaders(Mat, false, false);

@@ -24,7 +24,7 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 {
 	SetMaterial(MaterialCache);
 	SetName("MeshRendererComponent" + std::to_string(GetId()));
-	ComponentClassIdInternal = ClassId;
+	ObjectClassIdInternal = ClassId;
 }
 
 void UHMeshRendererComponent::Update()

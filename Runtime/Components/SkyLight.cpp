@@ -14,7 +14,7 @@ UHSkyLightComponent::UHSkyLightComponent()
 	, CubemapId(UUID())
 {
 	SetName("SkyLightLightComponent" + std::to_string(GetId()));
-	ComponentClassIdInternal = ClassId;
+	ObjectClassIdInternal = ClassId;
 }
 
 void UHSkyLightComponent::OnSave(std::ofstream& OutStream)

@@ -192,7 +192,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshTable.h">
+    <ClInclude Include="Runtime\Renderer\ShaderClass\MeshTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Editor\Editor\Editor.h">
@@ -841,5 +841,8 @@
     <None Include="Shaders\ReflectionComputeShader.hlsl" />
     <None Include="Shaders\UHMaterialCommon.hlsli" />
     <None Include="Shaders\RayTracing\RTReflectionMipmap.hlsl" />
+    <None Include="Shaders\BaseAmplificationShader.hlsl" />
+    <None Include="Shaders\UHMeshShaderCommon.hlsli" />
+    <None Include="Shaders\DepthMeshShader.hlsl" />
   </ItemGroup>
 </Project>
