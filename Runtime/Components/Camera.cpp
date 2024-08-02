@@ -265,6 +265,11 @@ BoundingBox UHCameraComponent::GetScreenBound(BoundingBox InWorldBound) const
 	return Result;
 }
 
+float UHCameraComponent::GetCullingDistance() const
+{
+	return CullingDistance;
+}
+
 #if WITH_EDITOR
 void UHCameraComponent::OnGenerateDetailView()
 {

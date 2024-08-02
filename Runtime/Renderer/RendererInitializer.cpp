@@ -31,7 +31,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	, PostProcessResultIdx(0)
 	, bIsTemporalReset(true)
 	, RTInstanceCount(0)
-	, RTMeshInstanceBuffer(nullptr)
 	, NumWorkerThreads(0)
 	, RenderThread(nullptr)
 	, bVsyncRT(false)
@@ -120,6 +119,10 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		// reserve enough space for renderers, save the allocation time
 		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size() * 2);
 		TranslucentsToRender.reserve(CurrentScene->GetTranslucentRenderers().size() * 2);
+		for (int32_t Idx = 0; Idx < MaxCountingElement; Idx++)
+		{
+			CountingRenderers[Idx].reserve(1024);
+		}
 	}
 
 	return bIsRendererSuccess;
@@ -391,15 +394,11 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	}
 
 	MeshShaderInstancesCounter.resize(CurrentScene->GetMaterialCount());
-	MeshShaderInstancesCPU.resize(CurrentScene->GetMaterialCount());
 	GAmplificationParameters.resize(CurrentScene->GetMaterialCount());
 	SortedMeshShaderGroupIndex.resize(CurrentScene->GetMaterialCount());
+	VisibleRendererIndices.resize(CurrentScene->GetMaterialCount());
+	GVisibleRendererIndexBuffer.resize(CurrentScene->GetMaterialCount());
 	DepthMeshShaders.resize(CurrentScene->GetMaterialCount());
-
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		GMeshShaderInstances[Idx].resize(CurrentScene->GetMaterialCount());
-	}
 
 	for (UHMaterial* Mat : CurrentScene->GetMaterials())
 	{
@@ -557,27 +556,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// ------------------------------------------------ ray tracing pass descriptor update
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
-		// collect & upload mesh instance data
-		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-		std::vector<UHMeshInstance> MeshInstances;
-
-		for (int32_t Idx = 0; Idx < static_cast<int32_t>(Renderers.size()); Idx++)
-		{
-			const UHMaterial* Mat = Renderers[Idx]->GetMaterial();
-			const UHMesh* Mesh = Renderers[Idx]->GetMesh();
-			if (!Mat || Mat->GetMaterialUsages().bIsSkybox || !Mesh)
-			{
-				continue;
-			}
-
-			UHMeshInstance MeshInstance;
-			MeshInstance.MeshIndex = Mesh->GetBufferDataIndex();
-			MeshInstance.IndiceType = Mesh->IsIndexBufer32Bit() ? 1 : 0;
-			MeshInstances.push_back(MeshInstance);
-		}
-
-		RTMeshInstanceBuffer->UploadAllData(MeshInstances.data());
-		RTMeshInstanceTable->BindStorage(RTMeshInstanceBuffer.get(), 0, 0, true);
+		RTMeshInstanceTable->BindStorage(GRendererInstanceBuffer.get(), 0, 0, true);
 
 		// bind RT material data
 		for (int32_t FrameIdx = 0; FrameIdx < GMaxFrameInFlight; FrameIdx++)
@@ -981,11 +960,48 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 	PointLightConstantsCPU.resize(CurrentScene->GetPointLightCount());
 	SpotLightConstantsCPU.resize(CurrentScene->GetSpotLightCount());
 
+	GSH9Data = GraphicInterface->RequestRenderBuffer<UHSphericalHarmonicData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+	if (GraphicInterface->IsMeshShaderSupported() || ConfigInterface->RenderingSetting().bEnableRayTracing)
+	{
+		const size_t TotalRenderers = CurrentScene->GetOpaqueRenderers().size() + CurrentScene->GetTranslucentRenderers().size();
+		if (TotalRenderers == 0)
+		{
+			return;
+		}
+
+		// create renderer instance buffer
+		UH_SAFE_RELEASE(GRendererInstanceBuffer);
+		GRendererInstanceBuffer = GraphicInterface->RequestRenderBuffer<UHRendererInstance>(TotalRenderers, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+		// collect & upload mesh instance data
+		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
+		std::vector<UHRendererInstance> RendererInstances;
+
+		for (int32_t Idx = 0; Idx < static_cast<int32_t>(Renderers.size()); Idx++)
+		{
+			const UHMaterial* Mat = Renderers[Idx]->GetMaterial();
+			const UHMesh* Mesh = Renderers[Idx]->GetMesh();
+			if (!Mat || Mat->GetMaterialUsages().bIsSkybox || !Mesh)
+			{
+				continue;
+			}
+
+			UHRendererInstance RendererInstance;
+			RendererInstance.MeshIndex = Mesh->GetBufferDataIndex();
+			RendererInstance.IndiceType = Mesh->IsIndexBufer32Bit() ? 1 : 0;
+			RendererInstance.RendererIndex = Renderers[Idx]->GetBufferDataIndex();
+			RendererInstance.NumMeshlets = Mesh->GetMeshletCount();
+			RendererInstances.push_back(RendererInstance);
+		}
+
+		GRendererInstanceBuffer->UploadAllData(RendererInstances.data());
+	}
+
 	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		CreateOcclusionQuery();
 	}
-	GSH9Data = GraphicInterface->RequestRenderBuffer<UHSphericalHarmonicData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
 void UHDeferredShadingRenderer::CreateOcclusionQuery()
@@ -1131,7 +1147,7 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 		}
 	}
 
-	UH_SAFE_RELEASE(RTMeshInstanceBuffer);
+	UH_SAFE_RELEASE(GRendererInstanceBuffer);
 	UH_SAFE_RELEASE(GSH9Data);
 
 	for (auto& Param : GAmplificationParameters)
@@ -1140,16 +1156,15 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 	}
 	GAmplificationParameters.clear();
 
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	for (auto& Buffer : GVisibleRendererIndexBuffer)
 	{
-		for (auto& Instance : GMeshShaderInstances[Idx])
-		{
-			Instance->Release();
-		}
-		GMeshShaderInstances[Idx].clear();
+		UH_SAFE_RELEASE(Buffer);
 	}
-	MeshShaderInstancesCPU.clear();
+	GVisibleRendererIndexBuffer.clear();
+
 	MeshShaderInstancesCounter.clear();
+	SortedMeshShaderGroupIndex.clear();
+	VisibleRendererIndices.clear();
 }
 
 void UHDeferredShadingRenderer::UpdateTextureDescriptors()
@@ -1520,16 +1535,9 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	}
 	GAmplificationParameters[MatDataIndex]->UploadData(&Parameter, 0);
 
-	// create mesh shader instances buffer
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		UH_SAFE_RELEASE(GMeshShaderInstances[Idx][MatDataIndex]);
-		GMeshShaderInstances[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHRendererInstance>(Parameter.MaxInstances, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-	}
-
-	MeshShaderInstancesCPU[MatDataIndex].clear();
-	MeshShaderInstancesCPU[MatDataIndex].resize(Parameter.MaxInstances);
 	MeshShaderInstancesCounter[MatDataIndex] = 0;
+	VisibleRendererIndices[MatDataIndex].resize(Parameter.MaxInstances);
+	GVisibleRendererIndexBuffer[MatDataIndex] = GraphicInterface->RequestRenderBuffer<uint32_t>(Parameter.MaxInstances, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
 void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable)
@@ -1544,9 +1552,6 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 		// buffer for storing index type, used in hit group shader
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
 		RTMeshInstanceTable = MakeUnique<UHMeshTable>(GraphicInterface, "RTMeshInstanceTable", 1);
-
-		UH_SAFE_RELEASE(RTMeshInstanceBuffer);
-		RTMeshInstanceBuffer = GraphicInterface->RequestRenderBuffer<UHMeshInstance>(RTInstanceCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
 		// buffer for storing texture index
 		UH_SAFE_RELEASE(RTMaterialDataTable);

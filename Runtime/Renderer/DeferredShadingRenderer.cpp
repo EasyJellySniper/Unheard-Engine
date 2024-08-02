@@ -69,7 +69,6 @@ void UHDeferredShadingRenderer::Update()
 	UploadDataBuffers();
 	FrustumCulling();
 	CollectVisibleRenderer();
-	SortRenderingComponents();
 	CollectMeshShaderInstance();
 }
 
@@ -431,34 +430,8 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 {
 	UHGameTimerScope Scope("CollectVisibleRenderer", false);
 
-	// recommend to reserve capacity during initialization
-	OpaquesToRender.clear();
-	const std::vector<UHMeshRendererComponent*>& OpaqueRenderers = CurrentScene->GetOpaqueRenderers();
-	for (UHMeshRendererComponent* Renderer : OpaqueRenderers)
-	{
-		if (Renderer->IsVisible())
-		{
-			OpaquesToRender.push_back(Renderer);
-		}
-	}
-
-	TranslucentsToRender.clear();
-	const std::vector<UHMeshRendererComponent*>& TranslucentRenderers = CurrentScene->GetTranslucentRenderers();
-	for (UHMeshRendererComponent* Renderer : TranslucentRenderers)
-	{
-		if (Renderer->IsVisible())
-		{
-			TranslucentsToRender.push_back(Renderer);
-		}
-	}
-}
-
-void UHDeferredShadingRenderer::SortRenderingComponents()
-{
-	UHGameTimerScope Scope("SortRenderingComponents", false);
-
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
-	if (!CurrentCamera || !CurrentScene)
+	if (!CurrentCamera)
 	{
 		return;
 	}
@@ -468,28 +441,58 @@ void UHDeferredShadingRenderer::SortRenderingComponents()
 		return;
 	}
 
-	// sort front-to-back
-	std::sort(OpaquesToRender.begin(), OpaquesToRender.end(), [](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
-		{
-			return A->GetSquareDistanceToMainCam() < B->GetSquareDistanceToMainCam();
-		});
-
-	// sort back-to-front for translucents
-	std::sort(TranslucentsToRender.begin(), TranslucentsToRender.end(), [](UHMeshRendererComponent* A, UHMeshRendererComponent* B)
-		{
-			return A->GetSquareDistanceToMainCam() > B->GetSquareDistanceToMainCam();
-		});
-
-
-	bHasRefractionMaterialGT = false;
-	for (size_t Idx = 0; Idx < TranslucentsToRender.size(); Idx++)
+	// reset counting counter
+	for (int32_t Idx = 0; Idx < MaxCountingElement; Idx++)
 	{
-		if (const UHMaterial* Mat = TranslucentsToRender[Idx]->GetMaterial())
+		CountingRenderers[Idx].clear();
+	}
+
+	const float CullingDistance = CurrentCamera->GetCullingDistance();
+	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+	{
+		if (Renderer->GetMaterial()->GetMaterialUsages().bIsSkybox || !Renderer->IsVisible())
 		{
-			if (Mat->GetMaterialUsages().bUseRefraction)
+			continue;
+		}
+
+		// convert distance to counting index
+		int32_t CountingIndex = static_cast<int32_t>(Renderer->GetSquareDistanceToMainCam() / (CullingDistance * CullingDistance) * MaxCountingElement);
+		CountingIndex = std::min(CountingIndex, MaxCountingElement - 1);
+		CountingRenderers[CountingIndex].push_back(Renderer);
+	}
+
+	// recommend to reserve capacity during initialization
+	OpaquesToRender.clear();
+	TranslucentsToRender.clear();
+
+	// collect renderers from counting sort result, front-to-back for opaque
+	for (int32_t CountIdx = 0; CountIdx < MaxCountingElement; CountIdx++)
+	{
+		for (size_t Idx = 0; Idx < CountingRenderers[CountIdx].size(); Idx++)
+		{
+			UHMeshRendererComponent* Renderer = CountingRenderers[CountIdx][Idx];
+			const UHMaterial* Mat = CountingRenderers[CountIdx][Idx]->GetMaterial();
+			if (Mat->IsOpaque())
 			{
-				bHasRefractionMaterialGT = true;
-				break;
+				OpaquesToRender.push_back(Renderer);
+			}
+		}
+	}
+
+	// back-to-front for translucent
+	for (int32_t CountIdx = MaxCountingElement - 1; CountIdx >= 0; CountIdx--)
+	{
+		for (int32_t Idx = (int32_t)CountingRenderers[CountIdx].size() - 1; Idx >= 0; Idx--)
+		{
+			UHMeshRendererComponent* Renderer = CountingRenderers[CountIdx][Idx];
+			const UHMaterial* Mat = CountingRenderers[CountIdx][Idx]->GetMaterial();
+			if (!Mat->IsOpaque())
+			{
+				TranslucentsToRender.push_back(Renderer);
+				if (Mat->GetMaterialUsages().bUseRefraction)
+				{
+					bHasRefractionMaterialGT = true;
+				}
 			}
 		}
 	}
@@ -500,7 +503,7 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	UHGameTimerScope Scope("CollectMeshShaderInstance", false);
 
 	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
-	if (!CurrentCamera || !CurrentScene || !GraphicInterface->IsMeshShaderSupported())
+	if (!CurrentCamera || !GraphicInterface->IsMeshShaderSupported())
 	{
 		return;
 	}
@@ -517,34 +520,27 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	// collect visible mesh shader instances for opaque objects
 	for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
-		UHRendererInstance Instance{};
-		Instance.RendererIndex = Renderer->GetBufferDataIndex();
-
-		const UHMesh* Mesh = Renderer->GetMesh();
-		Instance.IndiceType = Mesh->IsIndexBufer32Bit() ? 1 : 0;
-		Instance.MeshIndex = Mesh->GetBufferDataIndex();
-		Instance.NumMeshlets = Mesh->GetMeshletCount();
-
 		// set the instance to the corresponding material and it's current rendering index
 		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
 		const int32_t NewIndex = MeshShaderInstancesCounter[MatDataIndex]++;
-		MeshShaderInstancesCPU[MatDataIndex][NewIndex] = Instance;
 
 		// system will dispatch opaque renderer front-to-back for each material group
 		// but the group isn't sorted, so add the material data index to the list when first instance is occurred.
 		if (NewIndex == 0)
 		{
 			SortedMeshShaderGroupIndex.push_back(MatDataIndex);
+			VisibleRendererIndices[MatDataIndex].clear();
 		}
+
+		VisibleRendererIndices[MatDataIndex].push_back(Renderer->GetBufferDataIndex());
 	}
 
 	// mesh shader group size shouldn't be bigger than total material count
 	assert(SortedMeshShaderGroupIndex.size() < CurrentScene->GetMaterialCount());
 
-	// upload mesh shader instances
-	for (size_t Idx = 0; Idx < MeshShaderInstancesCPU.size(); Idx++)
+	for (size_t Idx = 0; Idx < CurrentScene->GetMaterialCount(); Idx++)
 	{
-		GMeshShaderInstances[CurrentFrameGT][Idx]->UploadAllData(MeshShaderInstancesCPU[Idx].data());
+		GVisibleRendererIndexBuffer[Idx]->UploadAllData(VisibleRendererIndices[Idx].data(), VisibleRendererIndices[Idx].size() * sizeof(uint32_t));
 	}
 }
 

@@ -9,14 +9,9 @@ Texture2D UHTextureTable[] : register(t0, space1);
 SamplerState UHSamplerTable[] : register(t0, space2);
 
 // mesh instance data, access it with InstanceIndex() first, then use the info stored for other indexing or condition
-struct MeshInstanceData
-{
-    uint MeshIndex;
-    uint IndiceType;
-};
-StructuredBuffer<MeshInstanceData> UHMeshInstances : register(t0, space3);
+StructuredBuffer<UHRendererInstance> UHRendererInstances : register(t0, space3);
 
-// VB & IB data, access them with MeshInstanceData.MeshIndex
+// VB & IB data, access them with UHRendererInstance.MeshIndex
 StructuredBuffer<float2> UHUV0Table[] : register(t0, space4);
 StructuredBuffer<float3> UHNormalTable[] : register(t0, space5);
 StructuredBuffer<float4> UHTangentTable[] : register(t0, space6);
@@ -94,12 +89,12 @@ UHMaterialInputs GetMaterialInput(float2 UV0, float MipLevel, out MaterialUsage 
 
 uint3 GetIndex(in uint PrimIndex)
 {
-    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
-    ByteAddressBuffer Indices = UHIndicesTable[MeshInstance.MeshIndex];
+    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
+    ByteAddressBuffer Indices = UHIndicesTable[RendererInstances.MeshIndex];
 	
     // get index data based on indice type, it can be 16 or 32 bit
     uint3 Index;
-    if (MeshInstance.IndiceType == 1)
+    if (RendererInstances.IndiceType == 1)
     {
         uint IbStride = 4;
         Index[0] = Indices.Load(PrimIndex * 3 * IbStride);
@@ -134,10 +129,10 @@ uint3 GetIndex(in uint PrimIndex)
 
 float2 GetHitUV0(uint PrimIndex, Attribute Attr)
 {
-    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
+    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
     uint3 Index = GetIndex(PrimIndex);
 
-    StructuredBuffer<float2> UV0 = UHUV0Table[MeshInstance.MeshIndex];
+    StructuredBuffer<float2> UV0 = UHUV0Table[RendererInstances.MeshIndex];
 	float2 OutUV = 0;
 
 	// interpolate data according to barycentric coordinate
@@ -149,10 +144,10 @@ float2 GetHitUV0(uint PrimIndex, Attribute Attr)
 
 float3 GetHitNormal(uint PrimIndex, Attribute Attr)
 {
-    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
+    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
     uint3 Index = GetIndex(PrimIndex);
     
-    StructuredBuffer<float3> Normal = UHNormalTable[MeshInstance.MeshIndex];
+    StructuredBuffer<float3> Normal = UHNormalTable[RendererInstances.MeshIndex];
     float3 OutNormal = float3(0, 0, 1);
     
     OutNormal = Normal[Index[0]] + Attr.Bary.x * (Normal[Index[1]] - Normal[Index[0]])
@@ -163,10 +158,10 @@ float3 GetHitNormal(uint PrimIndex, Attribute Attr)
 
 float4 GetHitTangent(uint PrimIndex, Attribute Attr)
 {
-    MeshInstanceData MeshInstance = UHMeshInstances[InstanceIndex()];
+    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
     uint3 Index = GetIndex(PrimIndex);
     
-    StructuredBuffer<float4> Tangent = UHTangentTable[MeshInstance.MeshIndex];
+    StructuredBuffer<float4> Tangent = UHTangentTable[RendererInstances.MeshIndex];
     float4 OutTangent = float4(1, 0, 0, 1);
     
     OutTangent = Tangent[Index[0]] + Attr.Bary.x * (Tangent[Index[1]] - Tangent[Index[0]])

@@ -212,3 +212,14 @@ Finished collecting the mesh shader instances, it's ready for the dispatch.
 I find I can also replace the unordered_map by vector for shaders.
 Not sure why I thought the map is better before? I should always use vector if the access index always starts at 0.
 And only use map for lookup.
+
+30-07-2024:
+Enabled /fp:fast. Replaced intro sort by custom counting sort for renderers.
+Next, I shall be able to merge the renderer instance used for both RT and mesh shader.
+
+01-08-2024:
+Merged the renderer instance structure for RT and mesh shader.
+Next let me check if we can bind the renderer instance in flight instead of creating another buffer.
+
+02-08-2024:
+Refactor the data binding for depth mesh shader.

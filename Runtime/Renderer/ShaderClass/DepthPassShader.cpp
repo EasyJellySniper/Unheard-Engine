@@ -85,10 +85,9 @@ UHDepthMeshShader::UHDepthMeshShader(UHGraphic* InGfx, std::string Name, VkRende
 	// material
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	// renderer instances
+	// current index amplification data, renderer instance
 	AddLayoutBinding(1, VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-
-	// amplification data
+	AddLayoutBinding(1, VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	CreateLayoutAndDescriptor(ExtraLayouts);
@@ -139,10 +138,7 @@ void UHDepthMeshShader::BindParameters()
 	BindConstant(GSystemConstantBuffer, 0);
 	BindStorage(GObjectConstantBuffer, 1, 0, true);
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
-
-	for (uint32_t FrameIdx = 0; FrameIdx < GMaxFrameInFlight; FrameIdx++)
-	{
-		BindStorage(GMeshShaderInstances[FrameIdx][MaterialCache->GetBufferDataIndex()].get(), 3, 0, true, FrameIdx);
-	}
+	BindStorage(GVisibleRendererIndexBuffer[MaterialCache->GetBufferDataIndex()].get(), 3);
 	BindStorage(GAmplificationParameters[MaterialCache->GetBufferDataIndex()].get(), 4);
+	BindStorage(GRendererInstanceBuffer.get(), 5, 0, true);
 }

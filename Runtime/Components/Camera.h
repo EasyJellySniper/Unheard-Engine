@@ -33,6 +33,7 @@ public:
 	BoundingFrustum GetBoundingFrustum() const;
 	XMFLOAT3 GetScreenPos(XMFLOAT3 InWorld) const;
 	BoundingBox GetScreenBound(BoundingBox InWorldBound) const;
+	float GetCullingDistance() const;
 
 #if WITH_EDITOR
 	virtual void OnGenerateDetailView() override;

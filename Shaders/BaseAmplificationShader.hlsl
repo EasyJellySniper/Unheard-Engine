@@ -1,9 +1,9 @@
 // base amplification shader in UHE
 #include "../Shaders/UHMeshShaderCommon.hlsli"
 
-// visible instances will be collected & sorted on CPU side, then be dispatched
-// in the AS shader, an instance will further dispatch necessary meshlets and store info in payload
-StructuredBuffer<UHRendererInstance> RendererInstances : register(t3);
+// visiable renderer index is stored in this buffer.
+// access via DTid first, then use this index for renderer instances
+ByteAddressBuffer VisibleRendererIndex : register(t3);
 
 // parameters
 struct ASParameter
@@ -11,6 +11,7 @@ struct ASParameter
     uint MaxInstance;
 };
 StructuredBuffer<ASParameter> ASData : register(t4);
+StructuredBuffer<UHRendererInstance> RendererInstances : register(t5);
 
 groupshared UHRendererInstance GInstance;
 
@@ -23,7 +24,8 @@ void MainAS(uint GTid : SV_GroupThreadID, uint DTid : SV_DispatchThreadID, uint 
     }
     
     // dispatch meshlets and pass the instance as payload
-    UHRendererInstance Instance = RendererInstances[DTid];
+    uint RendererIdx = VisibleRendererIndex.Load(DTid * 4);
+    UHRendererInstance Instance = RendererInstances[RendererIdx];
     GInstance = Instance;
     DispatchMesh(Instance.NumMeshlets, 1, 1, GInstance);
 }

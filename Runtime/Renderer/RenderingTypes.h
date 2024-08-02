@@ -332,13 +332,6 @@ enum class UHConstantTypes
 	ConstantTypeMax
 };
 
-// mesh instance data
-struct UHMeshInstance
-{
-	uint32_t MeshIndex;
-	uint32_t IndiceType;
-};
-
 // renderer instance data
 struct UHRendererInstance
 {

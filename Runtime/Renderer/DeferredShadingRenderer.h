@@ -175,9 +175,6 @@ private:
 	// collect visible renderer
 	void CollectVisibleRenderer();
 
-	// sort rendering components
-	void SortRenderingComponents();
-
 	// collect mesh shader instance
 	void CollectMeshShaderInstance();
 
@@ -395,14 +392,18 @@ private:
 	UniquePtr<UHMeshTable> RTMeshInstanceTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
 	UniquePtr<UHRTTextureTable> RTTextureTable;
-	UniquePtr<UHRenderBuffer<UHMeshInstance>> RTMeshInstanceBuffer;
 
 	uint32_t RTInstanceCount;
 	bool bIsRaytracingEnableRT;
 
-	// -------------------------------------------- Culling related -------------------------------------------- //
+	// -------------------------------------------- Culling & sorting related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
 	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
+
+	// max element setting for counting sort, higher number = better result for GPU time but longer CPU time
+	// lower = better CPU time but longer GPU time, need to trade off between these.
+	static const int32_t MaxCountingElement = 4096;
+	std::vector<UHMeshRendererComponent*> CountingRenderers[MaxCountingElement];
 
 	UHGPUQuery* OcclusionQuery[GMaxFrameInFlight];
 	UniquePtr<UHRenderBuffer<uint32_t>> OcclusionResultGPU[GMaxFrameInFlight];
@@ -424,6 +425,6 @@ private:
 	// access following data with material's buffer data index
 	std::vector<int32_t> MeshShaderInstancesCounter;
 	std::vector<int32_t> SortedMeshShaderGroupIndex;
-	std::vector<std::vector<UHRendererInstance>> MeshShaderInstancesCPU;
+	std::vector<std::vector<uint32_t>> VisibleRendererIndices;
 	std::vector<UniquePtr<UHDepthMeshShader>> DepthMeshShaders;
 };

@@ -9,6 +9,18 @@
 #define PAYLOAD_HITTRANSLUCENT 1 << 1
 #define PAYLOAD_HITREFRACTION 1 << 2
 
+struct UHRendererInstance
+{
+    // renderer index to lookup object constants
+    uint RendererIndex;
+    // mesh index to lookup mesh data
+    uint MeshIndex;
+    // num meshlets to dispatch
+    uint NumMeshlets;
+    // indice type
+    uint IndiceType;
+};
+
 struct UHDefaultPayload
 {
 	bool IsHit() 
