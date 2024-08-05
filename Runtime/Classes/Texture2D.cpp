@@ -20,6 +20,12 @@ UHTexture2D::UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2
 	TextureType = UHTextureType::Texture2D;
 }
 
+void UHTexture2D::Release()
+{
+	UHTexture::Release();
+	ReleaseCPUTextureData();
+}
+
 void UHTexture2D::ReleaseCPUTextureData()
 {
 	TextureData.clear();
@@ -27,6 +33,7 @@ void UHTexture2D::ReleaseCPUTextureData()
 	{
 		Buffer.Release();
 	}
+	RawStageBuffers.clear();
 }
 
 bool UHTexture2D::Import(std::filesystem::path InTexturePath)

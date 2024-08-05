@@ -843,5 +843,7 @@
     <None Include="Shaders\RayTracing\RTReflectionMipmap.hlsl" />
     <None Include="Shaders\UHMeshShaderCommon.hlsli" />
     <None Include="Shaders\DepthMeshShader.hlsl" />
+    <None Include="Shaders\BaseMeshShader.hlsl" />
+    <None Include="Shaders\MotionMeshShader.hlsl" />
   </ItemGroup>
 </Project>

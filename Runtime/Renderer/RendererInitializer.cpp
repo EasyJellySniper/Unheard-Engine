@@ -116,6 +116,8 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		// create thread objects
 		CreateThreadObjects();
 
+		InitGaussianConstants();
+
 		// reserve enough space for renderers, save the allocation time
 		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size() * 2);
 		TranslucentsToRender.reserve(CurrentScene->GetTranslucentRenderers().size() * 2);
@@ -396,13 +398,19 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		MeshShaderInstancesCounter.resize(CurrentScene->GetMaterialCount());
 		SortedMeshShaderGroupIndex.resize(CurrentScene->GetMaterialCount());
 		VisibleMeshShaderData.resize(CurrentScene->GetMaterialCount());
+		MotionOpaqueMeshShaderData.resize(CurrentScene->GetMaterialCount());
+		MotionTranslucentMeshShaderData.resize(CurrentScene->GetMaterialCount());
 
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
 			GMeshShaderData[Idx].resize(CurrentScene->GetMaterialCount());
+			GMotionOpaqueShaderData[Idx].resize(CurrentScene->GetMaterialCount());
+			GMotionTranslucentShaderData[Idx].resize(CurrentScene->GetMaterialCount());
 		}
 
 		DepthMeshShaders.resize(CurrentScene->GetMaterialCount());
+		BaseMeshShaders.resize(CurrentScene->GetMaterialCount());
+		MotionMeshShaders.resize(CurrentScene->GetMaterialCount());
 	}
 
 	for (UHMaterial* Mat : CurrentScene->GetMaterials())
@@ -500,7 +508,20 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	{
 		for (size_t Idx = 0; Idx < CurrentScene->GetMaterialCount(); Idx++)
 		{
-			DepthMeshShaders[Idx]->BindParameters();
+			if (DepthMeshShaders[Idx] != nullptr)
+			{
+				DepthMeshShaders[Idx]->BindParameters();
+			}
+
+			if (BaseMeshShaders[Idx] != nullptr)
+			{
+				BaseMeshShaders[Idx]->BindParameters();
+			}
+
+			if (MotionMeshShaders[Idx] != nullptr)
+			{
+				MotionMeshShaders[Idx]->BindParameters();
+			}
 		}
 	}
 
@@ -648,42 +669,16 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	if (GraphicInterface->IsDepthPrePassEnabled())
 #endif
 	{
-		for (auto& Shader : DepthPassShaders)
-		{
-			Shader.second->Release();
-		}
-		DepthPassShaders.clear();
-
-		for (auto& Shader : DepthMeshShaders)
-		{
-			Shader->Release();
-		}
-		DepthMeshShaders.clear();
+		ClearContainer(DepthPassShaders);
+		ClearContainer(DepthMeshShaders);
 	}
 
-	for (auto& Shader : BasePassShaders)
-	{
-		Shader.second->Release();
-	}
-	BasePassShaders.clear();
-
-	for (auto& Shader : MotionOpaqueShaders)
-	{
-		Shader.second->Release();
-	}
-	MotionOpaqueShaders.clear();
-
-	for (auto& Shader : MotionTranslucentShaders)
-	{
-		Shader.second->Release();
-	}
-	MotionTranslucentShaders.clear();
-
-	for (auto& Shader : TranslucentPassShaders)
-	{
-		Shader.second->Release();
-	}
-	TranslucentPassShaders.clear();
+	ClearContainer(BasePassShaders);
+	ClearContainer(BaseMeshShaders);
+	ClearContainer(MotionOpaqueShaders);
+	ClearContainer(MotionTranslucentShaders);
+	ClearContainer(MotionMeshShaders);
+	ClearContainer(TranslucentPassShaders);
 
 	LightCullingShader->Release();
 	LightPassShader->Release();
@@ -818,12 +813,9 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	UH_SAFE_RELEASE(GSpotLightListBuffer);
 	UH_SAFE_RELEASE(GSpotLightListTransBuffer);
 
-	// release temp render textures
-	for (auto& TempRT : TempRenderTextures)
-	{
-		GraphicInterface->RequestReleaseRT(TempRT.second);
-	}
-	TempRenderTextures.clear();
+	// cleanup gaussian constant
+	RayTracingGaussianConsts.Release(GraphicInterface);
+	RefractionGaussianConsts.Release(GraphicInterface);
 }
 
 void UHDeferredShadingRenderer::CreateRenderPasses()
@@ -1153,16 +1145,16 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		for (auto& Data : GMeshShaderData[Idx])
-		{
-			UH_SAFE_RELEASE(Data);
-		}
-		GMeshShaderData[Idx].clear();
+		ClearContainer(GMeshShaderData[Idx]);
+		ClearContainer(GMotionOpaqueShaderData[Idx]);
+		ClearContainer(GMotionTranslucentShaderData[Idx]);
 	}
 
 	MeshShaderInstancesCounter.clear();
 	SortedMeshShaderGroupIndex.clear();
 	VisibleMeshShaderData.clear();
+	MotionOpaqueMeshShaderData.clear();
+	MotionTranslucentMeshShaderData.clear();
 }
 
 void UHDeferredShadingRenderer::UpdateTextureDescriptors()
@@ -1206,6 +1198,45 @@ void UHDeferredShadingRenderer::UpdateTextureDescriptors()
 	}
 
 	SamplerTable->BindSampler(Samplers, 0);
+}
+
+void UHDeferredShadingRenderer::InitGaussianConstants()
+{
+	UHTextureFormat TempRTFormat = bHDREnabledRT ? UHTextureFormat::UH_FORMAT_RGBA16F : UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
+
+	// initialize gaussian consts
+	RayTracingGaussianConsts.GBlurRadius = 2;
+	RayTracingGaussianConsts.IterationCount = 2;
+	CalculateBlurWeights(RayTracingGaussianConsts.GBlurRadius, RayTracingGaussianConsts.Weights);
+
+	RayTracingGaussianConsts.GaussianFilterTempRT0.resize(GRTReflectionResult->GetMipMapCount());
+	RayTracingGaussianConsts.GaussianFilterTempRT1.resize(GRTReflectionResult->GetMipMapCount());
+
+	VkExtent2D FilterResolution;
+
+	// for RT use
+	for (uint32_t Idx = 2; Idx < GRTReflectionResult->GetMipMapCount(); Idx++)
+	{
+		FilterResolution.width = RenderResolution.width >> Idx;
+		FilterResolution.height = RenderResolution.height >> Idx;
+
+		RayTracingGaussianConsts.GaussianFilterTempRT0[Idx] =
+			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, true);
+
+		RayTracingGaussianConsts.GaussianFilterTempRT1[Idx] =
+			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, true);
+	}
+
+	// for refraction use
+	TempRTFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
+	RefractionGaussianConsts.GBlurRadius = 3;
+	RefractionGaussianConsts.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
+	RefractionGaussianConsts.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
+	RefractionGaussianConsts.IterationCount = 2;
+
+	RefractionGaussianConsts.GaussianFilterTempRT0.push_back(GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", GQuarterBlurredScene->GetExtent(), TempRTFormat, true));
+	RefractionGaussianConsts.GaussianFilterTempRT1.push_back(GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", GQuarterBlurredScene->GetExtent(), TempRTFormat, true));
+	CalculateBlurWeights(RefractionGaussianConsts.GBlurRadius, &RefractionGaussianConsts.Weights[0]);
 }
 
 template <typename T1, typename T2>
@@ -1453,16 +1484,39 @@ void UHDeferredShadingRenderer::ToggleDepthPrepass()
 	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
 
 	// recompile (trigger state recreation for shaders involved prepass flag)
-	for (auto& Shader : BasePassShaders)
+	if (GraphicInterface->IsMeshShaderSupported())
 	{
-		Shader.second->SetNewRenderPass(BasePassObj.RenderPass);
-		Shader.second->OnCompile();
-	}
+		for (auto& Shader : BaseMeshShaders)
+		{
+			if (Shader != nullptr)
+			{
+				Shader->SetNewRenderPass(BasePassObj.RenderPass);
+				Shader->OnCompile();
+			}
+		}
 
-	for (auto& Shader : MotionOpaqueShaders)
+		for (auto& Shader : MotionMeshShaders)
+		{
+			if (Shader->GetMaterialCache()->IsOpaque())
+			{
+				Shader->SetNewRenderPass(MotionOpaquePassObj.RenderPass);
+				Shader->OnCompile();
+			}
+		}
+	}
+	else
 	{
-		Shader.second->SetNewRenderPass(MotionOpaquePassObj.RenderPass);
-		Shader.second->OnCompile();
+		for (auto& Shader : BasePassShaders)
+		{
+			Shader.second->SetNewRenderPass(BasePassObj.RenderPass);
+			Shader.second->OnCompile();
+		}
+
+		for (auto& Shader : MotionOpaqueShaders)
+		{
+			Shader.second->SetNewRenderPass(MotionOpaquePassObj.RenderPass);
+			Shader.second->OnCompile();
+		}
 	}
 	UpdateDescriptors();
 }
@@ -1500,13 +1554,13 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 
 void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 {
-	// only create when mesh shader is supported
+	// only create when mesh shader is supported and opaque only
 	if (!GraphicInterface->IsMeshShaderSupported() || MeshInstanceCount == 0)
 	{
 		return;
 	}
 
-	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout()
+	std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout()
 		, SamplerTable->GetDescriptorSetLayout()
 		, MeshletTable->GetDescriptorSetLayout()
 		, PositionTable->GetDescriptorSetLayout()
@@ -1515,8 +1569,34 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	};
 
 	const uint32_t MatDataIndex = InMat->GetBufferDataIndex();
-	UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
-	DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
+
+	// create depth and base shader only for the opaque, but motion pass for both opaque/translucent
+	if (InMat->IsOpaque())
+	{
+#if WITH_RELEASE
+		if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
+#endif
+		{
+			UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
+			DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
+		}
+
+		// push normal and tangent table after depth
+		BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
+		BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
+
+		UH_SAFE_RELEASE(BaseMeshShaders[MatDataIndex]);
+		BaseMeshShaders[MatDataIndex] = MakeUnique<UHBaseMeshShader>(GraphicInterface, "BaseMeshShader", BasePassObj.RenderPass, InMat, BindlessLayouts);
+	}
+	else
+	{
+		BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
+		BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
+	}
+
+	UH_SAFE_RELEASE(MotionMeshShaders[MatDataIndex]);
+	MotionMeshShaders[MatDataIndex] = MakeUnique<UHMotionMeshShader>(GraphicInterface, "MotionMeshShader"
+		, InMat->IsOpaque() ? MotionOpaquePassObj.RenderPass : MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 
 	// count total meshlet number of a material group
 	uint32_t MeshletCountOfMaterialGroup = 0;
@@ -1538,10 +1618,18 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	{
 		UH_SAFE_RELEASE(GMeshShaderData[Idx][MatDataIndex]);
 		GMeshShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+		UH_SAFE_RELEASE(GMotionOpaqueShaderData[Idx][MatDataIndex]);
+		GMotionOpaqueShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+		UH_SAFE_RELEASE(GMotionTranslucentShaderData[Idx][MatDataIndex]);
+		GMotionTranslucentShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	}
 
 	MeshShaderInstancesCounter[MatDataIndex] = 0;
 	VisibleMeshShaderData[MatDataIndex].reserve(MeshletCountOfMaterialGroup);
+	MotionOpaqueMeshShaderData[MatDataIndex].reserve(MeshletCountOfMaterialGroup);
+	MotionTranslucentMeshShaderData[MatDataIndex].reserve(MeshletCountOfMaterialGroup);
 }
 
 void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable)

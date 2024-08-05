@@ -2,6 +2,7 @@
 
 void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("RenderMotionPass", false);
 	if (CurrentScene == nullptr)
 	{
 		return;
@@ -43,37 +44,88 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		// -------------------- after motion camera pass is done, draw per-object motions, opaque first then the translucent -------------------- //
 		// opaque motion will only render the dynamic objects (motion is dirty), static objects are already calculated in camera motion
 		{
-			// begin for secondary cmd
-			RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+#if USE_MESHSHADER_PASS
+			if (GraphicInterface->IsMeshShaderSupported())
+			{
+				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution);
+
+				// bindless table, they should only be bound once
+				if (MotionMeshShaders.size() > 0 && SortedMeshShaderGroupIndex.size() > 0)
+				{
+					std::vector<VkDescriptorSet> BindlessTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
+						, SamplerTable->GetDescriptorSet(CurrentFrameRT)
+						, MeshletTable->GetDescriptorSet(CurrentFrameRT)
+						, PositionTable->GetDescriptorSet(CurrentFrameRT)
+						, UV0Table->GetDescriptorSet(CurrentFrameRT)
+						, IndicesTable->GetDescriptorSet(CurrentFrameRT)
+						, NormalTable->GetDescriptorSet(CurrentFrameRT)
+						, TangentTable->GetDescriptorSet(CurrentFrameRT)
+					};
+					RenderBuilder.BindDescriptorSet(MotionMeshShaders[SortedMeshShaderGroupIndex[0]]->GetPipelineLayout(), BindlessTableSets, GTextureTableSpace);
+				}
+
+				// dispatch mesh based on the MotionObjectMeshShaderData
+				for (size_t Idx = 0; Idx < SortedMeshShaderGroupIndex.size(); Idx++)
+				{
+					const int32_t GroupIndex = SortedMeshShaderGroupIndex[Idx];
+					const uint32_t VisibleMeshlets = static_cast<uint32_t>(MotionOpaqueMeshShaderData[GroupIndex].size());
+					if (VisibleMeshlets == 0)
+					{
+						continue;
+					}
+
+					const UHMotionMeshShader* MotionMS = MotionMeshShaders[GroupIndex].get();
+					if (!MotionMS->GetMaterialCache()->IsOpaque())
+					{
+						continue;
+					}
+
+					GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatching motion opaque pass " + MotionMS->GetMaterialCache()->GetName());
+
+					RenderBuilder.BindGraphicState(MotionMS->GetState());
+					RenderBuilder.BindDescriptorSet(MotionMS->GetPipelineLayout(), MotionMS->GetDescriptorSet(CurrentFrameRT));
+
+					// Dispatch meshlets
+					RenderBuilder.DispatchMesh(VisibleMeshlets, 1, 1);
+
+					GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+				}
+			}
+			else
+#endif
+			{
+				// begin for secondary cmd
+				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				ThreadDrawCalls[I] = 0;
-			}
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					ThreadDrawCalls[I] = 0;
+				}
 #endif
 
-			// wake all worker threads
-			ParallelTask = UHParallelTask::MotionOpaqueTask;
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				WorkerThreads[I]->WakeThread();
-			}
+				// wake all worker threads
+				ParallelTask = UHParallelTask::MotionOpaqueTask;
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					WorkerThreads[I]->WakeThread();
+				}
 
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				WorkerThreads[I]->WaitTask();
-			}
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					WorkerThreads[I]->WaitTask();
+				}
 
 #if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
-			}
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+				}
 #endif
 
-			// execute all recorded batches
-			RenderBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter.WorkerBundles);
+				// execute all recorded batches
+				RenderBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter.WorkerBundles);
+			}
 			RenderBuilder.EndRenderPass();
 		}
 
@@ -94,36 +146,89 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 			RenderBuilder.FlushResourceBarrier();
 
-			RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+#if USE_MESHSHADER_PASS
+			if (GraphicInterface->IsMeshShaderSupported())
+			{
+				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution);
+
+				// bindless table, they should only be bound once
+				if (MotionMeshShaders.size() > 0 && SortedMeshShaderGroupIndex.size() > 0)
+				{
+					std::vector<VkDescriptorSet> BindlessTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
+						, SamplerTable->GetDescriptorSet(CurrentFrameRT)
+						, MeshletTable->GetDescriptorSet(CurrentFrameRT)
+						, PositionTable->GetDescriptorSet(CurrentFrameRT)
+						, UV0Table->GetDescriptorSet(CurrentFrameRT)
+						, IndicesTable->GetDescriptorSet(CurrentFrameRT)
+						, NormalTable->GetDescriptorSet(CurrentFrameRT)
+						, TangentTable->GetDescriptorSet(CurrentFrameRT)
+					};
+					RenderBuilder.BindDescriptorSet(MotionMeshShaders[SortedMeshShaderGroupIndex[0]]->GetPipelineLayout(), BindlessTableSets, GTextureTableSpace);
+				}
+
+				// dispatch mesh based on the MotionObjectMeshShaderData
+				for (size_t Idx = 0; Idx < SortedMeshShaderGroupIndex.size(); Idx++)
+				{
+					const int32_t GroupIndex = SortedMeshShaderGroupIndex[Idx];
+					const uint32_t VisibleMeshlets = static_cast<uint32_t>(MotionTranslucentMeshShaderData[GroupIndex].size());
+					if (VisibleMeshlets == 0)
+					{
+						continue;
+					}
+
+					const UHMotionMeshShader* MotionMS = MotionMeshShaders[GroupIndex].get();
+					if (MotionMS->GetMaterialCache()->IsOpaque())
+					{
+						continue;
+					}
+
+					GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatching motion translucent pass " + MotionMS->GetMaterialCache()->GetName());
+
+					RenderBuilder.BindGraphicState(MotionMS->GetState());
+					RenderBuilder.BindDescriptorSet(MotionMS->GetPipelineLayout(), MotionMS->GetDescriptorSet(CurrentFrameRT));
+
+					// Dispatch meshlets
+					RenderBuilder.DispatchMesh(VisibleMeshlets, 1, 1);
+
+					GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+				}
+			}
+			else
+#endif
+			{
+
+				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				ThreadDrawCalls[I] = 0;
-			}
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					ThreadDrawCalls[I] = 0;
+				}
 #endif
 
-			// wake all worker threads
-			ParallelTask = UHParallelTask::MotionTranslucentTask;
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				WorkerThreads[I]->WakeThread();
-			}
+				// wake all worker threads
+				ParallelTask = UHParallelTask::MotionTranslucentTask;
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					WorkerThreads[I]->WakeThread();
+				}
 
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				WorkerThreads[I]->WaitTask();
-			}
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					WorkerThreads[I]->WaitTask();
+				}
 
 #if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
-			{
-				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
-			}
+				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				{
+					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+				}
 #endif
 
-			// execute all recorded batches
-			RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
+				// execute all recorded batches
+				RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
+			}
+
 			RenderBuilder.EndRenderPass();
 
 			// done rendering, transition depth to shader read

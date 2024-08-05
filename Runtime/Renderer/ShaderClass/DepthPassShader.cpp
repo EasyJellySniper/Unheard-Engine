@@ -124,7 +124,6 @@ void UHDepthMeshShader::OnCompile()
 		, ShaderPS
 		, 1
 		, PipelineLayout);
-	MaterialPassInfo.AS = ShaderAS;
 	MaterialPassInfo.MS = ShaderMS;
 
 	RecreateMaterialState();

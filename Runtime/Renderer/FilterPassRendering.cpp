@@ -34,10 +34,10 @@ void UHDeferredShadingRenderer::CalculateBlurWeights(const int32_t InRadius, flo
 
 // dispatch the gaussian filter, input could be from any 2D source, but the output must be render texture.
 bool UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBuilder
-	, std::string InName
+	, const std::string& InName
 	, UHTexture* Input
 	, UHRenderTexture* Output
-	, UHGaussianFilterConstants Constants)
+	, const UHGaussianFilterConstants& Constants)
 {
 	VkExtent2D FilterResolution;
 	FilterResolution.width = Constants.GBlurResolution[0];
@@ -49,11 +49,9 @@ bool UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBu
 		return false;
 	}
 
-	// request gaussian temp buffer
-	UHRenderTexture* GaussianFilterTempRT0 = GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, Constants.TempRTFormat, true);
-	UHRenderTexture* GaussianFilterTempRT1 = GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, Constants.TempRTFormat, true);
-	TempRenderTextures[GaussianFilterTempRT0->GetId()] = GaussianFilterTempRT0;
-	TempRenderTextures[GaussianFilterTempRT1->GetId()] = GaussianFilterTempRT1;
+	// get gaussian temp buffer
+	UHRenderTexture* GaussianFilterTempRT0 = Constants.GaussianFilterTempRT0[Constants.InputMip];
+	UHRenderTexture* GaussianFilterTempRT1 = Constants.GaussianFilterTempRT1[Constants.InputMip];
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), InName);
 

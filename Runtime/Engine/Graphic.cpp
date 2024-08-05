@@ -139,54 +139,21 @@ void UHGraphic::Release()
 	GraphicsQueue = nullptr;
 
 	// release all shaders
-	for (auto& Shader : ShaderPools)
-	{
-		Shader->Release();
-		Shader.reset();
-	}
-	ShaderPools.clear();
+	ClearContainer(ShaderPools);
 
 	// release all states
-	for (auto& State : StatePools)
-	{
-		State->Release();
-		State.reset();
-	}
-	StatePools.clear();
+	ClearContainer(StatePools);
 
 	// release all RTs
 	ClearSwapChain();
-	for (auto& RT : RTPools)
-	{
-		RT->Release();
-		RT.reset();
-	}
-	RTPools.clear();
+	ClearContainer(RTPools);
 
 	// release all samplers
-	for (auto& Sampler : SamplerPools)
-	{
-		Sampler->Release();
-		Sampler.reset();
-	}
-	SamplerPools.clear();
+	ClearContainer(SamplerPools);
 
-	// relase all texture 2D
-	for (auto& Tex : Texture2DPools)
-	{
-		Tex->ReleaseCPUTextureData();
-		Tex->Release();
-		Tex.reset();
-	}
-	Texture2DPools.clear();
-
-	for (auto& Cube : TextureCubePools)
-	{
-		Cube->ReleaseCPUData();
-		Cube->Release();
-		Cube.reset();
-	}
-	TextureCubePools.clear();
+	// relase all textures
+	ClearContainer(Texture2DPools);
+	ClearContainer(TextureCubePools);
 
 	// release all materials
 	for (auto& Mat : MaterialPools)
@@ -196,12 +163,7 @@ void UHGraphic::Release()
 	MaterialPools.clear();
 
 	// release all queries
-	for (auto& Query : QueryPools)
-	{
-		Query->Release();
-		Query.reset();
-	}
-	QueryPools.clear();
+	ClearContainer(QueryPools);
 
 	// release GPU memory pool
 	ImageSharedMemory->Release();

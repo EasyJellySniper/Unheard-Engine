@@ -41,6 +41,7 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 
 void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("BuildTopLevelAS", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::UpdateTopLevelAS)]);
 	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
 	{
@@ -55,6 +56,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("DispatchRayShadowPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingShadow)]);
 	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
 	{
@@ -95,7 +97,9 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 
 void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("DispatchRayReflectionPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingReflection)]);
+
 	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
 	{
 		if (GRTReflectionResult != nullptr)
@@ -162,18 +166,12 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(MipExtent.width, GThreadGroup2D_X), MathHelpers::RoundUpDivide(MipExtent.height, GThreadGroup2D_Y), 1);
 		}
 
-		UHGaussianFilterConstants Constant;
-		Constant.GBlurRadius = 2;
-		Constant.IterationCount = 2;
-		Constant.TempRTFormat = bHDREnabledRT ? UHTextureFormat::UH_FORMAT_RGBA16F : UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
-		CalculateBlurWeights(Constant.GBlurRadius, Constant.Weights);
-
 		for (uint32_t Mdx = 2; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)
 		{
-			Constant.GBlurResolution[0] = RenderResolution.width >> Mdx;
-			Constant.GBlurResolution[1] = RenderResolution.height >> Mdx;
-			Constant.InputMip = Mdx;
-			DispatchGaussianFilter(RenderBuilder, "Blur Reflection Mip " + std::to_string(Mdx), GRTReflectionResult, GRTReflectionResult, Constant);
+			RayTracingGaussianConsts.GBlurResolution[0] = RenderResolution.width >> Mdx;
+			RayTracingGaussianConsts.GBlurResolution[1] = RenderResolution.height >> Mdx;
+			RayTracingGaussianConsts.InputMip = Mdx;
+			DispatchGaussianFilter(RenderBuilder, "Blur Reflection Mip " + std::to_string(Mdx), GRTReflectionResult, GRTReflectionResult, RayTracingGaussianConsts);
 		}
 
 		for (uint32_t Mdx = 0; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)

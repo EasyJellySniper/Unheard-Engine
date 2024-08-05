@@ -2,6 +2,7 @@
 
 void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("PreReflectionPass", false);
 	if (CurrentScene == nullptr)
 	{
 		return;
@@ -14,15 +15,7 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 	if (bHasRefractionMaterialRT)
 	{
 		// Blur the opaque scene
-		UHGaussianFilterConstants FilterConstants{};
-		FilterConstants.GBlurRadius = 3;
-		FilterConstants.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
-		FilterConstants.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
-		FilterConstants.IterationCount = 2;
-		FilterConstants.TempRTFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
-
-		CalculateBlurWeights(FilterConstants.GBlurRadius, &FilterConstants.Weights[0]);
-		ScreenshotForRefraction("Opaque Scene Blur", RenderBuilder, FilterConstants);
+		ScreenshotForRefraction("Opaque Scene Blur", RenderBuilder, RefractionGaussianConsts);
 	}
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
@@ -30,6 +23,7 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 
 void UHDeferredShadingRenderer::DrawReflectionPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("DrawReflectionPass", false);
 	// pass to draw reflection, this pass will mainly apply reflection to opaque scene
 	if (CurrentScene == nullptr)
 	{

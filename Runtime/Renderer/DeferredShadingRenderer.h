@@ -108,9 +108,9 @@ public:
 	void RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable);
 
 	void CalculateBlurWeights(const int32_t InRadius, float* OutWeights);
-	bool DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, std::string InName
+	bool DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, const std::string& InName
 		, UHTexture* Input, UHRenderTexture* Output
-		, UHGaussianFilterConstants Constants);
+		, const UHGaussianFilterConstants& Constants);
 
 	// occlusion query
 	void CreateOcclusionQuery();
@@ -183,6 +183,8 @@ private:
 
 	// get current skycube
 	UHTextureCube* GetCurrentSkyCube() const;
+
+	void InitGaussianConstants();
 
 
 	/************************************************ rendering functions ************************************************/
@@ -355,6 +357,10 @@ private:
 	UniquePtr<UHGaussianFilterShader> GaussianFilterVShader;
 	bool bIsTemporalReset;
 
+	// gaussian constants
+	UHGaussianFilterConstants RayTracingGaussianConsts;
+	UHGaussianFilterConstants RefractionGaussianConsts;
+
 #if WITH_EDITOR
 	// debug view shader
 	UniquePtr<UHDebugViewShader> DebugViewShader;
@@ -406,9 +412,6 @@ private:
 	UHGPUQuery* OcclusionQuery[GMaxFrameInFlight];
 	UniquePtr<UHRenderBuffer<uint32_t>> OcclusionResultGPU[GMaxFrameInFlight];
 
-	// caches
-	std::unordered_map<uint32_t, UHRenderTexture*> TempRenderTextures;
-
 	// -------------------------------------------- Mesh shader related -------------------------------------------- //
 	UniquePtr<UHMeshTable> PositionTable;
 	UniquePtr<UHMeshTable> UV0Table;
@@ -425,5 +428,11 @@ private:
 	std::vector<int32_t> SortedMeshShaderGroupIndex;
 	std::vector<std::vector<UHMeshShaderData>> VisibleMeshShaderData;
 
+	// motion mesh shader needs another mesh shader data list, as not all visible meshes need to output vector every frame
+	std::vector<std::vector<UHMeshShaderData>> MotionOpaqueMeshShaderData;
+	std::vector<std::vector<UHMeshShaderData>> MotionTranslucentMeshShaderData;
+
 	std::vector<UniquePtr<UHDepthMeshShader>> DepthMeshShaders;
+	std::vector<UniquePtr<UHBaseMeshShader>> BaseMeshShaders;
+	std::vector<UniquePtr<UHMotionMeshShader>> MotionMeshShaders;
 };

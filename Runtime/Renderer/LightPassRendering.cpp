@@ -2,6 +2,7 @@
 
 void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("DispatchLightCulling", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::LightCulling)]);
 	if (CurrentScene == nullptr || (CurrentScene->GetPointLightCount() == 0 && CurrentScene->GetSpotLightCount() == 0))
 	{
@@ -33,6 +34,7 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuil
 
 void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("RenderLightPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::LightPass)]);
 	if (CurrentScene == nullptr || (CurrentScene->GetDirLightCount() == 0 && CurrentScene->GetPointLightCount() && CurrentScene->GetSpotLightCount()))
 	{

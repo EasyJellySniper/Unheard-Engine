@@ -102,3 +102,77 @@ UHGraphicState* UHBasePassShader::GetOcclusionState() const
 {
 	return OcclusionState;
 }
+
+UHBaseMeshShader::UHBaseMeshShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
+	: UHShaderClass(InGfx, Name, typeid(UHBaseMeshShader), InMat, InRenderPass)
+{
+	// system
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+	// object constant
+	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+	// material
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+	// current mesh shader data and renderer instances
+	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+
+	CreateLayoutAndDescriptor(ExtraLayouts);
+
+	OnCompile();
+}
+
+void UHBaseMeshShader::OnCompile()
+{
+	// early out if cached
+	if (GetState() != nullptr && GetState()->GetRenderPassInfo().DepthInfo.bEnableDepthWrite == !Gfx->IsDepthPrePassEnabled())
+	{
+		// restore cached value
+		const UHRenderPassInfo& PassInfo = GetState()->GetRenderPassInfo();
+		ShaderMS = PassInfo.MS;
+		ShaderPS = PassInfo.PS;
+		MaterialPassInfo = PassInfo;
+		return;
+	}
+
+	std::vector<std::string> Defines;
+	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
+	{
+		Defines.push_back("TANGENT_SPACE");
+	}
+
+	ShaderMS = Gfx->RequestShader("BaseMeshShader", "Shaders/BaseMeshShader.hlsl", "BaseMS", "ms_6_5", Defines);
+	UHMaterialCompileData Data{};
+	Data.MaterialCache = MaterialCache;
+	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, Defines);
+
+	// states
+	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
+		// adjust depth info based on depth pre pass setting
+		, UHDepthInfo(true, !Gfx->IsDepthPrePassEnabled(), (Gfx->IsDepthPrePassEnabled()) ? VK_COMPARE_OP_EQUAL : VK_COMPARE_OP_GREATER)
+		, MaterialCache->GetCullMode()
+		, MaterialCache->GetBlendMode()
+		, UHINDEXNONE
+		, ShaderPS
+		, GNumOfGBuffers
+		, PipelineLayout);
+	MaterialPassInfo.MS = ShaderMS;
+
+	RecreateMaterialState();
+}
+
+void UHBaseMeshShader::BindParameters()
+{
+	BindConstant(GSystemConstantBuffer, 0);
+	BindStorage(GObjectConstantBuffer, 1, 0, true);
+	BindConstant(MaterialCache->GetMaterialConst(), 2);
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		BindStorage(GMeshShaderData[Idx][MaterialCache->GetBufferDataIndex()].get(), 3, 0, true, Idx);
+	}
+
+	BindStorage(GRendererInstanceBuffer.get(), 4, 0, true);
+}

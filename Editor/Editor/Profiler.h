@@ -12,6 +12,7 @@ public:
 		, RenderThreadTime(0)
 		, TotalTime(0)
 		, FPS(0)
+		, RendererCount(0)
 		, DrawCallCount(0)
 		, OccludedCallCount(0)
 		, PSOCount(0)
@@ -42,6 +43,7 @@ public:
 	float FPS;
 	float GPUTimes[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
+	int32_t RendererCount;
 	int32_t DrawCallCount;
 	int32_t OccludedCallCount;
 	int32_t PSOCount;

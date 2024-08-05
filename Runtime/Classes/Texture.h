@@ -89,6 +89,8 @@ public:
 	UHTexture();
 	UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings);
 	virtual ~UHTexture() {}
+	// release
+	virtual void Release();
 
 	virtual void UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) {}
 	virtual void GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) {}
@@ -99,9 +101,6 @@ public:
 	void SetRawSourcePath(std::string InPath);
 	void SetExtent(uint32_t Width, uint32_t Height);
 #endif
-
-	// release
-	void Release();
 
 	// set image
 	void SetImage(VkImage InImage);

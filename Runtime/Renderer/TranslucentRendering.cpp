@@ -22,6 +22,7 @@ void UHDeferredShadingRenderer::ScreenshotForRefraction(std::string PassName, UH
 
 void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("RenderTranslucentPass", false);
 	if (CurrentScene == nullptr)
 	{
 		return;

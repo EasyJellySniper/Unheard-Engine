@@ -20,3 +20,12 @@ public:
 
 	void BindParameters(const UHMeshRendererComponent* InRenderer);
 };
+
+class UHMotionMeshShader : public UHShaderClass
+{
+public:
+	UHMotionMeshShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts);
+	virtual void OnCompile() override;
+
+	void BindParameters();
+};

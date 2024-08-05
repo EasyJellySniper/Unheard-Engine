@@ -3,6 +3,7 @@
 // implementation of RenderBasePass(), this pass is a deferred rendering with GBuffers and depth buffer
 void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("RenderBasePass", false);
 	if (CurrentScene == nullptr)
 	{
 		return;
@@ -34,39 +35,85 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.SetViewport(RenderResolution);
 		RenderBuilder.SetScissor(RenderResolution);
 
-		// begin render pass
-		RenderBuilder.BeginRenderPass(BasePassObj, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		// do mesh shader version if it's supported.
+#if USE_MESHSHADER_PASS
+		if (GraphicInterface->IsMeshShaderSupported())
+		{
+			RenderBuilder.BeginRenderPass(BasePassObj, RenderResolution, ClearValues);
+			// bindless table, they should only be bound once
+			if (BaseMeshShaders.size() > 0 && SortedMeshShaderGroupIndex.size() > 0)
+			{
+				std::vector<VkDescriptorSet> BindlessTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
+					, SamplerTable->GetDescriptorSet(CurrentFrameRT)
+					, MeshletTable->GetDescriptorSet(CurrentFrameRT)
+					, PositionTable->GetDescriptorSet(CurrentFrameRT)
+					, UV0Table->GetDescriptorSet(CurrentFrameRT)
+					, IndicesTable->GetDescriptorSet(CurrentFrameRT)
+					, NormalTable->GetDescriptorSet(CurrentFrameRT)
+					, TangentTable->GetDescriptorSet(CurrentFrameRT)
+				};
+				RenderBuilder.BindDescriptorSet(BaseMeshShaders[SortedMeshShaderGroupIndex[0]]->GetPipelineLayout(), BindlessTableSets, GTextureTableSpace);
+			}
+
+			for (size_t Idx = 0; Idx < SortedMeshShaderGroupIndex.size(); Idx++)
+			{
+				const int32_t GroupIndex = SortedMeshShaderGroupIndex[Idx];
+				const uint32_t VisibleMeshlets = static_cast<uint32_t>(VisibleMeshShaderData[GroupIndex].size());
+				if (VisibleMeshlets == 0)
+				{
+					continue;
+				}
+
+				const UHBaseMeshShader* BaseMS = BaseMeshShaders[GroupIndex].get();
+
+				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatching base pass " + BaseMS->GetMaterialCache()->GetName());
+
+				RenderBuilder.BindGraphicState(BaseMS->GetState());
+				RenderBuilder.BindDescriptorSet(BaseMS->GetPipelineLayout(), BaseMS->GetDescriptorSet(CurrentFrameRT));
+
+				// Dispatch meshlets
+				RenderBuilder.DispatchMesh(VisibleMeshlets, 1, 1);
+
+				GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+			}
+		}
+		else
+#endif
+		{
+			// begin render pass
+			RenderBuilder.BeginRenderPass(BasePassObj, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			ThreadDrawCalls[I] = 0;
-			ThreadOccludedCalls[I] = 0;
-		}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				ThreadDrawCalls[I] = 0;
+				ThreadOccludedCalls[I] = 0;
+			}
 #endif
 
-		// wake all worker threads
-		ParallelTask = UHParallelTask::BasePassTask;
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			WorkerThreads[I]->WakeThread();
-		}
+			// wake all worker threads
+			ParallelTask = UHParallelTask::BasePassTask;
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WakeThread();
+			}
 
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			WorkerThreads[I]->WaitTask();
-		}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WaitTask();
+			}
 
 #if WITH_EDITOR
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			RenderBuilder.DrawCalls += ThreadDrawCalls[I];
-			RenderBuilder.OccludedCalls += ThreadOccludedCalls[I];
-		}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+				RenderBuilder.OccludedCalls += ThreadOccludedCalls[I];
+			}
 #endif
 
-		// execute all recorded batches
-		RenderBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
+			// execute all recorded batches
+			RenderBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
+		}
 		RenderBuilder.EndRenderPass();
 
 		// transition states of Gbuffer after base pass, they will be used in the shader

@@ -483,6 +483,7 @@ void UHEngine::EndProfile()
 		Stats.FPS = FPS;
 	}
 
+	Stats.RendererCount = CurrentScene ? static_cast<int32_t>(CurrentScene->GetAllRendererCount()) : 0;
 	Stats.DrawCallCount = UHERenderer->GetDrawCallCount();
 	Stats.OccludedCallCount = UHERenderer->GetOccludedCallCount();
 	Stats.PSOCount = static_cast<int32_t>(UHEGraphic->StatePools.size());

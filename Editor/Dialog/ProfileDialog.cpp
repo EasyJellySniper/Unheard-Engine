@@ -19,6 +19,9 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
 
     // convert stats to string and display them
     const UHStatistics& Stats = InProfiler->GetStatistics();
+    const auto& CPUScopeStats = UHGameTimerScope::GetResiteredGameTime();
+
+    static std::vector<std::stringstream> CPUTimeStats;
 
     if (InGameTimer->GetTotalTime() > 1.0f)
     {
@@ -32,19 +35,16 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << "FPS: " << std::setprecision(4) << Stats.FPS << "\n\n";
 
         // flush scoped time if there is any
-        const auto& CPUScopeStats = UHGameTimerScope::GetResiteredGameTime();
+        CPUTimeStats.clear();
+        CPUTimeStats.resize(CPUScopeStats.size());
         for (size_t Idx = 0; Idx < CPUScopeStats.size(); Idx++)
         {
-            CPUStatTex << CPUScopeStats[Idx].first << ": " << std::setprecision(4) << CPUScopeStats[Idx].second << " ms\n";
+            CPUTimeStats[Idx] << "(" + std::to_string(Idx + 1) + ") " << CPUScopeStats[Idx].first << ": " << std::setprecision(4) << CPUScopeStats[Idx].second << " ms\n";
         }
 
-        if (CPUScopeStats.size() > 0)
-        {
-            CPUStatTex << "\n";
-        }
-        
         // other CPU stats
         CPUStatTex << "--Misc CPU stats--\n";
+        CPUStatTex << "Number of total renderers: " << Stats.RendererCount << "\n";
         CPUStatTex << "Number of draw calls: " << Stats.DrawCallCount << "\n";
         CPUStatTex << "Number of occlusion tests: " << Stats.OccludedCallCount << "\n";
         CPUStatTex << "Number of graphic states: " << Stats.PSOCount << "\n";
@@ -54,6 +54,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << "Number of textures: " << Stats.TextureCount << "\n";
         CPUStatTex << "Number of texture cubes: " << Stats.TextureCubeCount << "\n";
         CPUStatTex << "Number of materials: " << Stats.MateralCount << "\n";
+        CPUStatTex << std::endl;
 
         // GPU stat section
         std::string GPUStatStrings[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)] = { "OcclusionReset"
@@ -100,6 +101,31 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
     {
         ImGui::TableNextColumn();
         ImGui::Text(CPUStatTex.str().c_str());
+
+        // print time-based cpu stat after regular stat
+        const auto& CPUScopeStats = UHGameTimerScope::GetResiteredGameTime();
+        for (size_t Idx = 0; Idx < CPUScopeStats.size(); Idx++)
+        {
+            ImVec4 CPUTimeStatColor;
+            if (CPUScopeStats[Idx].second <= 0.1)
+            {
+                CPUTimeStatColor = ImVec4(1, 1, 1, 1);
+            }
+            else if (CPUScopeStats[Idx].second > 0.1)
+            {
+                CPUTimeStatColor = ImVec4(1, 1, 0, 1);
+            }
+            else if (CPUScopeStats[Idx].second > 5)
+            {
+                CPUTimeStatColor = ImVec4(1, 0.6, 0, 1);
+            }
+            else
+            {
+                CPUTimeStatColor = ImVec4(1, 0, 0, 1);
+            }
+            ImGui::TextColored(CPUTimeStatColor, CPUTimeStats[Idx].str().c_str());
+        }
+
         ImGui::TableNextColumn();
         ImGui::Text(GPUStatTex.str().c_str());
         ImGui::EndTable();

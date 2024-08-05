@@ -2,6 +2,7 @@
 
 void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("RenderDepthPrePass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::DepthPrePass)]);
 	if (CurrentScene == nullptr || !bEnableDepthPrepassRT)
 	{
@@ -18,12 +19,13 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 		RenderBuilder.SetScissor(RenderResolution);
 
 		// do mesh shader version if it's supported.
+#if USE_MESHSHADER_PASS
 		if (GraphicInterface->IsMeshShaderSupported())
 		{
 			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue);
 
-			// bind texture table, they should only be bound once
-			if (DepthMeshShaders.size() > 0)
+			// bindless table, they should only be bound once
+			if (DepthMeshShaders.size() > 0 && SortedMeshShaderGroupIndex.size() > 0)
 			{
 				std::vector<VkDescriptorSet> BindlessTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
 					, SamplerTable->GetDescriptorSet(CurrentFrameRT)
@@ -32,7 +34,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 					, UV0Table->GetDescriptorSet(CurrentFrameRT)
 					, IndicesTable->GetDescriptorSet(CurrentFrameRT)
 				};
-				RenderBuilder.BindDescriptorSet(DepthMeshShaders[0]->GetPipelineLayout(), BindlessTableSets, GTextureTableSpace);
+				RenderBuilder.BindDescriptorSet(DepthMeshShaders[SortedMeshShaderGroupIndex[0]]->GetPipelineLayout(), BindlessTableSets, GTextureTableSpace);
 			}
 
 			for (size_t Idx = 0; Idx < SortedMeshShaderGroupIndex.size(); Idx++)
@@ -46,7 +48,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 
 				const UHDepthMeshShader* DepthMS = DepthMeshShaders[GroupIndex].get();
 
-				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatching " + DepthMS->GetMaterialCache()->GetName() + " batches");
+				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatching depth pass " + DepthMS->GetMaterialCache()->GetName());
 
 				RenderBuilder.BindGraphicState(DepthMS->GetState());
 				RenderBuilder.BindDescriptorSet(DepthMS->GetPipelineLayout(), DepthMS->GetDescriptorSet(CurrentFrameRT));
@@ -58,6 +60,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 			}
 		}
 		else
+#endif
 		{
 			// begin render pass
 			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);

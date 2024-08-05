@@ -238,3 +238,7 @@ lol, found the cause. I stupidly set the wrong descriptor.
 05-08-2024:
 Still added the shader define in vertex input for the minimal IA bound. This brings back a few shader variants but worthy.
 Also removed redundant skycube binding in base shader, as there is another pass for reflection already.
+Implemented base mesh shader too! Reduced lots of draw calls.
+Ta! Applied mesh shader for the motion vector passes as well. Now it's almost done. Translucent pass is the only one that can't be batched.
+Added more CPU scope time in profile dialog. Cached gaussian constants for use.
+Next is to deal with the editor behavior of mesh shaders or make it work with occlusion query.

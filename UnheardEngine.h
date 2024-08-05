@@ -44,6 +44,9 @@ inline std::mutex GLogMutex;
 #define UH_ENUM_VALUE(x) static_cast<int32_t>(x)
 #define UH_ENUM_VALUE_U(x) static_cast<uint32_t>(x)
 
+// for testing, might remove this one day
+#define USE_MESHSHADER_PASS 1
+
 inline void UHE_LOG(std::wstring InString)
 {
 #if WITH_EDITOR
@@ -62,4 +65,24 @@ inline void UHE_LOG(std::string InString)
 	std::unique_lock<std::mutex> Lock(GLogMutex);
 	GLogBuffer.push_back(InString);
 #endif
+}
+
+template<typename T>
+inline void ClearContainer(std::vector<T>& InVector)
+{
+	for (auto& Element : InVector)
+	{
+		UH_SAFE_RELEASE(Element);
+	}
+	InVector.clear();
+}
+
+template<typename T1, typename T2>
+inline void ClearContainer(std::unordered_map<T1, T2>& InMap)
+{
+	for (auto& Element : InMap)
+	{
+		UH_SAFE_RELEASE(Element.second);
+	}
+	InMap.clear();
 }

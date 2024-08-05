@@ -48,6 +48,8 @@ UHTexture2D* GWhiteTexture;
 UHTextureCube* GBlackCube;
 
 std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMeshShaderData[GMaxFrameInFlight];
+std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionOpaqueShaderData[GMaxFrameInFlight];
+std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTranslucentShaderData[GMaxFrameInFlight];
 UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 inline std::vector<UHTexture*> GetGBuffersSRV()

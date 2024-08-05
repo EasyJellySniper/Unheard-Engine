@@ -16,6 +16,12 @@ UHTextureCube::UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureF
 	TextureType = UHTextureType::TextureCube;
 }
 
+void UHTextureCube::Release()
+{
+	UHTexture::Release();
+	ReleaseCPUData();
+}
+
 void UHTextureCube::ReleaseCPUData()
 {
 	for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -25,6 +31,7 @@ void UHTextureCube::ReleaseCPUData()
 		{
 			Buffer.Release();
 		}
+		RawStageBuffers[Idx].clear();
 	}
 }
 

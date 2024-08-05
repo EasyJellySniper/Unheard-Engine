@@ -65,6 +65,8 @@ extern std::vector<UHTexture*> GetGBuffersSRV();
 
 // mesh shader data for use
 extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMeshShaderData[GMaxFrameInFlight];
+extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionOpaqueShaderData[GMaxFrameInFlight];
+extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTranslucentShaderData[GMaxFrameInFlight];
 
 // this is also used for ray tracing
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;

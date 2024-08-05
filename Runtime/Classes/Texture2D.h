@@ -13,6 +13,7 @@ class UHTexture2D : public UHTexture
 public:
 	UHTexture2D();
 	UHTexture2D(std::string InName, std::string InSourcePath, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings);
+	virtual void Release() override;
 
 	void ReleaseCPUTextureData();
 	bool Import(std::filesystem::path InTexturePath);

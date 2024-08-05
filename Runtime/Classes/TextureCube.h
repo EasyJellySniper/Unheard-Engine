@@ -12,6 +12,9 @@ class UHTextureCube : public UHTexture
 public:
 	UHTextureCube();
 	UHTextureCube(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHTextureSettings InSettings);
+
+	virtual void Release() override;
+
 	void ReleaseCPUData();
 	void SetCubeData(std::vector<uint8_t> InData, int32_t Slice);
 	std::vector<uint8_t> GetCubeData(int32_t Slice) const;

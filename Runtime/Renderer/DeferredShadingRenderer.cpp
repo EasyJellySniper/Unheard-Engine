@@ -40,6 +40,8 @@ void UHDeferredShadingRenderer::Resize()
 	// need to rewrite descriptors after resize
 	UpdateDescriptors();
 
+	InitGaussianConstants();
+
 	bIsTemporalReset = true;
 }
 
@@ -519,16 +521,14 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	{
 		MeshShaderInstancesCounter[Idx] = 0;
 		VisibleMeshShaderData[Idx].clear();
+		MotionOpaqueMeshShaderData[Idx].clear();
+		MotionTranslucentMeshShaderData[Idx].clear();
 	}
 
 	// collect visible mesh shader instances for opaque objects
-	for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
+	for (UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMesh* Mesh = Renderer->GetMesh();
-		if (Mesh == nullptr)
-		{
-			continue;
-		}
 
 		// set the instance to the corresponding material and it's current rendering index
 		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
@@ -543,21 +543,71 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 
 		UHMeshShaderData Data;
 		Data.RendererIndex = Renderer->GetBufferDataIndex();
+		bool bClearMotionDirty = false;
+
 		for (uint32_t MeshletIdx = 0; MeshletIdx < Mesh->GetMeshletCount(); MeshletIdx++)
 		{
 			Data.MeshletIndex = MeshletIdx;
 			VisibleMeshShaderData[MatDataIndex].push_back(Data);
+
+			// push to motion mesh shader data list if it's motion dirty
+			if (Renderer->IsMotionDirty(CurrentFrameGT))
+			{
+				MotionOpaqueMeshShaderData[MatDataIndex].push_back(Data);
+				bClearMotionDirty = true;
+			}
+		}
+
+		if (bClearMotionDirty)
+		{
+			Renderer->SetMotionDirty(false, CurrentFrameGT);
+		}
+	}
+
+	// collect visible mesh shader instances for translucent objects, only for motion
+	for (int32_t Idx = (int32_t)TranslucentsToRender.size() - 1; Idx >= 0; Idx--)
+	{
+		UHMeshRendererComponent* Renderer = TranslucentsToRender[Idx];
+
+		const UHMesh* Mesh = Renderer->GetMesh();
+		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
+		const int32_t NewIndex = MeshShaderInstancesCounter[MatDataIndex]++;
+
+		if (NewIndex == 0)
+		{
+			SortedMeshShaderGroupIndex.push_back(MatDataIndex);
+		}
+
+		UHMeshShaderData Data;
+		Data.RendererIndex = Renderer->GetBufferDataIndex();
+
+		// translucent always output motion for now
+		for (uint32_t MeshletIdx = 0; MeshletIdx < Mesh->GetMeshletCount(); MeshletIdx++)
+		{
+			Data.MeshletIndex = MeshletIdx;
+			MotionTranslucentMeshShaderData[MatDataIndex].push_back(Data);
 		}
 	}
 
 	// mesh shader group size shouldn't be bigger than total material count
-	assert(SortedMeshShaderGroupIndex.size() < CurrentScene->GetMaterialCount());
+	assert(SortedMeshShaderGroupIndex.size() <= CurrentScene->GetMaterialCount());
 
 	for (size_t Idx = 0; Idx < CurrentScene->GetMaterialCount(); Idx++)
 	{
 		if (VisibleMeshShaderData[Idx].size() > 0)
 		{
 			GMeshShaderData[CurrentFrameGT][Idx]->UploadData(VisibleMeshShaderData[Idx].data(), 0, VisibleMeshShaderData[Idx].size() * sizeof(UHMeshShaderData));
+		}
+
+		if (MotionOpaqueMeshShaderData[Idx].size() > 0)
+		{
+			GMotionOpaqueShaderData[CurrentFrameGT][Idx]->UploadData(MotionOpaqueMeshShaderData[Idx].data(), 0, MotionOpaqueMeshShaderData[Idx].size() * sizeof(UHMeshShaderData));
+		}
+
+		if (MotionTranslucentMeshShaderData[Idx].size() > 0)
+		{
+			GMotionTranslucentShaderData[CurrentFrameGT][Idx]->UploadData(MotionTranslucentMeshShaderData[Idx].data(), 0
+				, MotionTranslucentMeshShaderData[Idx].size() * sizeof(UHMeshShaderData));
 		}
 	}
 }

@@ -95,4 +95,24 @@ uint GetVertexIndex(ByteAddressBuffer InBuffer, uint InIndex, uint InIndiceType)
     return Index;
 }
 
+float3 LocalToWorldNormalMS(float3 Normal, float3x3 WorldIT)
+{
+	// mul(IT_M, norm) => mul(norm, I_M) => {dot(norm, I_M.col0), dot(norm, I_M.col1), dot(norm, I_M.col2)}
+    return normalize(mul(Normal, (float3x3)WorldIT));
+}
+
+float3 LocalToWorldDirMS(float3 Dir, float3x3 World)
+{
+    return normalize(mul(Dir, (float3x3)World));
+}
+
+float3x3 CreateTBNMS(float3 InWorldNormal, float4 InTangent, float3x3 World)
+{
+    float3 Tangent = LocalToWorldDirMS(InTangent.xyz, World);
+    float3 Binormal = cross(InWorldNormal, Tangent) * InTangent.w;
+
+    float3x3 TBN = float3x3(Tangent, Binormal, InWorldNormal);
+    return TBN;
+}
+
 #endif

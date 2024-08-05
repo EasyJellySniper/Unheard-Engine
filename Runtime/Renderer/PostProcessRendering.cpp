@@ -56,6 +56,7 @@ void UHDeferredShadingRenderer::Dispatch2DEffect(UHShaderClass* InShader, UHRend
 
 void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("RenderPostProcessing", false);
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Postprocessing Passes");
 	// post process RT starts from undefined, transition it first
 	RenderBuilder.ResourceBarrier(GPostProcessRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -125,6 +126,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder)
 {
+	UHGameTimerScope Scope("RenderSceneToSwapChain", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::PresentToSwapChain)]);
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Scene to SwapChain Pass");
 
