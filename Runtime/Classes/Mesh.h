@@ -26,7 +26,6 @@ public:
 		: VertexCount(0)
 		, VertexOffset(0)
 		, PrimitiveCount(0)
-		, PrimitiveOffset(0)
 	{
 
 	}
@@ -34,7 +33,6 @@ public:
 	uint32_t VertexCount;
 	uint32_t VertexOffset;
 	uint32_t PrimitiveCount;
-	uint32_t PrimitiveOffset;
 };
 
 // Mesh class of unheard engine
@@ -133,8 +131,9 @@ private:
 	BoundingBox MeshBound;
 
 	// meshlet stuff, a mesh can be divided into multiple meshlets
-	static const uint32_t MaxVertexPerMeshlet = 128;
-	static const uint32_t MaxPrimitivePerMeshlet = 128;
+	// try to keep the MaxVertexPerMeshlet a multiply of 3 of MaxPrimitivePerMeshlet
+	static const uint32_t MaxVertexPerMeshlet = 126;
+	static const uint32_t MaxPrimitivePerMeshlet = 42;
 
 	uint32_t NumMeshlets;
 	std::vector<UHMeshlet> MeshletsData;

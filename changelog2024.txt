@@ -223,3 +223,14 @@ Next let me check if we can bind the renderer instance in flight instead of crea
 
 02-08-2024:
 Refactor the data binding for depth mesh shader.
+
+03-08-2024:
+Got progression for the mesh shader! At least it can render properly when meshlet number is 1.
+Still need to figure out why the multiple meshlet not working well.
+My theory is the vertex list and primitive list must match, so let me refactor the why to split meshlet tomorrow.
+
+04-08-2024:
+Finally, I got the proper depth mesh shader! But there is a chance to have flickering for distant objects.
+I'll check if it's caused by the MS or something else.
+Find the reason...it seems I must upload all data in a buffer or bind exactly the same amount. Though it doesn't make sense..
+lol, found the cause. I stupidly set the wrong descriptor.

@@ -61,7 +61,10 @@ void UHRTShadowShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0);
 
-	// TLAS will be bound on fly (slot 1)
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		BindTLAS(GTopLevelAS[Idx].get(), 1, Idx);
+	}
 
 	BindRWImage(GRTSharedTextureRG, 2);
 

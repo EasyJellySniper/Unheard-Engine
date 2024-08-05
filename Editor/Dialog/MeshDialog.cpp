@@ -86,7 +86,7 @@ void UHMeshDialog::Update(bool& bIsDialogActive)
 		ImGui::TableNextColumn();
 		if (CurrentMeshIndex != UHINDEXNONE)
 		{
-			ImGui::Text(("Number of triangles: " + std::to_string(Meshes[CurrentMeshIndex]->GetVertexCount() / 3)).c_str());
+			ImGui::Text(("Number of triangles: " + std::to_string(Meshes[CurrentMeshIndex]->GetIndicesCount() / 3)).c_str());
 			ImGui::Image(CurrentTextureDS, ImVec2(512, 512));
 		}
 

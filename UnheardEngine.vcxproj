@@ -690,11 +690,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\BaseAmplificationShader.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Shaders\DepthMeshShader.hlsl">
       <FileType>Document</FileType>
     </None>

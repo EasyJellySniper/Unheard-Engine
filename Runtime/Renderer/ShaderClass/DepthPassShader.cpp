@@ -77,7 +77,7 @@ UHDepthMeshShader::UHDepthMeshShader(UHGraphic* InGfx, std::string Name, VkRende
 	: UHShaderClass(InGfx, Name, typeid(UHDepthMeshShader), InMat, InRenderPass)
 {
 	// system
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 	// object constant
 	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -85,10 +85,9 @@ UHDepthMeshShader::UHDepthMeshShader(UHGraphic* InGfx, std::string Name, VkRende
 	// material
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	// current index amplification data, renderer instance
-	AddLayoutBinding(1, VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_TASK_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	// current mesh shader data and renderer instances
+	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	CreateLayoutAndDescriptor(ExtraLayouts);
 
@@ -102,7 +101,6 @@ void UHDepthMeshShader::OnCompile()
 	{
 		// restore cached value
 		const UHRenderPassInfo& PassInfo = GetState()->GetRenderPassInfo();
-		ShaderAS = PassInfo.AS;
 		ShaderMS = PassInfo.MS;
 		ShaderPS = PassInfo.PS;
 		MaterialPassInfo = PassInfo;
@@ -116,7 +114,6 @@ void UHDepthMeshShader::OnCompile()
 		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data);
 	}
 
-	ShaderAS = Gfx->RequestShader("BaseAmplificationShader", "Shaders/BaseAmplificationShader.hlsl", "MainAS", "as_6_5");
 	ShaderMS = Gfx->RequestShader("DepthMeshShader", "Shaders/DepthMeshShader.hlsl", "DepthMS", "ms_6_5");
 
 	// states
@@ -138,7 +135,11 @@ void UHDepthMeshShader::BindParameters()
 	BindConstant(GSystemConstantBuffer, 0);
 	BindStorage(GObjectConstantBuffer, 1, 0, true);
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
-	BindStorage(GVisibleRendererIndexBuffer[MaterialCache->GetBufferDataIndex()].get(), 3);
-	BindStorage(GAmplificationParameters[MaterialCache->GetBufferDataIndex()].get(), 4);
-	BindStorage(GRendererInstanceBuffer.get(), 5, 0, true);
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		BindStorage(GMeshShaderData[Idx][MaterialCache->GetBufferDataIndex()].get(), 3, 0, true, Idx);
+	}
+
+	BindStorage(GRendererInstanceBuffer.get(), 4, 0, true);
 }

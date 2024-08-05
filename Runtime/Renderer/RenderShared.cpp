@@ -28,6 +28,7 @@ UHRenderTexture* GPreviousSceneResult;
 UHRenderTexture* GRTShadowResult;
 UHRenderTexture* GRTSharedTextureRG;
 UHRenderTexture* GRTReflectionResult;
+UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
 UHRenderTexture* GQuarterBlurredScene;
 UHRenderTexture* GOpaqueSceneResult;
@@ -46,8 +47,7 @@ UHTexture2D* GBlackTexture;
 UHTexture2D* GWhiteTexture;
 UHTextureCube* GBlackCube;
 
-std::vector<UniquePtr<UHRenderBuffer<UHASParameter>>> GAmplificationParameters;
-std::vector <UniquePtr<UHRenderBuffer<uint32_t>>> GVisibleRendererIndexBuffer;
+std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMeshShaderData[GMaxFrameInFlight];
 UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 inline std::vector<UHTexture*> GetGBuffersSRV()

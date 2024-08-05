@@ -55,6 +55,11 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 		IBFlags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	}
 
+	if (InGfx->IsMeshShaderSupported())
+	{
+		IBFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	}
+
 	UHGPUMemory* SharedMemory = InGfx->GetMeshSharedMemory();
 
 	PositionBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, SharedMemory);
@@ -535,28 +540,24 @@ void UHMesh::CheckAndConvertToIndices16()
 
 void UHMesh::CreateMeshlets(UHGraphic* InGfx)
 {
-	// calculate number of meshlets by primitive count and round up
-	NumMeshlets = MathHelpers::RoundUpDivide(IndiceCount / 3, MaxPrimitivePerMeshlet);
+	// calculate number of meshlets by indices count and round up
+	NumMeshlets = MathHelpers::RoundUpDivide(IndiceCount, MaxVertexPerMeshlet);
 
-	int32_t LocalPrimitiveCount = IndiceCount / 3;
-	int32_t LocalVertexCount = VertexCount;
+	int32_t LocalIndiceCount = IndiceCount;
 	for (uint32_t Idx = 0; Idx < NumMeshlets; Idx++)
 	{
 		UHMeshlet Meshlet{};
-		Meshlet.PrimitiveCount = std::min(MaxPrimitivePerMeshlet, (uint32_t)LocalPrimitiveCount);
-		Meshlet.PrimitiveOffset = Idx > 0 ? MeshletsData[Idx - 1].PrimitiveCount : 0;
 
-		if (LocalVertexCount > 0)
-		{
-			Meshlet.VertexCount = std::min(MaxVertexPerMeshlet, (uint32_t)LocalVertexCount);
-			Meshlet.VertexOffset = Idx > 0 ? MeshletsData[Idx - 1].VertexCount : 0;
-		}
+		// set vertex count as max indice count
+		// in the mesh shader, it will map to the corresponding vertex data
+		Meshlet.VertexCount = std::min(MaxVertexPerMeshlet, (uint32_t)LocalIndiceCount);
+		Meshlet.VertexOffset = Idx > 0 ? MeshletsData[Idx - 1].VertexCount + MeshletsData[Idx - 1].VertexOffset : 0;
+		Meshlet.PrimitiveCount = Meshlet.VertexCount / 3;
 
 		MeshletsData.push_back(Meshlet);
 
-		LocalVertexCount -= MaxVertexPerMeshlet;
-		LocalPrimitiveCount -= MaxPrimitivePerMeshlet;
-		if (LocalPrimitiveCount <= 0)
+		LocalIndiceCount -= Meshlet.VertexCount;
+		if (LocalIndiceCount <= 0)
 		{
 			break;
 		}

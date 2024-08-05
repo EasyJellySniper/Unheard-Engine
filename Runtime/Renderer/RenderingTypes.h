@@ -335,20 +335,13 @@ enum class UHConstantTypes
 // renderer instance data
 struct UHRendererInstance
 {
-	uint32_t RendererIndex;
 	uint32_t MeshIndex;
-	uint32_t NumMeshlets;
 	uint32_t IndiceType;
 };
 
-// amplification shader parameters
-struct UHASParameter
+// mesh shader data
+struct UHMeshShaderData
 {
-	UHASParameter()
-		: MaxInstances(0)
-	{
-
-	}
-
-	uint32_t MaxInstances;
+	uint32_t RendererIndex;
+	uint32_t MeshletIndex;
 };

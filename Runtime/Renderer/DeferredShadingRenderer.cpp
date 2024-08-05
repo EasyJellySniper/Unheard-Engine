@@ -441,6 +441,10 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 		return;
 	}
 
+	// recommend to reserve capacity during initialization
+	OpaquesToRender.clear();
+	TranslucentsToRender.clear();
+
 	// reset counting counter
 	for (int32_t Idx = 0; Idx < MaxCountingElement; Idx++)
 	{
@@ -460,10 +464,6 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 		CountingIndex = std::min(CountingIndex, MaxCountingElement - 1);
 		CountingRenderers[CountingIndex].push_back(Renderer);
 	}
-
-	// recommend to reserve capacity during initialization
-	OpaquesToRender.clear();
-	TranslucentsToRender.clear();
 
 	// collect renderers from counting sort result, front-to-back for opaque
 	for (int32_t CountIdx = 0; CountIdx < MaxCountingElement; CountIdx++)
@@ -514,12 +514,22 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	}
 
 	// reset all counters & clear sorted visiable mesh shader group index
-	memset(MeshShaderInstancesCounter.data(), 0, MeshShaderInstancesCounter.size() * sizeof(int32_t));
 	SortedMeshShaderGroupIndex.clear();
+	for (size_t Idx = 0; Idx < CurrentScene->GetMaterialCount(); Idx++)
+	{
+		MeshShaderInstancesCounter[Idx] = 0;
+		VisibleMeshShaderData[Idx].clear();
+	}
 
 	// collect visible mesh shader instances for opaque objects
 	for (const UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
+		const UHMesh* Mesh = Renderer->GetMesh();
+		if (Mesh == nullptr)
+		{
+			continue;
+		}
+
 		// set the instance to the corresponding material and it's current rendering index
 		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
 		const int32_t NewIndex = MeshShaderInstancesCounter[MatDataIndex]++;
@@ -529,10 +539,15 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 		if (NewIndex == 0)
 		{
 			SortedMeshShaderGroupIndex.push_back(MatDataIndex);
-			VisibleRendererIndices[MatDataIndex].clear();
 		}
 
-		VisibleRendererIndices[MatDataIndex].push_back(Renderer->GetBufferDataIndex());
+		UHMeshShaderData Data;
+		Data.RendererIndex = Renderer->GetBufferDataIndex();
+		for (uint32_t MeshletIdx = 0; MeshletIdx < Mesh->GetMeshletCount(); MeshletIdx++)
+		{
+			Data.MeshletIndex = MeshletIdx;
+			VisibleMeshShaderData[MatDataIndex].push_back(Data);
+		}
 	}
 
 	// mesh shader group size shouldn't be bigger than total material count
@@ -540,7 +555,10 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 
 	for (size_t Idx = 0; Idx < CurrentScene->GetMaterialCount(); Idx++)
 	{
-		GVisibleRendererIndexBuffer[Idx]->UploadAllData(VisibleRendererIndices[Idx].data(), VisibleRendererIndices[Idx].size() * sizeof(uint32_t));
+		if (VisibleMeshShaderData[Idx].size() > 0)
+		{
+			GMeshShaderData[CurrentFrameGT][Idx]->UploadData(VisibleMeshShaderData[Idx].data(), 0, VisibleMeshShaderData[Idx].size() * sizeof(UHMeshShaderData));
+		}
 	}
 }
 
@@ -628,6 +646,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				{
 					BuildTopLevelAS(AsyncComputeBuilder);
 					GenerateSH9Pass(AsyncComputeBuilder);
+					OcclusionQueryReset(AsyncComputeBuilder);
 				}
 
 				GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
@@ -655,7 +674,10 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 					SceneRenderBuilder.FlushResourceBarrier();
 				}
 
-				OcclusionQueryReset(SceneRenderBuilder);
+				if (!bEnableAsyncComputeRT)
+				{
+					OcclusionQueryReset(SceneRenderBuilder);
+				}
 				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);

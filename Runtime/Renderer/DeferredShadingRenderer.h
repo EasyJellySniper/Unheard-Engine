@@ -381,8 +381,6 @@ private:
 	UHGPUQuery* GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
-	UniquePtr<UHAccelerationStructure> TopLevelAS[GMaxFrameInFlight];
-
 	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;
 	UniquePtr<UHSoftRTShadowShader> SoftRTShadowShader;
 	UniquePtr<UHRTShadowShader> RTShadowShader;
@@ -425,6 +423,7 @@ private:
 	// access following data with material's buffer data index
 	std::vector<int32_t> MeshShaderInstancesCounter;
 	std::vector<int32_t> SortedMeshShaderGroupIndex;
-	std::vector<std::vector<uint32_t>> VisibleRendererIndices;
+	std::vector<std::vector<UHMeshShaderData>> VisibleMeshShaderData;
+
 	std::vector<UniquePtr<UHDepthMeshShader>> DepthMeshShaders;
 };

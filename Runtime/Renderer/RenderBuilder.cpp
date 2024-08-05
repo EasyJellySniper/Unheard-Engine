@@ -731,6 +731,14 @@ void UHRenderBuilder::Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz)
 	vkCmdDispatch(CmdList, Gx, Gy, Gz);
 }
 
+void UHRenderBuilder::DispatchMesh(uint32_t Gx, uint32_t Gy, uint32_t Gz)
+{
+	GVkCmdDrawMeshTasksEXT(CmdList, Gx, Gy, Gz);
+#if WITH_EDITOR
+	DrawCalls++;
+#endif
+}
+
 // occlusion query functions
 void UHRenderBuilder::ResetOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx, uint32_t Count)
 {

@@ -17,37 +17,81 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 		RenderBuilder.SetViewport(RenderResolution);
 		RenderBuilder.SetScissor(RenderResolution);
 
-		// begin render pass
-		RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		// do mesh shader version if it's supported.
+		if (GraphicInterface->IsMeshShaderSupported())
+		{
+			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue);
+
+			// bind texture table, they should only be bound once
+			if (DepthMeshShaders.size() > 0)
+			{
+				std::vector<VkDescriptorSet> BindlessTableSets = { TextureTable->GetDescriptorSet(CurrentFrameRT)
+					, SamplerTable->GetDescriptorSet(CurrentFrameRT)
+					, MeshletTable->GetDescriptorSet(CurrentFrameRT) 
+					, PositionTable->GetDescriptorSet(CurrentFrameRT)
+					, UV0Table->GetDescriptorSet(CurrentFrameRT)
+					, IndicesTable->GetDescriptorSet(CurrentFrameRT)
+				};
+				RenderBuilder.BindDescriptorSet(DepthMeshShaders[0]->GetPipelineLayout(), BindlessTableSets, GTextureTableSpace);
+			}
+
+			for (size_t Idx = 0; Idx < SortedMeshShaderGroupIndex.size(); Idx++)
+			{
+				const int32_t GroupIndex = SortedMeshShaderGroupIndex[Idx];
+				const uint32_t VisibleMeshlets = static_cast<uint32_t>(VisibleMeshShaderData[GroupIndex].size());
+				if (VisibleMeshlets == 0)
+				{
+					continue;
+				}
+
+				const UHDepthMeshShader* DepthMS = DepthMeshShaders[GroupIndex].get();
+
+				GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatching " + DepthMS->GetMaterialCache()->GetName() + " batches");
+
+				RenderBuilder.BindGraphicState(DepthMS->GetState());
+				RenderBuilder.BindDescriptorSet(DepthMS->GetPipelineLayout(), DepthMS->GetDescriptorSet(CurrentFrameRT));
+
+				// Dispatch meshlets
+				RenderBuilder.DispatchMesh(VisibleMeshlets, 1, 1);
+
+				GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+			}
+		}
+		else
+		{
+			// begin render pass
+			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			ThreadDrawCalls[I] = 0;
-		}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				ThreadDrawCalls[I] = 0;
+			}
 #endif
 
-		// wake all worker threads
-		ParallelTask = UHParallelTask::DepthPassTask;
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			WorkerThreads[I]->WakeThread();
-		}
+			// wake all worker threads
+			ParallelTask = UHParallelTask::DepthPassTask;
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WakeThread();
+			}
 
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			WorkerThreads[I]->WaitTask();
-		}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				WorkerThreads[I]->WaitTask();
+			}
 
 #if WITH_EDITOR
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
-		{
-			RenderBuilder.DrawCalls += ThreadDrawCalls[I];
-		}
+			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			{
+				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
+			}
 #endif
 
-		// execute all recorded batches
-		RenderBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
+			// execute all recorded batches
+			RenderBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
+		}
+
 		RenderBuilder.EndRenderPass();
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());

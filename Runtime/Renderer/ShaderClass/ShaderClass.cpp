@@ -34,7 +34,6 @@ bool UHShaderClass::IsDescriptorLayoutValid(std::type_index InType)
 
 UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_index InType, UHMaterial* InMat, VkRenderPass InRenderPass)
 	: Gfx(InGfx)
-	, Name(InName)
 	, TypeIndexCache(InType)
 	, MaterialCache(InMat)
 	, MaterialPassInfo(UHRenderPassInfo())
@@ -54,6 +53,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, PushConstantRange(VkPushConstantRange{})
 	, bPushDescriptor(false)
 {
+	UHObject::Name = InName;
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		DescriptorSets[Idx] = nullptr;
@@ -342,6 +342,11 @@ UHGraphicState* UHShaderClass::GetRTState() const
 UHComputeState* UHShaderClass::GetComputeState() const
 {
 	return ComputeStateTable[GetId()];
+}
+
+UHMaterial* UHShaderClass::GetMaterialCache() const
+{
+	return MaterialCache;
 }
 
 UHRenderBuffer<UHShaderRecord>* UHShaderClass::GetRayGenTable() const

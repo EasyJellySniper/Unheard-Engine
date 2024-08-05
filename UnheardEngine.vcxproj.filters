@@ -841,7 +841,6 @@
     <None Include="Shaders\ReflectionComputeShader.hlsl" />
     <None Include="Shaders\UHMaterialCommon.hlsli" />
     <None Include="Shaders\RayTracing\RTReflectionMipmap.hlsl" />
-    <None Include="Shaders\BaseAmplificationShader.hlsl" />
     <None Include="Shaders\UHMeshShaderCommon.hlsli" />
     <None Include="Shaders\DepthMeshShader.hlsl" />
   </ItemGroup>

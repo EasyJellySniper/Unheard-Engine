@@ -4,6 +4,7 @@
 #include "../Classes/RenderTexture.h"
 #include "../Classes/Sampler.h"
 #include "../Classes/TextureCube.h"
+#include "../Classes/AccelerationStructure.h"
 
 // define shared resource in renderer, the goal is to reduce parameter sending between renderer and shader
 extern UniquePtr<UHRenderBuffer<UHSystemConstants>> GSystemConstantBuffer[GMaxFrameInFlight];
@@ -36,10 +37,11 @@ extern UHRenderTexture* GOpaqueSceneResult;
 extern UHRenderTexture* GTranslucentBump;
 extern UHRenderTexture* GTranslucentSmoothness;
 
-// ray-tracing textures
+// ray-tracing
 extern UHRenderTexture* GRTShadowResult;
 extern UHRenderTexture* GRTSharedTextureRG;
 extern UHRenderTexture* GRTReflectionResult;
+extern UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
 // cubemaps
 extern UHTextureCube* GSkyLightCube;
@@ -60,9 +62,9 @@ extern UHTextureCube* GBlackCube;
 extern std::vector<UHTexture*> GetGBuffersSRV();
 
 // --------------------------- mesh shader data
-// AS Parameter for use
-extern std::vector<UniquePtr<UHRenderBuffer<UHASParameter>>> GAmplificationParameters;
-extern std::vector <UniquePtr<UHRenderBuffer<uint32_t>>> GVisibleRendererIndexBuffer;
+
+// mesh shader data for use
+extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMeshShaderData[GMaxFrameInFlight];
 
 // this is also used for ray tracing
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;

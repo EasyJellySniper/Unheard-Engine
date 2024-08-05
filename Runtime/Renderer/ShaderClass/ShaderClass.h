@@ -180,6 +180,7 @@ public:
 	UHGraphicState* GetState() const;
 	UHGraphicState* GetRTState() const;
 	UHComputeState* GetComputeState() const;
+	UHMaterial* GetMaterialCache() const;
 	UHRenderBuffer<UHShaderRecord>* GetRayGenTable() const;
 	UHRenderBuffer<UHShaderRecord>* GetHitGroupTable() const;
 	UHRenderBuffer<UHShaderRecord>* GetMissTable() const;
@@ -207,7 +208,6 @@ protected:
 	void InitHitGroupTable(size_t NumMaterials);
 
 	UHGraphic* Gfx;
-	std::string Name;
 	std::type_index TypeIndexCache;
 	UHMaterial* MaterialCache;
 	VkRenderPass RenderPassCache;

@@ -1,20 +1,18 @@
 #ifndef UHMESHSHADERCOMMAND_H
 #define UHMESHSHADERCOMMAND_H
 
-#define MESHSHADER_GROUP_SIZE 128
-#define MESHSHADER_MAX_VERTEX 128
-#define MESHSHADER_MAX_PRIMITIVE 128
+#define MESHSHADER_GROUP_SIZE 126
+// 126: closest multplt of three to 128
+// 42: vertex count / 3
+#define MESHSHADER_MAX_VERTEX 126
+#define MESHSHADER_MAX_PRIMITIVE 42
 
-struct UHRendererInstance
+// on the C++ side, it will count total number of meshlets to dispatch for each material group
+// and this is the list to store the shader to meshlet and renderer data
+struct UHMeshShaderData
 {
-    // renderer index to lookup object constants
     uint RendererIndex;
-    // mesh index to lookup mesh data
-    uint MeshIndex;
-    // num meshlets to dispatch
-    uint NumMeshlets;
-    // indice type
-    uint IndiceType;
+    uint MeshletIndex;
 };
 
 // meshlet data
@@ -23,7 +21,6 @@ struct UHMeshlet
     uint VertexCount;
     uint VertexOffset;
     uint PrimitiveCount;
-    uint PrimitiveOffset;
 };
 
 struct ObjectConstants
@@ -33,6 +30,9 @@ struct ObjectConstants
     float4x4 GPrevWorld;
     uint GInstanceIndex;
     uint GNeedWorldTBN;
+    
+    // align to 256 bytes, the buffer is used as storage in mesh shader, the structure must be the same as c++ define
+    float CPUPadding[14];
 };
 
 uint3 GetIndices(ByteAddressBuffer InBuffer, uint InPrimIndex, uint InIndiceType)
@@ -71,6 +71,29 @@ uint3 GetIndices(ByteAddressBuffer InBuffer, uint InPrimIndex, uint InIndiceType
     }
 	
     return Indices;
+}
+
+uint GetVertexIndex(ByteAddressBuffer InBuffer, uint InIndex, uint InIndiceType)
+{
+    uint IbStride = 4;
+    uint Index = 0;
+    
+    if (InIndiceType == 1)
+    {
+        Index = InBuffer.Load(InIndex * IbStride);
+    }
+    else
+    {
+        // similar calculation as GetIndices(), but only return one index
+        uint WorldOffset = (InIndex & 1);
+        uint ByteOffset = (InIndex / 2) * IbStride;
+
+        // Grab a pair of 16-bit indices, and mask out proper 16-bits.
+        const uint Two16BitIndices = InBuffer.Load(ByteOffset);
+        Index = (Two16BitIndices >> (WorldOffset * 16)) & 0xffff;
+    }
+    
+    return Index;
 }
 
 #endif

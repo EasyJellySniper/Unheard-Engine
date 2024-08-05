@@ -207,33 +207,31 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	}
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
 
-	if (!GraphicInterface->IsRayTracingEnabled() || MeshInstanceCount == 0)
-	{
-		return;
-	}
-
 	// create top level AS after bottom level AS is done
 	// can't be created in the same command line!! All bottom level AS must be created before creating top level AS
-	CreationCmd = GraphicInterface->BeginOneTimeCmd();
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	if (GraphicInterface->IsRayTracingEnabled())
 	{
-		UH_SAFE_RELEASE(TopLevelAS[Idx]);
-		TopLevelAS[Idx] = GraphicInterface->RequestAccelerationStructure();
-		RTInstanceCount = TopLevelAS[Idx]->CreateTopAS(Renderers, CreationCmd);
-	}
-	GraphicInterface->EndOneTimeCmd(CreationCmd);
-
-	// release scratch data of AS after creation
-	for (const UHMeshRendererComponent* Renderer : Renderers)
-	{
-		if (Renderer->GetMesh()->GetBottomLevelAS())
+		CreationCmd = GraphicInterface->BeginOneTimeCmd();
+		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
-			Renderer->GetMesh()->GetBottomLevelAS()->ReleaseScratch();
+			UH_SAFE_RELEASE(GTopLevelAS[Idx]);
+			GTopLevelAS[Idx] = GraphicInterface->RequestAccelerationStructure();
+			RTInstanceCount = GTopLevelAS[Idx]->CreateTopAS(Renderers, CreationCmd);
+		}
+		GraphicInterface->EndOneTimeCmd(CreationCmd);
+
+		// release scratch data of AS after creation
+		for (const UHMeshRendererComponent* Renderer : Renderers)
+		{
+			if (Renderer->GetMesh()->GetBottomLevelAS())
+			{
+				Renderer->GetMesh()->GetBottomLevelAS()->ReleaseScratch();
+			}
 		}
 	}
 
 	// create mesh tables
-	if (GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled())
+	if ((GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled()) && MeshInstanceCount > 0)
 	{
 		PositionTable = MakeUnique<UHMeshTable>(GraphicInterface, "PositionTable", MeshInstanceCount);
 		UV0Table = MakeUnique<UHMeshTable>(GraphicInterface, "UV0Table", MeshInstanceCount);
@@ -393,12 +391,19 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		}
 	}
 
-	MeshShaderInstancesCounter.resize(CurrentScene->GetMaterialCount());
-	GAmplificationParameters.resize(CurrentScene->GetMaterialCount());
-	SortedMeshShaderGroupIndex.resize(CurrentScene->GetMaterialCount());
-	VisibleRendererIndices.resize(CurrentScene->GetMaterialCount());
-	GVisibleRendererIndexBuffer.resize(CurrentScene->GetMaterialCount());
-	DepthMeshShaders.resize(CurrentScene->GetMaterialCount());
+	if (GraphicInterface->IsMeshShaderSupported())
+	{
+		MeshShaderInstancesCounter.resize(CurrentScene->GetMaterialCount());
+		SortedMeshShaderGroupIndex.resize(CurrentScene->GetMaterialCount());
+		VisibleMeshShaderData.resize(CurrentScene->GetMaterialCount());
+
+		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			GMeshShaderData[Idx].resize(CurrentScene->GetMaterialCount());
+		}
+
+		DepthMeshShaders.resize(CurrentScene->GetMaterialCount());
+	}
 
 	for (UHMaterial* Mat : CurrentScene->GetMaterials())
 	{
@@ -490,15 +495,13 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 	}
 
-	// ------------------------------------------------ Material shader descriptor update
-	for (const UHMaterial* Mat : CurrentScene->GetMaterials())
+	// ------------------------------------------------ Mesh shader descriptor update
+	if (GraphicInterface->IsMeshShaderSupported())
 	{
-		if (Mat->GetMaterialUsages().bIsSkybox)
+		for (size_t Idx = 0; Idx < CurrentScene->GetMaterialCount(); Idx++)
 		{
-			continue;
+			DepthMeshShaders[Idx]->BindParameters();
 		}
-
-		DepthMeshShaders[Mat->GetBufferDataIndex()]->BindParameters();
 	}
 
 	// ------------------------------------------------ Lighting culling descriptor update
@@ -990,8 +993,6 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 			UHRendererInstance RendererInstance;
 			RendererInstance.MeshIndex = Mesh->GetBufferDataIndex();
 			RendererInstance.IndiceType = Mesh->IsIndexBufer32Bit() ? 1 : 0;
-			RendererInstance.RendererIndex = Renderers[Idx]->GetBufferDataIndex();
-			RendererInstance.NumMeshlets = Mesh->GetMeshletCount();
 			RendererInstances.push_back(RendererInstance);
 		}
 
@@ -1143,28 +1144,25 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 
 		if (GraphicInterface->IsRayTracingEnabled())
 		{
-			UH_SAFE_RELEASE(TopLevelAS[Idx]);
+			UH_SAFE_RELEASE(GTopLevelAS[Idx]);
 		}
 	}
 
 	UH_SAFE_RELEASE(GRendererInstanceBuffer);
 	UH_SAFE_RELEASE(GSH9Data);
 
-	for (auto& Param : GAmplificationParameters)
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		Param->Release();
+		for (auto& Data : GMeshShaderData[Idx])
+		{
+			UH_SAFE_RELEASE(Data);
+		}
+		GMeshShaderData[Idx].clear();
 	}
-	GAmplificationParameters.clear();
-
-	for (auto& Buffer : GVisibleRendererIndexBuffer)
-	{
-		UH_SAFE_RELEASE(Buffer);
-	}
-	GVisibleRendererIndexBuffer.clear();
 
 	MeshShaderInstancesCounter.clear();
 	SortedMeshShaderGroupIndex.clear();
-	VisibleRendererIndices.clear();
+	VisibleMeshShaderData.clear();
 }
 
 void UHDeferredShadingRenderer::UpdateTextureDescriptors()
@@ -1503,7 +1501,7 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 {
 	// only create when mesh shader is supported
-	if (!GraphicInterface->IsMeshShaderSupported())
+	if (!GraphicInterface->IsMeshShaderSupported() || MeshInstanceCount == 0)
 	{
 		return;
 	}
@@ -1520,24 +1518,30 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
 	DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
 
-	// create AS parameter buffer
-	UH_SAFE_RELEASE(GAmplificationParameters[MatDataIndex]);
-	GAmplificationParameters[MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHASParameter>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	// count total meshlet number of a material group
+	uint32_t MeshletCountOfMaterialGroup = 0;
 
-	UHASParameter Parameter{};
 	const std::vector<UHObject*>& Objects = InMat->GetReferenceObjects();
 	for (UHObject* Obj : Objects)
 	{
-		if (UHMeshRendererComponent* Renderer = CastObject<UHMeshRendererComponent>(Obj))
+		if (const UHMeshRendererComponent* Renderer = CastObject<UHMeshRendererComponent>(Obj))
 		{
-			Parameter.MaxInstances++;
+			if (const UHMesh* Mesh = Renderer->GetMesh())
+			{
+				MeshletCountOfMaterialGroup += Mesh->GetMeshletCount();
+			}
 		}
 	}
-	GAmplificationParameters[MatDataIndex]->UploadData(&Parameter, 0);
+
+	// create mesh shader data for this material group
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(GMeshShaderData[Idx][MatDataIndex]);
+		GMeshShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	}
 
 	MeshShaderInstancesCounter[MatDataIndex] = 0;
-	VisibleRendererIndices[MatDataIndex].resize(Parameter.MaxInstances);
-	GVisibleRendererIndexBuffer[MatDataIndex] = GraphicInterface->RequestRenderBuffer<uint32_t>(Parameter.MaxInstances, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	VisibleMeshShaderData[MatDataIndex].reserve(MeshletCountOfMaterialGroup);
 }
 
 void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable)

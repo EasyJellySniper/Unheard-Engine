@@ -24,3 +24,4 @@ inline PFN_vkSetHdrMetadataEXT GVkSetHdrMetadataEXT;
 inline PFN_vkCmdPushDescriptorSetKHR GVkCmdPushDescriptorSetKHR;
 inline PFN_vkCmdBeginConditionalRenderingEXT GVkCmdBeginConditionalRenderingEXT;
 inline PFN_vkCmdEndConditionalRenderingEXT GVkCmdEndConditionalRenderingEXT;
+inline PFN_vkCmdDrawMeshTasksEXT GVkCmdDrawMeshTasksEXT;

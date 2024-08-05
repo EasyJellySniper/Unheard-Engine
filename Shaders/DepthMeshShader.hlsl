@@ -6,6 +6,13 @@
 // object constants
 StructuredBuffer<ObjectConstants> RendererConstants : register(t1);
 
+// mesh shader data to lookup renderer index & meshlet index
+// this should be accessed via Gid, since C++ side is dispatching (TotalMeshlets,1,1)
+StructuredBuffer<UHMeshShaderData> MeshShaderData : register(t3);
+
+// renderer instances
+StructuredBuffer<UHRendererInstance> RendererInstances : register(t4);
+
 // all mesh data, fetched by mesh index first
 StructuredBuffer<UHMeshlet> Meshlets[] : register(t0, space3);
 StructuredBuffer<float3> PositionBuffer[] : register(t0, space4);
@@ -17,31 +24,41 @@ ByteAddressBuffer IndicesBuffer[] : register(t0, space6);
 [NumThreads(MESHSHADER_GROUP_SIZE, 1, 1)]
 [OutputTopology("triangle")]
 void DepthMS(
-    uint DTid : SV_DispatchThreadID,
-    uint GTid : SV_GroupThreadID,
     uint Gid : SV_GroupID,
-    in payload UHRendererInstance InInstance,
+    uint GTid : SV_GroupThreadID,
     out vertices DepthVertexOutput OutVerts[MESHSHADER_MAX_VERTEX],
     out indices uint3 OutTris[MESHSHADER_MAX_PRIMITIVE]
 )
 {
-    uint RendererIndex = InInstance.RendererIndex;
-    uint MeshIndex = InInstance.MeshIndex;
-    uint IndiceType = InInstance.IndiceType;
-    uint MeshletIndex = Gid;
-
-    UHMeshlet Meshlet = Meshlets[MeshIndex][MeshletIndex];
+    // fetch data and set mesh outputs
+    UHMeshShaderData ShaderData = MeshShaderData[Gid];
+    UHRendererInstance InInstance = RendererInstances[ShaderData.RendererIndex];
+    UHMeshlet Meshlet = Meshlets[InInstance.MeshIndex][ShaderData.MeshletIndex];
+    
     SetMeshOutputCounts(Meshlet.VertexCount, Meshlet.PrimitiveCount);
     
+    // output triangles first
+    if (GTid < Meshlet.PrimitiveCount)
+    {
+        // output triangle indices in order, the vertex output below will get the correct unique vertex to output
+        // so I don't need to mess around here
+        OutTris[GTid] = uint3(GTid * 3 + 0, GTid * 3 + 1, GTid * 3 + 2);
+    }
+    
+    // output vertrex next
     if (GTid < Meshlet.VertexCount)
     {
+        // convert local index to vertex index, and lookup the corresponding vertex
+        // it's like outputting the "IndicesData" in UHMesh class, which holds the unique vertex indices
+        uint VertexIndex = GetVertexIndex(IndicesBuffer[InInstance.MeshIndex], GTid + Meshlet.VertexOffset, InInstance.IndiceType);
+        
         // fetch vertex data and output
         DepthVertexOutput Output = (DepthVertexOutput)0;
-        Output.Position.xyz = PositionBuffer[MeshIndex][GTid + Meshlet.VertexOffset];
-        Output.UV0 = UV0Buffer[MeshIndex][GTid + Meshlet.VertexOffset];
+        Output.Position.xyz = PositionBuffer[InInstance.MeshIndex][VertexIndex];
+        Output.UV0 = UV0Buffer[InInstance.MeshIndex][VertexIndex];
         
         // transformation
-        ObjectConstants Constant = RendererConstants[RendererIndex];
+        ObjectConstants Constant = RendererConstants[ShaderData.RendererIndex];
         float3 WorldPos = mul(float4(Output.Position.xyz, 1.0f), Constant.GWorld).xyz;
 
         float4x4 JitterMatrix = GetDistanceScaledJitterMatrix(length(WorldPos - GCameraPos));
@@ -49,11 +66,5 @@ void DepthMS(
         Output.Position = mul(Output.Position, JitterMatrix);
         
         OutVerts[GTid] = Output;
-    }
-
-    if (GTid < Meshlet.PrimitiveCount)
-    {
-        // fetch primitive data and output
-        OutTris[GTid] = GetIndices(IndicesBuffer[MeshIndex], GTid + Meshlet.PrimitiveOffset, IndiceType);
     }
 }

@@ -243,18 +243,19 @@ public:
     }
 
     // upload data with individual offset, similar to upload all but copy a buffer stride instead
-    void UploadData(void* SrcData, int64_t Offset)
+    void UploadData(void* SrcData, int64_t Offset, size_t InCopySize = 0)
     {
         // upload buffer is mapped when initialization, simply copy it
+        const int64_t CopySize = (InCopySize == 0) ? BufferStride : static_cast<int64_t>(InCopySize);
         if (bIsUploadBuffer)
         {
-            memcpy_s(&DstData[Offset * BufferStride], BufferSize, SrcData, BufferStride);
+            memcpy_s(&DstData[Offset * BufferStride], BufferSize, SrcData, CopySize);
             return;
         }
 
         // for non-upload buffer, map from start offset and copy 
-        vkMapMemory(LogicalDevice, BufferMemory, Offset * BufferStride, BufferStride, 0, reinterpret_cast<void**>(&DstData));
-        memcpy_s(&DstData[0], BufferSize, SrcData, BufferStride);
+        vkMapMemory(LogicalDevice, BufferMemory, Offset * BufferStride, CopySize, 0, reinterpret_cast<void**>(&DstData));
+        memcpy_s(&DstData[0], BufferSize, SrcData, CopySize);
         vkUnmapMemory(LogicalDevice, BufferMemory);
     }
 
@@ -271,6 +272,11 @@ public:
     int64_t GetBufferStride() const
     {
         return BufferStride;
+    }
+
+    uint64_t GetElementCount() const
+    {
+        return ElementCount;
     }
 
     std::vector<T> ReadbackData()

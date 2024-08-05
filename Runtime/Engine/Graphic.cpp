@@ -366,6 +366,7 @@ bool UHGraphic::CreateInstance()
 	GVkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdPushDescriptorSetKHR");
 	GVkCmdBeginConditionalRenderingEXT = (PFN_vkCmdBeginConditionalRenderingEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginConditionalRenderingEXT");
 	GVkCmdEndConditionalRenderingEXT = (PFN_vkCmdEndConditionalRenderingEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndConditionalRenderingEXT");
+	GVkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdDrawMeshTasksEXT");
 
 	return true;
 }

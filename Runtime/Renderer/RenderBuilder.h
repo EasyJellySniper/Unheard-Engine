@@ -132,6 +132,7 @@ public:
 
 	// dispatch call
 	void Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz);
+	void DispatchMesh(uint32_t Gx, uint32_t Gy, uint32_t Gz);
 
 	// occlusion query
 	void ResetOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx, uint32_t Count);

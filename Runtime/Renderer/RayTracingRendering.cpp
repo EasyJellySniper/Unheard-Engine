@@ -50,7 +50,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 	// https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#general-tips-for-building-acceleration-structures
 	// From Microsoft tips: Rebuild top-level acceleration structure every frame
 	// but I still choose to update AS instead of rebuilding, FPS is higher with updating
-	TopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT, RTCullingDistanceRT);
+	GTopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT, RTCullingDistanceRT);
 }
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
@@ -67,9 +67,6 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 
 	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
 	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-	
-	// TLAS bind
-	RTShadowShader->BindTLAS(TopLevelAS[CurrentFrameRT].get(), 1, CurrentFrameRT);
 
 	// bind descriptors and RT states
 	// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!
@@ -118,7 +115,6 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_GENERAL, Mdx));
 	}
 	RenderBuilder.FlushResourceBarrier();
-	RTReflectionShader->BindTLAS(TopLevelAS[CurrentFrameRT].get(), 1, CurrentFrameRT);
 
 	// bind descriptors and RT states
 	// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!

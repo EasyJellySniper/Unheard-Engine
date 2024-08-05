@@ -202,4 +202,12 @@ struct UHBoundingBox
     float3 BoxMin;
 };
 
+struct UHRendererInstance
+{
+    // mesh index to lookup mesh data
+    uint MeshIndex;
+    // indice type
+    uint IndiceType;
+};
+
 #endif
