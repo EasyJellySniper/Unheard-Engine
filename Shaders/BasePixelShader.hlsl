@@ -3,8 +3,6 @@
 #include "../Shaders/UHLightCommon.hlsli"
 #include "../Shaders/UHMaterialCommon.hlsli"
 
-TextureCube EnvCube : register(t6);
-
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
 SamplerState UHSamplerTable[] : register(t0, space2);
@@ -54,15 +52,13 @@ void BasePS(VertexOutput Vin
 	VertexNormal *= (bIsFrontFace) ? 1 : -1;
 
     float3 BumpNormal = VertexNormal;
-	UHBRANCH
-    if ((GMaterialFeature & UH_TANGENT_SPACE))
-    {
-        BumpNormal = MaterialInput.Normal;
+#if TANGENT_SPACE
+    BumpNormal = MaterialInput.Normal;
 
-		// tangent to world space
-        BumpNormal = mul(BumpNormal, Vin.WorldTBN);
-        BumpNormal *= (bIsFrontFace) ? 1 : -1;
-    }
+	// tangent to world space
+    BumpNormal = mul(BumpNormal, Vin.WorldTBN);
+    BumpNormal *= (bIsFrontFace) ? 1 : -1;
+#endif
 
 	// output specular color and smoothness
 	float3 Specular = MaterialInput.Specular;

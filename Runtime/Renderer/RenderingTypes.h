@@ -90,10 +90,9 @@ struct UHObjectConstants
 	XMFLOAT4X4 GWorldIT;
 	XMFLOAT4X4 GPrevWorld;
 	uint32_t InstanceIndex;
-	uint32_t GNeedWorldTBN;
 
 	// align to 256 bytes
-	float CPUPadding[14];
+	float CPUPadding[15];
 };
 
 struct UHDirectionalLightConstants

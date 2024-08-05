@@ -60,15 +60,13 @@ void MotionObjectPS(MotionVertexOutput Vin
         VertexNormal *= (bIsFrontFace) ? 1 : -1;
 		
         float3 BumpNormal = VertexNormal;
-		UHBRANCH
-        if ((GMaterialFeature & UH_TANGENT_SPACE))
-        {
-            BumpNormal = MaterialInput.Normal;
+#if TANGENT_SPACE
+        BumpNormal = MaterialInput.Normal;
 
-			// tangent to world space
-            BumpNormal = mul(BumpNormal, Vin.WorldTBN);
-            BumpNormal *= (bIsFrontFace) ? 1 : -1;
-        }
+		// tangent to world space
+        BumpNormal = mul(BumpNormal, Vin.WorldTBN);
+        BumpNormal *= (bIsFrontFace) ? 1 : -1;
+#endif
 		
 		// shared with opaque vertex normal, mark alpha as UH_TRANSLUCENT_MASK here for differentiate
         OutNormal = float4(EncodeNormal(VertexNormal), UH_TRANSLUCENT_MASK);

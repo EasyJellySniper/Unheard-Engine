@@ -29,10 +29,9 @@ struct ObjectConstants
     float4x4 GWorldIT;
     float4x4 GPrevWorld;
     uint GInstanceIndex;
-    uint GNeedWorldTBN;
     
     // align to 256 bytes, the buffer is used as storage in mesh shader, the structure must be the same as c++ define
-    float CPUPadding[14];
+    float CPUPadding[15];
 };
 
 uint3 GetIndices(ByteAddressBuffer InBuffer, uint InPrimIndex, uint InIndiceType)

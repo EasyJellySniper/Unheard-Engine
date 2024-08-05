@@ -79,11 +79,17 @@ void UHMotionObjectPassShader::OnCompile()
 		return;
 	}
 
-	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0");
+	std::vector<std::string> Defines;
+	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
+	{
+		Defines.push_back("TANGENT_SPACE");
+	}
+
+	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", Defines);
 
 	UHMaterialCompileData Data;
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data);
+	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, Defines);
 
 	// states, enable depth test, and write depth for translucent object only
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache,

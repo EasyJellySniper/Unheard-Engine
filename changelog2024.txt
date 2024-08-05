@@ -234,3 +234,7 @@ Finally, I got the proper depth mesh shader! But there is a chance to have flick
 I'll check if it's caused by the MS or something else.
 Find the reason...it seems I must upload all data in a buffer or bind exactly the same amount. Though it doesn't make sense..
 lol, found the cause. I stupidly set the wrong descriptor.
+
+05-08-2024:
+Still added the shader define in vertex input for the minimal IA bound. This brings back a few shader variants but worthy.
+Also removed redundant skycube binding in base shader, as there is another pass for reflection already.

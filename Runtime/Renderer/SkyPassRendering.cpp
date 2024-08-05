@@ -31,11 +31,6 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 		}
 	}
 
-	for (auto& BaseShader : BasePassShaders)
-	{
-		BaseShader.second->BindSkyCube();
-	}
-
 	for (auto& TransShader : TranslucentPassShaders)
 	{
 		TransShader.second->BindSkyCube();

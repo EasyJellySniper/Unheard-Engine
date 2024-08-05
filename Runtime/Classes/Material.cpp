@@ -188,6 +188,7 @@ void UHMaterial::PostImport()
 
 	AllocateMaterialBuffer();
 	AllocateRTMaterialBuffer();
+	UpdateMaterialUsage();
 }
 
 void UHMaterial::SetName(std::string InName)
@@ -255,8 +256,7 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	}
 
 	// update usages before uploading
-	MaterialUsages.bIsTangentSpace = MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Normal)]->GetSrcPin() != nullptr;
-	MaterialUsages.bUseRefraction = MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Refraction)]->GetSrcPin() != nullptr;
+	UpdateMaterialUsage();
 
 	// upload data one by one, this must be following the definitions in GetCBufferDefineCode()
 	size_t BufferAddress = 0;
@@ -399,6 +399,12 @@ bool UHMaterial::operator==(const UHMaterial& InMat)
 		&& InMat.CullMode == CullMode
 		&& InMat.BlendMode == BlendMode
 		&& InMat.CutoffValue == InMat.CutoffValue;
+}
+
+void UHMaterial::UpdateMaterialUsage()
+{
+	MaterialUsages.bIsTangentSpace = MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Normal)]->GetSrcPin() != nullptr;
+	MaterialUsages.bUseRefraction = MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Refraction)]->GetSrcPin() != nullptr;
 }
 
 #if WITH_EDITOR
@@ -833,10 +839,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHE_LOG("Material: Mismatched EditNodes and EditGUIRelativePos size.\n");
 	}
 
-	if (MaterialNode->GetInputs()[UH_ENUM_VALUE(UHMaterialInputs::Normal)]->GetSrcPin() != nullptr)
-	{
-		MaterialUsages.bIsTangentSpace = true;
-	}
+	UpdateMaterialUsage();
 
 	GetRegisteredTextureNames();
 	GetCBufferDefineCode(MaterialBufferSize);

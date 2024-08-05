@@ -10,7 +10,6 @@ public:
 	virtual void OnCompile() override;
 
 	void BindParameters(const UHMeshRendererComponent* InRenderer);
-	void BindSkyCube();
 
 	void RecreateOcclusionState();
 	UHGraphicState* GetOcclusionState() const;

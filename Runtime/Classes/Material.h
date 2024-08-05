@@ -135,6 +135,8 @@ public:
 #endif
 
 private:
+	void UpdateMaterialUsage();
+
 	std::vector<std::string> RegisteredTextureNames;
 	std::vector<int32_t> RegisteredTextureIndexes;
 	std::string SourcePath;

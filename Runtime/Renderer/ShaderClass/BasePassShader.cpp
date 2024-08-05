@@ -26,9 +26,6 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// Bind envcube and sampler
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
 	bOcclusionTest = bInOcclusionTest;
 	CreateLayoutAndDescriptor(ExtraLayouts);
@@ -48,10 +45,16 @@ void UHBasePassShader::OnCompile()
 		return;
 	}
 
-	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0");
+	std::vector<std::string> Defines;
+	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
+	{
+		Defines.push_back("TANGENT_SPACE");
+	}
+
+	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", Defines);
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data);
+	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, Defines);
 	
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
@@ -77,13 +80,6 @@ void UHBasePassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 	BindStorage(Mesh->GetUV0Buffer(), 3, 0, true);
 	BindStorage(Mesh->GetNormalBuffer(), 4, 0, true);
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
-
-	BindSkyCube();
-}
-
-void UHBasePassShader::BindSkyCube()
-{
-	BindImage(GSkyLightCube, 6);
 }
 
 void UHBasePassShader::RecreateOcclusionState()

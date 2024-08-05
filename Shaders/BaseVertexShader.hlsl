@@ -19,16 +19,16 @@ VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 	Vout.Position = mul(Vout.Position, JitterMatrix);
 	Vout.UV0 = UV0Buffer[Vid];
 
+#if TANGENT_SPACE
 	// calculate world TBN if normal map is used
-	UHBRANCH
-	if (GNeedWorldTBN)
-    {
-        Vout.WorldTBN = CreateTBN(LocalToWorldNormal(NormalBuffer[Vid]), TangentBuffer[Vid]);
-    }
+    Vout.WorldTBN = CreateTBN(LocalToWorldNormal(NormalBuffer[Vid]), TangentBuffer[Vid]);
+#endif
 
 	// transform normal by world IT
     Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
+#if TRANSLUCENT
 	Vout.WorldPos = WorldPos;
+#endif
 
 	return Vout;
 }

@@ -50,12 +50,17 @@ struct VertexOutput
 	float4 Position : SV_POSITION;
 	float2 UV0 : TEXCOORD0;
 	
+#if TANGENT_SPACE
 	// output TBN if normal mapping enabled
 	float3x3 WorldTBN : TEXCOORD2;
+#endif
 
 	// will always output vertex normal
 	float3 Normal : NORMAL;
+	
+#if TRANSLUCENT
 	float3 WorldPos : TEXCOORD5;
+#endif
 };
 
 struct DepthVertexOutput
@@ -70,8 +75,12 @@ struct MotionVertexOutput
 	float2 UV0 : TEXCOORD0;
 	float4 CurrPos : TEXCOORD1;
 	float4 PrevPos : TEXCOORD2;
+	
+#if TANGENT_SPACE
 	// output TBN if normal mapping enabled
     float3x3 WorldTBN : TEXCOORD3;
+#endif
+	
 	float3 Normal : NORMAL;
 };
 
@@ -139,7 +148,6 @@ cbuffer ObjectConstants : register(UHOBJ_BIND)
 	float4x4 GWorldIT;
 	float4x4 GPrevWorld;
 	uint GInstanceIndex;
-    uint GNeedWorldTBN;
 }
 
 // material inputs from graph system

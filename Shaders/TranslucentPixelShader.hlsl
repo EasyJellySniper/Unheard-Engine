@@ -67,19 +67,15 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 
     float3 BumpNormal = 0;
     float2 RefractScale = 1;
-    UHBRANCH
-    if ((GMaterialFeature & UH_TANGENT_SPACE))
-    {
-        BumpNormal = MaterialInput.Normal;
-        RefractScale *= BumpNormal.xy;
+#if TANGENT_SPACE
+    BumpNormal = MaterialInput.Normal;
+    RefractScale *= BumpNormal.xy;
         
-	    // tangent to world space
-        BumpNormal = mul(BumpNormal, Vin.WorldTBN);
-    }
-    else
-    {
-        BumpNormal = normalize(Vin.Normal);
-    }
+	// tangent to world space
+    BumpNormal = mul(BumpNormal, Vin.WorldTBN);
+#else    
+    BumpNormal = normalize(Vin.Normal);
+#endif
     BumpNormal *= (bIsFrontFace) ? 1 : -1;
     
     // Base Color PBR

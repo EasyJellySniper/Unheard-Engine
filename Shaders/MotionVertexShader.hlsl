@@ -24,12 +24,10 @@ MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_Vert
 	Vout.UV0 = UV0Buffer[Vid];
 	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
 	
+#if TANGENT_SPACE
 	// calculate world TBN if normal map is used
-	UHBRANCH
-    if (GNeedWorldTBN)
-    {
-        Vout.WorldTBN = CreateTBN(Vout.Normal, TangentBuffer[Vid]);
-    }
+    Vout.WorldTBN = CreateTBN(Vout.Normal, TangentBuffer[Vid]);
+#endif
 
 	return Vout;
 }
