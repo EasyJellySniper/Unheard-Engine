@@ -45,10 +45,10 @@ void UHDepthPassShader::OnCompile()
 	{
 		UHMaterialCompileData Data;
 		Data.MaterialCache = MaterialCache;
-		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data);
+		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data, MaterialCache->GetShaderDefines());
 	}
 
-	ShaderVS = Gfx->RequestShader("DepthPassVS", "Shaders/DepthVertexShader.hlsl", "DepthVS", "vs_6_0");
+	ShaderVS = Gfx->RequestShader("DepthPassVS", "Shaders/DepthVertexShader.hlsl", "DepthVS", "vs_6_0", MaterialCache->GetShaderDefines());
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache, UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)
@@ -111,10 +111,10 @@ void UHDepthMeshShader::OnCompile()
 	{
 		UHMaterialCompileData Data;
 		Data.MaterialCache = MaterialCache;
-		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data);
+		ShaderPS = Gfx->RequestMaterialShader("DepthPassPS", "Shaders/DepthPixelShader.hlsl", "DepthPS", "ps_6_0", Data, MaterialCache->GetShaderDefines());
 	}
 
-	ShaderMS = Gfx->RequestShader("DepthMeshShader", "Shaders/DepthMeshShader.hlsl", "DepthMS", "ms_6_5");
+	ShaderMS = Gfx->RequestShader("DepthMeshShader", "Shaders/DepthMeshShader.hlsl", "DepthMS", "ms_6_5", MaterialCache->GetShaderDefines());
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache, UHDepthInfo(true, true, VK_COMPARE_OP_GREATER)

@@ -53,29 +53,27 @@ void MotionObjectPS(MotionVertexOutput Vin
     OutMipRate = 0;
     
 	// output a few buffer for special purposes (mainly used in ray tracing)
-	UHBRANCH
-    if (GBlendMode > UH_ISMASKED)
-    {
-        float3 VertexNormal = normalize(Vin.Normal);
-        VertexNormal *= (bIsFrontFace) ? 1 : -1;
+#if TRANSLUCENT
+    float3 VertexNormal = normalize(Vin.Normal);
+    VertexNormal *= (bIsFrontFace) ? 1 : -1;
 		
-        float3 BumpNormal = VertexNormal;
+    float3 BumpNormal = VertexNormal;
 #if TANGENT_SPACE
-        BumpNormal = MaterialInput.Normal;
+    BumpNormal = MaterialInput.Normal;
 
-		// tangent to world space
-        BumpNormal = mul(BumpNormal, Vin.WorldTBN);
-        BumpNormal *= (bIsFrontFace) ? 1 : -1;
+	// tangent to world space
+    BumpNormal = mul(BumpNormal, Vin.WorldTBN);
+    BumpNormal *= (bIsFrontFace) ? 1 : -1;
 #endif
 		
-		// shared with opaque vertex normal, mark alpha as UH_TRANSLUCENT_MASK here for differentiate
-        OutNormal = float4(EncodeNormal(VertexNormal), UH_TRANSLUCENT_MASK);
-        OutBump = float4(EncodeNormal(BumpNormal), UH_TRANSLUCENT_MASK);
-        OutSmoothness = 1.0f - MaterialInput.Roughness;
+	// shared with opaque vertex normal, mark alpha as UH_TRANSLUCENT_MASK here for differentiate
+    OutNormal = float4(EncodeNormal(VertexNormal), UH_TRANSLUCENT_MASK);
+    OutBump = float4(EncodeNormal(BumpNormal), UH_TRANSLUCENT_MASK);
+    OutSmoothness = 1.0f - MaterialInput.Roughness;
 		
-        float2 Dx = ddx_fine(Vin.UV0);
-        float2 Dy = ddy_fine(Vin.UV0);
-        float DeltaMax = max(length(Dx), length(Dy));
-        OutMipRate = DeltaMax;
-    }
+    float2 Dx = ddx_fine(Vin.UV0);
+    float2 Dy = ddy_fine(Vin.UV0);
+    float DeltaMax = max(length(Dx), length(Dy));
+    OutMipRate = DeltaMax;
+#endif
 }

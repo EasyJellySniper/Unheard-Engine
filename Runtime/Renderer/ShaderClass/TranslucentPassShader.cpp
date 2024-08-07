@@ -60,17 +60,10 @@ void UHTranslucentPassShader::OnCompile()
 		return;
 	}
 
-	std::vector<std::string> Defines;
-	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
-	{
-		Defines.push_back("TANGENT_SPACE");
-		Defines.push_back("TRANSLUCENT");
-	}
-
-	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", Defines);
+	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", MaterialCache->GetShaderDefines());
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("TranslucentPixelShader", "Shaders/TranslucentPixelShader.hlsl", "TranslucentPS", "ps_6_0", Data, Defines);
+	ShaderPS = Gfx->RequestMaterialShader("TranslucentPixelShader", "Shaders/TranslucentPixelShader.hlsl", "TranslucentPS", "ps_6_0", Data, MaterialCache->GetShaderDefines());
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache

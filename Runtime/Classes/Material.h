@@ -88,6 +88,7 @@ public:
 	void AllocateMaterialBuffer();
 	void AllocateRTMaterialBuffer();
 	void UploadMaterialData(int32_t CurrFrame);
+	void UpdateMaterialUsage();
 
 	std::string GetName() const;
 	std::string GetSourcePath() const;
@@ -97,6 +98,7 @@ public:
 	std::filesystem::path GetPath() const;
 	bool IsOpaque() const;
 	UHMaterialUsage GetMaterialUsages() const;
+	std::vector<std::string> GetShaderDefines();
 
 	static bool IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB);
 
@@ -135,7 +137,6 @@ public:
 #endif
 
 private:
-	void UpdateMaterialUsage();
 
 	std::vector<std::string> RegisteredTextureNames;
 	std::vector<int32_t> RegisteredTextureIndexes;

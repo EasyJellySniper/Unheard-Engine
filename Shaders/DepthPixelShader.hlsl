@@ -20,6 +20,8 @@ UHMaterialInputs GetMaterialInput(float2 UV0)
 void DepthPS(DepthVertexOutput Vin)
 {
 	// only alpha test will have this pixel shader, do cutoff anyway
+#if MASKED
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 	clip(MaterialInput.Opacity - GCutoff);
+#endif
 }

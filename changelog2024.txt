@@ -242,3 +242,12 @@ Implemented base mesh shader too! Reduced lots of draw calls.
 Ta! Applied mesh shader for the motion vector passes as well. Now it's almost done. Translucent pass is the only one that can't be batched.
 Added more CPU scope time in profile dialog. Cached gaussian constants for use.
 Next is to deal with the editor behavior of mesh shaders or make it work with occlusion query.
+
+06-08-2024:
+Made material editor change reflects to mesh shaders.
+Disabled the mesh selection in renderer component UI now, I'll revisit it later.
+Occlusion query needs a refactor, it's causing some troubles now. Also, need to figure out a way to use it for mesh shader.
+Also, I shall be able to remove UV output in depth/motion object pass if it's not cutoff.
+
+07-08-2024:
+Minimized the vertex input with shader defines.

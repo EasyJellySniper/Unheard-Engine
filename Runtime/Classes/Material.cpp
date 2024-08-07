@@ -358,6 +358,29 @@ UHMaterialUsage UHMaterial::GetMaterialUsages() const
 	return MaterialUsages;
 }
 
+std::vector<std::string> UHMaterial::GetShaderDefines()
+{
+	std::vector<std::string> Defines;
+	UpdateMaterialUsage();
+
+	if (MaterialUsages.bIsTangentSpace)
+	{
+		Defines.push_back("TANGENT_SPACE");
+	}
+
+	if (BlendMode == UHBlendMode::Masked)
+	{
+		Defines.push_back("MASKED");
+	}
+
+	if (BlendMode > UHBlendMode::Masked)
+	{
+		Defines.push_back("TRANSLUCENT");
+	}
+
+	return Defines;
+}
+
 bool UHMaterial::IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB)
 {
 	return (UH_ENUM_VALUE(InA->GetBlendMode()) / UH_ENUM_VALUE(UHBlendMode::TranditionalAlpha)) 

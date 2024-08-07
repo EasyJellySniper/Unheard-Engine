@@ -233,15 +233,7 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 	}
 
 	// create mesh tables
-	if ((GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled()) && MeshInstanceCount > 0)
-	{
-		PositionTable = MakeUnique<UHMeshTable>(GraphicInterface, "PositionTable", MeshInstanceCount);
-		UV0Table = MakeUnique<UHMeshTable>(GraphicInterface, "UV0Table", MeshInstanceCount);
-		NormalTable = MakeUnique<UHMeshTable>(GraphicInterface, "NormalTable", MeshInstanceCount);
-		TangentTable = MakeUnique<UHMeshTable>(GraphicInterface, "TangentTable", MeshInstanceCount);
-		IndicesTable = MakeUnique<UHMeshTable>(GraphicInterface, "IndicesTable", MeshInstanceCount);
-		MeshletTable = MakeUnique<UHMeshTable>(GraphicInterface, "MeshletTable", MeshInstanceCount);
-	}
+	RecreateMeshTables();
 }
 
 void UHDeferredShadingRenderer::CheckTextureReference(std::vector<UHMaterial*> InMats)
@@ -373,15 +365,19 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout()};
 
 	// create all material shaders
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
-#endif
+
+	if (!GraphicInterface->IsMeshShaderSupported())
 	{
-		DepthPassShaders.reserve(std::numeric_limits<int16_t>::max());
+#if WITH_RELEASE
+		if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
+#endif
+		{
+			DepthPassShaders.reserve(std::numeric_limits<int16_t>::max());
+		}
+		BasePassShaders.reserve(std::numeric_limits<int16_t>::max());
+		MotionOpaqueShaders.reserve(std::numeric_limits<int16_t>::max());
+		MotionTranslucentShaders.reserve(std::numeric_limits<int16_t>::max());
 	}
-	BasePassShaders.reserve(std::numeric_limits<int16_t>::max());
-	MotionOpaqueShaders.reserve(std::numeric_limits<int16_t>::max());
-	MotionTranslucentShaders.reserve(std::numeric_limits<int16_t>::max());
 	TranslucentPassShaders.reserve(std::numeric_limits<int16_t>::max());
 
 	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
@@ -411,15 +407,15 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		DepthMeshShaders.resize(CurrentScene->GetMaterialCount());
 		BaseMeshShaders.resize(CurrentScene->GetMaterialCount());
 		MotionMeshShaders.resize(CurrentScene->GetMaterialCount());
-	}
 
-	for (UHMaterial* Mat : CurrentScene->GetMaterials())
-	{
-		if (Mat->GetMaterialUsages().bIsSkybox)
+		for (UHMaterial* Mat : CurrentScene->GetMaterials())
 		{
-			continue;
+			if (Mat->GetMaterialUsages().bIsSkybox)
+			{
+				continue;
+			}
+			RecreateMeshShaders(Mat);
 		}
-		RecreateMeshShaders(Mat);
 	}
 
 	// light culling and pass shaders
@@ -483,26 +479,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	// ------------------------------------------------ Bindless table update
 	UpdateTextureDescriptors();
 
-	// ------------------------------------------------ Depth pass descriptor update
-#if WITH_RELEASE
-	// always create depth pass stuff for toggling in editor
-	if (GraphicInterface->IsDepthPrePassEnabled())
-#endif
-	{
-		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
-		{
-			assert(DepthPassShaders.find(Renderer->GetBufferDataIndex()) != DepthPassShaders.end());
-			DepthPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
-		}
-	}
-
-	// ------------------------------------------------ Base pass descriptor update
-	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
-	{
-		assert(BasePassShaders.find(Renderer->GetBufferDataIndex()) != BasePassShaders.end());
-		BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
-	}
-
 	// ------------------------------------------------ Mesh shader descriptor update
 	if (GraphicInterface->IsMeshShaderSupported())
 	{
@@ -522,6 +498,28 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			{
 				MotionMeshShaders[Idx]->BindParameters();
 			}
+		}
+	}
+	else
+	{
+		// ------------------------------------------------ Depth pass descriptor update
+#if WITH_RELEASE
+	// always create depth pass stuff for toggling in editor
+		if (GraphicInterface->IsDepthPrePassEnabled())
+#endif
+		{
+			for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+			{
+				assert(DepthPassShaders.find(Renderer->GetBufferDataIndex()) != DepthPassShaders.end());
+				DepthPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
+			}
+		}
+
+		// ------------------------------------------------ Base pass descriptor update
+		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
+		{
+			assert(BasePassShaders.find(Renderer->GetBufferDataIndex()) != BasePassShaders.end());
+			BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
 		}
 	}
 
@@ -552,12 +550,12 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		}
 
 		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
-		if (Mat->IsOpaque())
+		if (Mat->IsOpaque() && !GraphicInterface->IsMeshShaderSupported())
 		{
 			assert(MotionOpaqueShaders.find(RendererIdx) != MotionOpaqueShaders.end());
 			MotionOpaqueShaders[RendererIdx]->BindParameters(Renderer);
 		}
-		else
+		else if (!Mat->IsOpaque())
 		{
 			assert(MotionTranslucentShaders.find(RendererIdx) != MotionTranslucentShaders.end());
 			MotionTranslucentShaders[RendererIdx]->BindParameters(Renderer);
@@ -1267,6 +1265,7 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 	CheckTextureReference(std::vector<UHMaterial*>{ Mat });
 
 	const bool bIsOpaque = Mat->IsOpaque();
+	const int32_t MatIndex = Mat->GetBufferDataIndex();
 
 	for (UHObject* RendererObj : Mat->GetReferenceObjects())
 	{
@@ -1277,15 +1276,60 @@ void UHDeferredShadingRenderer::RefreshMaterialShaders(UHMaterial* Mat, bool bNe
 		}
 	}
 
+	if (GraphicInterface->IsMeshShaderSupported())
+	{
+		if (CompileFlag == UHMaterialCompileFlag::StateChangedOnly)
+		{
+			if (DepthMeshShaders[MatIndex])
+			{
+				DepthMeshShaders[MatIndex]->RecreateMaterialState();
+			}
+
+			if (BaseMeshShaders[MatIndex])
+			{
+				BaseMeshShaders[MatIndex]->RecreateMaterialState();
+			}
+
+			if (MotionMeshShaders[MatIndex])
+			{
+				MotionMeshShaders[MatIndex]->RecreateMaterialState();
+			}
+		}
+		else if (CompileFlag == UHMaterialCompileFlag::BindOnly)
+		{
+			if (DepthMeshShaders[MatIndex])
+			{
+				DepthMeshShaders[MatIndex]->BindParameters();
+			}
+
+			if (BaseMeshShaders[MatIndex])
+			{
+				BaseMeshShaders[MatIndex]->BindParameters();
+			}
+
+			if (MotionMeshShaders[MatIndex])
+			{
+				MotionMeshShaders[MatIndex]->BindParameters();
+			}
+		}
+	}
+
 	// recreate shader if need to assign renderer group again
 	if (bNeedReassignRendererGroup || CompileFlag == UHMaterialCompileFlag::FullCompileResave || CompileFlag == UHMaterialCompileFlag::FullCompileTemporary)
 	{
+		Mat->UpdateMaterialUsage();
 		for (UHObject* RendererObj : Mat->GetReferenceObjects())
 		{
 			if (UHMeshRendererComponent* Renderer = CastObject<UHMeshRendererComponent>(RendererObj))
 			{
 				RecreateMaterialShaders(Renderer, Mat);
 			}
+		}
+
+		// mesh shader update if support
+		if (GraphicInterface->IsMeshShaderSupported())
+		{
+			RecreateMeshShaders(Mat);
 		}
 	}
 
@@ -1313,6 +1357,10 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 	// the design shouldn't allow nullptr here
 	assert(OldMat != nullptr);
 	assert(NewMat != nullptr);
+	if (OldMat == NewMat)
+	{
+		return;
+	}
 
 	// wait GPU finished
 	GraphicInterface->WaitGPU();
@@ -1352,8 +1400,38 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 		ResetMaterialShaders(InRenderer, UHMaterialCompileFlag::RendererMaterialChanged, OldMat->IsOpaque(), true);
 		RecreateMaterialShaders(InRenderer, NewMat);
 	}
-
 	NewMat->AddReferenceObject(InRenderer);
+
+	if (GraphicInterface->IsMeshShaderSupported())
+	{
+		// both old & new mesh shader needs a update
+		RecreateMeshShaders(OldMat);
+		RecreateMeshShaders(NewMat);
+	}
+
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+	{
+		// occlusion shader change
+		const int32_t RendererIdx = InRenderer->GetBufferDataIndex();
+		SafeReleaseShaderPtr(BaseOcclusionShaders, RendererIdx, true);
+		SafeReleaseShaderPtr(TranslucentOcclusionShaders, RendererIdx, true);
+
+		const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout() };
+		if (NewMat->IsOpaque())
+		{
+			BaseOcclusionShaders[RendererIdx] = MakeUnique<UHBasePassShader>(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, NewMat, BindlessLayouts, true);
+			BaseOcclusionShaders[RendererIdx]->BindParameters(InRenderer);
+			TranslucentOcclusionShaders.erase(RendererIdx);
+		}
+		else
+		{
+			TranslucentOcclusionShaders[RendererIdx]
+				= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, NewMat, BindlessLayouts, true);
+			TranslucentOcclusionShaders[RendererIdx]->BindParameters(InRenderer, ConfigInterface->RenderingSetting().bEnableRayTracing);
+			BaseOcclusionShaders.erase(RendererIdx);
+		}
+	}
+
 	UpdateDescriptors();
 }
 
@@ -1363,7 +1441,9 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 	const bool bReleaseDescriptorOnly = CompileFlag == UHMaterialCompileFlag::RendererMaterialChanged;
 	const bool bEnableRayTracing = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
 
-	if (bNeedReassignRendererGroup || CompileFlag == UHMaterialCompileFlag::RendererMaterialChanged || CompileFlag == UHMaterialCompileFlag::FullCompileResave
+	if (bNeedReassignRendererGroup 
+		|| CompileFlag == UHMaterialCompileFlag::RendererMaterialChanged 
+		|| CompileFlag == UHMaterialCompileFlag::FullCompileResave
 		|| CompileFlag == UHMaterialCompileFlag::FullCompileTemporary)
 	{
 		// release shaders if it's re-compiling
@@ -1523,8 +1603,34 @@ void UHDeferredShadingRenderer::ToggleDepthPrepass()
 
 #endif
 
+void UHDeferredShadingRenderer::RecreateMeshTables()
+{
+	if ((GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled()) && MeshInstanceCount > 0)
+	{
+		UH_SAFE_RELEASE(PositionTable);
+		UH_SAFE_RELEASE(UV0Table);
+		UH_SAFE_RELEASE(NormalTable);
+		UH_SAFE_RELEASE(TangentTable);
+		UH_SAFE_RELEASE(IndicesTable);
+		UH_SAFE_RELEASE(MeshletTable);
+
+		PositionTable = MakeUnique<UHMeshTable>(GraphicInterface, "PositionTable", MeshInstanceCount);
+		UV0Table = MakeUnique<UHMeshTable>(GraphicInterface, "UV0Table", MeshInstanceCount);
+		NormalTable = MakeUnique<UHMeshTable>(GraphicInterface, "NormalTable", MeshInstanceCount);
+		TangentTable = MakeUnique<UHMeshTable>(GraphicInterface, "TangentTable", MeshInstanceCount);
+		IndicesTable = MakeUnique<UHMeshTable>(GraphicInterface, "IndicesTable", MeshInstanceCount);
+		MeshletTable = MakeUnique<UHMeshTable>(GraphicInterface, "MeshletTable", MeshInstanceCount);
+	}
+}
+
 void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat)
 {
+	if (GraphicInterface->IsMeshShaderSupported() && InMat->IsOpaque())
+	{
+		// do not need material shaders for opaque
+		return;
+	}
+
 	int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout() };
 	const bool bHasEnvCube = (GSkyLightCube != nullptr);
@@ -1570,33 +1676,33 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 
 	const uint32_t MatDataIndex = InMat->GetBufferDataIndex();
 
-	// create depth and base shader only for the opaque, but motion pass for both opaque/translucent
-	if (InMat->IsOpaque())
-	{
-#if WITH_RELEASE
-		if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
-#endif
+		// create depth and base shader only for the opaque, but motion pass for both opaque/translucent
+		if (InMat->IsOpaque())
 		{
-			UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
-			DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
+#if WITH_RELEASE
+			if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
+#endif
+			{
+				UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
+				DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
+			}
+
+			// push normal and tangent table after depth
+			BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
+			BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
+
+			UH_SAFE_RELEASE(BaseMeshShaders[MatDataIndex]);
+			BaseMeshShaders[MatDataIndex] = MakeUnique<UHBaseMeshShader>(GraphicInterface, "BaseMeshShader", BasePassObj.RenderPass, InMat, BindlessLayouts);
+		}
+		else
+		{
+			BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
+			BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
 		}
 
-		// push normal and tangent table after depth
-		BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
-		BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
-
-		UH_SAFE_RELEASE(BaseMeshShaders[MatDataIndex]);
-		BaseMeshShaders[MatDataIndex] = MakeUnique<UHBaseMeshShader>(GraphicInterface, "BaseMeshShader", BasePassObj.RenderPass, InMat, BindlessLayouts);
-	}
-	else
-	{
-		BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
-		BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
-	}
-
-	UH_SAFE_RELEASE(MotionMeshShaders[MatDataIndex]);
-	MotionMeshShaders[MatDataIndex] = MakeUnique<UHMotionMeshShader>(GraphicInterface, "MotionMeshShader"
-		, InMat->IsOpaque() ? MotionOpaquePassObj.RenderPass : MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
+		UH_SAFE_RELEASE(MotionMeshShaders[MatDataIndex]);
+		MotionMeshShaders[MatDataIndex] = MakeUnique<UHMotionMeshShader>(GraphicInterface, "MotionMeshShader"
+			, InMat->IsOpaque() ? MotionOpaquePassObj.RenderPass : MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 
 	// count total meshlet number of a material group
 	uint32_t MeshletCountOfMaterialGroup = 0;

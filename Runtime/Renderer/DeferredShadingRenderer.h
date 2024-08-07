@@ -103,6 +103,7 @@ public:
 
 	void ToggleDepthPrepass();
 #endif
+	void RecreateMeshTables();
 	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
 	void RecreateMeshShaders(UHMaterial* InMat);
 	void RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable);

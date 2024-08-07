@@ -66,7 +66,9 @@ struct VertexOutput
 struct DepthVertexOutput
 {
 	float4 Position : SV_POSITION;
+#if MASKED
 	float2 UV0 : TEXCOORD0;
+#endif
 };
 
 struct MotionVertexOutput
@@ -76,12 +78,14 @@ struct MotionVertexOutput
 	float4 CurrPos : TEXCOORD1;
 	float4 PrevPos : TEXCOORD2;
 	
-#if TANGENT_SPACE
+#if TANGENT_SPACE && TRANSLUCENT
 	// output TBN if normal mapping enabled
     float3x3 WorldTBN : TEXCOORD3;
 #endif
 	
+#if TRANSLUCENT
 	float3 Normal : NORMAL;
+#endif
 };
 
 struct PostProcessVertexOutput

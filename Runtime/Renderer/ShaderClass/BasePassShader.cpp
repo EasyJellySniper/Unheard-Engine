@@ -45,16 +45,10 @@ void UHBasePassShader::OnCompile()
 		return;
 	}
 
-	std::vector<std::string> Defines;
-	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
-	{
-		Defines.push_back("TANGENT_SPACE");
-	}
-
-	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", Defines);
+	ShaderVS = Gfx->RequestShader("BaseVertexShader", "Shaders/BaseVertexShader.hlsl", "BaseVS", "vs_6_0", MaterialCache->GetShaderDefines());
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, Defines);
+	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, MaterialCache->GetShaderDefines());
 	
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache
@@ -137,16 +131,10 @@ void UHBaseMeshShader::OnCompile()
 		return;
 	}
 
-	std::vector<std::string> Defines;
-	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
-	{
-		Defines.push_back("TANGENT_SPACE");
-	}
-
-	ShaderMS = Gfx->RequestShader("BaseMeshShader", "Shaders/BaseMeshShader.hlsl", "BaseMS", "ms_6_5", Defines);
+	ShaderMS = Gfx->RequestShader("BaseMeshShader", "Shaders/BaseMeshShader.hlsl", "BaseMS", "ms_6_5", MaterialCache->GetShaderDefines());
 	UHMaterialCompileData Data{};
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, Defines);
+	ShaderPS = Gfx->RequestMaterialShader("BasePixelShader", "Shaders/BasePixelShader.hlsl", "BasePS", "ps_6_0", Data, MaterialCache->GetShaderDefines());
 
 	// states
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache

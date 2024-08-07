@@ -79,17 +79,11 @@ void UHMotionObjectPassShader::OnCompile()
 		return;
 	}
 
-	std::vector<std::string> Defines;
-	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
-	{
-		Defines.push_back("TANGENT_SPACE");
-	}
-
-	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", Defines);
+	ShaderVS = Gfx->RequestShader("MotionVertexShader", "Shaders/MotionVertexShader.hlsl", "MotionObjectVS", "vs_6_0", MaterialCache->GetShaderDefines());
 
 	UHMaterialCompileData Data;
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, Defines);
+	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, MaterialCache->GetShaderDefines());
 
 	// states, enable depth test, and write depth for translucent object only
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache,
@@ -159,17 +153,11 @@ void UHMotionMeshShader::OnCompile()
 		return;
 	}
 
-	std::vector<std::string> Defines;
-	if (MaterialCache->GetMaterialUsages().bIsTangentSpace)
-	{
-		Defines.push_back("TANGENT_SPACE");
-	}
-
-	ShaderMS = Gfx->RequestShader("MotionMeshShader", "Shaders/MotionMeshShader.hlsl", "MotionMS", "ms_6_5", Defines);
+	ShaderMS = Gfx->RequestShader("MotionMeshShader", "Shaders/MotionMeshShader.hlsl", "MotionMS", "ms_6_5", MaterialCache->GetShaderDefines());
 
 	UHMaterialCompileData Data;
 	Data.MaterialCache = MaterialCache;
-	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, Defines);
+	ShaderPS = Gfx->RequestMaterialShader("MotionPixelShader", "Shaders/MotionPixelShader.hlsl", "MotionObjectPS", "ps_6_0", Data, MaterialCache->GetShaderDefines());
 
 	// states, enable depth test, and write depth for translucent object only
 	MaterialPassInfo = UHRenderPassInfo(RenderPassCache,

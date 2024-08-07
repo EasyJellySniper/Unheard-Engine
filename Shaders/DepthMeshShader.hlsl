@@ -55,7 +55,9 @@ void DepthMS(
         // fetch vertex data and output
         DepthVertexOutput Output = (DepthVertexOutput)0;
         Output.Position.xyz = PositionBuffer[InInstance.MeshIndex][VertexIndex];
+#if MASKED
         Output.UV0 = UV0Buffer[InInstance.MeshIndex][VertexIndex];
+#endif
         
         // transformation
         ObjectConstants Constant = RendererConstants[ShaderData.RendererIndex];

@@ -15,7 +15,9 @@ DepthVertexOutput DepthVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 	// pass through the vertex data
 	Vout.Position = mul(float4(WorldPos, 1.0f), GViewProj_NonJittered);
 	Vout.Position = mul(Vout.Position, JitterMatrix);
+#if MASKED
 	Vout.UV0 = UV0Buffer[Vid];
+#endif
 
 	return Vout;
 }
