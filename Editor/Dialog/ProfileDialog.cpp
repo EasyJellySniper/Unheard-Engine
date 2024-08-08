@@ -3,6 +3,7 @@
 #if WITH_EDITOR
 #include "../Editor/Profiler.h"
 #include "Runtime/Engine/Config.h"
+#include "Runtime/Classes/GPUQuery.h"
 
 UHProfileDialog::UHProfileDialog()
     : UHDialog(nullptr, nullptr)
@@ -20,6 +21,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
     // convert stats to string and display them
     const UHStatistics& Stats = InProfiler->GetStatistics();
     const auto& CPUScopeStats = UHGameTimerScope::GetResiteredGameTime();
+    const auto& GPUScopeStats = UHGPUTimeQueryScope::GetResiteredGPUTime();
 
     static std::vector<std::stringstream> CPUTimeStats;
 
@@ -57,36 +59,20 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         CPUStatTex << std::endl;
 
         // GPU stat section
-        std::string GPUStatStrings[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)] = { "OcclusionReset"
-            , "Depth Pre Pass"
-            , "Base Pass"
-            , "Update Top Level AS"
-            , "GenerateSH9"
-            , "Ray Tracing Shadow"
-            , "Ray Tracing Reflection"
-            , "Light Culling"
-            , "Light Pass"
-            , "Skybox Pass"
-            , "Motion Pass"
-            , "Pre Reflection Pass"
-            , "Reflection Pass"
-            , "Translucent Pass"
-            , "Tone Mapping"
-            , "Temporal AA"
-            , "History Copying"
-            , "Present SwapChain"
-        };
-
         float TotalGPUTime = 0.0f;
         GPUStatTex.str("");
         GPUStatTex.clear();
         GPUStatTex << "--GPU Profiles--\n";
-        for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
+
+        // iterating all registered GPU time
+        for (size_t Idx = 0; Idx < GPUScopeStats.size(); Idx++)
         {
-            GPUStatTex << GPUStatStrings[Idx] << ": " << std::fixed << std::setprecision(4)
-                << InProfiler->GetStatistics().GPUTimes[Idx] << " ms\n";
-            TotalGPUTime += InProfiler->GetStatistics().GPUTimes[Idx];
+            GPUStatTex << GPUScopeStats[Idx]->GetDebugName() << ": " << std::fixed << std::setprecision(4)
+                << GPUScopeStats[Idx]->GetLastTimeStamp() << " ms\n";
+
+            TotalGPUTime += GPUScopeStats[Idx]->GetLastTimeStamp();
         }
+
         GPUStatTex << "Total GPU Time: " << TotalGPUTime << " ms\n";
         GPUStatTex << "Render Resolution: " << InConfig->RenderingSetting().RenderWidth << "x" << InConfig->RenderingSetting().RenderHeight;
 

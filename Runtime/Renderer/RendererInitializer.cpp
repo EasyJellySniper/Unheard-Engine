@@ -71,9 +71,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAss
 	for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
 	{
 		GPUTimeQueries[Idx] = nullptr;
-#if WITH_EDITOR
-		GPUTimes[Idx] = 0.0f;
-#endif
 	}
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
@@ -119,8 +116,10 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		InitGaussianConstants();
 
 		// reserve enough space for renderers, save the allocation time
-		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size() * 2);
-		TranslucentsToRender.reserve(CurrentScene->GetTranslucentRenderers().size() * 2);
+		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
+		TranslucentsToRender.reserve(CurrentScene->GetTranslucentRenderers().size());
+		OcclusionRenderers.reserve(CurrentScene->GetAllRendererCount());
+
 		for (int32_t Idx = 0; Idx < MaxCountingElement; Idx++)
 		{
 			CountingRenderers[Idx].reserve(1024);
@@ -152,15 +151,28 @@ void UHDeferredShadingRenderer::Release()
 	ReleaseShaders();
 
 	SceneRenderQueue.Release();
-	DepthParallelSubmitter.Release();
-	BaseParallelSubmitter.Release();
-	MotionOpaqueParallelSubmitter.Release();
-	MotionTranslucentParallelSubmitter.Release();
 	TranslucentParallelSubmitter.Release();
 
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported())
+#endif
+	{
+		DepthParallelSubmitter.Release();
+	}
+
+	if (!GraphicInterface->IsMeshShaderSupported())
+	{
+		BaseParallelSubmitter.Release();
+		MotionOpaqueParallelSubmitter.Release();
+		MotionTranslucentParallelSubmitter.Release();
+	}
+
+#if WITH_RELEASE
 	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
 	{
 		ReleaseOcclusionQuery();
+		OcclusionParallelSubmitter.Release();
 	}
 
 	if (ConfigInterface->RenderingSetting().bEnableAsyncCompute)
@@ -363,9 +375,9 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	TextureTable = MakeUnique<UHTextureTable>(GraphicInterface, "TextureTable");
 	SamplerTable = MakeUnique<UHSamplerTable>(GraphicInterface, "SamplerTable");
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout()};
+	const std::vector<UHMeshRendererComponent*> AllRenderers = CurrentScene->GetAllRenderers();
 
 	// create all material shaders
-
 	if (!GraphicInterface->IsMeshShaderSupported())
 	{
 #if WITH_RELEASE
@@ -380,7 +392,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	}
 	TranslucentPassShaders.reserve(std::numeric_limits<int16_t>::max());
 
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+	for (UHMeshRendererComponent* Renderer : AllRenderers)
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
 		if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
@@ -389,6 +401,23 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		}
 	}
 
+	// create occlusion shaders if enabled
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
+	{
+		OcclusionPassShaders.resize(CurrentScene->GetAllRendererCount());
+		for (size_t Idx = 0; Idx < AllRenderers.size(); Idx++)
+		{
+			UHMaterial* Mat = AllRenderers[Idx]->GetMaterial();
+			if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
+			{
+				OcclusionPassShaders[Idx] = MakeUnique<UHOcclusionPassShader>(GraphicInterface, "OcclusionPassShader", OcclusionPassObj.RenderPass);
+			}
+		}
+	}
+
+	// create mesh shaders if supported
 	if (GraphicInterface->IsMeshShaderSupported())
 	{
 		MeshShaderInstancesCounter.resize(CurrentScene->GetMaterialCount());
@@ -520,6 +549,20 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		{
 			assert(BasePassShaders.find(Renderer->GetBufferDataIndex()) != BasePassShaders.end());
 			BasePassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
+		}
+	}
+
+	// ------------------------------------------------ Occlusion shader descriptor update
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
+	{
+		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
+		{
+			if (OcclusionPassShaders[Renderer->GetBufferDataIndex()] != nullptr)
+			{
+				OcclusionPassShaders[Renderer->GetBufferDataIndex()]->BindParameters(Renderer);
+			}
 		}
 	}
 
@@ -677,6 +720,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	ClearContainer(MotionTranslucentShaders);
 	ClearContainer(MotionMeshShaders);
 	ClearContainer(TranslucentPassShaders);
+	ClearContainer(OcclusionPassShaders);
 
 	LightCullingShader->Release();
 	LightPassShader->Release();
@@ -829,6 +873,14 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 		DepthPassObj = GraphicInterface->CreateRenderPass(UHTransitionInfo(), GSceneDepth);
 	}
 
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
+	{
+		// occlusion only needs depth load
+		OcclusionPassObj = GraphicInterface->CreateRenderPass(UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD), GSceneDepth);
+	}
+
 	// create render pass based on output RT, render pass can be shared sometimes
 	BasePassObj = GraphicInterface->CreateRenderPass(GBufferTextures, UHTransitionInfo(GraphicInterface->IsDepthPrePassEnabled() ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
 		, GSceneDepth);
@@ -878,6 +930,13 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 		DepthPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth->GetImageView(), DepthPassObj.RenderPass, RenderResolution);
 	}
 
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
+	{
+		OcclusionPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth->GetImageView(), OcclusionPassObj.RenderPass, RenderResolution);
+	}
+
 	// create frame buffer, some of them can be shared, especially when the output target is the same
 	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
 
@@ -913,6 +972,13 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects()
 #endif
 	{
 		DepthPassObj.Release(LogicalDevice);
+	}
+
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
+	{
+		OcclusionPassObj.Release(LogicalDevice);
 	}
 
 	BasePassObj.Release(LogicalDevice);
@@ -989,7 +1055,10 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		GRendererInstanceBuffer->UploadAllData(RendererInstances.data());
 	}
 
+	// create occlusion query anyway in editor build
+#if WITH_RELEASE
 	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
 	{
 		CreateOcclusionQuery();
 	}
@@ -1004,7 +1073,8 @@ void UHDeferredShadingRenderer::CreateOcclusionQuery()
 		{
 			// will do predication rendering on GPU instead of traditional readback
 			OcclusionQuery[Idx] = GraphicInterface->RequestGPUQuery(Count, VK_QUERY_TYPE_OCCLUSION);
-			OcclusionResultGPU[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>(Count, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			GOcclusionResult[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>(Count
+				, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		}
 	}
 
@@ -1014,35 +1084,8 @@ void UHDeferredShadingRenderer::CreateOcclusionQuery()
 	}
 	OcclusionConstantsCPU.resize(Count);
 
-	// create shaders
-	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout() };
-	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
-	{
-		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
-		{
-			const int32_t RendererIdx = Renderer->GetBufferDataIndex();
-			if (Mat->IsOpaque())
-			{
-				BaseOcclusionShaders[RendererIdx] = MakeUnique<UHBasePassShader>(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, Mat, BindlessLayouts, true);
-				BaseOcclusionShaders[RendererIdx]->BindParameters(Renderer);
-			}
-			else
-			{
-				TranslucentOcclusionShaders[RendererIdx]
-					= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, Mat, BindlessLayouts, true);
-				TranslucentOcclusionShaders[RendererIdx]->BindParameters(Renderer, ConfigInterface->RenderingSetting().bEnableRayTracing);
-			}
-			Renderer->SetRenderDirties(true);
-		}
-	}
-
 	if (Count > 0)
 	{
-		BaseOcclusionShaders.begin()->second->RecreateOcclusionState();
-		TranslucentOcclusionShaders.begin()->second->RecreateOcclusionState();
-		UpdateDescriptors();
-
 		const uint32_t PrevFrame = (CurrentFrameGT - 1) % GMaxFrameInFlight;
 		vkResetQueryPool(GraphicInterface->GetLogicalDevice(), OcclusionQuery[PrevFrame]->GetQueryPool(), 0, OcclusionQuery[PrevFrame]->GetQueryCount());
 	}
@@ -1059,23 +1102,10 @@ void UHDeferredShadingRenderer::ReleaseOcclusionQuery()
 		}
 
 		UH_SAFE_RELEASE(GOcclusionConstantBuffer[Idx]);
-		UH_SAFE_RELEASE(OcclusionResultGPU[Idx]);
+		UH_SAFE_RELEASE(GOcclusionResult[Idx]);
 	}
 
 	OcclusionConstantsCPU.clear();
-
-	// release shaders
-	for (auto& Shader : BaseOcclusionShaders)
-	{
-		Shader.second->ReleaseDescriptor();
-	}
-	BaseOcclusionShaders.clear();
-
-	for (auto& Shader : TranslucentOcclusionShaders)
-	{
-		Shader.second->ReleaseDescriptor();
-	}
-	TranslucentOcclusionShaders.clear();
 }
 
 bool UHDeferredShadingRenderer::CreateAsyncComputeQueue()
@@ -1103,11 +1133,28 @@ void UHDeferredShadingRenderer::CreateThreadObjects()
 #endif
 
 	// create parallel submitter
-	DepthParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
-	BaseParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
-	MotionOpaqueParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
-	MotionTranslucentParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported())
+#endif
+	{
+		DepthParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+	}
+
+	if (!GraphicInterface->IsMeshShaderSupported())
+	{
+		BaseParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+		MotionOpaqueParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+		MotionTranslucentParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+	}
+
 	TranslucentParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+
+#if WITH_RELEASE
+	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+#endif
+	{
+		OcclusionParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+	}
 
 	// init threads, it will wait at the beginning
 	RenderThread = MakeUnique<UHThread>();
@@ -1413,23 +1460,8 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 	{
 		// occlusion shader change
 		const int32_t RendererIdx = InRenderer->GetBufferDataIndex();
-		SafeReleaseShaderPtr(BaseOcclusionShaders, RendererIdx, true);
-		SafeReleaseShaderPtr(TranslucentOcclusionShaders, RendererIdx, true);
-
-		const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout() };
-		if (NewMat->IsOpaque())
-		{
-			BaseOcclusionShaders[RendererIdx] = MakeUnique<UHBasePassShader>(GraphicInterface, "BasePassShader", BasePassObj.RenderPass, NewMat, BindlessLayouts, true);
-			BaseOcclusionShaders[RendererIdx]->BindParameters(InRenderer);
-			TranslucentOcclusionShaders.erase(RendererIdx);
-		}
-		else
-		{
-			TranslucentOcclusionShaders[RendererIdx]
-				= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, NewMat, BindlessLayouts, true);
-			TranslucentOcclusionShaders[RendererIdx]->BindParameters(InRenderer, ConfigInterface->RenderingSetting().bEnableRayTracing);
-			BaseOcclusionShaders.erase(RendererIdx);
-		}
+		
+		// @TODO: Re-init occlusion shader here
 	}
 
 	UpdateDescriptors();

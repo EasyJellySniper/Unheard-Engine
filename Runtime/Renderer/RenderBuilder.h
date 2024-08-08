@@ -2,6 +2,7 @@
 #include "../Engine/Graphic.h"
 #include <unordered_map>
 #include "ShaderClass/ShaderClass.h"
+#include "ParallelSubmitter.h"
 
 struct UHImageBarrier
 {
@@ -122,7 +123,7 @@ public:
 	void WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery);
 
 	// execute bundle
-	void ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToExecute);
+	void ExecuteBundles(const UHParallelSubmitter& InSubmitter);
 
 	// clear storage buffer (must be uint32_t)
 	void ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue);
@@ -151,6 +152,7 @@ public:
 private:
 	UHGraphic* Gfx;
 	VkCommandBuffer CmdList;
+
 	VkDevice LogicalDevice;
 	bool bIsCompute;
 

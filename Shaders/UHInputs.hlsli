@@ -44,6 +44,7 @@
 #define UH_DEPTH_PREPASS 1 << 0
 #define UH_ENV_CUBE 1 << 1
 #define UH_HDR 1 << 2
+#define UH_OCCLUSION_CULLING 1 << 3
 
 struct VertexOutput
 {

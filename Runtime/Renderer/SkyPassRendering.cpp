@@ -47,7 +47,7 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("GenerateSH9Pass", false);
 	// generate SH9, this doesn't need to be called every frame
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::GenerateSH9)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::GenerateSH9)], "GenerateSH9");
 	if (!bIsSkyLightEnabledRT || !bNeedGenerateSH9RT)
 	{
 		return;
@@ -66,7 +66,7 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderSkyPass", false);
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SkyPass)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SkyPass)], "SkyPass");
 	if (!bIsSkyLightEnabledRT)
 	{
 		return;

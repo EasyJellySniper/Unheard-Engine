@@ -19,16 +19,26 @@ public:
 
 	void BeginTimeStamp(VkCommandBuffer InBuffer);
 	void EndTimeStamp(VkCommandBuffer InBuffer);
-	float GetTimeStamp(VkCommandBuffer InBuffer);
+	void ResolveTimeStamp(VkCommandBuffer InBuffer);
 
 	VkQueryPool GetQueryPool() const;
 	uint32_t GetQueryCount() const;
+
+#if WITH_EDITOR
+	void SetDebugName(const std::string& InName);
+	std::string GetDebugName() const;
+	float GetLastTimeStamp() const;
+#endif
 
 private:
 	uint32_t QueryCount;
 	UHGPUQueryState State;
 	VkQueryPool QueryPool;
+
+#if WITH_EDITOR
+	std::string DebugName;
 	float PreviousValidTimeStamp;
+#endif
 };
 
 // timestamp query scope version, this simply kicks off timer in ctor and finishs in dtor
@@ -36,10 +46,18 @@ private:
 class UHGPUTimeQueryScope
 {
 public:
-	UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery);
+	UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery, std::string InName);
 	~UHGPUTimeQueryScope();
 
+	static std::vector<UHGPUQuery*> GetResiteredGPUTime();
+	static void ClearRegisteredGPUTime();
+
 private:
+#if WITH_EDITOR
 	UHGPUQuery* GPUTimeQuery;
 	VkCommandBuffer Cmd;
+
+	// editor only registered game time, which will be displayed in profile
+	static std::vector<UHGPUQuery*> RegisteredGPUTime;
+#endif
 };

@@ -59,6 +59,9 @@ extern UHTexture2D* GBlackTexture;
 extern UHTexture2D* GWhiteTexture;
 extern UHTextureCube* GBlackCube;
 
+// occlusion data
+extern UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
+
 extern std::vector<UHTexture*> GetGBuffersSRV();
 
 // --------------------------- mesh shader data

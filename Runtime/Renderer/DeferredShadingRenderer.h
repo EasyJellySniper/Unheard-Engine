@@ -40,6 +40,7 @@
 #include "ShaderClass/RayTracing/RTTextureTable.h"
 #include "ShaderClass/ReflectionPassShader.h"
 #include "ShaderClass/RayTracing/RTReflectionMipmap.h"
+#include "ShaderClass/OcclusionPassShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -52,6 +53,7 @@ enum class UHParallelTask
 	None = -1,
 	FrustumCullingTask,
 	DepthPassTask,
+	OcclusionPassTask,
 	BasePassTask,
 	MotionOpaqueTask,
 	MotionTranslucentTask,
@@ -91,7 +93,6 @@ public:
 	float GetRenderThreadTime() const;
 	int32_t GetDrawCallCount() const;
 	int32_t GetOccludedCallCount() const;
-	float* GetGPUTimes();
 
 	static UHDeferredShadingRenderer* GetRendererEditorOnly();
 	void RefreshSkyLight(bool bNeedRecompile);
@@ -192,6 +193,7 @@ private:
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
 	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
 	void OcclusionQueryReset(UHRenderBuilder& RenderBuilder);
+	void RenderOcclusionPass(UHRenderBuilder& RenderBuilder);
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
@@ -220,6 +222,7 @@ private:
 	// based on the scatter and gather method
 	void FrustumCullingTask(int32_t ThreadIdx);
 	void DepthPassTask(int32_t ThreadIdx);
+	void OcclusionPassTask(int32_t ThreadIdx);
 	void BasePassTask(int32_t ThreadIdx);
 	void MotionOpaqueTask(int32_t ThreadIdx);
 	void MotionTranslucentTask(int32_t ThreadIdx);
@@ -241,6 +244,7 @@ private:
 
 	// parallel submitters
 	UHParallelSubmitter DepthParallelSubmitter;
+	UHParallelSubmitter OcclusionParallelSubmitter;
 	UHParallelSubmitter BaseParallelSubmitter;
 	UHParallelSubmitter MotionOpaqueParallelSubmitter;
 	UHParallelSubmitter MotionTranslucentParallelSubmitter;
@@ -309,7 +313,6 @@ private:
 	// -------------------------------------------- Base Pass -------------------------------------------- //
 	// store different base pass object, the id is renderer data index
 	std::unordered_map<int32_t, UniquePtr<UHBasePassShader>> BasePassShaders;
-	std::unordered_map<int32_t, UniquePtr<UHBasePassShader>> BaseOcclusionShaders;
 	UHRenderPassObject BasePassObj;
 
 	// -------------------------------------------- Light and Light Culling Pass -------------------------------------------- //
@@ -342,7 +345,6 @@ private:
 
 	// -------------------------------------------- Translucent Pass -------------------------------------------- //
 	std::unordered_map<int32_t, UniquePtr<UHTranslucentPassShader>> TranslucentPassShaders;
-	std::unordered_map<int32_t, UniquePtr<UHTranslucentPassShader>> TranslucentOcclusionShaders;
 	UHRenderPassObject TranslucentPassObj;
 
 	// -------------------------------------------- Post processing Pass -------------------------------------------- //
@@ -376,7 +378,6 @@ private:
 	int32_t OccludedCalls;
 	std::vector<int32_t> ThreadDrawCalls;
 	std::vector<int32_t> ThreadOccludedCalls;
-	float GPUTimes[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
 	// GUI
 	uint32_t EditorWidthDelta;
@@ -404,6 +405,7 @@ private:
 	// -------------------------------------------- Culling & sorting related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
 	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
+	std::vector<UHMeshRendererComponent*> OcclusionRenderers;
 
 	// max element setting for counting sort, higher number = better result for GPU time but longer CPU time
 	// lower = better CPU time but longer GPU time, need to trade off between these.
@@ -411,7 +413,8 @@ private:
 	std::vector<UHMeshRendererComponent*> CountingRenderers[MaxCountingElement];
 
 	UHGPUQuery* OcclusionQuery[GMaxFrameInFlight];
-	UniquePtr<UHRenderBuffer<uint32_t>> OcclusionResultGPU[GMaxFrameInFlight];
+	std::vector<UniquePtr<UHOcclusionPassShader>> OcclusionPassShaders;
+	UHRenderPassObject OcclusionPassObj;
 
 	// -------------------------------------------- Mesh shader related -------------------------------------------- //
 	UniquePtr<UHMeshTable> PositionTable;

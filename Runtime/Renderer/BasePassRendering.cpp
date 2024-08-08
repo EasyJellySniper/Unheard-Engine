@@ -9,7 +9,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 		return;
 	}
 
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::BasePass)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::BasePass)], "BasePass");
 
 	// setup clear value
 	std::vector<VkClearValue> ClearValues;
@@ -112,7 +112,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 #endif
 
 			// execute all recorded batches
-			RenderBuilder.ExecuteBundles(BaseParallelSubmitter.WorkerBundles);
+			RenderBuilder.ExecuteBundles(BaseParallelSubmitter);
 		}
 		RenderBuilder.EndRenderPass();
 
@@ -141,6 +141,13 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 	InheritanceInfo.occlusionQueryEnable = bEnableHWOcclusionRT;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, BaseParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	if (StartIdx >= EndIdx)
+	{
+		RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
+		RenderBuilder.EndCommandBuffer();
+		return;
+	}
+
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);
@@ -169,8 +176,7 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
 		if (bOcclusionTest)
 		{
-			RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
-			RenderBuilder.BeginPredication(RendererIdx, OcclusionResultGPU[PrevFrame]->GetBuffer());
+			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());
 		}
 
 		// draw mesh
@@ -185,21 +191,13 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 		if (bOcclusionTest)
 		{
 			RenderBuilder.EndPredication();
-
-			const UHBasePassShader* BaseShader = BaseOcclusionShaders[RendererIdx].get();
-			RenderBuilder.BindGraphicState(BaseShader->GetOcclusionState());
-			RenderBuilder.BindVertexBuffer(SkyMeshRT->GetPositionBuffer()->GetBuffer());
-			RenderBuilder.BindIndexBuffer(SkyMeshRT);
-			RenderBuilder.BindDescriptorSet(BaseShader->GetPipelineLayout(), BaseShader->GetDescriptorSet(CurrentFrameRT));
-
-			RenderBuilder.DrawIndexed(SkyMeshRT->GetIndicesCount(), true);
-			RenderBuilder.EndOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
 		}
 
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	}
 
 	RenderBuilder.EndCommandBuffer();
+
 #if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 	ThreadOccludedCalls[ThreadIdx] += RenderBuilder.OccludedCalls;

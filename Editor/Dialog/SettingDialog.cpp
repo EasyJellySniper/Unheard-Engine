@@ -109,11 +109,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
         Engine->SetResizeReason(UHEngineResizeReason::ToggleHDR);
     }
 
-    if (ImGui::Checkbox("Enable Hardware Occlusion", &RenderingSettings.bEnableHardwareOcclusion))
-    {
-        Engine->GetGfx()->WaitGPU();
-        RenderingSettings.bEnableHardwareOcclusion ? DeferredRenderer->CreateOcclusionQuery() : DeferredRenderer->ReleaseOcclusionQuery();
-    }
+    ImGui::Checkbox("Enable Hardware Occlusion", &RenderingSettings.bEnableHardwareOcclusion);
     ImGui::InputInt("Occlusion triangle threshold", &RenderingSettings.OcclusionTriangleThreshold);
 
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);

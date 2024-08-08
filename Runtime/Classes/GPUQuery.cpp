@@ -1,11 +1,18 @@
 #include "GPUQuery.h"
 #include "../Engine/Graphic.h"
 
+#if WITH_EDITOR
+std::mutex GGPUTimeScopeLock;
+std::vector<UHGPUQuery*> UHGPUTimeQueryScope::RegisteredGPUTime;
+#endif
+
 UHGPUQuery::UHGPUQuery()
 	: QueryCount(0)
 	, State(UHGPUQueryState::Idle)
 	, QueryPool(nullptr)
+#if WITH_EDITOR
 	, PreviousValidTimeStamp(0)
+#endif
 {
 
 }
@@ -68,12 +75,12 @@ void UHGPUQuery::EndTimeStamp(VkCommandBuffer InBuffer)
 #endif
 }
 
-float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
+void UHGPUQuery::ResolveTimeStamp(VkCommandBuffer InBuffer)
 {
 #if WITH_EDITOR
 	if (!GEnableGPUTiming)
 	{
-		return 0.0f;
+		return;
 	}
 
 	// try getting time stamp after request
@@ -89,14 +96,8 @@ float UHGPUQuery::GetTimeStamp(VkCommandBuffer InBuffer)
 			float Duration = static_cast<float>(Queries[1] - Queries[0]) * GfxCache->GetGPUTimeStampPeriod() * 1e-6f;
 			State = UHGPUQueryState::Idle;
 			PreviousValidTimeStamp = Duration;
-			return Duration;
 		}
 	}
-
-	// return previous valid time stamp, I don't want to see the value keeps jumping with 0
-	return PreviousValidTimeStamp;
-#else
-	return 0.0f;
 #endif
 }
 
@@ -110,13 +111,37 @@ uint32_t UHGPUQuery::GetQueryCount() const
 	return QueryCount;
 }
 
-UHGPUTimeQueryScope::UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery)
-	: Cmd(InCmd), GPUTimeQuery(InQuery)
+#if WITH_EDITOR
+void UHGPUQuery::SetDebugName(const std::string& InName)
+{
+	Name = InName;
+}
+
+std::string UHGPUQuery::GetDebugName() const
+{
+	return Name;
+}
+
+float UHGPUQuery::GetLastTimeStamp() const
+{
+	return PreviousValidTimeStamp;
+}
+#endif
+
+UHGPUTimeQueryScope::UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery, std::string InName)
 {
 #if WITH_EDITOR
+	Cmd = InCmd;
+	GPUTimeQuery = InQuery;
+
 	if (GPUTimeQuery)
 	{
 		GPUTimeQuery->BeginTimeStamp(Cmd);
+		GPUTimeQuery->SetDebugName(InName);
+
+		// add to registered list for profiling display
+		std::unique_lock<std::mutex> Lock(GGPUTimeScopeLock);
+		RegisteredGPUTime.push_back(GPUTimeQuery);
 	}
 #endif
 }
@@ -128,5 +153,21 @@ UHGPUTimeQueryScope::~UHGPUTimeQueryScope()
 	{
 		GPUTimeQuery->EndTimeStamp(Cmd);
 	}
+#endif
+}
+
+std::vector<UHGPUQuery*> UHGPUTimeQueryScope::GetResiteredGPUTime()
+{
+#if WITH_EDITOR
+	std::unique_lock<std::mutex> Lock(GGPUTimeScopeLock);
+	return RegisteredGPUTime;
+#endif
+}
+
+void UHGPUTimeQueryScope::ClearRegisteredGPUTime()
+{
+#if WITH_EDITOR
+	std::unique_lock<std::mutex> Lock(GGPUTimeScopeLock);
+	RegisteredGPUTime.clear();
 #endif
 }

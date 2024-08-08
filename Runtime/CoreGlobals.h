@@ -9,6 +9,7 @@ extern uint32_t GFrameNumber;
 extern bool GEnableGPUTiming;
 #endif
 
-extern uint32_t GMainThreadAffinity;
-extern uint32_t GRenderThreadAffinity;
-extern uint32_t GWorkerThreadAffinity;
+extern const uint32_t GMainThreadAffinity;
+extern const uint32_t GRenderThreadAffinity;
+extern const uint32_t GWorkerThreadAffinity;
+static const uint32_t GMaxWorkerThreads = 16;

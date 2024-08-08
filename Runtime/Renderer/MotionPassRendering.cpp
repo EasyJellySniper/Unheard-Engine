@@ -7,7 +7,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 	{
 		return;
 	}
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::MotionPass)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::MotionPass)], "MotionPass");
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Motion Pass");
 	{
@@ -124,7 +124,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 #endif
 
 				// execute all recorded batches
-				RenderBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter.WorkerBundles);
+				RenderBuilder.ExecuteBundles(MotionOpaqueParallelSubmitter);
 			}
 			RenderBuilder.EndRenderPass();
 		}
@@ -226,7 +226,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 #endif
 
 				// execute all recorded batches
-				RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter.WorkerBundles);
+				RenderBuilder.ExecuteBundles(MotionTranslucentParallelSubmitter);
 			}
 
 			RenderBuilder.EndRenderPass();
@@ -260,6 +260,13 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	InheritanceInfo.framebuffer = MotionOpaquePassObj.FrameBuffer;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, MotionOpaqueParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	if (StartIdx >= EndIdx)
+	{
+		RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
+		RenderBuilder.EndCommandBuffer();
+		return;
+	}
+
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);
@@ -304,7 +311,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
 		if (bOcclusionTest)
 		{
-			RenderBuilder.BeginPredication(RendererIdx, OcclusionResultGPU[PrevFrame]->GetBuffer());
+			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());
 		}
 
 		// bind pipelines
@@ -325,6 +332,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	}
 
 	RenderBuilder.EndCommandBuffer();
+
 #if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif
@@ -347,6 +355,13 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	InheritanceInfo.framebuffer = MotionTranslucentPassObj.FrameBuffer;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, MotionTranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	if (StartIdx >= EndIdx)
+	{
+		RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
+		RenderBuilder.EndCommandBuffer();
+		return;
+	}
+
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);
@@ -383,7 +398,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
 		if (bOcclusionTest)
 		{
-			RenderBuilder.BeginPredication(RendererIdx, OcclusionResultGPU[PrevFrame]->GetBuffer());
+			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());
 		}
 
 		// bind pipelines
@@ -403,6 +418,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	}
 
 	RenderBuilder.EndCommandBuffer();
+
 #if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif

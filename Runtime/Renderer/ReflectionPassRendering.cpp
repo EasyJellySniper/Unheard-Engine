@@ -8,7 +8,7 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 		return;
 	}
 
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::PreReflectionPass)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::PreReflectionPass)], "PreReflectionPass");
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Pre reflection Pass");
 
 	// opaque scene capture before applying reflection
@@ -30,7 +30,7 @@ void UHDeferredShadingRenderer::DrawReflectionPass(UHRenderBuilder& RenderBuilde
 		return;
 	}
 
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ReflectionPass)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ReflectionPass)], "ReflectionPass");
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Reflection Pass");
 	{
 		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);

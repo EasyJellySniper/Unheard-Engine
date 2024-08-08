@@ -251,3 +251,9 @@ Also, I shall be able to remove UV output in depth/motion object pass if it's no
 
 07-08-2024:
 Minimized the vertex input with shader defines.
+Made the parallel pass skip the recording if there isn't any renderer, a bit smelly though.
+
+08-08-2024:
+Refactored my GPU stats collection with static functions, the old one was too smelly.
+Refactored the occlusion pass, much better! Next is try to use culling result in the mesh shader. This might need to be done in AS.
+Early return in mesh shader introduces flickering.

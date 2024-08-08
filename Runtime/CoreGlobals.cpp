@@ -7,6 +7,6 @@ bool GEnableGPUTiming = true;
 #endif
 
 // the starting core of threads
-uint32_t GMainThreadAffinity = 0;
-uint32_t GRenderThreadAffinity = 1;
-uint32_t GWorkerThreadAffinity = 2;
+const uint32_t GMainThreadAffinity = 0;
+const uint32_t GRenderThreadAffinity = 1;
+const uint32_t GWorkerThreadAffinity = 2;

@@ -68,14 +68,14 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 	// -------------------------- Tone Mapping --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ToneMappingPass)]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ToneMappingPass)], "ToneMappingPass");
 		ToneMapShader->BindInputImage(PostProcessResults[1 - CurrentPostProcessRTIndex], CurrentFrameRT);
 		RenderEffect(ToneMapShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
 	
 	// -------------------------- Temporal AA --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::TemporalAAPass)]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::TemporalAAPass)], "TemporalAAPass");
 		if (ConfigInterface->RenderingSetting().bTemporalAA)
 		{
 			RenderBuilder.ResourceBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -93,7 +93,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 	// -------------------------- History Result Passes --------------------------//
 	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::HistoryCopyingPass)]);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::HistoryCopyingPass)], "HistoryCopyingPass");
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "History Result Copy");
 
 		// blit to scene history
@@ -127,7 +127,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderSceneToSwapChain", false);
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::PresentToSwapChain)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::PresentToSwapChain)], "PresentToSwapChain");
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Scene to SwapChain Pass");
 
 	uint32_t ImageIndex;

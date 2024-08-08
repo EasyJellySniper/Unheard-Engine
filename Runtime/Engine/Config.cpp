@@ -4,6 +4,7 @@
 #include "../../Resource.h"
 #include "../../framework.h"
 #include "../../UnheardEngine.h"
+#include "../CoreGlobals.h"
 
 UHConfigManager::UHConfigManager()
 	:  PresentationSettings(UHPresentationSettings())
@@ -73,7 +74,7 @@ void UHConfigManager::LoadConfig()
 			// clamp a few parameters
 			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
 			RenderingSettings.RenderHeight = std::clamp(RenderingSettings.RenderHeight, 480, 16384);
-			RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, 16);
+			RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, (int32_t)GMaxWorkerThreads);
 		}
 	}
 	FileIn.close();

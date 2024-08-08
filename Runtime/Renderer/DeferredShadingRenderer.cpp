@@ -183,11 +183,6 @@ int32_t UHDeferredShadingRenderer::GetOccludedCallCount() const
 	return OccludedCalls;
 }
 
-float* UHDeferredShadingRenderer::GetGPUTimes()
-{
-	return &GPUTimes[0];
-}
-
 #endif
 
 void UHDeferredShadingRenderer::UploadDataBuffers()
@@ -260,6 +255,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	FeatureData |= (GraphicInterface->IsDepthPrePassEnabled()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureDepthPrePass) : 0;
 	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
+	FeatureData |= (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::OcclusionCulling) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.GDirectionalShadowRayTMax = ConfigInterface->RenderingSetting().RTShadowTMax;
@@ -446,6 +442,7 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 	// recommend to reserve capacity during initialization
 	OpaquesToRender.clear();
 	TranslucentsToRender.clear();
+	OcclusionRenderers.clear();
 
 	// reset counting counter
 	for (int32_t Idx = 0; Idx < MaxCountingElement; Idx++)
@@ -474,9 +471,18 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 		{
 			UHMeshRendererComponent* Renderer = CountingRenderers[CountIdx][Idx];
 			const UHMaterial* Mat = CountingRenderers[CountIdx][Idx]->GetMaterial();
+			const UHMesh* Mesh = Renderer->GetMesh();
+			const int32_t TriCount = Mesh->GetIndicesCount() / 3;
+			const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+
 			if (Mat->IsOpaque())
 			{
 				OpaquesToRender.push_back(Renderer);
+			}
+
+			if (bOcclusionTest)
+			{
+				OcclusionRenderers.push_back(Renderer);
 			}
 		}
 	}
@@ -673,6 +679,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			if (bIsRenderingEnabledRT)
 			{
 				DepthParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
+				OcclusionParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 				BaseParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 				MotionOpaqueParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 				MotionTranslucentParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
@@ -728,8 +735,19 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				{
 					OcclusionQueryReset(SceneRenderBuilder);
 				}
-				RenderDepthPrePass(SceneRenderBuilder);
+
+				if (bEnableDepthPrepassRT)
+				{
+					RenderDepthPrePass(SceneRenderBuilder);
+					RenderOcclusionPass(SceneRenderBuilder);
+				}
+
 				RenderBasePass(SceneRenderBuilder);
+				if (!bEnableDepthPrepassRT)
+				{
+					// no depth to test without depth prepass, do occlusion pass after base for this case
+					RenderOcclusionPass(SceneRenderBuilder);
+				}
 				RenderMotionPass(SceneRenderBuilder);
 
 				if (!bEnableAsyncComputeRT)
@@ -759,7 +777,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			// get GPU times
 			for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
 			{
-				GPUTimes[Idx] = GPUTimeQueries[Idx]->GetTimeStamp(SceneRenderBuilder.GetCmdList());
+				GPUTimeQueries[Idx]->ResolveTimeStamp(SceneRenderBuilder.GetCmdList());
 			}
 		#endif
 
@@ -829,6 +847,10 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 
 		case UHParallelTask::DepthPassTask:
 			DepthPassTask(ThreadIdx);
+			break;
+
+		case UHParallelTask::OcclusionPassTask:
+			OcclusionPassTask(ThreadIdx);
 			break;
 
 		case UHParallelTask::BasePassTask:

@@ -336,6 +336,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\OcclusionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h" />
@@ -474,6 +475,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\MotionPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\OcclusionPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.cpp" />

@@ -36,7 +36,6 @@ void MotionMS(
     UHMeshShaderData ShaderData = MeshShaderData[Gid];
     UHRendererInstance InInstance = RendererInstances[ShaderData.RendererIndex];
     UHMeshlet Meshlet = Meshlets[InInstance.MeshIndex][ShaderData.MeshletIndex];
-    
     SetMeshOutputCounts(Meshlet.VertexCount, Meshlet.PrimitiveCount);
     
     // output triangles first

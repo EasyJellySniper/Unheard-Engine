@@ -2,10 +2,7 @@
 #include "../../Components/MeshRenderer.h"
 #include "../RendererShared.h"
 
-UHGraphicState* UHBasePassShader::OcclusionState = nullptr;
-
-UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts
-	, bool bInOcclusionTest)
+UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
 	: UHShaderClass(InGfx, Name, typeid(UHBasePassShader), InMat, InRenderPass)
 {
 	// DeferredPass: Bind all constants, visiable in VS/PS only
@@ -27,7 +24,6 @@ UHBasePassShader::UHBasePassShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	// textures and samplers will be bound on fly instead, since I go with bindless rendering
-	bOcclusionTest = bInOcclusionTest;
 	CreateLayoutAndDescriptor(ExtraLayouts);
 	OnCompile();
 }
@@ -67,34 +63,13 @@ void UHBasePassShader::OnCompile()
 void UHBasePassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
 	BindConstant(GSystemConstantBuffer, 0);
-	BindConstant(bOcclusionTest ? GOcclusionConstantBuffer : GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
+	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 	BindConstant(MaterialCache->GetMaterialConst(), 2);
 
 	UHMesh* Mesh = InRenderer->GetMesh();
 	BindStorage(Mesh->GetUV0Buffer(), 3, 0, true);
 	BindStorage(Mesh->GetNormalBuffer(), 4, 0, true);
 	BindStorage(Mesh->GetTangentBuffer(), 5, 0, true);
-}
-
-void UHBasePassShader::RecreateOcclusionState()
-{
-	Gfx->RequestReleaseGraphicState(OcclusionState);
-	OcclusionState = nullptr;
-
-	UHRenderPassInfo PassInfo = MaterialPassInfo;
-	PassInfo.RenderPass = RenderPassCache;
-	PassInfo.DepthInfo.bEnableDepthWrite = false;
-	PassInfo.DepthInfo.DepthFunc = VK_COMPARE_OP_GREATER_OR_EQUAL;
-	PassInfo.bEnableColorWrite = false;
-	PassInfo.BlendMode = UHBlendMode::Opaque;
-	PassInfo.CullMode = UHCullMode::CullNone;
-	PassInfo.PS = UHINDEXNONE;
-	OcclusionState = Gfx->RequestGraphicState(PassInfo);
-}
-
-UHGraphicState* UHBasePassShader::GetOcclusionState() const
-{
-	return OcclusionState;
 }
 
 UHBaseMeshShader::UHBaseMeshShader(UHGraphic* InGfx, std::string Name, VkRenderPass InRenderPass, UHMaterial* InMat, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)

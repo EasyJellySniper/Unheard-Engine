@@ -703,15 +703,15 @@ void UHRenderBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)
 #endif
 }
 
-void UHRenderBuilder::ExecuteBundles(const std::vector<VkCommandBuffer>& CmdToExecute)
+void UHRenderBuilder::ExecuteBundles(const UHParallelSubmitter& InSubmitter)
 {
-	if (CmdToExecute.size() == 0)
+	if (InSubmitter.WorkerBundles.size() == 0)
 	{
 		return;
 	}
 
 	// push secondary cmds
-	vkCmdExecuteCommands(CmdList, static_cast<uint32_t>(CmdToExecute.size()), CmdToExecute.data());
+	vkCmdExecuteCommands(CmdList, static_cast<uint32_t>(InSubmitter.WorkerBundles.size()), InSubmitter.WorkerBundles.data());
 }
 
 void UHRenderBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)

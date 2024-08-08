@@ -3,7 +3,7 @@
 void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderDepthPrePass", false);
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::DepthPrePass)]);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::DepthPrePass)], "DepthPass");
 	if (CurrentScene == nullptr || !bEnableDepthPrepassRT)
 	{
 		return;
@@ -92,7 +92,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 #endif
 
 			// execute all recorded batches
-			RenderBuilder.ExecuteBundles(DepthParallelSubmitter.WorkerBundles);
+			RenderBuilder.ExecuteBundles(DepthParallelSubmitter);
 		}
 
 		RenderBuilder.EndRenderPass();
@@ -115,6 +115,13 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	InheritanceInfo.framebuffer = DepthPassObj.FrameBuffer;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, DepthParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
+	if (StartIdx >= EndIdx)
+	{
+		RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
+		RenderBuilder.EndCommandBuffer();
+		return;
+	}
+
 	RenderBuilder.BeginCommandBuffer(&InheritanceInfo);
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);
@@ -152,6 +159,7 @@ void UHDeferredShadingRenderer::DepthPassTask(int32_t ThreadIdx)
 	}
 
 	RenderBuilder.EndCommandBuffer();
+
 #if WITH_EDITOR
 	ThreadDrawCalls[ThreadIdx] += RenderBuilder.DrawCalls;
 #endif

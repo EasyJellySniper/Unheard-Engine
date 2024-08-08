@@ -23,25 +23,13 @@ public:
 		, TextureCubeCount(0)
 		, MateralCount(0)
 	{
-		for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
-		{
-			GPUTimes[Idx] = 0.0f;
-		}
-	}
 
-	void SetGPUTimes(float* InTime)
-	{
-		for (int32_t Idx = 0; Idx < UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax); Idx++)
-		{
-			GPUTimes[Idx] = InTime[Idx];
-		}
 	}
 
 	float EngineUpdateTime;
 	float RenderThreadTime;
 	float TotalTime;
 	float FPS;
-	float GPUTimes[UH_ENUM_VALUE(UHRenderPassTypes::UHRenderPassMax)];
 
 	int32_t RendererCount;
 	int32_t DrawCallCount;

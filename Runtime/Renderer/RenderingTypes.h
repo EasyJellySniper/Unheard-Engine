@@ -145,6 +145,7 @@ enum class UHRenderPassTypes
 {
 	OcclusionReset = 0,
 	DepthPrePass,
+	OcclusionPass,
 	BasePass,
 	UpdateTopLevelAS,
 	GenerateSH9,
@@ -320,6 +321,7 @@ enum class UHSystemRenderFeatureBits
 	FeatureDepthPrePass = 1 << 0,
 	FeatureEnvCube = 1 << 1,
 	FeatureHDR = 1 << 2,
+	OcclusionCulling = 1 << 3,
 };
 
 // constant types

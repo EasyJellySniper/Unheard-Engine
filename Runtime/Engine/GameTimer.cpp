@@ -3,8 +3,8 @@
 #include "UnheardEngine.h"
 
 #if WITH_EDITOR
-	std::mutex GTimeScopeLock;
-	std::vector<std::pair<std::string, float>> UHGameTimerScope::RegisteredGameTime;
+std::mutex GTimeScopeLock;
+std::vector<std::pair<std::string, float>> UHGameTimerScope::RegisteredGameTime;
 #endif
 
 UHGameTimer::UHGameTimer()
