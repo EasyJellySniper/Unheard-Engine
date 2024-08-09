@@ -13,6 +13,7 @@ struct UHMeshShaderData
 {
     uint RendererIndex;
     uint MeshletIndex;
+    uint bDoOcclusionTest;
 };
 
 // meshlet data

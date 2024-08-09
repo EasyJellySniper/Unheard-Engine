@@ -345,4 +345,5 @@ struct UHMeshShaderData
 {
 	uint32_t RendererIndex;
 	uint32_t MeshletIndex;
+	uint32_t bDoOcclusionTest;
 };

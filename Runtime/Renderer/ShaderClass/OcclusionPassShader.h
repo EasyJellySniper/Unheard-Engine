@@ -11,6 +11,7 @@ public:
 
 	void BindParameters(const UHMeshRendererComponent* InRenderer);
 
+	static void ResetOcclusionState();
 	static UHGraphicState* GetOcclusionState();
 
 private:

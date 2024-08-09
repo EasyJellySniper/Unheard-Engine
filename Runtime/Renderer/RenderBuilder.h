@@ -102,6 +102,11 @@ public:
 	// transition image
 	void ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
 	void ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
+
+	// transition buffer
+	void ResourceBarrier(VkBuffer InBuffer, const uint64_t BufferSize
+		, VkAccessFlagBits SrcAccess, VkAccessFlagBits DstAccess, VkPipelineStageFlagBits SrcStage, VkPipelineStageFlagBits DstStage);
+
 	void PushResourceBarrier(const UHImageBarrier InBarrier);
 	void FlushResourceBarrier();
 
@@ -144,6 +149,8 @@ public:
 	void BeginPredication(uint32_t Idx, VkBuffer InBuffer, bool bReversed = false);
 	void EndPredication();
 
+	void ResetGPUQuery(UHGPUQuery* InQuery);
+
 #if WITH_EDITOR
 	int32_t DrawCalls;
 	int32_t OccludedCalls;
@@ -157,8 +164,8 @@ private:
 	bool bIsCompute;
 
 	// lookup table for stage flag and access flag
-	std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;
-	std::unordered_map<VkImageLayout, VkAccessFlags> LayoutToAccessFlags;
+	static std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;
+	static std::unordered_map<VkImageLayout, VkAccessFlags> LayoutToAccessFlags;
 	std::vector<UHImageBarrier> ImageBarriers;
 
 	VkExtent2D PrevViewport;

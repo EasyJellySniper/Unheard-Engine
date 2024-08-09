@@ -38,6 +38,7 @@ void UHOcclusionPassShader::OnCompile()
 		, PipelineLayout);
 
 	RenderPassInfo.bEnableColorWrite = false;
+	RenderPassInfo.bForceBlendOff = true;
 
 	// create occlusion state and cache it
 	CreateGraphicState(RenderPassInfo);
@@ -48,6 +49,11 @@ void UHOcclusionPassShader::BindParameters(const UHMeshRendererComponent* InRend
 {
 	BindConstant(GSystemConstantBuffer, 0);
 	BindConstant(GOcclusionConstantBuffer, 1, InRenderer->GetBufferDataIndex());
+}
+
+void UHOcclusionPassShader::ResetOcclusionState()
+{
+	OcclusionStateCache = nullptr;
 }
 
 UHGraphicState* UHOcclusionPassShader::GetOcclusionState()

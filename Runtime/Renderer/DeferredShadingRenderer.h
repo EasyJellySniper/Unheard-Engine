@@ -192,7 +192,6 @@ private:
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
 	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
-	void OcclusionQueryReset(UHRenderBuilder& RenderBuilder);
 	void RenderOcclusionPass(UHRenderBuilder& RenderBuilder);
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);

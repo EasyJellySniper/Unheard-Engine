@@ -1,5 +1,8 @@
 #include "RenderBuilder.h"
 
+std::unordered_map<VkImageLayout, VkPipelineStageFlags> UHRenderBuilder::LayoutToStageFlags;
+std::unordered_map<VkImageLayout, VkAccessFlags> UHRenderBuilder::LayoutToAccessFlags;
+
 UHRenderBuilder::UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder)
 	: Gfx(InGraphic)
 	, CmdList(InCommandBuffer)
@@ -17,23 +20,29 @@ UHRenderBuilder::UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommand
 #endif
 {
 	// resource barrier lookup build, not the best way but can get rid of plenty if-else blocks
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL] = VK_ACCESS_TRANSFER_READ_BIT;
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL] = VK_ACCESS_TRANSFER_WRITE_BIT;
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_PRESENT_SRC_KHR] = VK_ACCESS_NONE_KHR;
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL] = VK_ACCESS_NONE;
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL] = VK_ACCESS_SHADER_READ_BIT;
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL] = VK_ACCESS_NONE;
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_UNDEFINED] = VK_ACCESS_NONE;
-	LayoutToAccessFlags[VK_IMAGE_LAYOUT_GENERAL] = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+	if (LayoutToAccessFlags.size() == 0)
+	{
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL] = VK_ACCESS_TRANSFER_READ_BIT;
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL] = VK_ACCESS_TRANSFER_WRITE_BIT;
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_PRESENT_SRC_KHR] = VK_ACCESS_NONE_KHR;
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL] = VK_ACCESS_NONE;
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL] = VK_ACCESS_SHADER_READ_BIT;
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL] = VK_ACCESS_NONE;
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_UNDEFINED] = VK_ACCESS_NONE;
+		LayoutToAccessFlags[VK_IMAGE_LAYOUT_GENERAL] = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+	}
 
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_PRESENT_SRC_KHR] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL] = (bIsCompute) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL] = (bIsCompute) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL] = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_UNDEFINED] = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	LayoutToStageFlags[VK_IMAGE_LAYOUT_GENERAL] = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+	if (LayoutToStageFlags.size() == 0)
+	{
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL] = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL] = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_PRESENT_SRC_KHR] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL] = (bIsCompute) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL] = (bIsCompute) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL] = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_UNDEFINED] = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		LayoutToStageFlags[VK_IMAGE_LAYOUT_GENERAL] = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+	}
 }
 
 VkCommandBuffer UHRenderBuilder::GetCmdList()
@@ -438,6 +447,27 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 		static_cast<uint32_t>(Barriers.size()), Barriers.data());
 }
 
+void UHRenderBuilder::ResourceBarrier(VkBuffer InBuffer, const uint64_t BufferSize
+	, VkAccessFlagBits SrcAccess, VkAccessFlagBits DstAccess, VkPipelineStageFlagBits SrcStage, VkPipelineStageFlagBits DstStage)
+{
+	VkBufferMemoryBarrier Barrier{};
+	Barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	Barrier.buffer = InBuffer;
+	Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	Barrier.size = BufferSize;
+	Barrier.srcAccessMask = SrcAccess;
+	Barrier.dstAccessMask = DstAccess;
+
+	vkCmdPipelineBarrier(
+		CmdList,
+		SrcStage, DstStage,
+		0,
+		0, nullptr,
+		1, &Barrier,
+		0, nullptr);
+}
+
 // ResourceBarrier: Can push different textures and layouts at once
 void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
 {
@@ -775,7 +805,7 @@ void UHRenderBuilder::BeginPredication(uint32_t Idx, VkBuffer InBuffer, bool bRe
 {
 	VkConditionalRenderingBeginInfoEXT Info{};
 	Info.sType = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
-	Info.offset = Idx * 4;
+	Info.offset = Idx * sizeof(uint32_t);
 	Info.buffer = InBuffer;
 	Info.flags = bReversed ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0;
 
@@ -785,4 +815,9 @@ void UHRenderBuilder::BeginPredication(uint32_t Idx, VkBuffer InBuffer, bool bRe
 void UHRenderBuilder::EndPredication()
 {
 	GVkCmdEndConditionalRenderingEXT(CmdList);
+}
+
+void UHRenderBuilder::ResetGPUQuery(UHGPUQuery* InQuery)
+{
+	vkResetQueryPool(LogicalDevice, InQuery->GetQueryPool(), 0, InQuery->GetQueryCount());
 }

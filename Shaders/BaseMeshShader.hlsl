@@ -10,8 +10,11 @@ StructuredBuffer<ObjectConstants> RendererConstants : register(t1);
 // this should be accessed via Gid, since C++ side is dispatching (TotalMeshlets,1,1)
 StructuredBuffer<UHMeshShaderData> MeshShaderData : register(t3);
 
+// occlusion result
+ByteAddressBuffer OcclusionResult : register(t4);
+
 // renderer instances
-StructuredBuffer<UHRendererInstance> RendererInstances : register(t4);
+StructuredBuffer<UHRendererInstance> RendererInstances : register(t5);
 
 // all mesh data, fetched by mesh index first
 StructuredBuffer<UHMeshlet> Meshlets[] : register(t0, space3);
@@ -34,6 +37,14 @@ void BaseMS(
 {
     // fetch data and set mesh outputs
     UHMeshShaderData ShaderData = MeshShaderData[Gid];
+    
+    // occlusion test check, not every objects have the occlusion test enabled, so need another bDoOcclusionTest flag to check
+    if (ShaderData.bDoOcclusionTest == 1 && OcclusionResult.Load(ShaderData.RendererIndex * 4) == 0)
+    {
+        SetMeshOutputCounts(0, 0);  // must set output as 0 when doing early return
+        return;
+    }
+    
     UHRendererInstance InInstance = RendererInstances[ShaderData.RendererIndex];
     UHMeshlet Meshlet = Meshlets[InInstance.MeshIndex][ShaderData.MeshletIndex];
     SetMeshOutputCounts(Meshlet.VertexCount, Meshlet.PrimitiveCount);

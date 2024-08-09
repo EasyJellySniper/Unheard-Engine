@@ -87,6 +87,7 @@ UHBaseMeshShader::UHBaseMeshShader(UHGraphic* InGfx, std::string Name, VkRenderP
 	// current mesh shader data and renderer instances
 	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_MESH_BIT_EXT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	CreateLayoutAndDescriptor(ExtraLayouts);
 
@@ -135,7 +136,14 @@ void UHBaseMeshShader::BindParameters()
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		BindStorage(GMeshShaderData[Idx][MaterialCache->GetBufferDataIndex()].get(), 3, 0, true, Idx);
+
+		// use the occlusion result from the previous frame
+		const uint32_t PrevFrame = (Idx - 1) % GMaxFrameInFlight;
+		if (GOcclusionResult[PrevFrame] != nullptr)
+		{
+			BindStorage(GOcclusionResult[PrevFrame].get(), 4, 0, true);
+		}
 	}
 
-	BindStorage(GRendererInstanceBuffer.get(), 4, 0, true);
+	BindStorage(GRendererInstanceBuffer.get(), 5, 0, true);
 }

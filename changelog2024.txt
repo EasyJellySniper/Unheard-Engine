@@ -257,3 +257,8 @@ Made the parallel pass skip the recording if there isn't any renderer, a bit sme
 Refactored my GPU stats collection with static functions, the old one was too smelly.
 Refactored the occlusion pass, much better! Next is try to use culling result in the mesh shader. This might need to be done in AS.
 Early return in mesh shader introduces flickering.
+
+09-08-2024:
+Ta, fixed the flickering issue in mesh shader early return. I must set output count as 0, otherwise the behavior is undefined.
+Removed occlusion culling toggle by keyboard.
+Made occlusion culling work in mesh shader too. Refactored a few code and ready for post.

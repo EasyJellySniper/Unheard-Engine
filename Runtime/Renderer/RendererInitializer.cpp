@@ -180,6 +180,7 @@ void UHDeferredShadingRenderer::Release()
 		ReleaseAsyncComputeQueue();
 	}
 
+	UHOcclusionPassShader::ResetOcclusionState();
 	UHShaderClass::ClearGlobalLayoutCache(GraphicInterface);
 }
 
@@ -503,7 +504,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 	GSkyLightCube = GetCurrentSkyCube();
 	const bool bEnableRayTracing = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
-	const bool bEnableOcclusionTest = ConfigInterface->RenderingSetting().bEnableHardwareOcclusion;
 
 	// ------------------------------------------------ Bindless table update
 	UpdateTextureDescriptors();
@@ -593,15 +593,18 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		}
 
 		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
-		if (Mat->IsOpaque() && !GraphicInterface->IsMeshShaderSupported())
+		if (!GraphicInterface->IsMeshShaderSupported())
 		{
-			assert(MotionOpaqueShaders.find(RendererIdx) != MotionOpaqueShaders.end());
-			MotionOpaqueShaders[RendererIdx]->BindParameters(Renderer);
-		}
-		else if (!Mat->IsOpaque())
-		{
-			assert(MotionTranslucentShaders.find(RendererIdx) != MotionTranslucentShaders.end());
-			MotionTranslucentShaders[RendererIdx]->BindParameters(Renderer);
+			if (Mat->IsOpaque())
+			{
+				assert(MotionOpaqueShaders.find(RendererIdx) != MotionOpaqueShaders.end());
+				MotionOpaqueShaders[RendererIdx]->BindParameters(Renderer);
+			}
+			else
+			{
+				assert(MotionTranslucentShaders.find(RendererIdx) != MotionTranslucentShaders.end());
+				MotionTranslucentShaders[RendererIdx]->BindParameters(Renderer);
+			}
 		}
 	}
 
@@ -1067,27 +1070,27 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 void UHDeferredShadingRenderer::CreateOcclusionQuery()
 {
 	const uint32_t Count = static_cast<uint32_t>(CurrentScene->GetAllRendererCount());
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	if (Count > 0)
 	{
-		if (Count > 0)
+		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
 			// will do predication rendering on GPU instead of traditional readback
 			OcclusionQuery[Idx] = GraphicInterface->RequestGPUQuery(Count, VK_QUERY_TYPE_OCCLUSION);
 			GOcclusionResult[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>(Count
-				, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+				, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 		}
-	}
 
-	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		GOcclusionConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(Count, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	}
-	OcclusionConstantsCPU.resize(Count);
+		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			GOcclusionConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(Count, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		}
+		OcclusionConstantsCPU.resize(Count);
 
-	if (Count > 0)
-	{
-		const uint32_t PrevFrame = (CurrentFrameGT - 1) % GMaxFrameInFlight;
-		vkResetQueryPool(GraphicInterface->GetLogicalDevice(), OcclusionQuery[PrevFrame]->GetQueryPool(), 0, OcclusionQuery[PrevFrame]->GetQueryCount());
+		std::vector<uint32_t> InitialVisibility(Count, 0);
+		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			GOcclusionResult[Idx]->UploadAllData(InitialVisibility.data());
+		}
 	}
 }
 
@@ -1416,6 +1419,7 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 	OldMat->RemoveReferenceObject(InRenderer);
 
 	const bool bNeedReassignGroup = UHMaterial::IsDifferentBlendGroup(OldMat, NewMat);
+	const bool bUseMeshShader = GraphicInterface->IsMeshShaderSupported();
 
 	// set new material cache directly if it doesn't be reassigned
 	// other wise remove the old renderer and recreate new one
@@ -1425,21 +1429,30 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 	{
 		if (NewMat->IsOpaque())
 		{
-			if (GraphicInterface->IsDepthPrePassEnabled())
+			if (!bUseMeshShader)
 			{
-				DepthPassShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
+				if (GraphicInterface->IsDepthPrePassEnabled())
+				{
+					DepthPassShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
+				}
+				BasePassShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
+				MotionOpaqueShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
 			}
-			BasePassShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
-			MotionOpaqueShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
 		}
 		else
 		{
-			MotionTranslucentShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
+			if (!bUseMeshShader)
+			{
+				MotionTranslucentShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
+			}
 			TranslucentPassShaders[RendererBufferIndex]->SetNewMaterialCache(NewMat);
 		}
 
 		// re-bind the parameter
-		ResetMaterialShaders(InRenderer, UHMaterialCompileFlag::BindOnly, NewMat->IsOpaque(), false);
+		if (!bUseMeshShader)
+		{
+			ResetMaterialShaders(InRenderer, UHMaterialCompileFlag::BindOnly, NewMat->IsOpaque(), false);
+		}
 	}
 	else
 	{
@@ -1449,19 +1462,11 @@ void UHDeferredShadingRenderer::OnRendererMaterialChanged(UHMeshRendererComponen
 	}
 	NewMat->AddReferenceObject(InRenderer);
 
-	if (GraphicInterface->IsMeshShaderSupported())
+	if (bUseMeshShader)
 	{
 		// both old & new mesh shader needs a update
 		RecreateMeshShaders(OldMat);
 		RecreateMeshShaders(NewMat);
-	}
-
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-	{
-		// occlusion shader change
-		const int32_t RendererIdx = InRenderer->GetBufferDataIndex();
-		
-		// @TODO: Re-init occlusion shader here
 	}
 
 	UpdateDescriptors();
@@ -1682,7 +1687,10 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 	}
 	else
 	{
-		MotionTranslucentShaders[RendererBufferIndex] = MakeUnique<UHMotionObjectPassShader>(GraphicInterface, "MotionObjectShader", MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
+		if (!GraphicInterface->IsMeshShaderSupported())
+		{
+			MotionTranslucentShaders[RendererBufferIndex] = MakeUnique<UHMotionObjectPassShader>(GraphicInterface, "MotionObjectShader", MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
+		}
 		TranslucentPassShaders[RendererBufferIndex]
 			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 	}
@@ -1708,33 +1716,33 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 
 	const uint32_t MatDataIndex = InMat->GetBufferDataIndex();
 
-		// create depth and base shader only for the opaque, but motion pass for both opaque/translucent
-		if (InMat->IsOpaque())
-		{
+	// create depth and base shader only for the opaque, but motion pass for both opaque/translucent
+	if (InMat->IsOpaque())
+	{
 #if WITH_RELEASE
-			if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
+		if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
 #endif
-			{
-				UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
-				DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
-			}
-
-			// push normal and tangent table after depth
-			BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
-			BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
-
-			UH_SAFE_RELEASE(BaseMeshShaders[MatDataIndex]);
-			BaseMeshShaders[MatDataIndex] = MakeUnique<UHBaseMeshShader>(GraphicInterface, "BaseMeshShader", BasePassObj.RenderPass, InMat, BindlessLayouts);
-		}
-		else
 		{
-			BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
-			BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
+			UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
+			DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
 		}
 
-		UH_SAFE_RELEASE(MotionMeshShaders[MatDataIndex]);
-		MotionMeshShaders[MatDataIndex] = MakeUnique<UHMotionMeshShader>(GraphicInterface, "MotionMeshShader"
-			, InMat->IsOpaque() ? MotionOpaquePassObj.RenderPass : MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
+		// push normal and tangent table after depth
+		BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
+		BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
+
+		UH_SAFE_RELEASE(BaseMeshShaders[MatDataIndex]);
+		BaseMeshShaders[MatDataIndex] = MakeUnique<UHBaseMeshShader>(GraphicInterface, "BaseMeshShader", BasePassObj.RenderPass, InMat, BindlessLayouts);
+	}
+	else
+	{
+		BindlessLayouts.push_back(NormalTable->GetDescriptorSetLayout());
+		BindlessLayouts.push_back(TangentTable->GetDescriptorSetLayout());
+	}
+
+	UH_SAFE_RELEASE(MotionMeshShaders[MatDataIndex]);
+	MotionMeshShaders[MatDataIndex] = MakeUnique<UHMotionMeshShader>(GraphicInterface, "MotionMeshShader"
+		, InMat->IsOpaque() ? MotionOpaquePassObj.RenderPass : MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 
 	// count total meshlet number of a material group
 	uint32_t MeshletCountOfMaterialGroup = 0;

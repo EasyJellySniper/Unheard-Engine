@@ -31,12 +31,6 @@ void UHDeferredShadingRenderer::Resize()
 	ReleaseRayTracingBuffers();
 	ResizeRayTracingBuffers(true);
 
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-	{
-		ReleaseOcclusionQuery();
-		CreateOcclusionQuery();
-	}
-
 	// need to rewrite descriptors after resize
 	UpdateDescriptors();
 
@@ -282,17 +276,18 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			// update CPU constants when the frame is dirty
 			// the dirty flag is marked in UHMeshRendererComponent::Update()
 			UHMeshRendererComponent* Renderer = Renderers[Idx];
+			UHObjectConstants Constant = Renderer->GetConstants();
 			if (Renderer->IsRenderDirty(CurrentFrameGT))
 			{
-				UHObjectConstants Constant = Renderer->GetConstants();
 				ObjectConstantsCPU[Renderer->GetBufferDataIndex()] = Constant;
-
-				if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-				{
-					Constant.GWorld = Renderer->GetWorldBoundMatrix();
-					OcclusionConstantsCPU[Renderer->GetBufferDataIndex()] = Constant;
-				}
 				Renderer->SetRenderDirty(false, CurrentFrameGT);
+			}
+
+			// setup occlusion data if necessary
+			if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+			{
+				Constant.GWorld = Renderer->GetWorldBoundMatrix();
+				OcclusionConstantsCPU[Renderer->GetBufferDataIndex()] = Constant;
 			}
 
 			// copy material data only when it's dirty
@@ -535,6 +530,7 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	for (UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMesh* Mesh = Renderer->GetMesh();
+		const bool bOcclusionTest = bEnableHWOcclusionRT && ((int32_t)Mesh->GetIndicesCount() / 3) >= OcclusionThresholdRT;
 
 		// set the instance to the corresponding material and it's current rendering index
 		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
@@ -549,6 +545,7 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 
 		UHMeshShaderData Data;
 		Data.RendererIndex = Renderer->GetBufferDataIndex();
+		Data.bDoOcclusionTest = bOcclusionTest ? 1 : 0;
 		bool bClearMotionDirty = false;
 
 		for (uint32_t MeshletIdx = 0; MeshletIdx < Mesh->GetMeshletCount(); MeshletIdx++)
@@ -574,8 +571,9 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	for (int32_t Idx = (int32_t)TranslucentsToRender.size() - 1; Idx >= 0; Idx--)
 	{
 		UHMeshRendererComponent* Renderer = TranslucentsToRender[Idx];
-
 		const UHMesh* Mesh = Renderer->GetMesh();
+		const bool bOcclusionTest = bEnableHWOcclusionRT && ((int32_t)Mesh->GetIndicesCount() / 3) >= OcclusionThresholdRT;
+
 		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
 		const int32_t NewIndex = MeshShaderInstancesCounter[MatDataIndex]++;
 
@@ -586,6 +584,7 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 
 		UHMeshShaderData Data;
 		Data.RendererIndex = Renderer->GetBufferDataIndex();
+		Data.bDoOcclusionTest = bOcclusionTest ? 1 : 0;
 
 		// translucent always output motion for now
 		for (uint32_t MeshletIdx = 0; MeshletIdx < Mesh->GetMeshletCount(); MeshletIdx++)
@@ -703,7 +702,6 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				{
 					BuildTopLevelAS(AsyncComputeBuilder);
 					GenerateSH9Pass(AsyncComputeBuilder);
-					OcclusionQueryReset(AsyncComputeBuilder);
 				}
 
 				GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
@@ -731,23 +729,9 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 					SceneRenderBuilder.FlushResourceBarrier();
 				}
 
-				if (!bEnableAsyncComputeRT)
-				{
-					OcclusionQueryReset(SceneRenderBuilder);
-				}
-
-				if (bEnableDepthPrepassRT)
-				{
-					RenderDepthPrePass(SceneRenderBuilder);
-					RenderOcclusionPass(SceneRenderBuilder);
-				}
-
+				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
-				if (!bEnableDepthPrepassRT)
-				{
-					// no depth to test without depth prepass, do occlusion pass after base for this case
-					RenderOcclusionPass(SceneRenderBuilder);
-				}
+				RenderOcclusionPass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
 
 				if (!bEnableAsyncComputeRT)

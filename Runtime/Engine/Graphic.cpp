@@ -540,11 +540,16 @@ bool UHGraphic::CreateLogicalDevice()
 	MeshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
 	MeshShaderFeatures.pNext = &RobustnessFeatures;
 
+	// predication feature check
+	VkPhysicalDeviceConditionalRenderingFeaturesEXT ConditionalRenderingFeatures{};
+	ConditionalRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
+	ConditionalRenderingFeatures.pNext = &MeshShaderFeatures;
+
 	// device feature needs to assign in fature 2
 	VkPhysicalDeviceFeatures2 PhyFeatures{};
 	PhyFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 	PhyFeatures.features = DeviceFeatures;
-	PhyFeatures.pNext = &MeshShaderFeatures;
+	PhyFeatures.pNext = &ConditionalRenderingFeatures;
 
 	vkGetPhysicalDeviceFeatures2(PhysicalDevice, &PhyFeatures);
 
