@@ -6,6 +6,7 @@
  Recommended to use the full project link, as there are a few test assets. <br>
 
 <br> Implementation details are wrote in my GameDev blog https://www.gamedev.net/blogs/blog/5158-the-graphic-guy-squall/ <br>
+<br> Which includes modern features such as ray tracing and mesh shaders <br>
 
 <br> Day test scene: https://www.youtube.com/watch?v=bmW_U1yBwxw <br>
 <br> Night test scene: https://www.youtube.com/watch?v=ewRdUFsdBGg <br>
