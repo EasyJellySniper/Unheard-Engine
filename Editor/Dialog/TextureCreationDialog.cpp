@@ -339,7 +339,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 SamplerInfo.MipBias = 0.0f;
                 UHSampler* LinearClampedSampler = Gfx->RequestTextureSampler(SamplerInfo);
 
-                SphereToCubemapShader->BindConstant(ShaderData, 0, 0);
+                SphereToCubemapShader->BindConstant(ShaderData, 0, 0, 0);
                 SphereToCubemapShader->BindImage(InputTexture, 1);
                 SphereToCubemapShader->BindSampler(LinearClampedSampler, 2);
 
@@ -387,7 +387,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
             uint32_t MipSize = Size >> MipIdx;
             ShaderData->UploadData(&MipSize, 0);
-            SmoothCubemap->BindConstant(ShaderData, 6, 0);
+            SmoothCubemap->BindConstant(ShaderData, 6, 0, 0);
 
             RenderBuilder.BindComputeState(SmoothCubemap->GetComputeState());
             RenderBuilder.BindDescriptorSetCompute(SmoothCubemap->GetPipelineLayout(), SmoothCubemap->GetDescriptorSet(0));
@@ -544,7 +544,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
             uint32_t MipSize = Size >> MipIdx;
             ShaderData->UploadData(&MipSize, 0);
-            SmoothCubemap->BindConstant(ShaderData, 6, 0);
+            SmoothCubemap->BindConstant(ShaderData, 6, 0, 0);
 
             RenderBuilder.BindComputeState(SmoothCubemap->GetComputeState());
             RenderBuilder.BindDescriptorSetCompute(SmoothCubemap->GetPipelineLayout(), SmoothCubemap->GetDescriptorSet(0));

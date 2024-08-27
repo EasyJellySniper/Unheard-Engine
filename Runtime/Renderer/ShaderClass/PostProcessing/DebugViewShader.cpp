@@ -43,7 +43,7 @@ void UHDebugViewShader::BindParameters()
 {
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		BindConstant(DebugViewData, 0, Idx);
+		BindConstant(DebugViewData, 0, Idx, 0);
 	}
 
 	// slot 1 will be bound in fly

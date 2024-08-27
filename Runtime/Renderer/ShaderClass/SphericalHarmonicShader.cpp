@@ -46,8 +46,8 @@ UHRenderBuffer<UHSphericalHarmonicConstants>* UHSphericalHarmonicShader::GetSH9C
 
 void UHSphericalHarmonicShader::BindParameters()
 {
-	BindStorage(GSH9Data.get(), 0);
-	BindConstant(SH9Constants, 1);
+	BindStorage(GSH9Data.get(), 0, 0, false);
+	BindConstant(SH9Constants, 1, 0);
 	BindImage(GSkyLightCube, 2);
 	BindSampler(GSkyCubeSampler, 3);
 }

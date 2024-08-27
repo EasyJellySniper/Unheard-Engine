@@ -82,8 +82,8 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 			if (!bIsTemporalReset)
 			{
 				// only render it when it's not resetting
-				TemporalAAShader->BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrameRT, true);
-				TemporalAAShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrameRT);
+				TemporalAAShader->BindImage(PostProcessResults[CurrentPostProcessRTIndex], 1, CurrentFrameRT, true, UHINDEXNONE);
+				TemporalAAShader->BindImage(PostProcessResults[1 - CurrentPostProcessRTIndex], 2, CurrentFrameRT, false, UHINDEXNONE);
 				Dispatch2DEffect(TemporalAAShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Temporal AA");
 			}
 

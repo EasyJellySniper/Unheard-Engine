@@ -102,7 +102,7 @@ public:
 
 	static bool IsDifferentBlendGroup(UHMaterial* InA, UHMaterial* InB);
 
-	std::vector<std::string> GetRegisteredTextureNames();
+	const std::vector<std::string>& GetRegisteredTextureNames();
 	const std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight>& GetMaterialConst();
 	UHRenderBuffer<UHRTMaterialData>* GetRTMaterialDataGPU(int32_t CurrFrame) const;
 

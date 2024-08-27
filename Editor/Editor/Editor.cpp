@@ -12,28 +12,27 @@
 #include "Runtime/Classes/AssetPath.h"
 #include "../Dialog/StatusDialog.h"
 
-UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
-    , UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager, UHGraphic* InGfx)
+UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHProfiler* InProfile)
 	: HInstance(InInstance)
     , HWnd(InHwnd)
     , Engine(InEngine)
-    , Config(InConfig)
-	, DeferredRenderer(InRenderer)
-    , Input(InInput)
+    , Config(InEngine->GetConfigManager())
+	, DeferredRenderer(InEngine->GetSceneRenderer())
+    , Input(InEngine->GetRawInput())
     , Profile(InProfile)
-    , AssetManager(InAssetManager)
-    , Gfx(InGfx)
+    , AssetManager(InEngine->GetAssetManager())
+    , Gfx(InEngine->GetGfx())
     , ViewModeMenuItem(ID_VIEWMODE_FULLLIT)
 {
     ProfileTimer.Reset();
     SettingDialog = MakeUnique<UHSettingDialog>(Config, Engine, DeferredRenderer);
     ProfileDialog = MakeUnique<UHProfileDialog>();
     WorldDialog = MakeUnique<UHWorldDialog>(HWnd, DeferredRenderer);
-    TextureDialog = MakeUnique<UHTextureDialog>(AssetManager, InGfx, InRenderer);
-    MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, InRenderer);
-    CubemapDialog = MakeUnique<UHCubemapDialog>(AssetManager, InGfx, InRenderer);
+    TextureDialog = MakeUnique<UHTextureDialog>(AssetManager, Gfx, DeferredRenderer);
+    MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, DeferredRenderer);
+    CubemapDialog = MakeUnique<UHCubemapDialog>(AssetManager, Gfx, DeferredRenderer);
     InfoDialog = MakeUnique<UHInfoDialog>(HWnd, WorldDialog.get());
-    MeshDialog = MakeUnique<UHMeshDialog>(AssetManager, InGfx, InRenderer, InInput);
+    MeshDialog = MakeUnique<UHMeshDialog>(AssetManager, Gfx, DeferredRenderer, Input);
 
     // always showing world / info dialog after initialization
     WorldDialog->ShowDialog();

@@ -32,11 +32,11 @@ void UHToneMappingShader::OnCompile()
 
 void UHToneMappingShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindSampler(GPointClampedSampler, 2);
 }
 
 void UHToneMappingShader::BindInputImage(UHTexture* InImage, const int32_t CurrentFrameRT)
 {
-	BindImage(InImage, 1, CurrentFrameRT);
+	BindImage(InImage, 1, CurrentFrameRT, false, UHINDEXNONE);
 }

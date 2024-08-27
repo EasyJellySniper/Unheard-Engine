@@ -64,7 +64,7 @@ enum class UHParallelTask
 class UHDeferredShadingRenderer
 {
 public:
-	UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAssetManager* InAssetManager, UHConfigManager* InConfig, UHGameTimer* InTimer);
+	UHDeferredShadingRenderer(UHEngine* InEngine);
 	bool Initialize(UHScene* InScene);
 	void Release();
 

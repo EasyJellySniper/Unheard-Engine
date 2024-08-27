@@ -47,8 +47,8 @@ void UHDebugBoundShader::OnCompile()
 
 void UHDebugBoundShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
-	BindConstant(DebugBoundData, 1);
+	BindConstant(GSystemConstantBuffer, 0, 0);
+	BindConstant(DebugBoundData, 1, 0);
 }
 
 UHRenderBuffer<UHDebugBoundConstant>* UHDebugBoundShader::GetDebugBoundData(const int32_t FrameIdx) const

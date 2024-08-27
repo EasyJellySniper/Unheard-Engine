@@ -78,9 +78,9 @@ void UHTranslucentPassShader::OnCompile()
 
 void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRenderer, const bool bIsRaytracingEnableRT)
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
-	BindConstant(MaterialCache->GetMaterialConst(), 2);
+	BindConstant(MaterialCache->GetMaterialConst(), 2, 0);
 
 	UHMesh* Mesh = InRenderer->GetMesh();
 	BindStorage(Mesh->GetUV0Buffer(), 3, 0, true);

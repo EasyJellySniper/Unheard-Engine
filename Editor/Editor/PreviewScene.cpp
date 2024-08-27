@@ -38,7 +38,7 @@ UHPreviewScene::UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType)
 	PreviewCamera->Update();
 
 	MeshPreviewData = Gfx->RequestRenderBuffer<float>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0);
+	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0, 0);
 }
 
 void UHPreviewScene::Release()
@@ -74,7 +74,7 @@ void UHPreviewScene::Render(bool bIsActive)
 
 	XMFLOAT4X4 ViewProj = PreviewCamera->GetViewProjMatrixNonJittered();
 	MeshPreviewData->UploadData(&ViewProj, 0);
-	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0);
+	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0, 0);
 
 	VkCommandBuffer PreviewCmd = Gfx->BeginOneTimeCmd();
 	UHRenderBuilder PreviewBuilder(Gfx, PreviewCmd);

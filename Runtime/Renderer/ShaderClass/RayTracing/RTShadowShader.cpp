@@ -59,7 +59,7 @@ void UHRTShadowShader::OnCompile()
 
 void UHRTShadowShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{

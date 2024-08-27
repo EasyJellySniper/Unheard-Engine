@@ -254,7 +254,7 @@ void UHTexture2D::SetTextureData(std::vector<uint8_t> InData)
 	TextureData = InData;
 }
 
-std::vector<uint8_t>& UHTexture2D::GetTextureData()
+const std::vector<uint8_t>& UHTexture2D::GetTextureData() const
 {
 	return TextureData;
 }

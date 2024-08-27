@@ -60,8 +60,13 @@ public:
 	// set is need resize
 	void SetResizeReason(UHEngineResizeReason InFlag);
 
-	// get raw input
+	// UH interface getters
 	UHRawInput* GetRawInput() const;
+	UHGraphic* GetGfx() const;
+	UHGameTimer* GetGameTimer() const;
+	UHAssetManager* GetAssetManager() const;
+	UHConfigManager* GetConfigManager() const;
+	UHDeferredShadingRenderer* GetSceneRenderer() const;
 
 	// FPS limiter function
 	void BeginFPSLimiter();
@@ -73,7 +78,6 @@ public:
 
 #if WITH_EDITOR
 	UHEditor* GetEditor() const;
-	UHGraphic* GetGfx() const;
 
 	void BeginProfile();
 	void EndProfile();

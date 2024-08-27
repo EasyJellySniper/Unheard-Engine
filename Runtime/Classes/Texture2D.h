@@ -24,7 +24,7 @@ public:
 	virtual std::vector<uint8_t> ReadbackTextureData() override;
 	void Export(std::filesystem::path InTexturePath);
 #endif
-	std::vector<uint8_t>& GetTextureData();
+	const std::vector<uint8_t>& GetTextureData() const;
 
 	// upload texture data to GPU
 	virtual void UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) override;

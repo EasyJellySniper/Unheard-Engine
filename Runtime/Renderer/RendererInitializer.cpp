@@ -1,17 +1,18 @@
 #include "DeferredShadingRenderer.h"
 #include "DescriptorHelper.h"
 #include <unordered_set>
+#include "../Engine/Engine.h"
 
 // all init/create/release implementations of DeferredShadingRenderer are put here
 #if WITH_EDITOR
 UHDeferredShadingRenderer* UHDeferredShadingRenderer::SceneRendererEditorOnly = nullptr;
 #endif
 
-UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHGraphic* InGraphic, UHAssetManager* InAssetManager, UHConfigManager* InConfig, UHGameTimer* InTimer)
-	: GraphicInterface(InGraphic)
-	, AssetManagerInterface(InAssetManager)
-	, ConfigInterface(InConfig)
-	, TimerInterface(InTimer)
+UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
+	: GraphicInterface(InEngine->GetGfx())
+	, AssetManagerInterface(InEngine->GetAssetManager())
+	, ConfigInterface(InEngine->GetConfigManager())
+	, TimerInterface(InEngine->GetGameTimer())
 	, RenderResolution(VkExtent2D())
 	, RTShadowExtent(VkExtent2D())
 	, CurrentFrameGT(0)

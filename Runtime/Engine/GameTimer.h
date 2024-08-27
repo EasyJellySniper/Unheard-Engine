@@ -41,7 +41,7 @@ public:
 	UHGameTimerScope(std::string InName, bool bPrintTimeAfterStop);
 	~UHGameTimerScope();
 
-	static std::vector<std::pair<std::string, float>> GetResiteredGameTime();
+	static const std::vector<std::pair<std::string, float>>& GetResiteredGameTime();
 	static void ClearRegisteredGameTime();
 
 private:

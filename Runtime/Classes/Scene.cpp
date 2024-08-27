@@ -4,6 +4,7 @@
 #include "../Engine/Config.h"
 #include "../Engine/Input.h"
 #include "../Engine/GameTimer.h"
+#include "../Engine/Engine.h"
 #include "../Components/GameScript.h"
 
 UHScene::UHScene()
@@ -82,16 +83,16 @@ void UHScene::OnPostLoad(UHAssetManager* InAssetMgr)
 	}
 }
 
-void UHScene::Initialize(UHAssetManager* InAsset, UHGraphic* InGfx, UHConfigManager* InConfig, UHRawInput* InInput, UHGameTimer* InTimer)
+void UHScene::Initialize(UHEngine* InEngine)
 {
-	ConfigCache = InConfig;
-	Input = InInput;
-	Timer = InTimer;
+	ConfigCache = InEngine->GetConfigManager();
+	Input = InEngine->GetRawInput();
+	Timer = InEngine->GetGameTimer();
 
 	// call all scene initialized code in scripts
 	for (const auto& Script : UHGameScripts)
 	{
-		Script.second->OnSceneInitialized(this, InAsset, InGfx);
+		Script.second->OnSceneInitialized(this, InEngine->GetAssetManager(), InEngine->GetGfx());
 	}
 
 	// after initialization actions
@@ -325,7 +326,7 @@ void UHScene::AddSpotLight(UHSpotLightComponent* InLight)
 	SpotLights.push_back(InLight);
 }
 
-std::vector<UniquePtr<UHComponent>>& UHScene::GetAllCompoments()
+const std::vector<UniquePtr<UHComponent>>& UHScene::GetAllCompoments()
 {
 	return ComponentPools;
 }
@@ -355,37 +356,37 @@ size_t UHScene::GetSpotLightCount() const
 	return SpotLights.size();
 }
 
-std::vector<UHMeshRendererComponent*> UHScene::GetAllRenderers() const
+const std::vector<UHMeshRendererComponent*>& UHScene::GetAllRenderers() const
 {
 	return Renderers;
 }
 
-std::vector<UHMeshRendererComponent*> UHScene::GetOpaqueRenderers() const
+const std::vector<UHMeshRendererComponent*>& UHScene::GetOpaqueRenderers() const
 {
 	return OpaqueRenderers;
 }
 
-std::vector<UHMeshRendererComponent*> UHScene::GetTranslucentRenderers() const
+const std::vector<UHMeshRendererComponent*>& UHScene::GetTranslucentRenderers() const
 {
 	return TranslucentRenderers;
 }
 
-std::vector<UHDirectionalLightComponent*> UHScene::GetDirLights() const
+const std::vector<UHDirectionalLightComponent*>& UHScene::GetDirLights() const
 {
 	return DirectionalLights;
 }
 
-std::vector<UHPointLightComponent*> UHScene::GetPointLights() const
+const std::vector<UHPointLightComponent*>& UHScene::GetPointLights() const
 {
 	return PointLights;
 }
 
-std::vector<UHSpotLightComponent*> UHScene::GetSpotLights() const
+const std::vector<UHSpotLightComponent*>& UHScene::GetSpotLights() const
 {
 	return SpotLights;
 }
 
-std::vector<UHMaterial*> UHScene::GetMaterials() const
+const std::vector<UHMaterial*>& UHScene::GetMaterials() const
 {
 	return Materials;
 }

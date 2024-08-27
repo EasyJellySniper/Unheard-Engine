@@ -17,7 +17,7 @@ public:
 
 	void ReleaseCPUData();
 	void SetCubeData(std::vector<uint8_t> InData, int32_t Slice);
-	std::vector<uint8_t> GetCubeData(int32_t Slice) const;
+	const std::vector<uint8_t>& GetCubeData(int32_t Slice) const;
 	bool IsBuilt() const;
 
 	bool Import(std::filesystem::path InCubePath);

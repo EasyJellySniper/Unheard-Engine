@@ -262,3 +262,7 @@ Early return in mesh shader introduces flickering.
 Ta, fixed the flickering issue in mesh shader early return. I must set output count as 0, otherwise the behavior is undefined.
 Removed occlusion culling toggle by keyboard.
 Made occlusion culling work in mesh shader too. Refactored a few code and ready for post.
+
+27-08-2024:
+Enhanced const& correction. Prevents unnecessary copies of containers if it's actually not returning a new copy of local result.
+Refactored the interface, let UHEngine return most UHE interfaces so I can pass less parameters every where.

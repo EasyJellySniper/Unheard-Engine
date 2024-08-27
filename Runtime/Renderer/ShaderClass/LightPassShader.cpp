@@ -40,7 +40,7 @@ void UHLightPassShader::OnCompile()
 
 void UHLightPassShader::BindParameters(const bool bIsRaytracingEnableRT)
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindStorage(GDirectionalLightBuffer, 1, 0, true);
 	BindStorage(GPointLightBuffer, 2, 0, true);
 	BindStorage(GSpotLightBuffer, 3, 0, true);

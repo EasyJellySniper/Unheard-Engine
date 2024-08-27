@@ -156,7 +156,7 @@ UHGPUTimeQueryScope::~UHGPUTimeQueryScope()
 #endif
 }
 
-std::vector<UHGPUQuery*> UHGPUTimeQueryScope::GetResiteredGPUTime()
+const std::vector<UHGPUQuery*>& UHGPUTimeQueryScope::GetResiteredGPUTime()
 {
 #if WITH_EDITOR
 	std::unique_lock<std::mutex> Lock(GGPUTimeScopeLock);

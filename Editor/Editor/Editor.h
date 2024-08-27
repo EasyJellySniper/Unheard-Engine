@@ -25,8 +25,7 @@ class UHAssetManager;
 class UHEditor
 {
 public:
-	UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHConfigManager* InConfig, UHDeferredShadingRenderer* InRenderer
-		, UHRawInput* InInput, UHProfiler* InProfile, UHAssetManager* InAssetManager, UHGraphic* InGfx);
+	UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHProfiler* InProfile);
 
 	void OnEditorUpdate();
 	void OnEditorMove();

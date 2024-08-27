@@ -134,6 +134,18 @@ void UHShaderClass::ReleaseDescriptor()
 	}
 }
 
+void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding)
+{
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+		if (InImage)
+		{
+			Helper.WriteImage(InImage, DstBinding, false, UHINDEXNONE);
+		}
+	}
+}
+
 void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite, int32_t MipIdx)
 {
 	if (CurrentFrameRT < 0)
@@ -210,6 +222,20 @@ void UHShaderClass::FlushPushDescriptor(VkCommandBuffer InCmdList)
 	PushBufferInfos.clear();
 }
 
+// bind RW image
+void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding)
+{
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+		if (InImage)
+		{
+			Helper.WriteImage(InImage, DstBinding, true, UHINDEXNONE);
+		}
+	}
+}
+
+// bind RW image with mip index
 void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
@@ -300,12 +326,12 @@ uint32_t UHShaderClass::GetRayGenShader() const
 	return RayGenShader;
 }
 
-std::vector<uint32_t> UHShaderClass::GetClosestShaders() const
+const std::vector<uint32_t>& UHShaderClass::GetClosestShaders() const
 {
 	return ClosestHitShaders;
 }
 
-std::vector<uint32_t> UHShaderClass::GetAnyHitShaders() const
+const std::vector<uint32_t>& UHShaderClass::GetAnyHitShaders() const
 {
 	return AnyHitShaders;
 }

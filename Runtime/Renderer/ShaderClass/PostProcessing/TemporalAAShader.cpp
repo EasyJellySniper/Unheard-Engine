@@ -30,7 +30,7 @@ void UHTemporalAAShader::OnCompile()
 
 void UHTemporalAAShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 
 	// Due to the post processing alternatively reuses temporary RT
 	// the scene result is bound in PostProcessing Rendering instead

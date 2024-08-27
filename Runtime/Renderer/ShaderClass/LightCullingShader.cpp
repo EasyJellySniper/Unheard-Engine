@@ -32,7 +32,7 @@ void UHLightCullingShader::OnCompile()
 
 void UHLightCullingShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindStorage(GPointLightBuffer, 1, 0, true);
 	BindStorage(GSpotLightBuffer, 2, 0, true);
 	BindStorage(GPointLightListBuffer.get(), 3, 0, true);

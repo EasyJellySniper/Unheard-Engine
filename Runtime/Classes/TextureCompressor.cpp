@@ -53,7 +53,7 @@ namespace UHTextureCompressor
 
 		ColorCompressor->BindStorage(OutputData.get(), 0, 0, true);
 		ColorCompressor->BindStorage(InputData.get(), 1, 0, true);
-		ColorCompressor->BindConstant(Constants, 2, 0);
+		ColorCompressor->BindConstant(Constants, 2, 0, 0);
 
 		// dispatch work
 		RenderBuilder.BindComputeState(ColorCompressor->GetComputeState());
@@ -101,7 +101,7 @@ namespace UHTextureCompressor
 
 		AlphaCompressor->BindStorage(OutputData.get(), 0, 0, true);
 		AlphaCompressor->BindStorage(InputData.get(), 1, 0, true);
-		AlphaCompressor->BindConstant(Constants, 2, 0);
+		AlphaCompressor->BindConstant(Constants, 2, 0, 0);
 
 		// dispatch work
 		RenderBuilder.BindComputeState(AlphaCompressor->GetComputeState());
@@ -241,7 +241,7 @@ namespace UHTextureCompressor
 
 		BC6HCompressor->BindStorage(OutputData.get(), 0, 0, true);
 		BC6HCompressor->BindStorage(InputData.get(), 1, 0, true);
-		BC6HCompressor->BindConstant(Constants, 2, 0);
+		BC6HCompressor->BindConstant(Constants, 2, 0, 0);
 
 		// dispatch work
 		RenderBuilder.BindComputeState(BC6HCompressor->GetComputeState());

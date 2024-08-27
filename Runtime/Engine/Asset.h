@@ -29,11 +29,11 @@ public:
 	void ImportMaterials(UHGraphic* InGfx);
 	void MapTextureIndex(UHMaterial* InMat);
 
-	std::vector<UHMesh*> GetUHMeshes() const;
-	std::vector<UHMaterial*> GetMaterials() const;
-	std::vector<UHTexture2D*> GetTexture2Ds() const;
-	std::vector<UHTexture2D*> GetReferencedTexture2Ds() const;
-	std::vector<UHTextureCube*> GetCubemaps() const;
+	const std::vector<UHMesh*>& GetUHMeshes() const;
+	const std::vector<UHMaterial*>& GetMaterials() const;
+	const std::vector<UHTexture2D*>& GetTexture2Ds() const;
+	const std::vector<UHTexture2D*>& GetReferencedTexture2Ds() const;
+	const std::vector<UHTextureCube*>& GetCubemaps() const;
 
 	UHTexture2D* GetTexture2D(std::string InName) const;
 	UHTexture2D* GetTexture2DByPath(std::filesystem::path InPath) const;

@@ -106,11 +106,11 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 
 	if (bIndexBuffer32Bit)
 	{
-		IndexBuffer->UploadAllDataShared(GetIndicesData().data(), SharedMemory);
+		IndexBuffer->UploadAllDataShared(IndicesData.data(), SharedMemory);
 	}
 	else
 	{
-		IndexBuffer16->UploadAllDataShared(GetIndicesData16().data(), SharedMemory);
+		IndexBuffer16->UploadAllDataShared(IndicesData16.data(), SharedMemory);
 	}
 
 	// create meshlet if MS supported
@@ -217,12 +217,12 @@ std::string UHMesh::GetSourcePath() const
 	return SourcePath;
 }
 
-std::vector<uint32_t> UHMesh::GetIndicesData() const
+const std::vector<uint32_t>& UHMesh::GetIndicesData() const
 {
 	return IndicesData;
 }
 
-std::vector<uint16_t> UHMesh::GetIndicesData16() const
+const std::vector<uint16_t>& UHMesh::GetIndicesData16() const
 {
 	return IndicesData16;
 }

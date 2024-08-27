@@ -142,7 +142,7 @@ UHGameTimerScope::~UHGameTimerScope()
 #endif
 }
 
-std::vector<std::pair<std::string, float>> UHGameTimerScope::GetResiteredGameTime()
+const std::vector<std::pair<std::string, float>>& UHGameTimerScope::GetResiteredGameTime()
 {
 #if WITH_EDITOR
 	std::unique_lock<std::mutex> Lock(GTimeScopeLock);

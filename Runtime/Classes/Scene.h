@@ -14,6 +14,7 @@ class UHGraphic;
 class UHConfigManager;
 class UHRawInput;
 class UHGameTimer;
+class UHEngine;
 
 // scene class of UH engine
 // for now, there is no "gameobject" or "actor" concept in UH
@@ -26,7 +27,7 @@ public:
 	virtual void OnLoad(std::ifstream& InStream) override;
 	virtual void OnPostLoad(UHAssetManager* InAssetMgr) override;
 
-	void Initialize(UHAssetManager* InAsset, UHGraphic* InGfx, UHConfigManager* InConfig, UHRawInput* InInput, UHGameTimer* InTimer);
+	void Initialize(UHEngine* InEngine);
 	void Release();
 	void Update();
 
@@ -37,7 +38,7 @@ public:
 	void SetCurrentSelectedComponent(UHComponent* InComp);
 	UHComponent* GetCurrentSelectedComponent() const;
 #endif
-	std::vector<UniquePtr<UHComponent>>& GetAllCompoments();
+	const std::vector<UniquePtr<UHComponent>>& GetAllCompoments();
 
 	size_t GetAllRendererCount() const;
 	size_t GetMaterialCount() const;
@@ -45,13 +46,13 @@ public:
 	size_t GetPointLightCount() const;
 	size_t GetSpotLightCount() const;
 
-	std::vector<UHMeshRendererComponent*> GetAllRenderers() const;
-	std::vector<UHMeshRendererComponent*> GetOpaqueRenderers() const;
-	std::vector<UHMeshRendererComponent*> GetTranslucentRenderers() const;
-	std::vector<UHDirectionalLightComponent*> GetDirLights() const;
-	std::vector<UHPointLightComponent*> GetPointLights() const;
-	std::vector<UHSpotLightComponent*> GetSpotLights() const;
-	std::vector<UHMaterial*> GetMaterials() const;
+	const std::vector<UHMeshRendererComponent*>& GetAllRenderers() const;
+	const std::vector<UHMeshRendererComponent*>& GetOpaqueRenderers() const;
+	const std::vector<UHMeshRendererComponent*>& GetTranslucentRenderers() const;
+	const std::vector<UHDirectionalLightComponent*>& GetDirLights() const;
+	const std::vector<UHPointLightComponent*>& GetPointLights() const;
+	const std::vector<UHSpotLightComponent*>& GetSpotLights() const;
+	const std::vector<UHMaterial*>& GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight() const;
 

@@ -40,7 +40,7 @@ void UHTextureCube::SetCubeData(std::vector<uint8_t> InData, int32_t Slice)
 	SliceData[Slice] = std::move(InData);
 }
 
-std::vector<uint8_t> UHTextureCube::GetCubeData(int32_t Slice) const
+const std::vector<uint8_t>& UHTextureCube::GetCubeData(int32_t Slice) const
 {
 	return SliceData[Slice];
 }

@@ -33,7 +33,7 @@ void UHSkyPassShader::OnCompile()
 
 void UHSkyPassShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindSkyCube();
 	BindSampler(GSkyCubeSampler, 2);
 }

@@ -47,7 +47,7 @@ void UHOcclusionPassShader::OnCompile()
 
 void UHOcclusionPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindConstant(GOcclusionConstantBuffer, 1, InRenderer->GetBufferDataIndex());
 }
 

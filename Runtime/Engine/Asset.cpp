@@ -248,27 +248,27 @@ void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
 	InMat->SetRegisteredTextureIndexes(RegisteredIndexes);
 }
 
-std::vector<UHMesh*> UHAssetManager::GetUHMeshes() const
+const std::vector<UHMesh*>& UHAssetManager::GetUHMeshes() const
 {
 	return UHMeshesCache;
 }
 
-std::vector<UHMaterial*> UHAssetManager::GetMaterials() const
+const std::vector<UHMaterial*>& UHAssetManager::GetMaterials() const
 {
 	return UHMaterialsCache;
 }
 
-std::vector<UHTexture2D*> UHAssetManager::GetTexture2Ds() const
+const std::vector<UHTexture2D*>& UHAssetManager::GetTexture2Ds() const
 {
 	return UHTexture2Ds;
 }
 
-std::vector<UHTexture2D*> UHAssetManager::GetReferencedTexture2Ds() const
+const std::vector<UHTexture2D*>& UHAssetManager::GetReferencedTexture2Ds() const
 {
 	return ReferencedTexture2Ds;
 }
 
-std::vector<UHTextureCube*> UHAssetManager::GetCubemaps() const
+const std::vector<UHTextureCube*>& UHAssetManager::GetCubemaps() const
 {
 	return UHCubemaps;
 }

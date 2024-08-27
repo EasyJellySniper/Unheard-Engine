@@ -109,10 +109,10 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 	// create scene instance, initialize anyway in case there are script-generated components
 	CurrentScene = MakeUnique<UHScene>();
-	CurrentScene->Initialize(UHEAsset.get(), UHEGraphic.get(), UHEConfig.get(), UHERawInput.get(), UHEGameTimer.get());
+	CurrentScene->Initialize(this);
 
 	// create renderer
-	UHERenderer = MakeUnique<UHDeferredShadingRenderer>(UHEGraphic.get(), UHEAsset.get(), UHEConfig.get(), UHEGameTimer.get());
+	UHERenderer = MakeUnique<UHDeferredShadingRenderer>(this);
 	if (!UHERenderer->Initialize(CurrentScene.get()))
 	{
 		UHE_LOG(L"Can't initialize renderer class!\n");
@@ -120,8 +120,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 #if WITH_EDITOR
 	// init editor instance
-	UHEEditor = MakeUnique<UHEditor>(UHWindowInstance, UHEngineWindow, this, UHEConfig.get(), UHERenderer.get(), UHERawInput.get(), &UHEProfiler
-		, UHEAsset.get(), UHEGraphic.get());
+	UHEEditor = MakeUnique<UHEditor>(UHWindowInstance, UHEngineWindow, this, &UHEProfiler);
 #endif
 
 	bIsInitialized = true;
@@ -306,6 +305,31 @@ UHRawInput* UHEngine::GetRawInput() const
 	return nullptr;
 }
 
+UHGraphic* UHEngine::GetGfx() const
+{
+	return UHEGraphic.get();
+}
+
+UHGameTimer* UHEngine::GetGameTimer() const
+{
+	return UHEGameTimer.get();
+}
+
+UHAssetManager* UHEngine::GetAssetManager() const
+{
+	return UHEAsset.get();
+}
+
+UHConfigManager* UHEngine::GetConfigManager() const
+{
+	return UHEConfig.get();
+}
+
+UHDeferredShadingRenderer* UHEngine::GetSceneRenderer() const
+{
+	return UHERenderer.get();
+}
+
 void UHEngine::BeginFPSLimiter()
 {
 #if WITH_RELEASE
@@ -419,7 +443,7 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 
 	// post load behavior and init scene
 	CurrentScene->OnPostLoad(UHEAsset.get());
-	CurrentScene->Initialize(UHEAsset.get(), UHEGraphic.get(), UHEConfig.get(), UHERawInput.get(), UHEGameTimer.get());
+	CurrentScene->Initialize(this);
 
 	// re-initialize renderer
 	UH_SAFE_RELEASE(UHERenderer);
@@ -438,11 +462,6 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 UHEditor* UHEngine::GetEditor() const
 {
 	return UHEEditor.get();
-}
-
-UHGraphic* UHEngine::GetGfx() const
-{
-	return UHEGraphic.get();
 }
 
 void UHEngine::BeginProfile()

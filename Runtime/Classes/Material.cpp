@@ -397,7 +397,7 @@ std::filesystem::path UHMaterial::GetPath() const
 	return MaterialPath;
 }
 
-std::vector<std::string> UHMaterial::GetRegisteredTextureNames()
+const std::vector<std::string>& UHMaterial::GetRegisteredTextureNames()
 {
 #if WITH_EDITOR
 	MaterialNode->CollectTextureNames(RegisteredTextureNames);

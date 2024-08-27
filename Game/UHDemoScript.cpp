@@ -114,13 +114,13 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 
 void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset, UHGraphic* InGfx)
 {
-	std::vector<UniquePtr<UHComponent>>& SceneComponents = InScene->GetAllCompoments();
+	const std::vector<UniquePtr<UHComponent>>& SceneComponents = InScene->GetAllCompoments();
 	TestType = UHDemoType::DayTest;
 
 	if (UHUtilities::StringFind(InScene->GetName(), "SpotLightNight"))
 	{
 		TestSpotLights.clear();
-		for (UniquePtr<UHComponent>& Comp : SceneComponents)
+		for (const UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
 			if (Comp->GetObjectClassId() == UHSpotLightComponent::ClassId)
 			{
@@ -134,7 +134,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	{
 		TestPointLights.clear();
 		TestPointLightOrigin.clear();
-		for (UniquePtr<UHComponent>& Comp : SceneComponents)
+		for (const UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
 			if (Comp->GetObjectClassId() == UHPointLightComponent::ClassId)
 			{
@@ -145,7 +145,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 		TestType = UHDemoType::PointLightNight;
 	}
 
-	for (UniquePtr<UHComponent>& Comp : SceneComponents)
+	for (const UniquePtr<UHComponent>& Comp : SceneComponents)
 	{
 		if (Comp->GetObjectClassId() == UHMeshRendererComponent::ClassId)
 		{

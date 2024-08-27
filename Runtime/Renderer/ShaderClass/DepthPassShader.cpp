@@ -64,9 +64,9 @@ void UHDepthPassShader::OnCompile()
 
 void UHDepthPassShader::BindParameters(const UHMeshRendererComponent* InRenderer)
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindConstant(GObjectConstantBuffer, 1, InRenderer->GetBufferDataIndex());
-	BindConstant(MaterialCache->GetMaterialConst(), 2);
+	BindConstant(MaterialCache->GetMaterialConst(), 2, 0);
 
 	UHMesh* Mesh = InRenderer->GetMesh();
 	BindStorage(Mesh->GetUV0Buffer(), 3, 0, true);
@@ -131,9 +131,9 @@ void UHDepthMeshShader::OnCompile()
 
 void UHDepthMeshShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindStorage(GObjectConstantBuffer, 1, 0, true);
-	BindConstant(MaterialCache->GetMaterialConst(), 2);
+	BindConstant(MaterialCache->GetMaterialConst(), 2, 0);
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{

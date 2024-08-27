@@ -29,7 +29,7 @@ void UHSoftRTShadowShader::OnCompile()
 
 void UHSoftRTShadowShader::BindParameters()
 {
-	BindConstant(GSystemConstantBuffer, 0);
+	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindRWImage(GRTShadowResult, 1);
 	BindImage(GRTSharedTextureRG, 2);
 

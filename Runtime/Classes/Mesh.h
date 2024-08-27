@@ -54,8 +54,8 @@ public:
 
 	std::string GetName() const;
 	std::string GetSourcePath() const;
-	std::vector<uint32_t> GetIndicesData() const;
-	std::vector<uint16_t> GetIndicesData16() const;
+	const std::vector<uint32_t>& GetIndicesData() const;
+	const std::vector<uint16_t>& GetIndicesData16() const;
 
 	uint32_t GetVertexCount() const;
 	uint32_t GetIndicesCount() const;

@@ -24,7 +24,7 @@ public:
 	static bool IsDescriptorLayoutValid(std::type_index InType);
 
 	template <typename T>
-	void BindConstant(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
+	void BindConstant(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -37,7 +37,7 @@ public:
 	}
 
 	template <typename T>
-	void BindConstant(const UniquePtr<UHRenderBuffer<T>> InBuffer[GMaxFrameInFlight], int32_t DstBinding, int32_t InOffset = 0)
+	void BindConstant(const UniquePtr<UHRenderBuffer<T>> InBuffer[GMaxFrameInFlight], int32_t DstBinding, int32_t InOffset)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -50,7 +50,7 @@ public:
 	}
 
 	template <typename T>
-	void BindConstant(const UniquePtr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t CurrentFrame, int32_t InOffset = 0)
+	void BindConstant(const UniquePtr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t CurrentFrame, int32_t InOffset)
 	{
 		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrame]);
 		if (InBuffer)
@@ -60,7 +60,7 @@ public:
 	}
 
 	template <typename T>
-	void PushConstantBuffer(const UniquePtr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t InOffset = 0)
+	void PushConstantBuffer(const UniquePtr<UHRenderBuffer<T>>& InBuffer, int32_t DstBinding, int32_t InOffset)
 	{
 		VkDescriptorBufferInfo NewInfo{};
 		NewInfo.buffer = InBuffer->GetBuffer();
@@ -78,7 +78,7 @@ public:
 	}
 
 	template <typename T>
-	void BindStorage(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
+	void BindStorage(const std::array<UniquePtr<UHRenderBuffer<T>>, GMaxFrameInFlight>& InBuffer, int32_t DstBinding, int32_t InOffset, bool bFullRange)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -91,7 +91,7 @@ public:
 	}
 
 	template <typename T>
-	void BindStorage(const UniquePtr<UHRenderBuffer<T>> InBuffer[GMaxFrameInFlight], int32_t DstBinding, int32_t InOffset = 0, bool bFullRange = false)
+	void BindStorage(const UniquePtr<UHRenderBuffer<T>> InBuffer[GMaxFrameInFlight], int32_t DstBinding, int32_t InOffset, bool bFullRange)
 	{
 		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
@@ -105,45 +105,45 @@ public:
 
 	// bind single storage
 	template <typename T>
-	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset = 0, bool bFullRange = false, int32_t FrameIdx = UHINDEXNONE)
+	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset, bool bFullRange)
 	{
-		if (FrameIdx != UHINDEXNONE)
+		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
-			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[FrameIdx]);
+			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
 			Helper.WriteStorageBuffer(InBuffer, DstBinding, InOffset, bFullRange);
 		}
-		else
-		{
-			for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-			{
-				UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
-				Helper.WriteStorageBuffer(InBuffer, DstBinding, InOffset, bFullRange);
-			}
-		}
+	}
+
+	// bind single storage with frame index
+	template <typename T>
+	void BindStorage(const UHRenderBuffer<T>* InBuffer, int32_t DstBinding, uint64_t InOffset, bool bFullRange, int32_t FrameIdx)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[FrameIdx]);
+		Helper.WriteStorageBuffer(InBuffer, DstBinding, InOffset, bFullRange);
 	}
 
 	// bind multiple storage
 	template <typename T>
-	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding, int32_t FrameIdx = UHINDEXNONE)
+	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding)
 	{
-		if (FrameIdx != UHINDEXNONE)
+		for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
-			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[FrameIdx]);
+			UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
 			if (InBuffers.size() > 0)
 			{
 				Helper.WriteStorageBuffer(InBuffers, DstBinding);
 			}
 		}
-		else
+	}
+
+	// bind multiple storage with frame index
+	template <typename T>
+	void BindStorage(const std::vector<UHRenderBuffer<T>*>& InBuffers, int32_t DstBinding, int32_t FrameIdx)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[FrameIdx]);
+		if (InBuffers.size() > 0)
 		{
-			for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-			{
-				UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
-				if (InBuffers.size() > 0)
-				{
-					Helper.WriteStorageBuffer(InBuffers, DstBinding);
-				}
-			}
+			Helper.WriteStorageBuffer(InBuffers, DstBinding);
 		}
 	}
 
@@ -160,12 +160,15 @@ public:
 		}
 	}
 
-	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT = UHINDEXNONE, bool bIsReadWrite = false, int32_t MipIdx = UHINDEXNONE);
+	void BindImage(const UHTexture* InImage, int32_t DstBinding);
+	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite, int32_t MipIdx);
 	void BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding);
-	void PushImage(const UHTexture* InImage, int32_t DstBinding, bool bIsReadWrite = false, int32_t MipIdx = UHINDEXNONE);
+	void PushImage(const UHTexture* InImage, int32_t DstBinding, bool bIsReadWrite, int32_t MipIdx);
 	void FlushPushDescriptor(VkCommandBuffer InCmdList);
 
-	void BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx = UHINDEXNONE);
+	void BindRWImage(const UHTexture* InImage, int32_t DstBinding);
+	void BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx);
+
 	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
 	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
 	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrameRT);
@@ -174,8 +177,8 @@ public:
 	void SetNewRenderPass(VkRenderPass InRenderPass);
 
 	uint32_t GetRayGenShader() const;
-	std::vector<uint32_t> GetClosestShaders() const;
-	std::vector<uint32_t> GetAnyHitShaders() const;
+	const std::vector<uint32_t>& GetClosestShaders() const;
+	const std::vector<uint32_t>& GetAnyHitShaders() const;
 	uint32_t GetMissShader() const;
 	UHGraphicState* GetState() const;
 	UHGraphicState* GetRTState() const;
