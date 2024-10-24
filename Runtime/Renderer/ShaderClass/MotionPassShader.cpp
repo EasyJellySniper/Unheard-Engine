@@ -169,6 +169,7 @@ void UHMotionMeshShader::OnCompile()
 		, ShaderPS
 		, bIsTranslucent ? GNumOfGBuffersTrans : 1
 		, PipelineLayout);
+	MaterialPassInfo.MS = ShaderMS;
 
 	// disable blending intentionally if it's translucent
 	if (bIsTranslucent)

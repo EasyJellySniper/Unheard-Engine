@@ -140,13 +140,18 @@ void UHConfigManager::ApplyPresentationSettings(HWND InWindow)
 	}
 	else
 	{
-		// calc window size if it's first time launch
-		RECT Rect;
-		if (GetWindowRect(InWindow, &Rect))
-		{
-			PresentationSettings.WindowWidth = Rect.right - Rect.left;
-			PresentationSettings.WindowHeight = Rect.bottom - Rect.top;
-		}
+		UpdateWindowSize(InWindow);
+	}
+}
+
+void UHConfigManager::UpdateWindowSize(HWND InWindow)
+{
+	// calc window size if it's first time launch
+	RECT Rect;
+	if (GetWindowRect(InWindow, &Rect))
+	{
+		PresentationSettings.WindowWidth = Rect.right - Rect.left;
+		PresentationSettings.WindowHeight = Rect.bottom - Rect.top;
 	}
 }
 

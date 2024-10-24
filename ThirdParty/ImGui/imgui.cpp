@@ -14800,7 +14800,9 @@ void ImGui::WindowSyncOwnedViewport(ImGuiWindow* window, ImGuiWindow* parent_win
 
 // Called by user at the end of the main loop, after EndFrame()
 // This will handle the creation/update of all OS windows via function defined in the ImGuiPlatformIO api.
-void ImGui::UpdatePlatformWindows()
+// BEGIN UHE MOD - Add parameter to force destroy the platform window
+void ImGui::UpdatePlatformWindows(bool bForceDestroy)
+// END UHE MOD
 {
     ImGuiContext& g = *GImGui;
     IM_ASSERT(g.FrameCountEnded == g.FrameCount && "Forgot to call Render() or EndFrame() before UpdatePlatformWindows()?");
@@ -14829,6 +14831,13 @@ void ImGui::UpdatePlatformWindows()
         // New windows that appears directly in a new viewport won't always have a size on their first frame
         if (viewport->LastFrameActive < g.FrameCount || viewport->Size.x <= 0 || viewport->Size.y <= 0)
             continue;
+
+        // BEGIN UHE MOD - Add parameter to force destroy the platform window
+        if (bForceDestroy)
+        {
+            DestroyPlatformWindow(viewport);
+        }
+        // END UHE MOD
 
         // Create window
         const bool is_new_platform_window = (viewport->PlatformWindowCreated == false);

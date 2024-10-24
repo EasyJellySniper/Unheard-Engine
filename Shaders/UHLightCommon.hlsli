@@ -11,6 +11,7 @@ struct UHLightInfo
     float3 Normal;
     float3 WorldPos;
     float ShadowMask;
+    float SpecularNoise;
 };
 
 float3 SchlickFresnel(float3 R0, float LdotH)
@@ -27,9 +28,13 @@ float3 SchlickFresnel(float3 R0, float LdotH)
 // blinn phong
 float BlinnPhong(float M, float NdotH)
 {
-    M = max(M, 0.01f);
+    if (M == 0.0f)
+    {
+        return 0.0f;
+    }
+    
     M *= 256.0f;
-    float N = (M + 64.0f) / 64.0f;
+    float N = (M + 16.0f) / 16.0f;
 
     return pow(NdotH, M) * N;
 }
@@ -44,14 +49,17 @@ float3 LightBRDF(UHLightInfo LightInfo)
     float NdotL = saturate(dot(LightInfo.Normal, LightDir));
     float3 LightDiffuse = LightColor * NdotL;
 
-    // Specular = SchlickFresnel * BlinnPhong * N dot L * 0.25
+    // Specular = SchlickFresnel * BlinnPhong * NdotL
     // safe normalize half dir
     float3 HalfDir = (ViewDir + LightDir) / (length(ViewDir + LightDir) + UH_FLOAT_EPSILON);
     float LdotH = saturate(dot(LightDir, HalfDir));
-    float NdotH = saturate(dot(LightInfo.Normal, HalfDir));
+    
+    // reduce color banding in specular highlight by apply a tiny noise to normal
+    float NdotH = saturate(dot(LightInfo.Normal + LightInfo.SpecularNoise, HalfDir));
 
     float Smoothness = LightInfo.Specular.a;
-    float3 LightSpecular = LightColor * SchlickFresnel(LightInfo.Specular.rgb, LdotH) * BlinnPhong(Smoothness, NdotH) * NdotL;
+    float3 LightSpecular = LightColor * SchlickFresnel(LightInfo.Specular.rgb, LdotH)
+        * BlinnPhong(Smoothness, NdotH) * NdotL;
 
     return LightInfo.Diffuse * LightDiffuse + LightSpecular;
 }

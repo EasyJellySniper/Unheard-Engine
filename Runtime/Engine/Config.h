@@ -15,6 +15,7 @@ public:
 
 	// apply presentation settings
 	void ApplyPresentationSettings(HWND InWindow);
+	void UpdateWindowSize(HWND InWindow);
 
 	// apply window style
 	void ApplyWindowStyle(HINSTANCE InInstance, HWND InWindow);

@@ -903,6 +903,14 @@ void ImGui_ImplVulkan_CreatePipeline(VkDevice device, const VkAllocationCallback
     check_vk_result(err);
 }
 
+// BEGIN UHE MOD - Function to update init info
+void ImGui_ImplVulkan_UpdateInitInfo(ImGui_ImplVulkan_InitInfo NewInfo)
+{
+    ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
+    bd->VulkanInitInfo = NewInfo;
+}
+// END UHE MOD
+
 bool ImGui_ImplVulkan_CreateDeviceObjects()
 {
     ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();

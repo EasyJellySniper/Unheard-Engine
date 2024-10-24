@@ -266,3 +266,9 @@ Made occlusion culling work in mesh shader too. Refactored a few code and ready 
 27-08-2024:
 Enhanced const& correction. Prevents unnecessary copies of containers if it's actually not returning a new copy of local result.
 Refactored the interface, let UHEngine return most UHE interfaces so I can pass less parameters every where.
+
+24-10-2024:
+Implemented motion vector scale. Fixed minor issues in setting dialog.
+Re-cross the tangent vector in TBN creation to prevent any possible errors.
+Added debug object name utility. Did another HDR fix for ImGui.
+Revisted the specular formula as well and reduced the color banding on specular highlight.

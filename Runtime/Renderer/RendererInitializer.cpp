@@ -1254,26 +1254,29 @@ void UHDeferredShadingRenderer::InitGaussianConstants()
 	UHTextureFormat TempRTFormat = bHDREnabledRT ? UHTextureFormat::UH_FORMAT_RGBA16F : UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 
 	// initialize gaussian consts
-	RayTracingGaussianConsts.GBlurRadius = 2;
-	RayTracingGaussianConsts.IterationCount = 2;
-	CalculateBlurWeights(RayTracingGaussianConsts.GBlurRadius, RayTracingGaussianConsts.Weights);
-
-	RayTracingGaussianConsts.GaussianFilterTempRT0.resize(GRTReflectionResult->GetMipMapCount());
-	RayTracingGaussianConsts.GaussianFilterTempRT1.resize(GRTReflectionResult->GetMipMapCount());
-
-	VkExtent2D FilterResolution;
-
-	// for RT use
-	for (uint32_t Idx = 2; Idx < GRTReflectionResult->GetMipMapCount(); Idx++)
+	if (GraphicInterface->IsRayTracingEnabled())
 	{
-		FilterResolution.width = RenderResolution.width >> Idx;
-		FilterResolution.height = RenderResolution.height >> Idx;
+		RayTracingGaussianConsts.GBlurRadius = 2;
+		RayTracingGaussianConsts.IterationCount = 2;
+		CalculateBlurWeights(RayTracingGaussianConsts.GBlurRadius, RayTracingGaussianConsts.Weights);
 
-		RayTracingGaussianConsts.GaussianFilterTempRT0[Idx] =
-			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, true);
+		RayTracingGaussianConsts.GaussianFilterTempRT0.resize(GRTReflectionResult->GetMipMapCount());
+		RayTracingGaussianConsts.GaussianFilterTempRT1.resize(GRTReflectionResult->GetMipMapCount());
 
-		RayTracingGaussianConsts.GaussianFilterTempRT1[Idx] =
-			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, true);
+		VkExtent2D FilterResolution;
+
+		// for RT use
+		for (uint32_t Idx = 2; Idx < GRTReflectionResult->GetMipMapCount(); Idx++)
+		{
+			FilterResolution.width = RenderResolution.width >> Idx;
+			FilterResolution.height = RenderResolution.height >> Idx;
+
+			RayTracingGaussianConsts.GaussianFilterTempRT0[Idx] =
+				GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, true);
+
+			RayTracingGaussianConsts.GaussianFilterTempRT1[Idx] =
+				GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, true);
+		}
 	}
 
 	// for refraction use
@@ -1478,6 +1481,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 	const int32_t RendererBufferIndex = InMeshRenderer->GetBufferDataIndex();
 	const bool bReleaseDescriptorOnly = CompileFlag == UHMaterialCompileFlag::RendererMaterialChanged;
 	const bool bEnableRayTracing = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
+	const bool bMeshShaderSupported = GraphicInterface->IsMeshShaderSupported();
 
 	if (bNeedReassignRendererGroup 
 		|| CompileFlag == UHMaterialCompileFlag::RendererMaterialChanged 
@@ -1491,7 +1495,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 		SafeReleaseShaderPtr(MotionTranslucentShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 		SafeReleaseShaderPtr(TranslucentPassShaders, RendererBufferIndex, bReleaseDescriptorOnly);
 	}
-	else if (CompileFlag == UHMaterialCompileFlag::BindOnly)
+	else if (CompileFlag == UHMaterialCompileFlag::BindOnly && !bMeshShaderSupported)
 	{
 		// bind only
 		if (bIsOpaque)
@@ -1510,7 +1514,7 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 			TranslucentPassShaders[RendererBufferIndex]->BindParameters(InMeshRenderer, bEnableRayTracing);
 		}
 	}
-	else if (CompileFlag == UHMaterialCompileFlag::StateChangedOnly)
+	else if (CompileFlag == UHMaterialCompileFlag::StateChangedOnly && !bMeshShaderSupported)
 	{
 		// re-create state only
 		if (bIsOpaque)

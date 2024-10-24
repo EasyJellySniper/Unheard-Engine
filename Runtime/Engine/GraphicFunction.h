@@ -10,6 +10,7 @@ inline PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT GGetSurfacePresentModes2Ca
 #if WITH_EDITOR
 inline PFN_vkCmdBeginDebugUtilsLabelEXT GBeginCmdDebugLabelCallback;
 inline PFN_vkCmdEndDebugUtilsLabelEXT GEndCmdDebugLabelCallback;
+inline PFN_vkSetDebugUtilsObjectNameEXT GSetDebugUtilsObjectNameEXT;
 #endif
 
 inline PFN_vkGetAccelerationStructureDeviceAddressKHR GVkGetAccelerationStructureDeviceAddressKHR;

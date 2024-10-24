@@ -49,7 +49,10 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	float4 Specular = SceneBuffers[2].SampleLevel(PointClampped, UV, 0);
     
 	float3 Result = 0;
-
+    
+    // Noise (dithering) to reduce color banding
+    float AttenNoise = GetAttenuationNoise(DTid.xy);
+    
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
     float ShadowMask = ScreenShadowTexture.SampleLevel(LinearClampped, UV, 0).r;
 
@@ -59,6 +62,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     LightInfo.Normal = Normal;
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
+    LightInfo.SpecularNoise = AttenNoise * 0.1f;
 	
 	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{
@@ -85,7 +89,6 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 	
     float3 LightToWorld;
     float LightAtten;
-    float AttenNoise = GetAttenuationNoise(DTid.xy);
     
     UHLOOP
     for (Ldx = 0; Ldx < PointLightCount; Ldx++)

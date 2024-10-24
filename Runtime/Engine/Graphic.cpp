@@ -36,7 +36,12 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	InstanceExtensions = { "VK_KHR_surface"
 		, "VK_KHR_win32_surface"
 		, "VK_KHR_get_surface_capabilities2"
-		, "VK_KHR_get_physical_device_properties2" };
+		, "VK_KHR_get_physical_device_properties2"
+		, "VK_EXT_swapchain_colorspace" };
+
+#if WITH_EDITOR
+	InstanceExtensions.push_back("VK_EXT_debug_utils");
+#endif
 
 	DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		, "VK_EXT_full_screen_exclusive"
@@ -314,6 +319,7 @@ bool UHGraphic::CreateInstance()
 #if WITH_EDITOR
 	GBeginCmdDebugLabelCallback = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginDebugUtilsLabelEXT");
 	GEndCmdDebugLabelCallback = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndDebugUtilsLabelEXT");
+	GSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(VulkanInstance, "vkSetDebugUtilsObjectNameEXT");
 #endif
 
 	GVkGetAccelerationStructureDeviceAddressKHR = (PFN_vkGetAccelerationStructureDeviceAddressKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetAccelerationStructureDeviceAddressKHR");
@@ -948,6 +954,21 @@ UHRenderPassObject UHGraphic::CreateRenderPass(std::vector<UHTexture*> InTexture
 
 	ResultRenderPass.RenderPass = NewRenderPass;
 	ResultRenderPass.FinalLayout = InTransitionInfo.FinalLayout;
+
+#if WITH_EDITOR
+	std::string ObjName;
+	if (InTextures.size() > 0)
+	{
+		ObjName = InTextures[0]->GetName();
+	}
+	else if (InDepth != nullptr)
+	{
+		ObjName = InDepth->GetName();
+	}
+	ObjName += "_RenderPass";
+
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_RENDER_PASS, (uint64_t)NewRenderPass, ObjName);
+#endif
 
 	return ResultRenderPass;
 }
@@ -1705,6 +1726,7 @@ uint32_t UHGraphic::GetMinImageCount() const
 bool UHGraphic::RecreateImGui()
 {
 	bool bImGuiSucceed = true;
+	static ImGui_ImplVulkan_InitInfo InitInfo{};
 
 	if (ImGui::GetCurrentContext() != nullptr)
 	{
@@ -1714,6 +1736,11 @@ bool UHGraphic::RecreateImGui()
 			vkDestroyPipeline(LogicalDevice, ImGuiPipeline, nullptr);
 		}
 		ImGui_ImplVulkan_CreatePipeline(LogicalDevice, nullptr, nullptr, SwapChainRenderPass, VK_SAMPLE_COUNT_1_BIT, &ImGuiPipeline, 0);
+
+		// update swapchain info
+		InitInfo.SwapChainFormat = GetSwapChainFormat();
+		InitInfo.SwapChainColorSpace = IsHDRAvailable() ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+		ImGui_ImplVulkan_UpdateInitInfo(InitInfo);
 
 		return true;
 	}
@@ -1743,7 +1770,6 @@ bool UHGraphic::RecreateImGui()
 	// Setup Platform/Renderer backends
 	bImGuiSucceed &= ImGui_ImplWin32_Init(WindowCache);
 
-	ImGui_ImplVulkan_InitInfo InitInfo{};
 	InitInfo.Instance = GetInstance();
 	InitInfo.PhysicalDevice = GetPhysicalDevice();
 	InitInfo.Device = GetLogicalDevice();
@@ -1784,6 +1810,17 @@ VkPipeline UHGraphic::GetImGuiPipeline() const
 void UHGraphic::SetDepthPrepassActive(bool bInFlag)
 {
 	bEnableDepthPrePass = bInFlag;
+}
+
+void UHGraphic::SetDebugUtilsObjectName(VkObjectType InObjType, uint64_t InObjHandle, std::string InObjName) const
+{
+	VkDebugUtilsObjectNameInfoEXT DebugInfo{};
+	DebugInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+	DebugInfo.objectType = InObjType;
+	DebugInfo.objectHandle = InObjHandle;
+	DebugInfo.pObjectName = InObjName.c_str();
+
+	GSetDebugUtilsObjectNameEXT(LogicalDevice, &DebugInfo);
 }
 #endif
 

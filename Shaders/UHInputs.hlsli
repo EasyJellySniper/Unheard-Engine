@@ -144,6 +144,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     uint GRefractionBlurIndex;
 	
     float GFinalReflectionStrength;
+    float GMotionVectorScale;
 }
 
 // IT means inverse-transposed

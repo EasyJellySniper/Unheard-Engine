@@ -110,12 +110,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                     GUnheardEngine->RenderLoop();
                 }
 
-            #if WITH_EDITOR
+            #if WITH_EDITOR               
+                // tricky workaround for HDR toggling, when the platform window of ImGui is outside the main window
+                // the window needs to be re-created to match the swapchain format
+                static bool bIsHDRAvailablePrev = GUnheardEngine->GetGfx()->IsHDRAvailable();
+                ImGui::UpdatePlatformWindows(bIsHDRAvailablePrev != GUnheardEngine->GetGfx()->IsHDRAvailable());
+                bIsHDRAvailablePrev = GUnheardEngine->GetGfx()->IsHDRAvailable();
+
                 // assume multi-view is always enabled
                 ImGui_Vulkan_CustomData CustomData{};
                 CustomData.Pipeline = GUnheardEngine->GetGfx()->GetImGuiPipeline();
-
-                ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault(nullptr, &CustomData);
             #endif
 

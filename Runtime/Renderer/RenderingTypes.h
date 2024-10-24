@@ -82,6 +82,7 @@ struct UHSystemConstants
 	uint32_t GRefractionBlurIndex;
 
 	float GFinalReflectionStrength;
+	float GMotionVectorScale;
 };
 
 struct UHObjectConstants

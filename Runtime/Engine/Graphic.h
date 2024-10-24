@@ -264,6 +264,7 @@ public:
 	bool RecreateImGui();
 	VkPipeline GetImGuiPipeline() const;
 	void SetDepthPrepassActive(bool bInFlag);
+	void SetDebugUtilsObjectName(VkObjectType InObjType, uint64_t InObjHandle, std::string InObjName) const;
 #endif
 
 private:

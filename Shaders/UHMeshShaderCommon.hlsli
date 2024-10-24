@@ -111,6 +111,7 @@ float3x3 CreateTBNMS(float3 InWorldNormal, float4 InTangent, float3x3 World)
 {
     float3 Tangent = LocalToWorldDirMS(InTangent.xyz, World);
     float3 Binormal = cross(InWorldNormal, Tangent) * InTangent.w;
+    Tangent = cross(Binormal, InWorldNormal) * InTangent.w;
 
     float3x3 TBN = float3x3(Tangent, Binormal, InWorldNormal);
     return TBN;

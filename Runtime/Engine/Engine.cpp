@@ -283,6 +283,13 @@ void UHEngine::ResizeEngine()
 	{
 		UHERenderer->Resize();
 	}
+
+	// sync the window size if it's window message
+	if (EngineResizeReason == UHEngineResizeReason::FromWndMessage
+		&& !UHEConfig->PresentationSetting().bFullScreen)
+	{
+		UHEConfig->UpdateWindowSize(UHEngineWindow);
+	}
 }
 
 void UHEngine::ToggleFullScreen()

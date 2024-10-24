@@ -172,13 +172,14 @@ struct ImGui_ImplVulkanH_Window
     }
 };
 
-// BEGIN UHE MOD - Define custom data structure and expose ImGui_ImplVulkan_CreatePipeline function for custom pipelines
+// BEGIN UHE MOD - Custom ImGui functions
 struct ImGui_Vulkan_CustomData
 {
     VkPipeline Pipeline;
 };
 
 extern void ImGui_ImplVulkan_CreatePipeline(VkDevice device, const VkAllocationCallbacks* allocator, VkPipelineCache pipelineCache, VkRenderPass renderPass, VkSampleCountFlagBits MSAASamples, VkPipeline* pipeline, uint32_t subpass);
+extern void ImGui_ImplVulkan_UpdateInitInfo(ImGui_ImplVulkan_InitInfo NewInfo);
 // END UHE MOD
 
 #endif // #ifndef IMGUI_DISABLE

@@ -5,6 +5,9 @@
 #include "Runtime/Engine/Engine.h"
 #include "Runtime/Renderer/DeferredShadingRenderer.h"
 
+int32_t UHSettingDialog::TempWidth;
+int32_t UHSettingDialog::TempHeight;
+
 UHSettingDialog::UHSettingDialog(UHConfigManager* InConfig, UHEngine* InEngine, UHDeferredShadingRenderer* InRenderer)
 	: UHDialog(nullptr, nullptr)
     , Config(InConfig)
@@ -12,6 +15,15 @@ UHSettingDialog::UHSettingDialog(UHConfigManager* InConfig, UHEngine* InEngine, 
     , DeferredRenderer(InRenderer)
 {
 
+}
+
+void UHSettingDialog::ShowDialog()
+{
+    UHDialog::ShowDialog();
+
+    UHRenderingSettings& RenderingSettings = Config->RenderingSetting();
+    TempWidth = RenderingSettings.RenderWidth;
+    TempHeight = RenderingSettings.RenderHeight;
 }
 
 void UHSettingDialog::Update(bool& bIsDialogActive)
@@ -63,8 +75,6 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::NewLine();
 
     // rendering settings
-    static int32_t TempWidth = RenderingSettings.RenderWidth;
-    static int32_t TempHeight = RenderingSettings.RenderHeight;
     ImGui::Text("---Rendering Settings---");
     ImGui::InputInt("##", &TempWidth);
     ImGui::SameLine();
