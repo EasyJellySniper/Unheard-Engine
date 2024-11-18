@@ -1,5 +1,22 @@
 #include "DeferredShadingRenderer.h"
 
+class UHBasePassAsyncTask : public UHAsyncTask
+{
+public:
+	void Init(UHDeferredShadingRenderer* InRenderer)
+	{
+		SceneRenderer = InRenderer;
+	}
+
+	virtual void DoTask(const int32_t ThreadIdx) override
+	{
+		SceneRenderer->BasePassTask(ThreadIdx);
+	}
+
+private:
+	UHDeferredShadingRenderer* SceneRenderer = nullptr;
+};
+
 // implementation of RenderBasePass(), this pass is a deferred rendering with GBuffers and depth buffer
 void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 {
@@ -92,9 +109,11 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 #endif
 
 			// wake all worker threads
-			ParallelTask = UHParallelTask::BasePassTask;
+			static UHBasePassAsyncTask Tasks[GMaxWorkerThreads];
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
+				Tasks[I].Init(this);
+				WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 				WorkerThreads[I]->WakeThread();
 			}
 

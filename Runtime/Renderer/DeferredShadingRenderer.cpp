@@ -380,46 +380,63 @@ void UHDeferredShadingRenderer::FrustumCulling()
 		return;
 	}
 
-	// wake frustum culling task
-	ParallelTask = UHParallelTask::FrustumCullingTask;
+	// async frustum culling task
+	class UHFrustumCullingAsyncTask : public UHAsyncTask
+	{
+	public:
+		void Init(UHScene* InScene, const int32_t InNumWorkerThreads)
+		{
+			CurrentScene = InScene;
+			NumWorkerThreads = InNumWorkerThreads;
+		}
+
+		virtual void DoTask(const int32_t ThreadIdx) override
+		{
+			const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
+			const BoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
+			const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
+			const XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
+
+			const int32_t MaxCount = static_cast<int32_t>(Renderers.size());
+			const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
+			const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
+			const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
+
+			for (int32_t Idx = StartIdx; Idx < EndIdx; Idx++)
+			{
+				// skip skybox renderer
+				UHMeshRendererComponent* Renderer = Renderers[Idx];
+				if (Renderer->GetMaterial()->GetMaterialUsages().bIsSkybox)
+				{
+					continue;
+				}
+
+				const BoundingBox& RendererBound = Renderer->GetRendererBound();
+				const bool bVisible = (CameraFrustum.Contains(RendererBound) != DirectX::DISJOINT);
+				Renderer->SetVisible(bVisible);
+
+				// also calculate the square distance to current camera for later use
+				Renderer->CalculateSquareDistanceTo(CameraPos);
+			}
+		}
+
+	private:
+		UHScene* CurrentScene = nullptr;
+		int32_t NumWorkerThreads = 0;
+	};
+	static UHFrustumCullingAsyncTask Tasks[GMaxWorkerThreads];
+
+	// init and wake frustum culling task
 	for (int32_t I = 0; I < NumWorkerThreads; I++)
 	{
+		Tasks[I].Init(CurrentScene, NumWorkerThreads);
+		WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 		WorkerThreads[I]->WakeThread();
 	}
 
 	for (int32_t I = 0; I < NumWorkerThreads; I++)
 	{
 		WorkerThreads[I]->WaitTask();
-	}
-}
-
-void UHDeferredShadingRenderer::FrustumCullingTask(int32_t ThreadIdx)
-{
-	const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
-	const BoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
-	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-	const XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
-
-	const int32_t MaxCount = static_cast<int32_t>(Renderers.size());
-	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
-	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
-	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
-
-	for (int32_t Idx = StartIdx; Idx < EndIdx; Idx++)
-	{
-		// skip skybox renderer
-		UHMeshRendererComponent* Renderer = Renderers[Idx];
-		if (Renderer->GetMaterial()->GetMaterialUsages().bIsSkybox)
-		{
-			continue;
-		}
-
-		const BoundingBox& RendererBound = Renderer->GetRendererBound();
-		const bool bVisible = (CameraFrustum.Contains(RendererBound) != DirectX::DISJOINT);
-		Renderer->SetVisible(bVisible);
-
-		// also calculate the square distance to current camera for later use
-		Renderer->CalculateSquareDistanceTo(CameraPos);
 	}
 }
 
@@ -827,40 +844,7 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 			break;
 		}
 
-		switch (ParallelTask)
-		{
-		case UHParallelTask::FrustumCullingTask:
-			FrustumCullingTask(ThreadIdx);
-			break;
-
-		case UHParallelTask::DepthPassTask:
-			DepthPassTask(ThreadIdx);
-			break;
-
-		case UHParallelTask::OcclusionPassTask:
-			OcclusionPassTask(ThreadIdx);
-			break;
-
-		case UHParallelTask::BasePassTask:
-			BasePassTask(ThreadIdx);
-			break;
-
-		case UHParallelTask::MotionOpaqueTask:
-			MotionOpaqueTask(ThreadIdx);
-			break;
-
-		case UHParallelTask::MotionTranslucentTask:
-			MotionTranslucentTask(ThreadIdx);
-			break;
-
-		case UHParallelTask::TranslucentBgPassTask:
-			TranslucentPassTask(ThreadIdx);
-			break;
-
-		default:
-			break;
-		};
-
+		WorkerThreads[ThreadIdx]->DoTask(ThreadIdx);
 		WorkerThreads[ThreadIdx]->NotifyTaskDone();
 	}
 }

@@ -1,5 +1,22 @@
 #include "DeferredShadingRenderer.h"
 
+class UHDepthPassAsyncTask : public UHAsyncTask
+{
+public:
+	void Init(UHDeferredShadingRenderer* InRenderer)
+	{
+		SceneRenderer = InRenderer;
+	}
+
+	virtual void DoTask(const int32_t ThreadIdx) override
+	{
+		SceneRenderer->DepthPassTask(ThreadIdx);
+	}
+
+private:
+	UHDeferredShadingRenderer* SceneRenderer = nullptr;
+};
+
 void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderDepthPrePass", false);
@@ -72,10 +89,12 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 			}
 #endif
 
-			// wake all worker threads
-			ParallelTask = UHParallelTask::DepthPassTask;
+			// init and wake all tasks
+			static UHDepthPassAsyncTask Tasks[GMaxWorkerThreads];
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
+				Tasks[I].Init(this);
+				WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 				WorkerThreads[I]->WakeThread();
 			}
 

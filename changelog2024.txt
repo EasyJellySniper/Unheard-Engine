@@ -272,3 +272,6 @@ Implemented motion vector scale. Fixed minor issues in setting dialog.
 Re-cross the tangent vector in TBN creation to prevent any possible errors.
 Added debug object name utility. Did another HDR fix for ImGui.
 Revisted the specular formula as well and reduced the color banding on specular highlight.
+
+18-11-2024:
+Refactored async tasks. Removed ugly if else condition but actually creates the async task object.

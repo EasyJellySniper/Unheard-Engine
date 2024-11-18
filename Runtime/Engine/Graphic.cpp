@@ -732,21 +732,12 @@ VkPresentModeKHR ChooseSwapChainMode(const UHSwapChainDetails& Details, bool bUs
 {
 	// VK_PRESENT_MODE_IMMEDIATE_KHR: Fastest but might have screen tearing
 	// VK_PRESENT_MODE_FIFO_KHR: vertical blank
-	// VK_PRESENT_MODE_FIFO_RELAXED_KHR: Instead of waiting for the next vertical blank
-	// , the image is transferred right away when it finally arrives. This may result in visible tearing
-	// VK_PRESENT_MODE_MAILBOX_KHR: Similar to triple buffering. Tearing can not be observed.
 
 	// select the mode based on Vsync setting and go for mailbox if possible
-	bool bMailboxSupported = false;
 	bool bVsyncSupported = false;
 
 	for (const auto& AvailablePresentMode : Details.PresentModes)
 	{
-		if (AvailablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-		{
-			bMailboxSupported = true;
-		}
-
 		if (AvailablePresentMode == VK_PRESENT_MODE_FIFO_KHR)
 		{
 			bVsyncSupported = true;
@@ -756,11 +747,6 @@ VkPresentModeKHR ChooseSwapChainMode(const UHSwapChainDetails& Details, bool bUs
 	if (bUseVsync && bVsyncSupported)
 	{
 		return VK_PRESENT_MODE_FIFO_KHR;
-	}
-
-	if (!bUseVsync && bMailboxSupported)
-	{
-		return VK_PRESENT_MODE_MAILBOX_KHR;
 	}
 
 	return VK_PRESENT_MODE_IMMEDIATE_KHR;

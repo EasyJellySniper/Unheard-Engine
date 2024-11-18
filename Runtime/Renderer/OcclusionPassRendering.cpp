@@ -1,5 +1,22 @@
 #include "DeferredShadingRenderer.h"
 
+class UHOcclusionPassAsyncTask : public UHAsyncTask
+{
+public:
+	void Init(UHDeferredShadingRenderer* InRenderer)
+	{
+		SceneRenderer = InRenderer;
+	}
+
+	virtual void DoTask(const int32_t ThreadIdx) override
+	{
+		SceneRenderer->OcclusionPassTask(ThreadIdx);
+	}
+
+private:
+	UHDeferredShadingRenderer* SceneRenderer = nullptr;
+};
+
 void UHDeferredShadingRenderer::RenderOcclusionPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderOcclusionPass", false);
@@ -22,10 +39,12 @@ void UHDeferredShadingRenderer::RenderOcclusionPass(UHRenderBuilder& RenderBuild
 		}
 #endif
 
-		// wake all worker threads
-		ParallelTask = UHParallelTask::OcclusionPassTask;
+		// init and wake all tasks
+		static UHOcclusionPassAsyncTask Tasks[GMaxWorkerThreads];
 		for (int32_t I = 0; I < NumWorkerThreads; I++)
 		{
+			Tasks[I].Init(this);
+			WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 			WorkerThreads[I]->WakeThread();
 		}
 

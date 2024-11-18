@@ -1,5 +1,31 @@
 #include "DeferredShadingRenderer.h"
 
+class UHMotionPassAsyncTask : public UHAsyncTask
+{
+public:
+	void Init(UHDeferredShadingRenderer* InRenderer, const bool bInIsOpaque)
+	{
+		SceneRenderer = InRenderer;
+		bIsOpaque = bInIsOpaque;
+	}
+
+	virtual void DoTask(const int32_t ThreadIdx) override
+	{
+		if (bIsOpaque)
+		{
+			SceneRenderer->MotionOpaqueTask(ThreadIdx);
+		}
+		else
+		{
+			SceneRenderer->MotionTranslucentTask(ThreadIdx);
+		}
+	}
+
+private:
+	UHDeferredShadingRenderer* SceneRenderer = nullptr;
+	bool bIsOpaque = true;
+};
+
 void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderMotionPass", false);
@@ -43,6 +69,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 		// -------------------- after motion camera pass is done, draw per-object motions, opaque first then the translucent -------------------- //
 		// opaque motion will only render the dynamic objects (motion is dirty), static objects are already calculated in camera motion
+		static UHMotionPassAsyncTask Tasks[GMaxWorkerThreads];
 		{
 #if USE_MESHSHADER_PASS
 			if (GraphicInterface->IsMeshShaderSupported())
@@ -104,10 +131,11 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 				}
 #endif
 
-				// wake all worker threads
-				ParallelTask = UHParallelTask::MotionOpaqueTask;
+				// init and wake all tasks
 				for (int32_t I = 0; I < NumWorkerThreads; I++)
 				{
+					Tasks[I].Init(this, true);
+					WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 					WorkerThreads[I]->WakeThread();
 				}
 
@@ -207,9 +235,10 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 #endif
 
 				// wake all worker threads
-				ParallelTask = UHParallelTask::MotionTranslucentTask;
 				for (int32_t I = 0; I < NumWorkerThreads; I++)
 				{
+					Tasks[I].Init(this, false);
+					WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 					WorkerThreads[I]->WakeThread();
 				}
 

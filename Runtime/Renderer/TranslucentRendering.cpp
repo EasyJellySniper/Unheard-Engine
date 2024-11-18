@@ -1,5 +1,22 @@
 #include "DeferredShadingRenderer.h"
 
+class UHTranslucentPassAsyncTask : public UHAsyncTask
+{
+public:
+	void Init(UHDeferredShadingRenderer* InRenderer)
+	{
+		SceneRenderer = InRenderer;
+	}
+
+	virtual void DoTask(const int32_t ThreadIdx) override
+	{
+		SceneRenderer->TranslucentPassTask(ThreadIdx);
+	}
+
+private:
+	UHDeferredShadingRenderer* SceneRenderer = nullptr;
+};
+
 void UHDeferredShadingRenderer::ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder, UHGaussianFilterConstants Constants)
 {
 	// blit the scene result to opaque scene result
@@ -49,10 +66,12 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 			}
 #endif
 
-			// parallel pass
-			ParallelTask = UHParallelTask::TranslucentBgPassTask;
+			// init and wake tasks
+			static UHTranslucentPassAsyncTask Tasks[GMaxWorkerThreads];
 			for (int32_t I = 0; I < NumWorkerThreads; I++)
 			{
+				Tasks[I].Init(this);
+				WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 				WorkerThreads[I]->WakeThread();
 			}
 

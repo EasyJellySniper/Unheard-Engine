@@ -122,6 +122,15 @@ public:
 	bool CreateAsyncComputeQueue();
 	void ReleaseAsyncComputeQueue();
 
+	/************************************************ parallel task functions ************************************************/
+	// based on the scatter and gather method
+	void DepthPassTask(int32_t ThreadIdx);
+	void OcclusionPassTask(int32_t ThreadIdx);
+	void BasePassTask(int32_t ThreadIdx);
+	void MotionOpaqueTask(int32_t ThreadIdx);
+	void MotionTranslucentTask(int32_t ThreadIdx);
+	void TranslucentPassTask(int32_t ThreadIdx);
+
 private:
 	/************************************************ functions ************************************************/
 	void RenderThreadLoop();
@@ -216,18 +225,6 @@ private:
 	void RenderComponentBounds(UHRenderBuilder& RenderBuilder, const int32_t PostProcessIdx);
 #endif
 
-
-	/************************************************ parallel task functions ************************************************/
-	// based on the scatter and gather method
-	void FrustumCullingTask(int32_t ThreadIdx);
-	void DepthPassTask(int32_t ThreadIdx);
-	void OcclusionPassTask(int32_t ThreadIdx);
-	void BasePassTask(int32_t ThreadIdx);
-	void MotionOpaqueTask(int32_t ThreadIdx);
-	void MotionTranslucentTask(int32_t ThreadIdx);
-	void TranslucentPassTask(int32_t ThreadIdx);
-
-
 	/************************************************ variables ************************************************/
 	UHGraphic* GraphicInterface;
 	UHAssetManager* AssetManagerInterface;
@@ -259,7 +256,6 @@ private:
 	int32_t NumWorkerThreads;
 	std::vector<UniquePtr<UHThread>> WorkerThreads;
 	bool bIsResetNeededShared;
-	UHParallelTask ParallelTask;
 	bool bVsyncRT;
 	bool bIsSwapChainResetGT;
 	bool bIsSwapChainResetRT;

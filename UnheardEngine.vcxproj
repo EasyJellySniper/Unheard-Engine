@@ -263,6 +263,7 @@
     <ClInclude Include="Editor\Dialog\TextureDialog.h" />
     <ClInclude Include="Editor\Dialog\WorldDialog.h" />
     <ClInclude Include="Editor\Editor\PreviewScene.h" />
+    <ClInclude Include="Runtime\Classes\AsyncTask.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphNode.h" />
     <ClInclude Include="Editor\Classes\GraphNodeGUI.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphPin.h" />

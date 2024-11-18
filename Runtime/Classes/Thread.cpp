@@ -4,6 +4,7 @@
 UHThread::UHThread()
 	: bIsThreadDoneTask(true)
 	, bIsThreadTerminated(false)
+	, CurrentScheduledTask(nullptr)
 {
 
 }
@@ -17,7 +18,7 @@ UHThread::~UHThread()
 void UHThread::BeginThread(std::thread InObj, uint32_t AffinityCore)
 {
 	ThreadObj = std::move(InObj);
-
+	ThreadId = ThreadObj.get_id();
 	// modern OS should be smart enough for thread control, uncomment for test purpose
 	// I find manually setting it introduces weird stuttering in some hardwares...
 	 
@@ -78,6 +79,9 @@ void UHThread::WaitTask()
 {
 	std::unique_lock<std::mutex> Lock(ThreadMutex);
 	ThreadDoneTask.wait(Lock, [this] { return bIsThreadDoneTask; });
+
+	// reset current scheduled task after it's done
+	CurrentScheduledTask = nullptr;
 }
 
 void UHThread::SetTerminate(bool InFlag)
@@ -93,4 +97,21 @@ bool UHThread::IsTermindate() const
 std::mutex& UHThread::GetThreadMutex()
 {
 	return ThreadMutex;
+}
+
+// schedule a task
+void UHThread::ScheduleTask(UHAsyncTask* InTask)
+{
+	CurrentScheduledTask = InTask;
+}
+
+void UHThread::DoTask(const int32_t ThreadIdx)
+{
+	// Task must be executed from the same thread as this instance
+	assert(std::this_thread::get_id() == ThreadId);
+
+	if (CurrentScheduledTask != nullptr)
+	{
+		CurrentScheduledTask->DoTask(ThreadIdx);
+	}
 }

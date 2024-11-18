@@ -1,6 +1,7 @@
 #pragma once
 #include <thread>
 #include <mutex>
+#include "AsyncTask.h"
 
 // UH thread wrapper
 class UHThread
@@ -33,12 +34,19 @@ public:
 	bool IsTermindate() const;
 	std::mutex& GetThreadMutex();
 
+	// async tasks
+	void ScheduleTask(UHAsyncTask* InTask);
+	void DoTask(const int32_t ThreadIdx);
+
 private:
 	std::thread ThreadObj;
+	std::thread::id ThreadId;
 	std::condition_variable ThreadWaitTask;
 	std::condition_variable ThreadDoneTask;
 	std::mutex ThreadMutex;
 
 	bool bIsThreadDoneTask;
 	bool bIsThreadTerminated;
+
+	UHAsyncTask* CurrentScheduledTask;
 };
