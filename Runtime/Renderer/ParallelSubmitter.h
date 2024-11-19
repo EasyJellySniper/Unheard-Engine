@@ -11,9 +11,9 @@ public:
 
 	}
 
-	void Initialize(VkDevice InDevice, UHQueueFamily QueueFamily, int32_t NumWorkerThreads)
+	void Initialize(UHGraphic* InGfx, UHQueueFamily QueueFamily, int32_t NumWorkerThreads, std::string InName)
 	{
-		LogicalDevice = InDevice;
+		LogicalDevice = InGfx->GetLogicalDevice();
 		NumWT = NumWorkerThreads;
 
 		WorkerCommandPools.resize(NumWorkerThreads);
@@ -36,6 +36,11 @@ public:
 				return;
 			}
 
+#if WITH_EDITOR
+			InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)WorkerCommandPools[Idx]
+				, InName + "_CommandPool" + std::to_string(Idx));
+#endif
+
 			// create worker command buffers
 			AllocInfo.commandPool = WorkerCommandPools[Idx];
 			AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
@@ -46,6 +51,11 @@ public:
 				UHE_LOG(L"Failed to allocate worker command buffers!\n");
 				return;
 			}
+
+#if WITH_EDITOR
+			InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)WorkerCommandBuffers[Idx * (int32_t)GMaxFrameInFlight]
+				, InName + "_CommandBuffer");
+#endif
 		}
 	}
 

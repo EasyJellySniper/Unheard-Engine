@@ -62,19 +62,19 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 
 	UHGPUMemory* SharedMemory = InGfx->GetMeshSharedMemory();
 
-	PositionBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, SharedMemory);
-	UV0Buffer = InGfx->RequestRenderBuffer<XMFLOAT2>(VertexCount, VBFlags, SharedMemory);
-	NormalBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, SharedMemory);
-	TangentBuffer = InGfx->RequestRenderBuffer<XMFLOAT4>(VertexCount, VBFlags, SharedMemory);
+	PositionBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, Name + "_Position", SharedMemory);
+	UV0Buffer = InGfx->RequestRenderBuffer<XMFLOAT2>(VertexCount, VBFlags, Name + "_UV0", SharedMemory);
+	NormalBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, Name + "_Normal", SharedMemory);
+	TangentBuffer = InGfx->RequestRenderBuffer<XMFLOAT4>(VertexCount, VBFlags, Name + "_Tangent", SharedMemory);
 
 	// consider 32 or 16 bit index buffer
 	if (bIndexBuffer32Bit)
 	{
-		IndexBuffer = InGfx->RequestRenderBuffer<uint32_t>(GetIndicesCount(), IBFlags, SharedMemory);
+		IndexBuffer = InGfx->RequestRenderBuffer<uint32_t>(GetIndicesCount(), IBFlags, Name + "_Index32", SharedMemory);
 	}
 	else
 	{
-		IndexBuffer16 = InGfx->RequestRenderBuffer<uint16_t>(GetIndicesCount(), IBFlags, SharedMemory);
+		IndexBuffer16 = InGfx->RequestRenderBuffer<uint16_t>(GetIndicesCount(), IBFlags, Name + "_Index16", SharedMemory);
 	}
 
 	bool bValid = true;
@@ -563,6 +563,6 @@ void UHMesh::CreateMeshlets(UHGraphic* InGfx)
 		}
 	}
 
-	MeshletBuffer = InGfx->RequestRenderBuffer<UHMeshlet>(MeshletsData.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	MeshletBuffer = InGfx->RequestRenderBuffer<UHMeshlet>(MeshletsData.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, Name + "_Meshlet");
 	MeshletBuffer->UploadAllData(MeshletsData.data());
 }

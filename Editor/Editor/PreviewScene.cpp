@@ -28,7 +28,7 @@ UHPreviewScene::UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType)
 	Transition.FinalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	PreviewRenderPass = Gfx->CreateRenderPass(PreviewRT, Transition, PreviewDepth);
 
-	std::vector<VkImageView> PreviewViews = { PreviewRT->GetImageView(), PreviewDepth->GetImageView() };
+	std::vector<UHRenderTexture*> PreviewViews = { PreviewRT, PreviewDepth };
 	PreviewFrameBuffer = Gfx->CreateFrameBuffer(PreviewViews, PreviewRenderPass.RenderPass, PreviewExtent);
 	PreviewRenderPass.FrameBuffer = PreviewFrameBuffer;
 
@@ -37,7 +37,7 @@ UHPreviewScene::UHPreviewScene(UHGraphic* InGraphic, UHPreviewSceneType InType)
 	PreviewCamera = MakeUnique<UHCameraComponent>();
 	PreviewCamera->Update();
 
-	MeshPreviewData = Gfx->RequestRenderBuffer<float>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	MeshPreviewData = Gfx->RequestRenderBuffer<float>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "MeshPreviewData");
 	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0, 0);
 }
 

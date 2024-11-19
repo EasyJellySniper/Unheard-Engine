@@ -1,5 +1,6 @@
 #include "RenderResource.h"
 #include "Runtime/Classes/Types.h"
+#include "Runtime/Engine/Graphic.h"
 
 UHRenderResource::UHRenderResource()
 	: GfxCache(nullptr)
@@ -15,18 +16,9 @@ UHRenderResource::UHRenderResource()
 void UHRenderResource::SetGfxCache(UHGraphic* InGfx)
 {
 	GfxCache = InGfx;
-}
-
-void UHRenderResource::SetVulkanInstance(VkInstance InInstance)
-{
-	VulkanInstance = InInstance;
-}
-
-// cache device info
-void UHRenderResource::SetDeviceInfo(VkDevice InDevice, VkPhysicalDeviceMemoryProperties InMemProps)
-{
-	LogicalDevice = InDevice;
-	DeviceMemoryProperties = InMemProps;
+	LogicalDevice = GfxCache->GetLogicalDevice();
+	DeviceMemoryProperties = GfxCache->GetDeviceMemProps();
+	VulkanInstance = GfxCache->GetInstance();
 }
 
 void UHRenderResource::SetIndexInPool(const int32_t InIndex)

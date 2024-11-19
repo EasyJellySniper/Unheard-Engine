@@ -13,7 +13,7 @@ UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRende
 	CreateLayoutAndDescriptor();
 	OnCompile();
 
-	DebugViewData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+	DebugViewData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "DebugViewData");
 }
 
 void UHDebugViewShader::Release()

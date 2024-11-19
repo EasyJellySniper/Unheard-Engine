@@ -59,7 +59,9 @@ float FixupNTSCFrequency(DWORD InFrequency)
 bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 {
 	// set affinity of current thread (main thread)
-	SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
+	// it's confirmed that the affinity setting might introduce stuttering for render/worker threads in UHE
+	// so I disable it for main thread too. uncomment this for testing
+	//SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
 
 	// cache current monitor refresh rate, also consider the NTSC frequencies
 	DEVMODE DevMode;

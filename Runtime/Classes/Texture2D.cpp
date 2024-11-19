@@ -189,8 +189,9 @@ std::vector<uint8_t> UHTexture2D::ReadbackTextureData()
 	{
 		uint32_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * ByteSize;
 
-		ReadbackBuffer[MipIdx].SetDeviceInfo(GfxCache->GetLogicalDevice(), GfxCache->GetDeviceMemProps());
+		ReadbackBuffer[MipIdx].SetGfxCache(GfxCache);
 		ReadbackBuffer[MipIdx].CreateBuffer(MipSize, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)ReadbackBuffer[MipIdx].GetBuffer(), Name + "_StageBuffer");
 
 		VkBufferImageCopy Region{};
 		Region.bufferOffset = 0;
@@ -284,9 +285,12 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder
 			continue;
 		}
 
-		RawStageBuffers[MipIdx].SetDeviceInfo(InGfx->GetLogicalDevice(), InGfx->GetDeviceMemProps());
+		RawStageBuffers[MipIdx].SetGfxCache(InGfx);
 		RawStageBuffers[MipIdx].CreateBuffer(MipSize, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 		RawStageBuffers[MipIdx].UploadAllData(TextureData.data() + MipStartIndex);
+#if WITH_EDITOR
+		InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)RawStageBuffers[MipIdx].GetBuffer(), Name + "_StageBuffer");
+#endif
 		MipStartIndex += MipSize;
 	}
 

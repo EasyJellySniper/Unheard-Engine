@@ -127,10 +127,9 @@ public:
 	UHRenderPassObject CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat) const;
 	UHRenderPassObject CreateRenderPass(std::vector<UHTexture*> InFormat, UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat = nullptr) const;
 
-	// create frame buffer, imageless/single/multiple
-	VkFramebuffer CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D InExtent) const;
-	VkFramebuffer CreateFrameBuffer(VkImageView InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
-	VkFramebuffer CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
+	// create frame buffer, single/multiple
+	VkFramebuffer CreateFrameBuffer(UHRenderTexture* InRT, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
+	VkFramebuffer CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
 
 	// create query pool
 	UHGPUQuery* RequestGPUQuery(uint32_t Count, VkQueryType QueueType);
@@ -156,10 +155,10 @@ public:
 
 	// request a unique render buffer, due to the template, this can not be managed by Graphic class
 	template<typename T>
-	UniquePtr<UHRenderBuffer<T>> RequestRenderBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage, UHGPUMemory* SharedMemory = nullptr) const
+	UniquePtr<UHRenderBuffer<T>> RequestRenderBuffer(uint64_t InElementCount, VkBufferUsageFlags InUsage, std::string InName, UHGPUMemory* SharedMemory = nullptr)
 	{
 		UniquePtr<UHRenderBuffer<T>> NewBuffer = MakeUnique<UHRenderBuffer<T>>();
-		NewBuffer->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+		NewBuffer->SetGfxCache(this);
 
 		if (SharedMemory != nullptr)
 		{
@@ -169,6 +168,13 @@ public:
 		{
 			NewBuffer->CreateBuffer(InElementCount, InUsage);
 		}
+
+#if WITH_EDITOR
+		if (InElementCount > 0)
+		{
+			SetDebugUtilsObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)NewBuffer->GetBuffer(), InName);
+		}
+#endif
 
 		return std::move(NewBuffer);
 	}

@@ -14,7 +14,7 @@ UHSphericalHarmonicShader::UHSphericalHarmonicShader(UHGraphic* InGfx, std::stri
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		SH9Constants[Idx] = Gfx->RequestRenderBuffer<UHSphericalHarmonicConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		SH9Constants[Idx] = Gfx->RequestRenderBuffer<UHSphericalHarmonicConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "SH9Constants");
 	}
 }
 

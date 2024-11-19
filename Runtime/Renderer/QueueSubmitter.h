@@ -19,10 +19,9 @@ public:
 		}
 	}
 
-	bool Initialize(VkDevice InDevice, const uint32_t QueueFamilyIndex, const uint32_t QueueIndex)
+	bool Initialize(UHGraphic* InGfx, const uint32_t QueueFamilyIndex, const uint32_t QueueIndex, const std::string InName)
 	{
-		LogicalDevice = InDevice;
-		VkDevice LogicalDevice = InDevice;
+		LogicalDevice = InGfx->GetLogicalDevice();
 
 		VkCommandPoolCreateInfo PoolInfo{};
 		PoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -37,6 +36,11 @@ public:
 			return false;
 		}
 
+#if WITH_EDITOR
+		InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)CommandPool
+			, InName + "_CommandPool");
+#endif
+
 		// now create command buffer
 		VkCommandBufferAllocateInfo AllocInfo{};
 		AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -49,6 +53,14 @@ public:
 			UHE_LOG(L"Failed to allocate command buffers!\n");
 			return false;
 		}
+
+#if WITH_EDITOR
+		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+		{
+			InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)CommandBuffers[Idx]
+				, InName + "_CommandBuffer");
+		}
+#endif
 
 		// init semphore
 		VkSemaphoreCreateInfo SemaphoreInfo{};
@@ -69,6 +81,15 @@ public:
 				UHE_LOG(L"Failed to allocate fences!\n");
 				return false;
 			}
+
+#if WITH_EDITOR
+			InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)WaitingSemaphores[Idx]
+				, InName + "_WaitingSemaphore");
+			InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)FinishedSemaphores[Idx]
+				, InName + "_FinishedSemaphore");
+			InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_FENCE, (uint64_t)Fences[Idx]
+				, InName + "_Fence");
+#endif
 		}
 
 		// at last, get the queue

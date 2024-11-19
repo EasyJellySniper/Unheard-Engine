@@ -228,9 +228,12 @@ void UHTextureCube::UploadSlice(UHGraphic* InGfx, UHRenderBuilder& InRenderBuild
 			continue;
 		}
 
-		RawStageBuffers[SliceIndex][MipIdx].SetDeviceInfo(InGfx->GetLogicalDevice(), InGfx->GetDeviceMemProps());
+		RawStageBuffers[SliceIndex][MipIdx].SetGfxCache(InGfx);
 		RawStageBuffers[SliceIndex][MipIdx].CreateBuffer(MipSize, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 		RawStageBuffers[SliceIndex][MipIdx].UploadAllData(SliceData[SliceIndex].data() + MipStartIndex);
+#if WITH_EDITOR
+		InGfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)RawStageBuffers[SliceIndex][MipIdx].GetBuffer(), Name + "_StageBuffer");
+#endif
 		MipStartIndex += MipSize;
 	}
 

@@ -320,7 +320,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 MipExtent.height >>= MipIdx;
 
                 UHRenderPassObject SphereToCubemapRenderPass = Gfx->CreateRenderPass(CubemapRT[Idx], UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_GENERAL));
-                VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx]->GetImageView(MipIdx), SphereToCubemapRenderPass.RenderPass, MipExtent);
+                VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx], SphereToCubemapRenderPass.RenderPass, MipExtent);
                 SphereToCubemapRenderPass.FrameBuffer = SphereToCubemapFrameBuffer;
 
                 // setup shader
@@ -331,7 +331,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 Data.FaceIndex = Idx;
                 Data.MipIndex = MipIdx;
 
-                UniquePtr<UHRenderBuffer<UHPanoramaData>> ShaderData = Gfx->RequestRenderBuffer<UHPanoramaData>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+                UniquePtr<UHRenderBuffer<UHPanoramaData>> ShaderData = Gfx->RequestRenderBuffer<UHPanoramaData>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                    , "PanoramaData");
                 ShaderData->UploadData(&Data, 0);
 
                 // non biased sampler
@@ -377,7 +378,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         for (uint32_t MipIdx = 0; MipIdx < CubemapRT[0]->GetMipMapCount(); MipIdx++)
         {
             UHRenderBuilder RenderBuilder(Gfx, Gfx->BeginOneTimeCmd());
-            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                , "SmoothCubeShaderData");
 
             // smooth shader
             for (int32_t Idx = 0; Idx < 6; Idx++)
@@ -541,7 +543,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             {
                 SmoothCubemap->BindRWImage(CubemapRT[Idx], Idx, MipIdx);
             }
-            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+            UniquePtr<UHRenderBuffer<uint32_t>> ShaderData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                , "SmoothCubeShaderData");
             uint32_t MipSize = Size >> MipIdx;
             ShaderData->UploadData(&MipSize, 0);
             SmoothCubemap->BindConstant(ShaderData, 6, 0, 0);
@@ -568,6 +571,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
 
             // request new slice and recreate with readback data
+            CubemapRT[Idx]->SetGfxCache(Gfx);
             const std::vector<uint8_t>& Data = CubemapRT[Idx]->ReadbackTextureData();
             const std::string SliceName = "CubemapCreationSlice" + std::to_string(Idx);
             UniquePtr<UHTexture2D> Slice = MakeUnique<UHTexture2D>(SliceName, SliceName, Slices[Idx]->GetExtent(), Slices[Idx]->GetFormat(), Settings);

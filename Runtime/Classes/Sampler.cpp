@@ -1,5 +1,6 @@
 #include "Sampler.h"
 #include "../../UnheardEngine.h"
+#include "../../Runtime/Engine/Graphic.h"
 
 UHSampler::UHSampler(UHSamplerInfo InInfo)
 	: TextureSampler(nullptr)
@@ -43,6 +44,11 @@ bool UHSampler::Create()
 		UHE_LOG(L"Failed to create texture sampler!\n");
 		return false;
 	}
+
+#if WITH_EDITOR
+	std::string ObjName  = "Sampler" + SamplerInfo.GetDebugName();
+	GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_SAMPLER, (uint64_t)TextureSampler, ObjName);
+#endif
 
 	return true;
 }

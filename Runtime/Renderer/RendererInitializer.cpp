@@ -496,7 +496,8 @@ bool UHDeferredShadingRenderer::InitQueueSubmitters()
 		bAsyncInitSucceed &= CreateAsyncComputeQueue();
 	}
 
-	return bAsyncInitSucceed && SceneRenderQueue.Initialize(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0);
+	return bAsyncInitSucceed && SceneRenderQueue.Initialize(GraphicInterface, QueueFamily.GraphicsFamily.value(), 0
+		, "GraphicQueue");
 }
 
 void UHDeferredShadingRenderer::UpdateDescriptors()
@@ -825,11 +826,15 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// data size per tile: (MaxPointLightPerTile + 1), the extra one is for the number of lights in this tile
 	// so it's TileCountX * TileCountY * (MaxPointLightPerTile + 1) in total
-	GPointLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-	GPointLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	GPointLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+		, "PointLightList");
+	GPointLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxPointLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+		, "PointLightListTrans");
 
-	GSpotLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-	GSpotLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	GSpotLightListBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+		, "SpotLightList");
+	GSpotLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+		, "SpotLightListTrans");
 }
 
 void UHDeferredShadingRenderer::RelaseRenderingBuffers()
@@ -916,54 +921,54 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 {
 	// collect image views for creaing one frame buffer
-	std::vector<VkImageView> Views;
-	Views.push_back(GSceneDiffuse->GetImageView());
-	Views.push_back(GSceneNormal->GetImageView());
-	Views.push_back(GSceneMaterial->GetImageView());
-	Views.push_back(GSceneResult->GetImageView());
-	Views.push_back(GSceneMip->GetImageView());
-	Views.push_back(GSceneVertexNormal->GetImageView());
-	Views.push_back(GSceneDepth->GetImageView());
+	std::vector<UHRenderTexture*> GBuffers;
+	GBuffers.push_back(GSceneDiffuse);
+	GBuffers.push_back(GSceneNormal);
+	GBuffers.push_back(GSceneMaterial);
+	GBuffers.push_back(GSceneResult);
+	GBuffers.push_back(GSceneMip);
+	GBuffers.push_back(GSceneVertexNormal);
+	GBuffers.push_back(GSceneDepth);
 
 	// depth frame buffer
 #if WITH_RELEASE
 	if (GraphicInterface->IsDepthPrePassEnabled())
 #endif
 	{
-		DepthPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth->GetImageView(), DepthPassObj.RenderPass, RenderResolution);
+		DepthPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth, DepthPassObj.RenderPass, RenderResolution);
 	}
 
 #if WITH_RELEASE
 	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 #endif
 	{
-		OcclusionPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth->GetImageView(), OcclusionPassObj.RenderPass, RenderResolution);
+		OcclusionPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth, OcclusionPassObj.RenderPass, RenderResolution);
 	}
 
 	// create frame buffer, some of them can be shared, especially when the output target is the same
-	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
+	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, BasePassObj.RenderPass, RenderResolution);
 
 	// sky pass need depth
-	Views = { GSceneResult->GetImageView() , GSceneDepth->GetImageView() };
-	SkyboxPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, SkyboxPassObj.RenderPass, RenderResolution);
+	GBuffers = { GSceneResult , GSceneDepth };
+	SkyboxPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, SkyboxPassObj.RenderPass, RenderResolution);
 
 	// translucent pass can share the same frame buffer as skybox pass
 	TranslucentPassObj.FrameBuffer = SkyboxPassObj.FrameBuffer;
 
 	// post process pass, use two buffer and blit each other
-	PostProcessPassObj[0].FrameBuffer = GraphicInterface->CreateFrameBuffer(GPostProcessRT->GetImageView(), PostProcessPassObj[0].RenderPass, RenderResolution);
-	PostProcessPassObj[1].FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneResult->GetImageView(), PostProcessPassObj[1].RenderPass, RenderResolution);
+	PostProcessPassObj[0].FrameBuffer = GraphicInterface->CreateFrameBuffer(GPostProcessRT, PostProcessPassObj[0].RenderPass, RenderResolution);
+	PostProcessPassObj[1].FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneResult, PostProcessPassObj[1].RenderPass, RenderResolution);
 
 	// motion pass framebuffer
-	MotionCameraPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GMotionVectorRT->GetImageView(), MotionCameraPassObj.RenderPass, RenderResolution);
+	MotionCameraPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GMotionVectorRT, MotionCameraPassObj.RenderPass, RenderResolution);
 
 	// the opaque depth will be copied to translucent depth before motion opaque pass kicks off
-	Views = { GMotionVectorRT->GetImageView(), GSceneTranslucentDepth->GetImageView() };
-	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionOpaquePassObj.RenderPass, RenderResolution);
+	GBuffers = { GMotionVectorRT, GSceneTranslucentDepth };
+	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, MotionOpaquePassObj.RenderPass, RenderResolution);
 
-	Views = { GMotionVectorRT->GetImageView(), GSceneVertexNormal->GetImageView(), GTranslucentBump->GetImageView(), GTranslucentSmoothness->GetImageView()
-		, GSceneMip->GetImageView(), GSceneTranslucentDepth->GetImageView() };
-	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, MotionTranslucentPassObj.RenderPass, RenderResolution);
+	GBuffers = { GMotionVectorRT, GSceneVertexNormal, GTranslucentBump, GTranslucentSmoothness
+		, GSceneMip, GSceneTranslucentDepth };
+	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 
 void UHDeferredShadingRenderer::ReleaseRenderPassObjects()
@@ -1010,11 +1015,16 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 	// create constants and buffers
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		GSystemConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSystemConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-		GObjectConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-		GDirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-		GPointLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHPointLightConstants>(CurrentScene->GetPointLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-		GSpotLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSpotLightConstants>(CurrentScene->GetSpotLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GSystemConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSystemConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+			, "SystemConstant");
+		GObjectConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "ObjectConstant");
+		GDirectionalLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHDirectionalLightConstants>(CurrentScene->GetDirLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "DirectionalLight");
+		GPointLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHPointLightConstants>(CurrentScene->GetPointLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "PointLight");
+		GSpotLightBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHSpotLightConstants>(CurrentScene->GetSpotLightCount(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "SpotLight");
 	}
 
 	ObjectConstantsCPU.resize(RendererCount);
@@ -1022,7 +1032,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 	PointLightConstantsCPU.resize(CurrentScene->GetPointLightCount());
 	SpotLightConstantsCPU.resize(CurrentScene->GetSpotLightCount());
 
-	GSH9Data = GraphicInterface->RequestRenderBuffer<UHSphericalHarmonicData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	GSH9Data = GraphicInterface->RequestRenderBuffer<UHSphericalHarmonicData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "SH9Data");
 
 	if (GraphicInterface->IsMeshShaderSupported() || ConfigInterface->RenderingSetting().bEnableRayTracing)
 	{
@@ -1034,7 +1044,8 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 
 		// create renderer instance buffer
 		UH_SAFE_RELEASE(GRendererInstanceBuffer);
-		GRendererInstanceBuffer = GraphicInterface->RequestRenderBuffer<UHRendererInstance>(TotalRenderers, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GRendererInstanceBuffer = GraphicInterface->RequestRenderBuffer<UHRendererInstance>(TotalRenderers, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "RendererInstance");
 
 		// collect & upload mesh instance data
 		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
@@ -1077,12 +1088,14 @@ void UHDeferredShadingRenderer::CreateOcclusionQuery()
 			// will do predication rendering on GPU instead of traditional readback
 			OcclusionQuery[Idx] = GraphicInterface->RequestGPUQuery(Count, VK_QUERY_TYPE_OCCLUSION);
 			GOcclusionResult[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>(Count
-				, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+				, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+				, "OcclusionResult");
 		}
 
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
-			GOcclusionConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(Count, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+			GOcclusionConstantBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHObjectConstants>(Count, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+				, "OcclusionConstant");
 		}
 		OcclusionConstantsCPU.resize(Count);
 
@@ -1116,7 +1129,7 @@ bool UHDeferredShadingRenderer::CreateAsyncComputeQueue()
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 	const UHQueueFamily& QueueFamily = GraphicInterface->GetQueueFamily();
 
-	return AsyncComputeQueue.Initialize(LogicalDevice, QueueFamily.ComputesFamily.value(), 0);
+	return AsyncComputeQueue.Initialize(GraphicInterface, QueueFamily.ComputesFamily.value(), 0, "AsyncComputeQueue");
 }
 
 void UHDeferredShadingRenderer::ReleaseAsyncComputeQueue()
@@ -1140,23 +1153,29 @@ void UHDeferredShadingRenderer::CreateThreadObjects()
 	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported())
 #endif
 	{
-		DepthParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+		DepthParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+			, "DepthPass");
 	}
 
 	if (!GraphicInterface->IsMeshShaderSupported())
 	{
-		BaseParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
-		MotionOpaqueParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
-		MotionTranslucentParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+		BaseParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+			, "BasePass");
+		MotionOpaqueParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+			, "MotionOpaquePass");
+		MotionTranslucentParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+			, "MotionTranslucentPass");
 	}
 
-	TranslucentParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+	TranslucentParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+		, "TranslucentPass");
 
 #if WITH_RELEASE
 	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 #endif
 	{
-		OcclusionParallelSubmitter.Initialize(GraphicInterface->GetLogicalDevice(), GraphicInterface->GetQueueFamily(), NumWorkerThreads);
+		OcclusionParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+			, "OcclusionPass");
 	}
 
 	// init threads, it will wait at the beginning
@@ -1594,15 +1613,15 @@ void UHDeferredShadingRenderer::ToggleDepthPrepass()
 	BasePassObj = GraphicInterface->CreateRenderPass(GBufferTextures, UHTransitionInfo(GraphicInterface->IsDepthPrePassEnabled() ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
 		, GSceneDepth);
 
-	std::vector<VkImageView> Views;
-	Views.push_back(GSceneDiffuse->GetImageView());
-	Views.push_back(GSceneNormal->GetImageView());
-	Views.push_back(GSceneMaterial->GetImageView());
-	Views.push_back(GSceneResult->GetImageView());
-	Views.push_back(GSceneMip->GetImageView());
-	Views.push_back(GSceneVertexNormal->GetImageView());
-	Views.push_back(GSceneDepth->GetImageView());
-	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(Views, BasePassObj.RenderPass, RenderResolution);
+	std::vector<UHRenderTexture*> GBuffers;
+	GBuffers.push_back(GSceneDiffuse);
+	GBuffers.push_back(GSceneNormal);
+	GBuffers.push_back(GSceneMaterial);
+	GBuffers.push_back(GSceneResult);
+	GBuffers.push_back(GSceneMip);
+	GBuffers.push_back(GSceneVertexNormal);
+	GBuffers.push_back(GSceneDepth);
+	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, BasePassObj.RenderPass, RenderResolution);
 
 	// recompile (trigger state recreation for shaders involved prepass flag)
 	if (GraphicInterface->IsMeshShaderSupported())
@@ -1767,13 +1786,16 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		UH_SAFE_RELEASE(GMeshShaderData[Idx][MatDataIndex]);
-		GMeshShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GMeshShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "MeshShaderData");
 
 		UH_SAFE_RELEASE(GMotionOpaqueShaderData[Idx][MatDataIndex]);
-		GMotionOpaqueShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GMotionOpaqueShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "MotionOpaqueShaderData");
 
 		UH_SAFE_RELEASE(GMotionTranslucentShaderData[Idx][MatDataIndex]);
-		GMotionTranslucentShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		GMotionTranslucentShaderData[Idx][MatDataIndex] = GraphicInterface->RequestRenderBuffer<UHMeshShaderData>(MeshletCountOfMaterialGroup, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, "MotionTranslucentShaderData");
 	}
 
 	MeshShaderInstancesCounter[MatDataIndex] = 0;

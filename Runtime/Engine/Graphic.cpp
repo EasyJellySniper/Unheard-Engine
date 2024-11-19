@@ -105,8 +105,8 @@ bool UHGraphic::InitGraphics(HWND Hwnd)
 		ImageSharedMemory = MakeUnique<UHGPUMemory>();
 		MeshBufferSharedMemory = MakeUnique<UHGPUMemory>();
 
-		ImageSharedMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
-		MeshBufferSharedMemory->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+		ImageSharedMemory->SetGfxCache(this);
+		MeshBufferSharedMemory->SetGfxCache(this);
 
 		uint32_t ImageMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		uint32_t BufferMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -626,6 +626,13 @@ bool UHGraphic::CreateLogicalDevice()
 		return false;
 	}
 
+#if WITH_EDITOR
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_DEVICE, (uint64_t)LogicalDevice, "MainLogicalDevice");
+	// some debug name must be set after logical device creation
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_INSTANCE, (uint64_t)VulkanInstance, "MainVulkanInstance");
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_SURFACE_KHR, (uint64_t)MainSurface, "MainWindowSurface");
+#endif
+
 	// finally, get both graphics and computes queue
 	vkGetDeviceQueue(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0, &GraphicsQueue);
 
@@ -959,19 +966,13 @@ UHRenderPassObject UHGraphic::CreateRenderPass(std::vector<UHTexture*> InTexture
 	return ResultRenderPass;
 }
 
-VkFramebuffer UHGraphic::CreateFrameBuffer(VkRenderPass InRenderPass, VkExtent2D InExtent) const
+VkFramebuffer UHGraphic::CreateFrameBuffer(UHRenderTexture* InRT, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
 {
-	std::vector<VkImageView> Views{};
-	return CreateFrameBuffer(Views, InRenderPass, InExtent);
+	std::vector<UHRenderTexture*> RTs{ InRT };
+	return CreateFrameBuffer(RTs, InRenderPass, InExtent, Layers);
 }
 
-VkFramebuffer UHGraphic::CreateFrameBuffer(VkImageView InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
-{
-	std::vector<VkImageView> Views{ InImageView };
-	return CreateFrameBuffer(Views, InRenderPass, InExtent, Layers);
-}
-
-VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
+VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
 {
 	VkFramebuffer NewFrameBuffer = nullptr;
 
@@ -979,8 +980,17 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView,
 	VkFramebufferCreateInfo FramebufferInfo{};
 	FramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	FramebufferInfo.renderPass = InRenderPass;
-	FramebufferInfo.attachmentCount = static_cast<uint32_t>(InImageView.size());
-	FramebufferInfo.pAttachments = InImageView.data();
+	FramebufferInfo.attachmentCount = static_cast<uint32_t>(InRTs.size());
+
+	std::string DebugName;
+	std::vector<VkImageView> Views(InRTs.size());
+	for (size_t Idx = 0; Idx < InRTs.size(); Idx++)
+	{
+		Views[Idx] = InRTs[Idx]->GetImageView();
+		DebugName += "_" + InRTs[Idx]->GetName();
+	}
+
+	FramebufferInfo.pAttachments = Views.data();
 	FramebufferInfo.width = InExtent.width;
 	FramebufferInfo.height = InExtent.height;
 	FramebufferInfo.layers = Layers;
@@ -990,13 +1000,16 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<VkImageView> InImageView,
 		UHE_LOG(L"Failed to create framebuffer!\n");
 	}
 
+#if WITH_EDITOR
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_FRAMEBUFFER, (uint64_t)NewFrameBuffer, "FrameBuffer" + DebugName);
+#endif
+
 	return NewFrameBuffer;
 }
 
 UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 {
 	UniquePtr<UHGPUQuery> NewQuery = MakeUnique<UHGPUQuery>();
-	NewQuery->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewQuery->SetGfxCache(this);
 	NewQuery->CreateQueryPool(Count, QueueType);
 
@@ -1038,7 +1051,6 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 	}
 
 	NewRT->SetGfxCache(this);
-	NewRT->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewRT->SetImage(InImage);
 
 	if (NewRT->CreateRT())
@@ -1073,7 +1085,6 @@ UHTexture2D* UHGraphic::RequestTexture2D(UniquePtr<UHTexture2D>& LoadedTex, bool
 		return Texture2DPools[Idx].get();
 	}
 
-	LoadedTex->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	LoadedTex->SetGfxCache(this);
 
 	if (LoadedTex->CreateTexture(bUseSharedMemory))
@@ -1159,7 +1170,6 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 		return TextureCubePools[Idx].get();
 	}
 
-	NewCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	NewCube->SetGfxCache(this);
 
 	if (NewCube->CreateCube(InTextures))
@@ -1180,7 +1190,6 @@ UHTextureCube* UHGraphic::RequestTextureCube(UniquePtr<UHTextureCube>& LoadedCub
 		return TextureCubePools[Idx].get();
 	}
 
-	LoadedCube->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 	LoadedCube->SetGfxCache(this);
 
 	if (LoadedCube->CreateCube())
@@ -1235,8 +1244,6 @@ UniquePtr<UHAccelerationStructure> UHGraphic::RequestAccelerationStructure()
 {
 	UniquePtr<UHAccelerationStructure> NewAS = MakeUnique<UHAccelerationStructure>();
 	NewAS->SetGfxCache(this);
-	NewAS->SetVulkanInstance(VulkanInstance);
-	NewAS->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
 
 	return std::move(NewAS);
 }
@@ -1281,7 +1288,7 @@ uint32_t UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pat
 	, std::vector<std::string> InMacro)
 {
 	UniquePtr<UHShader> NewShader = MakeUnique<UHShader>(InShaderName, InSource, EntryName, ProfileName, InMacro);
-	NewShader->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewShader->SetGfxCache(this);
 
 	// early return if it's exist in pool
 	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
@@ -1337,7 +1344,7 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 #endif
 
 	UniquePtr<UHShader> NewShader = MakeUnique<UHShader>(OutName, InSource, EntryName, ProfileName, true, InMacro);
-	NewShader->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewShader->SetGfxCache(this);
 
 	// early return if it's exist in pool and does not need recompile
 	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
@@ -1390,7 +1397,7 @@ UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 		return StatePools[Idx].get();
 	}
 
-	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewState->SetGfxCache(this);
 	
 	if (!NewState->CreateState(InInfo))
 	{
@@ -1438,8 +1445,7 @@ UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 		return StatePools[Idx].get();
 	}
 
-	NewState->SetVulkanInstance(VulkanInstance);
-	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewState->SetGfxCache(this);
 
 	if (!NewState->CreateState(InInfo))
 	{
@@ -1464,8 +1470,7 @@ UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 		return StatePools[Idx].get();
 	}
 
-	NewState->SetVulkanInstance(VulkanInstance);
-	NewState->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewState->SetGfxCache(this);
 
 	if (!NewState->CreateState(InInfo))
 	{
@@ -1488,7 +1493,7 @@ UHSampler* UHGraphic::RequestTextureSampler(UHSamplerInfo InInfo)
 	}
 
 	// create new one if cache fails
-	NewSampler->SetDeviceInfo(LogicalDevice, PhysicalDeviceMemoryProperties);
+	NewSampler->SetGfxCache(this);
 
 	if (!NewSampler->Create())
 	{
@@ -1676,6 +1681,11 @@ VkCommandBuffer UHGraphic::BeginOneTimeCmd()
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	vkBeginCommandBuffer(CommandBuffer, &beginInfo);
+
+#if WITH_EDITOR
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_COMMAND_POOL, (uint64_t)CreationCommandPool, "OneTimeCommandPool");
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_COMMAND_BUFFER, (uint64_t)CommandBuffer, "OneTimeCommandBuffer");
+#endif
 
 	return CommandBuffer;
 }
@@ -1876,6 +1886,10 @@ bool UHGraphic::CreateSwapChain()
 		return false;
 	}
 
+#if WITH_EDITOR
+	SetDebugUtilsObjectName(VK_OBJECT_TYPE_SWAPCHAIN_KHR, (uint64_t)SwapChain, "SwapChain");
+#endif
+
 	// store swap chain image
 	vkGetSwapchainImagesKHR(LogicalDevice, SwapChain, &ImageCount, nullptr);
 
@@ -1898,7 +1912,7 @@ bool UHGraphic::CreateSwapChain()
 
 	for (size_t Idx = 0; Idx < ImageCount; Idx++)
 	{
-		SwapChainFrameBuffer[Idx] = CreateFrameBuffer(SwapChainRT[Idx]->GetImageView(), SwapChainRenderPass, Extent);
+		SwapChainFrameBuffer[Idx] = CreateFrameBuffer(SwapChainRT[Idx], SwapChainRenderPass, Extent);
 	}
 
 	// HDR metadata setting
@@ -1942,6 +1956,10 @@ bool UHGraphic::CreateSwapChain()
 		PoolInfo.poolSizeCount = 1;
 		PoolInfo.pPoolSizes = &DescriptorPoolSize;
 		vkCreateDescriptorPool(LogicalDevice, &PoolInfo, nullptr, &ImGuiDescriptorPool);
+
+#if WITH_EDITOR
+		SetDebugUtilsObjectName(VK_OBJECT_TYPE_DESCRIPTOR_POOL, (uint64_t)ImGuiDescriptorPool, "ImGuiDescriptorPool");
+#endif
 	}
 	RecreateImGui();
 #endif

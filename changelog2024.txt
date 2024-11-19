@@ -275,3 +275,8 @@ Revisted the specular formula as well and reduced the color banding on specular 
 
 18-11-2024:
 Refactored async tasks. Removed ugly if else condition but actually creates the async task object.
+
+19-11-2024:
+Added debug name to almost all Vulkan objects.
+Removed redundant affinity setting for main thread.
+Removed redundant functions in UHRenderResource class, caching GFX class should be enough.

@@ -3,6 +3,7 @@
 #include "../../UnheardEngine.h"
 #include "../Classes/Utility.h"
 #include "../../Runtime/Engine/GraphicFunction.h"
+#include "../../Runtime/Engine/Graphic.h"
 
 UHGraphicState::UHGraphicState()
 	: UHGraphicState(UHRenderPassInfo())
@@ -129,6 +130,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	bool bHasGeometryShader = (RenderPassInfo.GS != UHINDEXNONE);
 	bool bHasAmplificationShader = (RenderPassInfo.AS != UHINDEXNONE);
 	bool bHasMeshShader = (RenderPassInfo.MS != UHINDEXNONE);
+	std::string ShaderDebugName;
 
 	// lookup shader in object table
 	const UHShader* VS = SafeGetObjectFromTable<const UHShader>(RenderPassInfo.VS);
@@ -147,6 +149,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		VSStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 		VSStageInfo.module = VS->GetShader();
 		VSStageInfo.pName = VSEntryName.c_str();
+		ShaderDebugName += "_" + VS->GetName();
 	}
 
 	VkPipelineShaderStageCreateInfo ASStageInfo{};
@@ -159,6 +162,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		ASStageInfo.stage = VK_SHADER_STAGE_TASK_BIT_EXT;
 		ASStageInfo.module = AS->GetShader();
 		ASStageInfo.pName = ASEntryName.c_str();
+		ShaderDebugName += "_" + AS->GetName();
 	}
 
 	VkPipelineShaderStageCreateInfo MSStageInfo{};
@@ -170,6 +174,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		MSStageInfo.stage = VK_SHADER_STAGE_MESH_BIT_EXT;
 		MSStageInfo.module = MS->GetShader();
 		MSStageInfo.pName = MSEntryName.c_str();
+		ShaderDebugName += "_" + MS->GetName();
 	}
 
 	VkPipelineShaderStageCreateInfo PSStageInfo{};
@@ -181,6 +186,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		PSStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 		PSStageInfo.module = PS->GetShader();
 		PSStageInfo.pName = PSEntryName.c_str();
+		ShaderDebugName += "_" + PS->GetName();
 	}
 
 	VkPipelineShaderStageCreateInfo GSStageInfo{};
@@ -192,6 +198,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		GSStageInfo.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
 		GSStageInfo.module = GS->GetShader();
 		GSStageInfo.pName = GSEntryName.c_str();
+		ShaderDebugName += "_" + GS->GetName();
 	}
 
 	// collect shader stage, now the VS is not must-have now as it could be a mesh shader
@@ -334,6 +341,11 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 		return false;
 	}
 
+#if WITH_EDITOR
+	std::string ObjName = "GraphicPipeline" + ShaderDebugName;
+	GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_PIPELINE, (uint64_t)PassPipeline, ObjName);
+#endif
+
 	return true;
 }
 
@@ -342,6 +354,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	RayTracingInfo = InInfo;
 	const UHShader* RG = SafeGetObjectFromTable<const UHShader>(RayTracingInfo.RayGenShader);
 	const UHShader* Miss = SafeGetObjectFromTable<const UHShader>(RayTracingInfo.MissShader);
+	std::string ShaderDebugName;
 
 	VkRayTracingPipelineCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
@@ -355,6 +368,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	RGStageInfo.stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 	RGStageInfo.module = RG->GetShader();
 	RGStageInfo.pName = RGEntryName.c_str();
+	ShaderDebugName += "_" + RG->GetName() + "_" + RGEntryName;
 
 	// set miss shader
 	std::string MissEntryName = Miss->GetEntryName();
@@ -363,6 +377,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	MissStageInfo.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
 	MissStageInfo.module = Miss->GetShader();
 	MissStageInfo.pName = MissEntryName.c_str();
+	ShaderDebugName += "_" + Miss->GetName() + "_" + MissEntryName;
 
 	// closest hit and any hit should have the same size
 	assert(RayTracingInfo.ClosestHitShaders.size() == RayTracingInfo.AnyHitShaders.size());
@@ -469,6 +484,11 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 		return false;
 	}
 
+#if WITH_EDITOR
+	std::string ObjName = "RayTracingPipeline" + ShaderDebugName;
+	GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_PIPELINE, (uint64_t)RTPipeline, ObjName);
+#endif
+
 	return true;
 }
 
@@ -501,6 +521,11 @@ bool UHGraphicState::CreateState(UHComputePassInfo InInfo)
 		UHE_LOG(L"Failed to create graphics pipeline!\n");
 		return false;
 	}
+
+#if WITH_EDITOR
+	std::string ObjName = "ComputePipeline_" + CS->GetName();
+	GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_PIPELINE, (uint64_t)PassPipeline, ObjName);
+#endif
 
 	return true;
 }

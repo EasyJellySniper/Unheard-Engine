@@ -72,8 +72,9 @@ std::vector<uint8_t> UHRenderTexture::ReadbackTextureData()
 	{
 		uint32_t MipSize = (ImageExtent.width >> MipIdx) * (ImageExtent.height >> MipIdx) * ByteSize;
 
-		ReadbackBuffer[MipIdx].SetDeviceInfo(GfxCache->GetLogicalDevice(), GfxCache->GetDeviceMemProps());
+		ReadbackBuffer[MipIdx].SetGfxCache(GfxCache);
 		ReadbackBuffer[MipIdx].CreateBuffer(MipSize, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+		GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)ReadbackBuffer[MipIdx].GetBuffer(), Name + "_StageBuffer");
 
 		VkBufferImageCopy Region{};
 		Region.bufferOffset = 0;

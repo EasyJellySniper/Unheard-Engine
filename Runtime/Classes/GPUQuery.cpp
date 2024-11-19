@@ -4,6 +4,20 @@
 #if WITH_EDITOR
 std::mutex GGPUTimeScopeLock;
 std::vector<UHGPUQuery*> UHGPUTimeQueryScope::RegisteredGPUTime;
+
+std::string GetQueryTypeName(VkQueryType InType)
+{
+	switch (InType)
+	{
+	case VK_QUERY_TYPE_OCCLUSION:
+		return "OcclusionQuery";
+	case VK_QUERY_TYPE_TIMESTAMP:
+		return "TimestampQuery";
+	};
+
+	return "";
+}
+
 #endif
 
 UHGPUQuery::UHGPUQuery()
@@ -41,6 +55,11 @@ void UHGPUQuery::CreateQueryPool(uint32_t InQueryCount, VkQueryType QueryType)
 	{
 		UHE_LOG(L"Failed to create query pool!\n");
 	}
+
+#if WITH_EDITOR
+	std::string ObjName = GetQueryTypeName(QueryType) + "_Pool";
+	GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_QUERY_POOL, (uint64_t)QueryPool, ObjName);
+#endif
 }
 
 void UHGPUQuery::BeginTimeStamp(VkCommandBuffer InBuffer)

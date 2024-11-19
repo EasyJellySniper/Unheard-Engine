@@ -12,8 +12,6 @@ class UHRenderResource : public UHObject
 public:
 	UHRenderResource();
 	void SetGfxCache(UHGraphic* InGfx);
-	void SetVulkanInstance(VkInstance InInstance);
-	void SetDeviceInfo(VkDevice InDevice, VkPhysicalDeviceMemoryProperties InMemProps);
 	void SetIndexInPool(const int32_t InIndex);
 	void IncreaseRefCount();
 	void DecreaseRefCount();

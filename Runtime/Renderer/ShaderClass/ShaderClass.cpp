@@ -1,4 +1,5 @@
 #include "ShaderClass.h"
+#include "Runtime/Engine/Graphic.h"
 
 // layout won't change for the same shaders and can be cached
 std::unordered_map<std::type_index, VkDescriptorSetLayout> UHShaderClass::DescriptorSetLayoutTable;
@@ -53,7 +54,7 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, PushConstantRange(VkPushConstantRange{})
 	, bPushDescriptor(false)
 {
-	UHObject::Name = InName;
+	Name = InName;
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		DescriptorSets[Idx] = nullptr;
@@ -446,6 +447,11 @@ void UHShaderClass::CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout>
 		{
 			UHE_LOG(L"Failed to create descriptor set layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
 		}
+
+#if WITH_EDITOR
+		Gfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, (uint64_t)DescriptorSetLayoutTable[TypeIndexCache]
+			, Name + "_DescriptorSetLayout");
+#endif
 	}
 
 	// don't duplicate layout
@@ -474,6 +480,11 @@ void UHShaderClass::CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout>
 		{
 			UHE_LOG(L"Failed to create pipeline layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
 		}
+
+#if WITH_EDITOR
+		Gfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_PIPELINE_LAYOUT, (uint64_t)PipelineLayoutTable[TypeIndexCache]
+			, Name + "_PipelineLayout");
+#endif
 	}
 	PipelineLayout = PipelineLayoutTable[TypeIndexCache];
 
@@ -500,6 +511,11 @@ void UHShaderClass::CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout>
 	{
 		UHE_LOG(L"Failed to create descriptor pool for shader: " + UHUtilities::ToStringW(Name) + L"\n");
 	}
+
+#if WITH_EDITOR
+	Gfx->SetDebugUtilsObjectName(VK_OBJECT_TYPE_DESCRIPTOR_POOL, (uint64_t)DescriptorPool
+		, Name + "_DescriptorPool");
+#endif
 
 	if (bPushDescriptor)
 	{
@@ -560,7 +576,8 @@ void UHShaderClass::InitRayGenTable()
 		UHE_LOG(L"Failed to get ray gen group handle!\n");
 	}
 
-	RayGenTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	RayGenTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+		, Name + "_RayGenTable");
 	RayGenTable->UploadAllData(TempData.data());
 }
 
@@ -575,7 +592,8 @@ void UHShaderClass::InitMissTable()
 	}
 
 	// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group
-	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+		, Name + "_MissTable");
 	MissTable->UploadAllData(TempData.data());
 }
 
@@ -585,7 +603,8 @@ void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 
 	// get data for HG as well
 	// create HG buffer
-	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+		, Name + "_HitGroupTable");
 
 	for (size_t Idx = 0; Idx < NumMaterials; Idx++)
 	{

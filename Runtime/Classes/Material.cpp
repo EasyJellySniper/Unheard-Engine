@@ -232,7 +232,8 @@ void UHMaterial::AllocateMaterialBuffer()
 
 		// the buffer size will be aligned to 256, check how many element it actually needs
 		size_t ElementCount = (MaterialBufferSize + 256) / 256;
-		MaterialConstantsGPU[Idx] = GfxCache->RequestRenderBuffer<uint8_t>(ElementCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		MaterialConstantsGPU[Idx] = GfxCache->RequestRenderBuffer<uint8_t>(ElementCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+			, Name + "_Constant");
 	}
 }
 
@@ -244,7 +245,8 @@ void UHMaterial::AllocateRTMaterialBuffer()
 		UH_SAFE_RELEASE(MaterialRTDataGPU[Idx]);
 		MaterialRTDataGPU[Idx].reset();
 
-		MaterialRTDataGPU[Idx] = GfxCache->RequestRenderBuffer<UHRTMaterialData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		MaterialRTDataGPU[Idx] = GfxCache->RequestRenderBuffer<UHRTMaterialData>(1, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			, Name + "_RTConstant");
 	}
 }
 

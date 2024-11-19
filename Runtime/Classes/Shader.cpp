@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include "../../Runtime/Engine/Graphic.h"
 
 UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
 	, std::vector<std::string> InMacro)
@@ -10,7 +11,7 @@ UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std
 	, ShaderDefines(InMacro)
 	, bIsMaterialShader(false)
 {
-
+	Name = ShaderName;
 }
 
 UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
@@ -23,7 +24,7 @@ UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std
 	, bIsMaterialShader(bInIsMaterialShader)
 	, ShaderDefines(InMacro)
 {
-
+	Name = ShaderName;
 }
 
 void UHShader::Release()
@@ -38,6 +39,10 @@ bool UHShader::Create(VkShaderModuleCreateInfo InCreateInfo)
 		UHE_LOG(L"Failed to create shader module!\n");
 		return false;
 	}
+
+#if WITH_EDITOR
+	GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_SHADER_MODULE, (uint64_t)Shader, Name);
+#endif
 
 	return true;
 }

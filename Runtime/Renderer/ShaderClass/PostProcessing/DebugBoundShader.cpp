@@ -14,7 +14,7 @@ UHDebugBoundShader::UHDebugBoundShader(UHGraphic* InGfx, std::string Name, VkRen
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		DebugBoundData[Idx] = Gfx->RequestRenderBuffer<UHDebugBoundConstant>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		DebugBoundData[Idx] = Gfx->RequestRenderBuffer<UHDebugBoundConstant>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "DebugBoundData");
 	}
 }
 

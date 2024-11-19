@@ -2,6 +2,7 @@
 #include "../../UnheardEngine.h"
 #include "../Classes/Utility.h"
 #include "../CoreGlobals.h"
+#include "../../Runtime/Engine/Graphic.h"
 
 UHTexture::UHTexture()
 	: UHTexture("", VkExtent2D(), UHTextureFormat::UH_FORMAT_RGBA8_SRGB, UHTextureSettings())
@@ -146,6 +147,10 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			return false;
 		}
 
+#if WITH_EDITOR
+		GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_IMAGE, (uint64_t)ImageSource, Name + "_Image");
+#endif
+
 		// try to commit image to GPU memory, if it's in the editor mode, always request uncompressed memory size, so toggling between compression won't be an issue
 		VkMemoryRequirements MemRequirements{};
 		vkGetImageMemoryRequirements(LogicalDevice, ImageSource, &MemRequirements);
@@ -266,6 +271,10 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 	}
 	ImageViewInfo = CreateInfo;
 
+#if WITH_EDITOR
+	GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)ImageView, Name + "_ImageView");
+#endif
+
 	// create individual mipmap view if requested
 	if (bCreatePerMipImageView)
 	{
@@ -280,6 +289,11 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 				return false;
 			}
 			ImageViewPerMip.push_back(NewView);
+
+#if WITH_EDITOR
+			GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)NewView
+				, Name + "_ImageViewMip" + std::to_string(Idx));
+#endif
 		}
 	}
 
@@ -299,6 +313,11 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 				{
 					UHE_LOG(L"Failed to create cubemap image views!\n");
 				}
+
+#if WITH_EDITOR
+				GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)CubemapImageView[Idx * 15 + MipIdx]
+					, Name + "_ImageViewCubeFace" + std::to_string(Idx) + "_Mip" + std::to_string(MipIdx));
+#endif
 			}
 		}
 	}
