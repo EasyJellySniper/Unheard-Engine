@@ -41,7 +41,6 @@ void UHMeshRendererComponent::Update()
 	if (IsTransformChanged())
 	{
 		SetRenderDirties(true);
-		SetRayTracingDirties(true);
 		SetMotionDirties(true);
 
 		// update renderer bound as well
@@ -251,7 +250,6 @@ void UHMeshRendererComponent::OnGenerateDetailView()
 				UHDeferredShadingRenderer::GetRendererEditorOnly()->OnRendererMaterialChanged(this, OldMat, NewMat);
 
 				SetRenderDirties(true);
-				SetRayTracingDirties(true);
 				SetMotionDirties(true);
 			}
 		}

@@ -1,4 +1,5 @@
 #include "RenderingTypes.h"
+#include "Runtime/CoreGlobals.h"
 
 // ---------------------------------------------------- UHDepthInfo
 UHDepthInfo::UHDepthInfo()
@@ -195,13 +196,13 @@ UHRenderState::UHRenderState()
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		bIsRenderDirties[Idx] = true;
-		bIsRayTracingDirties[Idx] = false;
 		bIsMotionDirties[Idx] = false;
 	}
 }
 
 void UHRenderState::SetRenderDirties(bool bIsDirty)
 {
+	assert(std::this_thread::get_id() == GMainThreadID);
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		bIsRenderDirties[Idx] = bIsDirty;
@@ -210,24 +211,13 @@ void UHRenderState::SetRenderDirties(bool bIsDirty)
 
 void UHRenderState::SetRenderDirty(bool bIsDirty, int32_t FrameIdx)
 {
+	assert(std::this_thread::get_id() == GMainThreadID);
 	bIsRenderDirties[FrameIdx] = bIsDirty;
-}
-
-void UHRenderState::SetRayTracingDirties(bool bIsDirty)
-{
-	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-	{
-		bIsRayTracingDirties[Idx] = bIsDirty;
-	}
-}
-
-void UHRenderState::SetRayTracingDirty(bool bIsDirty, int32_t FrameIdx)
-{
-	bIsRayTracingDirties[FrameIdx] = bIsDirty;
 }
 
 void UHRenderState::SetMotionDirties(bool bIsDirty)
 {
+	assert(std::this_thread::get_id() == GMainThreadID);
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		bIsMotionDirties[Idx] = bIsDirty;
@@ -236,17 +226,13 @@ void UHRenderState::SetMotionDirties(bool bIsDirty)
 
 void UHRenderState::SetMotionDirty(bool bIsDirty, int32_t FrameIdx)
 {
+	assert(std::this_thread::get_id() == GMainThreadID);
 	bIsMotionDirties[FrameIdx] = bIsDirty;
 }
 
 bool UHRenderState::IsRenderDirty(int32_t FrameIdx) const
 {
 	return bIsRenderDirties[FrameIdx];
-}
-
-bool UHRenderState::IsRayTracingDirty(int32_t FrameIdx) const
-{
-	return bIsRayTracingDirties[FrameIdx];
 }
 
 bool UHRenderState::IsMotionDirty(int32_t FrameIdx) const

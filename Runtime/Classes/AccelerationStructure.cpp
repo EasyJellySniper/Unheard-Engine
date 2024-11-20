@@ -276,8 +276,8 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 		}
 
 		// check visibility
-		bool bIsVisible = Renderer->IsVisible(); 
-		if (Renderer->IsEnabled() 
+		bool bIsVisible = Renderer->IsVisible();
+		if (Renderer->IsEnabled()
 #if WITH_EDITOR
 			&& Renderer->IsVisibleInEditor()
 #endif
@@ -289,29 +289,24 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 		InstanceKHRs[Idx].mask = bIsVisible ? 0xff : 0;
 
 		// check material state
-		if (Renderer->IsRayTracingDirty(CurrentFrameRT))
+		UHMaterial* Mat = RendererCache[Idx]->GetMaterial();
+		InstanceKHRs[Idx].flags = 0;
+
+		// cull mode flag, in DXR system, it's default cull back, here just to check the other two modes
+		if (Mat->GetCullMode() == UHCullMode::CullNone)
 		{
-			UHMaterial* Mat = RendererCache[Idx]->GetMaterial();
-			InstanceKHRs[Idx].flags = 0;
-
-			// cull mode flag, in DXR system, it's default cull back, here just to check the other two modes
-			if (Mat->GetCullMode() == UHCullMode::CullNone)
-			{
-				InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-			}
-			else if (Mat->GetCullMode() == UHCullMode::CullFront)
-			{
-				InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR;
-			}
-
-			// non-opaque flag, cutoff is treated as translucent as well so I can ignore the hit on culled pixel
-			if (Mat->GetBlendMode() > UHBlendMode::Opaque)
-			{
-				InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
-			}
+			InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+		}
+		else if (Mat->GetCullMode() == UHCullMode::CullFront)
+		{
+			InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FLIP_FACING_BIT_KHR;
 		}
 
-		Renderer->SetRayTracingDirty(false, CurrentFrameRT);
+		// non-opaque flag, cutoff is treated as translucent as well so I can ignore the hit on culled pixel
+		if (Mat->GetBlendMode() > UHBlendMode::Opaque)
+		{
+			InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
+		}
 	}
 
 	// upload all data in one call

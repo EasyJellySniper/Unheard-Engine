@@ -13,3 +13,5 @@ extern const uint32_t GMainThreadAffinity;
 extern const uint32_t GRenderThreadAffinity;
 extern const uint32_t GWorkerThreadAffinity;
 static const uint32_t GMaxWorkerThreads = 16;
+
+extern std::thread::id GMainThreadID;

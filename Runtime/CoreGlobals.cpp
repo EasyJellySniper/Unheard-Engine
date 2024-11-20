@@ -10,3 +10,5 @@ bool GEnableGPUTiming = true;
 const uint32_t GMainThreadAffinity = 0;
 const uint32_t GRenderThreadAffinity = 1;
 const uint32_t GWorkerThreadAffinity = 2;
+
+std::thread::id GMainThreadID;

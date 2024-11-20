@@ -62,6 +62,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	// it's confirmed that the affinity setting might introduce stuttering for render/worker threads in UHE
 	// so I disable it for main thread too. uncomment this for testing
 	//SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
+	GMainThreadID = std::this_thread::get_id();
 
 	// cache current monitor refresh rate, also consider the NTSC frequencies
 	DEVMODE DevMode;
@@ -231,7 +232,7 @@ void UHEngine::Update()
 	// update scene
 	CurrentScene->Update();
 
-	// update renderer, reset if it's need to be reset (device lost..etc)
+	// wait previous render task done before new updates
 #if WITH_RELEASE
 	UHERenderer->WaitPreviousRenderTask();
 #endif

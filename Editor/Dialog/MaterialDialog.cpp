@@ -211,7 +211,6 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
         if (bHasPropertyChanged)
         {
             CurrentMaterial->SetRenderDirties(true);
-            CurrentMaterial->SetRayTracingDirties(true);
             CurrentMaterial->SetMotionDirties(true);
         }
     }

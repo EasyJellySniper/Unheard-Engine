@@ -280,3 +280,7 @@ Refactored async tasks. Removed ugly if else condition but actually creates the 
 Added debug name to almost all Vulkan objects.
 Removed redundant affinity setting for main thread.
 Removed redundant functions in UHRenderResource class, caching GFX class should be enough.
+
+20-11-2024:
+Code refactor. Removed ray tracing dirty flags, it's not necessary now.
+Restrict resource dirty flag setter to main thread only.

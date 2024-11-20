@@ -1561,8 +1561,6 @@ void UHDeferredShadingRenderer::ResetMaterialShaders(UHMeshRendererComponent* In
 		MotionTranslucentShaders.erase(RendererBufferIndex);
 		TranslucentPassShaders.erase(RendererBufferIndex);
 	}
-
-	InMeshRenderer->SetRayTracingDirties(true);
 }
 
 void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRendererComponent*> InRenderers)
@@ -1717,8 +1715,6 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 		TranslucentPassShaders[RendererBufferIndex]
 			= MakeUnique<UHTranslucentPassShader>(GraphicInterface, "TranslucentPassShader", TranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 	}
-
-	InMeshRenderer->SetRayTracingDirties(true);
 }
 
 void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)

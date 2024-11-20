@@ -268,14 +268,10 @@ public:
 	void SetRenderDirties(bool bIsDirty);
 	void SetRenderDirty(bool bIsDirty, int32_t FrameIdx);
 
-	void SetRayTracingDirties(bool bIsDirty);
-	void SetRayTracingDirty(bool bIsDirty, int32_t FrameIdx);
-
 	void SetMotionDirties(bool bIsDirty);
 	void SetMotionDirty(bool bIsDirty, int32_t FrameIdx);
 
 	bool IsRenderDirty(int32_t FrameIdx) const;
-	bool IsRayTracingDirty(int32_t FrameIdx) const;
 	bool IsMotionDirty(int32_t FrameIdx) const;
 
 	void SetBufferDataIndex(int32_t InIndex);
@@ -283,7 +279,6 @@ public:
 
 private:
 	bool bIsRenderDirties[GMaxFrameInFlight];
-	bool bIsRayTracingDirties[GMaxFrameInFlight];
 	bool bIsMotionDirties[GMaxFrameInFlight];
 	int32_t BufferDataIndex;
 };
