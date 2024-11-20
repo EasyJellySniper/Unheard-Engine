@@ -399,6 +399,7 @@ private:
 
 	// -------------------------------------------- Culling & sorting related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
+	std::vector<UHMeshRendererComponent*> MotionOpaquesToRender;
 	std::vector<UHMeshRendererComponent*> TranslucentsToRender;
 	std::vector<UHMeshRendererComponent*> OcclusionRenderers;
 

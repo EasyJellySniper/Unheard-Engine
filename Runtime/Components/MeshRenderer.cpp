@@ -14,6 +14,7 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 	: MeshCache(InMesh)
 	, MaterialCache(InMaterial)
 	, bIsVisible(true)
+	, bIsMoveable(false)
 	, RendererBound(BoundingBox())
 #if WITH_EDITOR
 	, bIsVisibleEditor(true)
@@ -188,6 +189,16 @@ bool UHMeshRendererComponent::IsVisible() const
 		&& bIsVisibleEditor
 #endif
 		;
+}
+
+void UHMeshRendererComponent::SetMoveable(bool bMoveable)
+{
+	bIsMoveable = bMoveable;
+}
+
+bool UHMeshRendererComponent::IsMoveable() const
+{
+	return bIsMoveable;
 }
 
 #if WITH_EDITOR

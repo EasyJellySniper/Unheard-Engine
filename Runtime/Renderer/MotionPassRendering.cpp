@@ -278,7 +278,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 {
 	// simply separate buffer recording into N threads
-	const int32_t MaxCount = static_cast<int32_t>(OpaquesToRender.size());
+	const int32_t MaxCount = static_cast<int32_t>(MotionOpaquesToRender.size());
 	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
 	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
 	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
@@ -321,9 +321,9 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	const uint32_t PrevFrame = (CurrentFrameRT - 1) % GMaxFrameInFlight;
 	for (int32_t I = StartIdx; I < EndIdx; I++)
 	{
-		UHMeshRendererComponent* Renderer = OpaquesToRender[I];
+		UHMeshRendererComponent* Renderer = MotionOpaquesToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->GetMaterialUsages().bIsSkybox || (!Renderer->IsMotionDirty(CurrentFrameRT)))
+		if (Mat->GetMaterialUsages().bIsSkybox)
 		{
 			continue;
 		}
@@ -357,7 +357,6 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 		}
 
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
-		Renderer->SetMotionDirty(false, CurrentFrameRT);
 	}
 
 	RenderBuilder.EndCommandBuffer();

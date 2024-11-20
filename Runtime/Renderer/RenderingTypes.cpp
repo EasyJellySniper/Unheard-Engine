@@ -232,11 +232,13 @@ void UHRenderState::SetMotionDirty(bool bIsDirty, int32_t FrameIdx)
 
 bool UHRenderState::IsRenderDirty(int32_t FrameIdx) const
 {
+	assert(std::this_thread::get_id() == GMainThreadID);
 	return bIsRenderDirties[FrameIdx];
 }
 
 bool UHRenderState::IsMotionDirty(int32_t FrameIdx) const
 {
+	assert(std::this_thread::get_id() == GMainThreadID);
 	return bIsMotionDirties[FrameIdx];
 }
 

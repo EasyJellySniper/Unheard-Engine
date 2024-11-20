@@ -284,3 +284,5 @@ Removed redundant functions in UHRenderResource class, caching GFX class should 
 20-11-2024:
 Code refactor. Removed ray tracing dirty flags, it's not necessary now.
 Restrict resource dirty flag setter to main thread only.
+Optimized object constant upload, it can save 0.1~0.2ms.
+Also defined bIsMoveable flag in mesh component, but I didn't expose it to editor & file yet.

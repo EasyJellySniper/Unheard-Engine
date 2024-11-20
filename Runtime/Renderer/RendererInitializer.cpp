@@ -117,6 +117,7 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 
 		// reserve enough space for renderers, save the allocation time
 		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
+		MotionOpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
 		TranslucentsToRender.reserve(CurrentScene->GetTranslucentRenderers().size());
 		OcclusionRenderers.reserve(CurrentScene->GetAllRendererCount());
 
@@ -1049,7 +1050,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 
 		// collect & upload mesh instance data
 		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-		std::vector<UHRendererInstance> RendererInstances;
+		std::vector<UHRendererInstance> RendererInstances(Renderers.size());
 
 		for (int32_t Idx = 0; Idx < static_cast<int32_t>(Renderers.size()); Idx++)
 		{
@@ -1063,7 +1064,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 			UHRendererInstance RendererInstance;
 			RendererInstance.MeshIndex = Mesh->GetBufferDataIndex();
 			RendererInstance.IndiceType = Mesh->IsIndexBufer32Bit() ? 1 : 0;
-			RendererInstances.push_back(RendererInstance);
+			RendererInstances[Renderers[Idx]->GetBufferDataIndex()] = RendererInstance;
 		}
 
 		GRendererInstanceBuffer->UploadAllData(RendererInstances.data());

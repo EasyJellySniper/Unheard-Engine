@@ -153,6 +153,7 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			if (UHUtilities::StringFind(MRC->GetName(), "1893"))
 			{
 				Geo364Renderer = MRC;
+				Geo364Renderer->SetMoveable(true);
 			}
 		}
 	}

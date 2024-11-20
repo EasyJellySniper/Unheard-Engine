@@ -103,6 +103,24 @@ void UHScene::Initialize(UHEngine* InEngine)
 			AddMeshRenderer((UHMeshRendererComponent*)Component.get());
 		}
 	}
+
+	// assign buffer index for renderers, moveable objects first
+	int32_t BufferIdx = 0;
+	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
+	{
+		if (Renderers[Idx]->IsMoveable())
+		{
+			Renderers[Idx]->SetBufferDataIndex(BufferIdx++);
+		}
+	}
+
+	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
+	{
+		if (!Renderers[Idx]->IsMoveable())
+		{
+			Renderers[Idx]->SetBufferDataIndex(BufferIdx++);
+		}
+	}
 }
 
 void UHScene::Release()
@@ -271,8 +289,6 @@ void UHScene::AddMeshRenderer(UHMeshRendererComponent* InRenderer)
 		UHE_LOG(L"Missing mesh or material in mesh renderer!\n");
 	}
 
-	// give constant index, so the order in container doesn't matter when copying to constant buffer
-	InRenderer->SetBufferDataIndex(static_cast<int32_t>(Renderers.size()));
 	Renderers.push_back(InRenderer);
 
 	// collect material as well, assign constant index for both newly added and already added cases

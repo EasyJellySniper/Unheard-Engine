@@ -31,6 +31,9 @@ public:
 	void SetVisible(bool bVisible);
 	bool IsVisible() const;
 
+	void SetMoveable(bool bMoveable);
+	bool IsMoveable() const;
+
 #if WITH_EDITOR
 	virtual UHDebugBoundConstant GetDebugBoundConst() const override;
 	virtual void OnGenerateDetailView() override;
@@ -45,6 +48,7 @@ private:
 	UUID MaterialId;
 
 	bool bIsVisible;
+	bool bIsMoveable;
 	BoundingBox RendererBound;
 	float SquareDistanceToMainCam;
 

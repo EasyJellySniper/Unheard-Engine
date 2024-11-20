@@ -61,9 +61,8 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
-	// if updating has a huge spike in the future, consider assign the tasks to different worker thread
-	UploadDataBuffers();
 	FrustumCulling();
+	UploadDataBuffers();
 	CollectVisibleRenderer();
 	CollectMeshShaderInstance();
 }
@@ -275,23 +274,33 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	if (CurrentScene->GetAllRendererCount() > 0)
 	{
 		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
+		int32_t MinDirtyObjIndex = static_cast<int32_t>(Renderers.size());
+		int32_t MaxDirtyObjIndex = 0;
+
 		for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
 		{
 			// update CPU constants when the frame is dirty
 			// the dirty flag is marked in UHMeshRendererComponent::Update()
 			UHMeshRendererComponent* Renderer = Renderers[Idx];
-			UHObjectConstants Constant = Renderer->GetConstants();
-			if (Renderer->IsRenderDirty(CurrentFrameGT))
-			{
-				ObjectConstantsCPU[Renderer->GetBufferDataIndex()] = Constant;
-				Renderer->SetRenderDirty(false, CurrentFrameGT);
-			}
+			const int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
-			// setup occlusion data if necessary
-			if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+			UHObjectConstants Constant = Renderer->GetConstants();
+			if (Renderer->IsRenderDirty(CurrentFrameGT) && Renderer->IsVisible())
 			{
-				Constant.GWorld = Renderer->GetWorldBoundMatrix();
-				OcclusionConstantsCPU[Renderer->GetBufferDataIndex()] = Constant;
+				ObjectConstantsCPU[RendererIdx] = Constant;
+
+				// setup occlusion data if necessary
+				if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+				{
+					Constant.GWorld = Renderer->GetWorldBoundMatrix();
+					OcclusionConstantsCPU[RendererIdx] = Constant;
+				}
+
+				// record min/max dirty index to reduce buffer copy range
+				MinDirtyObjIndex = std::min(MinDirtyObjIndex, RendererIdx);
+				MaxDirtyObjIndex = std::max(MaxDirtyObjIndex, RendererIdx);
+
+				Renderer->SetRenderDirty(false, CurrentFrameGT);
 			}
 
 			// copy material data only when it's dirty
@@ -303,10 +312,16 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			}
 		}
 
-		GObjectConstantBuffer[CurrentFrameGT]->UploadAllData(ObjectConstantsCPU.data());
-		if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+		if (MinDirtyObjIndex <= MaxDirtyObjIndex)
 		{
-			GOcclusionConstantBuffer[CurrentFrameGT]->UploadAllData(OcclusionConstantsCPU.data());
+			size_t CopySize = (MaxDirtyObjIndex - MinDirtyObjIndex + 1) * GObjectConstantBuffer[CurrentFrameGT]->GetBufferStride();
+			GObjectConstantBuffer[CurrentFrameGT]->UploadData(&ObjectConstantsCPU[MinDirtyObjIndex], MinDirtyObjIndex, CopySize);
+
+			if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+			{
+				CopySize = (MaxDirtyObjIndex - MinDirtyObjIndex + 1) * GOcclusionConstantBuffer[CurrentFrameGT]->GetBufferStride();
+				GOcclusionConstantBuffer[CurrentFrameGT]->UploadData(&OcclusionConstantsCPU[MinDirtyObjIndex], MinDirtyObjIndex, CopySize);
+			}
 		}
 	}
 
@@ -457,6 +472,7 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 
 	// recommend to reserve capacity during initialization
 	OpaquesToRender.clear();
+	MotionOpaquesToRender.clear();
 	TranslucentsToRender.clear();
 	OcclusionRenderers.clear();
 
@@ -494,6 +510,11 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 			if (Mat->IsOpaque())
 			{
 				OpaquesToRender.push_back(Renderer);
+				if (Renderer->IsMotionDirty(CurrentFrameGT) && !GraphicInterface->IsMeshShaderSupported())
+				{
+					MotionOpaquesToRender.push_back(Renderer);
+					Renderer->SetMotionDirty(false, CurrentFrameGT);
+				}
 			}
 
 			if (bOcclusionTest)
