@@ -11,7 +11,7 @@ SamplerState LinearSampler : register(s6);
 
 static const float GHistoryWeightMin = 0.7f;
 static const float GHistoryWeightMax = 0.9f;
-static const float GMotionDiffScale = 500.0f;
+static const float GMotionDiffScale = 50.0f;
 
 // group optimization, use 1D array for the best perf
 groupshared float3 GColorCache[UHTHREAD_GROUP2D_X * UHTHREAD_GROUP2D_Y];

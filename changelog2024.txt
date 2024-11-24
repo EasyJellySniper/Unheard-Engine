@@ -286,3 +286,8 @@ Code refactor. Removed ray tracing dirty flags, it's not necessary now.
 Restrict resource dirty flag setter to main thread only.
 Optimized object constant upload, it can save 0.1~0.2ms.
 Also defined bIsMoveable flag in mesh component, but I didn't expose it to editor & file yet.
+
+24-11-2024:
+Fixed TAA issue by removing weird hack in jitter offset calculation.
+Removed the idea to scale motion vector by time, it caused some issues too.
+Fixed the instance order for top level AS after dynamic/static renderers split.

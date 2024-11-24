@@ -47,7 +47,6 @@ void MotionObjectPS(MotionVertexOutput Vin
 	float2 CurrScreenPos = (Vin.CurrPos.xy * 0.5f + 0.5f);
 
 	OutVelocity = float4(CurrScreenPos.xy - PrevScreenPos.xy, 0, 1);
-    OutVelocity.xy *= GMotionVectorScale;
     OutNormal = 0;
     OutBump = 0;
     OutSmoothness = 0;

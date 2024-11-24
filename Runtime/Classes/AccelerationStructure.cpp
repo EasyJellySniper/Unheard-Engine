@@ -132,6 +132,9 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		return 0;
 	}
 
+	InstanceKHRs.resize(InRenderers.size());
+	RendererCache.resize(InRenderers.size());
+
 	// add top-level instance per-renderer
 	uint32_t InstanceCount = 0;
 	for (size_t Idx = 0; Idx < InRenderers.size(); Idx++)
@@ -177,8 +180,9 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		InstanceKHR.instanceCustomIndex = Mat->GetBufferDataIndex();
 
 		// cache the instance KHRs and renderers for later use
-		InstanceKHRs.push_back(InstanceKHR);
-		RendererCache.push_back(InRenderers[Idx]);
+		const int32_t RendererIdx = InRenderers[Idx]->GetBufferDataIndex();
+		InstanceKHRs[RendererIdx] = InstanceKHR;
+		RendererCache[RendererIdx] = InRenderers[Idx];
 		InstanceCount++;
 	}
 

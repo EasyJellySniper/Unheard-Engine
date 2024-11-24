@@ -264,10 +264,6 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.GRefractionBlurIndex = RefractionBlurredIndex;
 	SystemConstantsCPU.GDefaultAnisoSamplerIndex = DefaultSamplerIndex;
 
-	// scale the motion relative to 60FPS, this makes the rendering result consistent for those relying on the velocity. (E.g. TAA)
-	constexpr float FrameTime60 = 1.0f / 60.0f;
-	SystemConstantsCPU.GMotionVectorScale = FrameTime60 / std::max(TimerInterface->GetDeltaTime(), std::numeric_limits<float>::min());
-
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
 	// upload object constants, only update CPU value if transform is changed
