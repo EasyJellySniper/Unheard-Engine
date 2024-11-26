@@ -36,7 +36,6 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 		RenderBuilder.SetScissor(RenderResolution);
 
 		// do mesh shader version if it's supported.
-#if USE_MESHSHADER_PASS
 		if (GraphicInterface->IsMeshShaderSupported())
 		{
 			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue);
@@ -77,7 +76,6 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 			}
 		}
 		else
-#endif
 		{
 			// begin render pass
 			RenderBuilder.BeginRenderPass(DepthPassObj, RenderResolution, DepthClearValue, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);

@@ -53,7 +53,6 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.SetScissor(RenderResolution);
 
 		// do mesh shader version if it's supported.
-#if USE_MESHSHADER_PASS
 		if (GraphicInterface->IsMeshShaderSupported())
 		{
 			RenderBuilder.BeginRenderPass(BasePassObj, RenderResolution, ClearValues);
@@ -95,7 +94,6 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 			}
 		}
 		else
-#endif
 		{
 			// begin render pass
 			RenderBuilder.BeginRenderPass(BasePassObj, RenderResolution, ClearValues, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
@@ -192,7 +190,7 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 			std::to_string(TriCount) + ")");
 
 		// occlusion test for big meshes
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());

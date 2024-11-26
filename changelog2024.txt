@@ -291,3 +291,16 @@ Also defined bIsMoveable flag in mesh component, but I didn't expose it to edito
 Fixed TAA issue by removing weird hack in jitter offset calculation.
 Removed the idea to scale motion vector by time, it caused some issues too.
 Fixed the instance order for top level AS after dynamic/static renderers split.
+
+25-11-2024:
+Started fixing the issues with low-end AMD GPU. 
+Issues by far:
+(1) Incorrect viewport/scissor rect. Fixed today.
+(2) Incorrect RT mesh instance buffer table. Fixed today.
+(3) Mesh shader couldn't work and leads TDR.
+(4) HW occlusion is wrong.
+
+26-11-2024:
+Fixed HW occlusion issue for low-end AMD GPU.
+Fixed mesh shader issue for low-end AMD GPU, somehow the early return causes TDR for AMD integrated GPU.
+The workaround is to make it output indices before early return..not the best solution but better than nothing.

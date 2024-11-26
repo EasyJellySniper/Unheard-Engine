@@ -18,6 +18,8 @@ UHRenderBuilder::UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommand
 	, DrawCalls(0)
 	, OccludedCalls(0)
 #endif
+	, bNeedSetViewport(false)
+	, bNeedSetScissorRect(false)
 {
 	// resource barrier lookup build, not the best way but can get rid of plenty if-else blocks
 	if (LayoutToAccessFlags.size() == 0)
@@ -276,7 +278,8 @@ void UHRenderBuilder::BindComputeState(UHComputeState* InState)
 void UHRenderBuilder::SetViewport(VkExtent2D InExtent)
 {
 	// prevent duplicate setup
-	if (PrevViewport.width == InExtent.width && PrevViewport.height == InExtent.height)
+	if (PrevViewport.width == InExtent.width && PrevViewport.height == InExtent.height
+		&& !bNeedSetViewport)
 	{
 		return;
 	}
@@ -297,7 +300,8 @@ void UHRenderBuilder::SetViewport(VkExtent2D InExtent)
 void UHRenderBuilder::SetScissor(VkExtent2D InExtent)
 {
 	// prevent duplicate setup
-	if (PrevScissor.width == InExtent.width && PrevScissor.height == InExtent.height)
+	if (PrevScissor.width == InExtent.width && PrevScissor.height == InExtent.height
+		&& !bNeedSetScissorRect)
 	{
 		return;
 	}
@@ -742,6 +746,11 @@ void UHRenderBuilder::ExecuteBundles(const UHParallelSubmitter& InSubmitter)
 
 	// push secondary cmds
 	vkCmdExecuteCommands(CmdList, static_cast<uint32_t>(InSubmitter.WorkerBundles.size()), InSubmitter.WorkerBundles.data());
+
+	// after execute secondary commands, the viewport/scissor rect might be undefined for certain hardwares
+	// mark reset viewport/scissor rect for them
+	bNeedSetViewport = true;
+	bNeedSetScissorRect = true;
 }
 
 void UHRenderBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)

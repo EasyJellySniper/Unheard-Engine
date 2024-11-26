@@ -144,7 +144,7 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 			std::to_string(TriCount) + ")");
 
 		// occlusion test for big meshes
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());

@@ -19,7 +19,7 @@ public:
 
 	void SetMesh(UHMesh* InMesh);
 	void SetMaterial(UHMaterial* InMaterial);
-	void CalculateSquareDistanceTo(const XMFLOAT3 Position);
+	void CalculateSquareDistanceToCamera(const XMFLOAT3 Position);
 
 	UHMesh* GetMesh() const;
 	UHMaterial* GetMaterial() const;
@@ -30,6 +30,7 @@ public:
 
 	void SetVisible(bool bVisible);
 	bool IsVisible() const;
+	bool IsCameraInsideThisRenderer() const;
 
 	void SetMoveable(bool bMoveable);
 	bool IsMoveable() const;
@@ -49,6 +50,7 @@ private:
 
 	bool bIsVisible;
 	bool bIsMoveable;
+	bool bIsCameraInsideBound;
 	BoundingBox RendererBound;
 	float SquareDistanceToMainCam;
 

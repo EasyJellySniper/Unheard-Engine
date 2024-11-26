@@ -36,15 +36,7 @@ void MotionMS(
 )
 {
     // fetch data and set mesh outputs
-    UHMeshShaderData ShaderData = MeshShaderData[Gid];
-    
-    // occlusion test check, not every objects have the occlusion test enabled, so need another bDoOcclusionTest flag to check
-    if (ShaderData.bDoOcclusionTest == 1 && OcclusionResult.Load(ShaderData.RendererIndex * 4) == 0)
-    {
-        SetMeshOutputCounts(0, 0); // must set output as 0 when doing early return
-        return;
-    }
-    
+    UHMeshShaderData ShaderData = MeshShaderData[Gid];    
     UHRendererInstance InInstance = RendererInstances[ShaderData.RendererIndex];
     UHMeshlet Meshlet = Meshlets[InInstance.MeshIndex][ShaderData.MeshletIndex];
     SetMeshOutputCounts(Meshlet.VertexCount, Meshlet.PrimitiveCount);
@@ -55,6 +47,14 @@ void MotionMS(
         // output triangle indices in order, the vertex output below will get the correct unique vertex to output
         // so I don't need to mess around here
         OutTris[GTid] = uint3(GTid * 3 + 0, GTid * 3 + 1, GTid * 3 + 2);
+    }
+    
+    // occlusion test check, not every objects have the occlusion test enabled, so need another bDoOcclusionTest flag to check
+    if (ShaderData.bDoOcclusionTest == 1 && OcclusionResult.Load(ShaderData.RendererIndex * 4) == 0)
+    {
+        // occlusion test is checked after indices output because some hardwares (E.g. AMD integrated GPU) would TDR
+        // if I early return at very beginning, I must output indices before returning
+        return;
     }
     
     // output vertrex next

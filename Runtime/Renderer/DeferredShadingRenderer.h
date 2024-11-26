@@ -40,6 +40,7 @@
 #include "ShaderClass/RayTracing/RTTextureTable.h"
 #include "ShaderClass/ReflectionPassShader.h"
 #include "ShaderClass/RayTracing/RTReflectionMipmap.h"
+#include "ShaderClass/RayTracing/RTMeshInstanceTable.h"
 #include "ShaderClass/OcclusionPassShader.h"
 
 #if WITH_EDITOR
@@ -200,6 +201,7 @@ private:
 
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
+	void ResolveOcclusionResult(UHRenderBuilder& RenderBuilder);
 	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
 	void RenderOcclusionPass(UHRenderBuilder& RenderBuilder);
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
@@ -390,7 +392,7 @@ private:
 	UniquePtr<UHRTReflectionShader> RTReflectionShader;
 	std::vector<VkDescriptorSet> RTDescriptorSets[GMaxFrameInFlight];
 
-	UniquePtr<UHMeshTable> RTMeshInstanceTable;
+	UniquePtr<UHRTMeshInstanceTable> RTMeshInstanceTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
 	UniquePtr<UHRTTextureTable> RTTextureTable;
 

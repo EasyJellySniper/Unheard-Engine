@@ -162,6 +162,8 @@ private:
 
 	VkDevice LogicalDevice;
 	bool bIsCompute;
+	bool bNeedSetViewport;
+	bool bNeedSetScissorRect;
 
 	// lookup table for stage flag and access flag
 	static std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;

@@ -44,9 +44,6 @@ inline std::mutex GLogMutex;
 #define UH_ENUM_VALUE(x) static_cast<int32_t>(x)
 #define UH_ENUM_VALUE_U(x) static_cast<uint32_t>(x)
 
-// for testing, might remove this one day
-#define USE_MESHSHADER_PASS 1
-
 inline void UHE_LOG(std::wstring InString)
 {
 #if WITH_EDITOR

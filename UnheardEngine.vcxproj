@@ -345,6 +345,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshInstanceTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />

@@ -426,8 +426,11 @@ void UHDeferredShadingRenderer::FrustumCulling()
 				const bool bVisible = (CameraFrustum.Contains(RendererBound) != DirectX::DISJOINT);
 				Renderer->SetVisible(bVisible);
 
-				// also calculate the square distance to current camera for later use
-				Renderer->CalculateSquareDistanceTo(CameraPos);
+				if (bVisible)
+				{
+					// also calculate the square distance to current camera for later use if it's visible
+					Renderer->CalculateSquareDistanceToCamera(CameraPos);
+				}
 			}
 		}
 
@@ -583,7 +586,7 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 
 		UHMeshShaderData Data;
 		Data.RendererIndex = Renderer->GetBufferDataIndex();
-		Data.bDoOcclusionTest = bOcclusionTest ? 1 : 0;
+		Data.bDoOcclusionTest = bOcclusionTest && !Renderer->IsCameraInsideThisRenderer() ? 1 : 0;
 		bool bClearMotionDirty = false;
 
 		for (uint32_t MeshletIdx = 0; MeshletIdx < Mesh->GetMeshletCount(); MeshletIdx++)
@@ -622,7 +625,7 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 
 		UHMeshShaderData Data;
 		Data.RendererIndex = Renderer->GetBufferDataIndex();
-		Data.bDoOcclusionTest = bOcclusionTest ? 1 : 0;
+		Data.bDoOcclusionTest = bOcclusionTest && !Renderer->IsCameraInsideThisRenderer() ? 1 : 0;
 
 		// translucent always output motion for now
 		for (uint32_t MeshletIdx = 0; MeshletIdx < Mesh->GetMeshletCount(); MeshletIdx++)
@@ -767,6 +770,10 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 					SceneRenderBuilder.FlushResourceBarrier();
 				}
 
+				if (bIsPresentedPreviously)
+				{
+					ResolveOcclusionResult(SceneRenderBuilder);
+				}
 				RenderDepthPrePass(SceneRenderBuilder);
 				RenderBasePass(SceneRenderBuilder);
 				RenderOcclusionPass(SceneRenderBuilder);

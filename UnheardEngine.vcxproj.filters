@@ -414,6 +414,9 @@
     <ClInclude Include="Runtime\Classes\AsyncTask.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshInstanceTable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">

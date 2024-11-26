@@ -22,6 +22,7 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 	, MeshId(UUID())
 	, MaterialId(UUID())
 	, SquareDistanceToMainCam(0.0f)
+	, bIsCameraInsideBound(false)
 {
 	SetMaterial(MaterialCache);
 	SetName("MeshRendererComponent" + std::to_string(GetId()));
@@ -132,12 +133,15 @@ void UHMeshRendererComponent::SetMaterial(UHMaterial* InMaterial)
 	}
 }
 
-void UHMeshRendererComponent::CalculateSquareDistanceTo(const XMFLOAT3 Position)
+void UHMeshRendererComponent::CalculateSquareDistanceToCamera(const XMFLOAT3 Position)
 {
 	// this roughly does the calculation with the center point of a bound
 	// to have more precise result, find the closest point on a bound first
 	const XMFLOAT3 Center = GetRendererBound().Center;
 	SquareDistanceToMainCam = MathHelpers::VectorDistanceSqr(Center, Position);
+
+	// check if the camera is inside this renderer bound
+	bIsCameraInsideBound = RendererBound.Contains(XMLoadFloat3(&Position));
 }
 
 UHMesh* UHMeshRendererComponent::GetMesh() const
@@ -189,6 +193,11 @@ bool UHMeshRendererComponent::IsVisible() const
 		&& bIsVisibleEditor
 #endif
 		;
+}
+
+bool UHMeshRendererComponent::IsCameraInsideThisRenderer() const
+{
+	return bIsCameraInsideBound;
 }
 
 void UHMeshRendererComponent::SetMoveable(bool bMoveable)

@@ -17,6 +17,31 @@ private:
 	UHDeferredShadingRenderer* SceneRenderer = nullptr;
 };
 
+void UHDeferredShadingRenderer::ResolveOcclusionResult(UHRenderBuilder& RenderBuilder)
+{
+	UHGameTimerScope Scope("ResolveOcclusionResult", false);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::OcclusionResolve)], "ResolveOcclusionResult");
+
+	// Resolve the previous frame result to the buffer. 
+	// Allow partial update so it won't stuck for the individuals that don't have Begin/EndQuery() called.
+	// If this still failed to get the proper results, consider copying the result individually with parallel tasks and setting
+	// VK_QUERY_RESULT_WAIT_BIT flag for each query.
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Resolve Occlusion Result");
+
+	const uint32_t PrevFrame = (CurrentFrameRT - 1) % GMaxFrameInFlight;
+	vkCmdCopyQueryPoolResults(RenderBuilder.GetCmdList()
+		, OcclusionQuery[PrevFrame]->GetQueryPool()
+		, 0
+		, OcclusionQuery[PrevFrame]->GetQueryCount()
+		, GOcclusionResult[PrevFrame]->GetBuffer()
+		, 0
+		, sizeof(uint32_t)
+		, VK_QUERY_RESULT_PARTIAL_BIT);
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}
+
 void UHDeferredShadingRenderer::RenderOcclusionPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderOcclusionPass", false);
@@ -63,17 +88,6 @@ void UHDeferredShadingRenderer::RenderOcclusionPass(UHRenderBuilder& RenderBuild
 		// execute all recorded batches
 		RenderBuilder.ExecuteBundles(OcclusionParallelSubmitter);
 		RenderBuilder.EndRenderPass();
-
-		// The vkCmdEndQuery completes the query in queryPool identified by query, and marks it as available.
-		// It shall be able to resolve the result to the buffer now. Allow partial update.
-		vkCmdCopyQueryPoolResults(RenderBuilder.GetCmdList()
-			, OcclusionQuery[CurrentFrameRT]->GetQueryPool()
-			, 0
-			, OcclusionQuery[CurrentFrameRT]->GetQueryCount()
-			, GOcclusionResult[CurrentFrameRT]->GetBuffer()
-			, 0
-			, sizeof(uint32_t)
-			, VK_QUERY_RESULT_PARTIAL_BIT);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
@@ -113,10 +127,7 @@ void UHDeferredShadingRenderer::OcclusionPassTask(int32_t ThreadIdx)
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Occlusion Box");
 
 		// bind pipelines
-		if (bEnableHWOcclusionRT)
-		{
-			RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
-		}
+		RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
 
 		RenderBuilder.BindGraphicState(UHOcclusionPassShader::GetOcclusionState());
 		RenderBuilder.BindVertexBuffer(SkyMeshRT->GetPositionBuffer()->GetBuffer());
@@ -125,10 +136,7 @@ void UHDeferredShadingRenderer::OcclusionPassTask(int32_t ThreadIdx)
 
 		// draw call
 		RenderBuilder.DrawIndexed(SkyMeshRT->GetIndicesCount());
-		if (bEnableHWOcclusionRT)
-		{
-			RenderBuilder.EndOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
-		}
+		RenderBuilder.EndOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
 
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 	}

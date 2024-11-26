@@ -1812,7 +1812,7 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 	{
 		// buffer for storing index type, used in hit group shader
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
-		RTMeshInstanceTable = MakeUnique<UHMeshTable>(GraphicInterface, "RTMeshInstanceTable", 1);
+		RTMeshInstanceTable = MakeUnique<UHRTMeshInstanceTable>(GraphicInterface, "RTMeshInstanceTable");
 
 		// buffer for storing texture index
 		UH_SAFE_RELEASE(RTMaterialDataTable);

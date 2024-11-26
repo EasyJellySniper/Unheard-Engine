@@ -71,7 +71,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		// opaque motion will only render the dynamic objects (motion is dirty), static objects are already calculated in camera motion
 		static UHMotionPassAsyncTask Tasks[GMaxWorkerThreads];
 		{
-#if USE_MESHSHADER_PASS
 			if (GraphicInterface->IsMeshShaderSupported())
 			{
 				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution);
@@ -119,7 +118,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 				}
 			}
 			else
-#endif
 			{
 				// begin for secondary cmd
 				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
@@ -174,7 +172,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 			RenderBuilder.FlushResourceBarrier();
 
-#if USE_MESHSHADER_PASS
 			if (GraphicInterface->IsMeshShaderSupported())
 			{
 				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution);
@@ -222,7 +219,6 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 				}
 			}
 			else
-#endif
 			{
 
 				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
@@ -337,7 +333,7 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(TriCount) + ")");
 
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());
@@ -423,7 +419,7 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(TriCount) + ")");
 
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());

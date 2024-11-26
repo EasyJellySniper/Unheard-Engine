@@ -143,7 +143,7 @@ struct UHSphericalHarmonicConstants
 
 enum class UHRenderPassTypes
 {
-	OcclusionReset = 0,
+	OcclusionResolve = 0,
 	DepthPrePass,
 	OcclusionPass,
 	BasePass,
