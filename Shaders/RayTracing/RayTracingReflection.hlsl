@@ -201,7 +201,6 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldP
         Payload.HitSpecular = lerp(Payload.HitSpecular, Payload.HitSpecularTrans, TransOpacity);
         Payload.HitNormal = lerp(Payload.HitNormal, Payload.HitNormalTrans, TransOpacity);
         Payload.HitEmissive.rgb = lerp(Payload.HitEmissive.rgb, Payload.HitEmissiveTrans.rgb, TransOpacity);
-        Payload.HitAlpha = TransOpacity;
     }
     
     // light calculation, be sure to normalize normal vector before using it

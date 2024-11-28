@@ -310,3 +310,4 @@ Find the AMD workaround causes NV card issues lol.
 So I made another improvement again and should consider moving culling stuff from mesh shader to amplification shader someday.
 Made specular calculation better. Separated specular/smoothness debug view, otherwise I couldn't debug alpha channel of a render texture.
 Removed all AMD integrated hacks and fixed real sources that caused rendering errors.
+Fixed RT reflection alpha output.
