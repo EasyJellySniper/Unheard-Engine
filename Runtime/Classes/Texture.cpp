@@ -184,12 +184,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			if (MemoryOffset == ~0)
 			{
 				bExceedSharedMemory = true;
-				static bool bIsExceedingMsgPrinted = false;
-				if (!bIsExceedingMsgPrinted)
-				{
-					UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
-					bIsExceedingMsgPrinted = true;
-				}
+				//UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
 			}
 		}
 		
@@ -198,18 +193,34 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			VkMemoryAllocateInfo AllocInfo{};
 			AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 			AllocInfo.allocationSize = MemRequirements.size;
-			AllocInfo.memoryTypeIndex = UHUtilities::FindMemoryTypes(&DeviceMemoryProperties, MemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			const std::vector<uint32_t>& MemTypeIndices = GfxCache->GetDeviceMemoryTypeIndices();
+			const VkPhysicalDeviceMemoryProperties& DeviceMemoryProperties = GfxCache->GetDeviceMemProps();
 
-			if (AllocInfo.allocationSize > DeviceMemoryProperties.memoryHeaps[AllocInfo.memoryTypeIndex].size)
+			for (size_t Idx = 0; Idx < MemTypeIndices.size(); Idx++)
 			{
-				// use the host memory if device heap isn't enough
-				AllocInfo.memoryTypeIndex = 1;
+				AllocInfo.memoryTypeIndex = MemTypeIndices[Idx];
+				if (AllocInfo.allocationSize > DeviceMemoryProperties.memoryHeaps[AllocInfo.memoryTypeIndex].size)
+				{
+					// use the host memory if a single allocation is already bigger than whole heap
+					AllocInfo.memoryTypeIndex = GetHostMemoryTypeIndex();
+				}
+
+				if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &ImageMemory) == VK_SUCCESS)
+				{
+					break;
+				}
 			}
 
-			if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &ImageMemory) != VK_SUCCESS)
+			// if failed, the device memory isn't available and need to use host memory
+			if (ImageMemory == nullptr)
 			{
-				UHE_LOG(L"Failed to commit image to GPU!\n");
-				return false;
+				AllocInfo.memoryTypeIndex = GfxCache->GetHostMemoryTypeIndex();
+				if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &ImageMemory) != VK_SUCCESS)
+				{
+					// return if host memory failed too
+					UHE_LOG(L"Failed to allocate image memory!\n");
+					return false;
+				}
 			}
 
 			if (vkBindImageMemory(LogicalDevice, ImageSource, ImageMemory, 0) != VK_SUCCESS)

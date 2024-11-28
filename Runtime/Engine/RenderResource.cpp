@@ -5,8 +5,6 @@
 UHRenderResource::UHRenderResource()
 	: GfxCache(nullptr)
 	, LogicalDevice(nullptr)
-	, DeviceMemoryProperties(VkPhysicalDeviceMemoryProperties())
-	, VulkanInstance(nullptr)
 	, IndexInPool(UHINDEXNONE)
 	, ReferenceCount(0)
 {
@@ -17,8 +15,6 @@ void UHRenderResource::SetGfxCache(UHGraphic* InGfx)
 {
 	GfxCache = InGfx;
 	LogicalDevice = GfxCache->GetLogicalDevice();
-	DeviceMemoryProperties = GfxCache->GetDeviceMemProps();
-	VulkanInstance = GfxCache->GetInstance();
 }
 
 void UHRenderResource::SetIndexInPool(const int32_t InIndex)
@@ -45,4 +41,9 @@ int32_t UHRenderResource::GetIndexInPool() const
 int32_t UHRenderResource::GetRefCount() const
 {
 	return ReferenceCount;
+}
+
+uint32_t UHRenderResource::GetHostMemoryTypeIndex() const
+{
+	return GfxCache->GetHostMemoryTypeIndex();
 }

@@ -26,6 +26,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bSupportHDR(false)
 	, bSupport24BitDepth(true)
 	, bSupportMeshShader(false)
+	, MeshBufferSharedMemory(nullptr)
+	, ImageSharedMemory(nullptr)
 #if WITH_EDITOR
 	, ImGuiDescriptorPool(nullptr)
 	, ImGuiPipeline(nullptr)
@@ -65,20 +67,6 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	DeviceExtensions.insert(DeviceExtensions.end(), RayTracingExtensions.begin(), RayTracingExtensions.end());
 }
 
-uint32_t GetMemoryTypeIndex(VkPhysicalDeviceMemoryProperties InProps, VkMemoryPropertyFlags InFlags)
-{
-	// note that this doesn't consider the resource bits
-	for (uint32_t Idx = 0; Idx < InProps.memoryTypeCount; Idx++)
-	{
-		if ((InProps.memoryTypes[Idx].propertyFlags & InFlags) == InFlags)
-		{
-			return Idx;
-		}
-	}
-
-	return ~0;
-}
-
 // init graphics
 bool UHGraphic::InitGraphics(HWND Hwnd)
 {
@@ -107,11 +95,12 @@ bool UHGraphic::InitGraphics(HWND Hwnd)
 		ImageSharedMemory->SetGfxCache(this);
 		MeshBufferSharedMemory->SetGfxCache(this);
 
-		uint32_t ImageMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		uint32_t BufferMemoryType = GetMemoryTypeIndex(PhysicalDeviceMemoryProperties, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		DeviceMemoryTypeIndices = GetMemoryTypeIndices(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		HostMemoryTypeIndex = GetMemoryTypeIndices(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)[0];
 
-		ImageSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, ImageMemoryType);
-		MeshBufferSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, BufferMemoryType);
+		// use the first heap for shared image memory anyway, it's rare to have multiple heaps from a single GPU
+		ImageSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().ImageMemoryBudgetMB) * 1048576, DeviceMemoryTypeIndices[0]);
+		MeshBufferSharedMemory->AllocateMemory(static_cast<uint64_t>(ConfigInterface->EngineSetting().MeshBufferMemoryBudgetMB) * 1048576, HostMemoryTypeIndex);
 
 		// reserve pools for faster allocation
 		ShaderPools.reserve(std::numeric_limits<int16_t>::max());
@@ -401,6 +390,7 @@ bool UHGraphic::CreatePhysicalDevice()
 
 	// choose a suitable device
 	const VkPhysicalDeviceType TestDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+	std::string SelectedDeviceName;
 	for (uint32_t Idx = 0; Idx < DeviceCount; Idx++)
 	{
 		// use device properties 2
@@ -415,10 +405,7 @@ bool UHGraphic::CreatePhysicalDevice()
 			&& CheckDeviceExtension(Devices[Idx], DeviceExtensions))
 		{
 			PhysicalDevice = Devices[Idx];
-			std::wostringstream Msg;
-			Msg << L"Selected device: " << DeviceProperties.properties.deviceName << std::endl;
-			UHE_LOG(Msg.str());
-
+			SelectedDeviceName = DeviceProperties.properties.deviceName;
 			if (TestDeviceType == DeviceProperties.properties.deviceType)
 			{
 				break;
@@ -431,6 +418,10 @@ bool UHGraphic::CreatePhysicalDevice()
 		UHE_LOG(L"Failed to find a suitable GPU!\n");
 		return false;
 	}
+
+	std::wostringstream Msg;
+	Msg << L"Selected device: " << SelectedDeviceName.c_str() << std::endl;
+	UHE_LOG(Msg.str());
 
 	// request memory props after creation
 	vkGetPhysicalDeviceMemoryProperties(PhysicalDevice, &PhysicalDeviceMemoryProperties);
@@ -1704,6 +1695,16 @@ VkQueue UHGraphic::GetGraphicsQueue() const
 	return GraphicsQueue;
 }
 
+std::vector<uint32_t> UHGraphic::GetDeviceMemoryTypeIndices() const
+{
+	return DeviceMemoryTypeIndices;
+}
+
+uint32_t UHGraphic::GetHostMemoryTypeIndex() const
+{
+	return HostMemoryTypeIndex;
+}
+
 #if WITH_EDITOR
 uint32_t UHGraphic::GetMinImageCount() const
 {
@@ -1956,4 +1957,19 @@ bool UHGraphic::CreateSwapChain()
 #endif
 
 	return true;
+}
+
+std::vector<uint32_t> UHGraphic::GetMemoryTypeIndices(VkMemoryPropertyFlags InFlags) const
+{
+	std::vector<uint32_t> OutTypes;
+
+	for (uint32_t Idx = 0; Idx < PhysicalDeviceMemoryProperties.memoryTypeCount; Idx++)
+	{
+		if ((PhysicalDeviceMemoryProperties.memoryTypes[Idx].propertyFlags & InFlags) == InFlags)
+		{
+			OutTypes.push_back(Idx);
+		}
+	}
+
+	return OutTypes;
 }

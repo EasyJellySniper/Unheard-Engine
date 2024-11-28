@@ -78,7 +78,7 @@ public:
         VkMemoryAllocateInfo AllocInfo{};
         AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         AllocInfo.allocationSize = MemRequirements.size;
-        AllocInfo.memoryTypeIndex = UHUtilities::FindMemoryTypes(&DeviceMemoryProperties, MemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        AllocInfo.memoryTypeIndex = GetHostMemoryTypeIndex();
 
         VkMemoryAllocateFlagsInfo MemFlagInfo{};
         MemFlagInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
@@ -125,6 +125,7 @@ public:
         ElementCount = InElementCount;
         BufferStride = sizeof(T);
         BufferSize = InElementCount * BufferStride;
+        bIsShaderDeviceAddress = (InUsage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
         VkBufferCreateInfo bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -147,12 +148,7 @@ public:
         if (OffsetInSharedMemory == ~0)
         {
             bExceedSharedMemory = true;
-            static bool bIsExceedingMsgPrinted = false;
-            if (!bIsExceedingMsgPrinted)
-            {
-                UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
-                bIsExceedingMsgPrinted = true;
-            }
+            //UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
         }
 
         if (bExceedSharedMemory)
@@ -160,7 +156,7 @@ public:
             VkMemoryAllocateInfo AllocInfo{};
             AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             AllocInfo.allocationSize = MemRequirements.size;
-            AllocInfo.memoryTypeIndex = UHUtilities::FindMemoryTypes(&DeviceMemoryProperties, MemRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            AllocInfo.memoryTypeIndex = GetHostMemoryTypeIndex();
 
             VkMemoryAllocateFlagsInfo MemFlagInfo{};
             MemFlagInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
@@ -234,6 +230,12 @@ public:
     {
         if (OffsetInSharedMemory == ~0)
         {
+            // shared memory didn't allocate an address for this buffer (might be used up)
+            // fallback to regular upload
+            if (BufferMemory != nullptr)
+            {
+                UploadAllData(SrcData);
+            }
             return;
         }
 

@@ -20,10 +20,10 @@ public:
 	int32_t GetRefCount() const;
 
 protected:
+	uint32_t GetHostMemoryTypeIndex() const;
+
 	UHGraphic* GfxCache;
-	VkInstance VulkanInstance;
 	VkDevice LogicalDevice;
-	VkPhysicalDeviceMemoryProperties DeviceMemoryProperties;
 	int32_t IndexInPool;
 	int32_t ReferenceCount;
 };

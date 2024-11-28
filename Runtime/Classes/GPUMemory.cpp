@@ -1,6 +1,7 @@
 #include "GPUMemory.h"
 #include "Utility.h"
 #include "../../UnheardEngine.h"
+#include "Runtime/Engine/Graphic.h"
 
 UHGPUMemory::UHGPUMemory()
 	: MemoryBudgetByte(0)
@@ -18,6 +19,7 @@ void UHGPUMemory::Release()
 void UHGPUMemory::AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex)
 {
     MemoryBudgetByte = InBudget;
+    const VkPhysicalDeviceMemoryProperties& DeviceMemoryProperties = GfxCache->GetDeviceMemProps();
     if (MemoryBudgetByte > DeviceMemoryProperties.memoryHeaps[MemTypeIndex].size && DeviceMemoryProperties.memoryHeaps[MemTypeIndex].size != 0)
     {
         MemoryBudgetByte = DeviceMemoryProperties.memoryHeaps[MemTypeIndex].size;

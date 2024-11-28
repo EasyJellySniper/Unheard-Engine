@@ -196,11 +196,6 @@ namespace UHUtilities
 	void WriteStringVectorData(std::ofstream& FileOut, std::vector<std::string>& InVector);
 	void ReadStringVectorData(std::ifstream& FileIn, std::vector<std::string>& OutVector);
 
-	// find properties of a memory, mirror from Vulkan spec
-	int32_t FindMemoryTypes(const VkPhysicalDeviceMemoryProperties* MemoryProperties,
-		uint32_t MemoryTypeBitsRequirement,
-		VkMemoryPropertyFlags RequiredProperties);
-
 	std::string ToStringA(std::wstring InStringW);
 
 	std::wstring ToStringW(std::string InStringA);

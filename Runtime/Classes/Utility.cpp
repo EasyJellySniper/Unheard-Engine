@@ -64,30 +64,6 @@ namespace UHUtilities
 		}
 	}
 
-	// find properties of a memory, mirror from Vulkan spec
-	int32_t FindMemoryTypes(const VkPhysicalDeviceMemoryProperties* MemoryProperties,
-		uint32_t MemoryTypeBitsRequirement,
-		VkMemoryPropertyFlags RequiredProperties)
-	{
-		const uint32_t MemoryCount = MemoryProperties->memoryTypeCount;
-		for (uint32_t MemoryIndex = 0; MemoryIndex < MemoryCount; ++MemoryIndex)
-		{
-			const uint32_t MemoryTypeBits = (1 << MemoryIndex);
-			const bool bIsRequiredMemoryType = MemoryTypeBitsRequirement & MemoryTypeBits;
-
-			const VkMemoryPropertyFlags Properties =
-				MemoryProperties->memoryTypes[MemoryIndex].propertyFlags;
-			const bool bHasRequiredProperties =
-				(Properties & RequiredProperties) == RequiredProperties;
-
-			if (bIsRequiredMemoryType && bHasRequiredProperties)
-				return static_cast<int32_t>(MemoryIndex);
-		}
-
-		// failed to find memory type
-		return -1;
-	}
-
 	std::string ToStringA(std::wstring InStringW)
 	{
 		return std::filesystem::path(InStringW).string();

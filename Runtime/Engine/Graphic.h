@@ -264,6 +264,11 @@ public:
 	void EndOneTimeCmd(VkCommandBuffer InBuffer);
 	VkQueue GetGraphicsQueue() const;
 
+	// get memory type indices, there might have multiple heaps fit the input
+	// so returning multiple index and let resource try
+	std::vector<uint32_t> GetDeviceMemoryTypeIndices() const;
+	uint32_t GetHostMemoryTypeIndex() const;
+
 #if WITH_EDITOR
 	uint32_t GetMinImageCount() const;
 	bool RecreateImGui();
@@ -306,6 +311,9 @@ private:
 
 	// create swap chain
 	bool CreateSwapChain();
+
+	// get memory type indices (internal use)
+	std::vector<uint32_t> GetMemoryTypeIndices(VkMemoryPropertyFlags InFlags) const;
 
 
 	/** ====================================================== Variables ====================================================== **/
@@ -394,8 +402,10 @@ protected:
 	std::vector<UniquePtr<UHGPUQuery>> QueryPools;
 
 	// shared GPU memory
-	UniquePtr<UHGPUMemory> MeshBufferSharedMemory = nullptr;
-	UniquePtr<UHGPUMemory> ImageSharedMemory = nullptr;
+	UniquePtr<UHGPUMemory> MeshBufferSharedMemory;
+	UniquePtr<UHGPUMemory> ImageSharedMemory;
+	std::vector<uint32_t> DeviceMemoryTypeIndices;
+	uint32_t HostMemoryTypeIndex;
 
 #if WITH_EDITOR
 	uint32_t MinImageCount;
