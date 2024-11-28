@@ -129,8 +129,10 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 		// wait before new binding
 		GraphicInterface->WaitGPU();
 
-		uint32_t ViewMipLevel = 0;
-		DebugViewShader->GetDebugViewData()->UploadAllData(&ViewMipLevel);
+		UHDebugViewConstant DebugViewData;
+		DebugViewData.ViewMipLevel = 0;
+		DebugViewData.ViewAlpha = DebugViewIndex == 4;
+		DebugViewShader->GetDebugViewData()->UploadAllData(&DebugViewData);
 		DebugViewShader->BindParameters();
 
 		bDrawDebugViewRT = true;
@@ -138,6 +140,7 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			, GSceneDiffuse
 			, GSceneNormal
 			, GSceneMaterial
+			, GSceneMaterial // for alpha channel
 			, GSceneDepth
 			, GMotionVectorRT
 			, GSceneMip

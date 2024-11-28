@@ -13,7 +13,7 @@ UHDebugViewShader::UHDebugViewShader(UHGraphic* InGfx, std::string Name, VkRende
 	CreateLayoutAndDescriptor();
 	OnCompile();
 
-	DebugViewData = Gfx->RequestRenderBuffer<uint32_t>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "DebugViewData");
+	DebugViewData = Gfx->RequestRenderBuffer<UHDebugViewConstant>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "DebugViewData");
 }
 
 void UHDebugViewShader::Release()
@@ -51,7 +51,7 @@ void UHDebugViewShader::BindParameters()
 	BindSampler(GPointClampedSampler, 2);
 }
 
-UHRenderBuffer<uint32_t>* UHDebugViewShader::GetDebugViewData() const
+UHRenderBuffer<UHDebugViewConstant>* UHDebugViewShader::GetDebugViewData() const
 {
 	return DebugViewData.get();
 }

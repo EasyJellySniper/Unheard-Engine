@@ -125,7 +125,8 @@ void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
     const std::vector<int32_t> ViewModeMenuIDs = { ID_VIEWMODE_FULLLIT
         , ID_VIEWMODE_DIFFUSE
         , ID_VIEWMODE_NORMAL
-        , ID_VIEWMODE_PBR
+        , ID_VIEWMODE_SPECULAR
+        , ID_VIEWMODE_SMOOTHNESS
         , ID_VIEWMODE_DEPTH
         , ID_VIEWMODE_MOTION
         , ID_VIEWMODE_VERTEXNORMALMIP

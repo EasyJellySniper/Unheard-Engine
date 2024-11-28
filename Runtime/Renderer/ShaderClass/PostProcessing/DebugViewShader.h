@@ -2,6 +2,12 @@
 #include "../ShaderClass.h"
 
 #if WITH_EDITOR
+struct UHDebugViewConstant
+{
+	uint32_t ViewMipLevel;
+	uint32_t ViewAlpha;
+};
+
 class UHDebugViewShader : public UHShaderClass
 {
 public:
@@ -10,9 +16,9 @@ public:
 	virtual void OnCompile() override;
 
 	void BindParameters();
-	UHRenderBuffer<uint32_t>* GetDebugViewData() const;
+	UHRenderBuffer<UHDebugViewConstant>* GetDebugViewData() const;
 
 private:
-	UniquePtr<UHRenderBuffer<uint32_t>> DebugViewData;
+	UniquePtr<UHRenderBuffer<UHDebugViewConstant>> DebugViewData;
 };
 #endif

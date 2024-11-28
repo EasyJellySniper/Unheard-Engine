@@ -28,15 +28,10 @@ float3 SchlickFresnel(float3 R0, float LdotH)
 // blinn phong
 float BlinnPhong(float M, float NdotH)
 {
-    if (M == 0.0f)
-    {
-        return 0.0f;
-    }
-    
-    M *= 256.0f;
-    float N = (M + 16.0f) / 16.0f;
-
-    return pow(NdotH, M) * N;
+    float M4 = M * M * M * M;
+    M4 *= 256.0f;
+    M4 = max(M4, 0.00001f);
+    return (M4 + 4.0f) * pow(NdotH, M4) / 4.0f;
 }
 
 float3 LightBRDF(UHLightInfo LightInfo)

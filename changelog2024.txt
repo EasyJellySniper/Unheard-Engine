@@ -304,3 +304,8 @@ Issues by far:
 Fixed HW occlusion issue for low-end AMD GPU.
 Fixed mesh shader issue for low-end AMD GPU, somehow the early return causes TDR for AMD integrated GPU.
 The workaround is to make it output indices before early return..not the best solution but better than nothing.
+
+28-11-2024:
+Find the AMD workaround causes NV card issues lol. 
+So I made another improvement again and should consider moving culling stuff from mesh shader to amplification shader someday.
+Made specular calculation better. Separated specular/smoothness debug view, otherwise I couldn't debug alpha channel of a render texture.

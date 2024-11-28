@@ -62,7 +62,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     LightInfo.Normal = Normal;
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
-    LightInfo.SpecularNoise = AttenNoise * 0.1f;
+    LightInfo.SpecularNoise = AttenNoise * lerp(0.5f, 0.02f, Specular.a);
 	
 	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{
