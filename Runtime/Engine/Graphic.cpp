@@ -25,7 +25,6 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bEnableRayTracing(InConfig->RenderingSetting().bEnableRayTracing)
 	, bSupportHDR(false)
 	, bSupport24BitDepth(true)
-	, bIsAMDIntegratedGPU(false)
 	, bSupportMeshShader(false)
 #if WITH_EDITOR
 	, ImGuiDescriptorPool(nullptr)
@@ -419,9 +418,6 @@ bool UHGraphic::CreatePhysicalDevice()
 			std::wostringstream Msg;
 			Msg << L"Selected device: " << DeviceProperties.properties.deviceName << std::endl;
 			UHE_LOG(Msg.str());
-
-			const std::string DeviceName = DeviceProperties.properties.deviceName;
-			bIsAMDIntegratedGPU = DeviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU && UHUtilities::StringFind(DeviceName, "AMD");
 
 			if (TestDeviceType == DeviceProperties.properties.deviceType)
 			{
@@ -1597,11 +1593,6 @@ bool UHGraphic::IsHDRAvailable() const
 bool UHGraphic::Is24BitDepthSupported() const
 {
 	return bSupport24BitDepth;
-}
-
-bool UHGraphic::IsAMDIntegratedGPU() const
-{
-	return bIsAMDIntegratedGPU;
 }
 
 bool UHGraphic::IsMeshShaderSupported() const

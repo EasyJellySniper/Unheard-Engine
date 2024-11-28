@@ -461,10 +461,6 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 	// motion pass shader
 	MotionCameraShader = MakeUnique<UHMotionCameraPassShader>(GraphicInterface, "MotionCameraPassShader", MotionCameraPassObj.RenderPass);
-	if (GraphicInterface->IsAMDIntegratedGPU())
-	{
-		MotionCameraWorkaroundShader = MakeUnique<UHMotionCameraPassShader>(GraphicInterface, "MotionCameraWorkaroundShader", MotionOpaquePassObj.RenderPass);
-	}
 
 	// post processing shaders
 	TemporalAAShader = MakeUnique<UHTemporalAAShader>(GraphicInterface, "TemporalAAShader");
@@ -581,10 +577,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	// ------------------------------------------------ motion pass descriptor update
 	MotionCameraShader->BindParameters();
-	if (MotionCameraWorkaroundShader)
-	{
-		MotionCameraWorkaroundShader->BindParameters();
-	}
 
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
@@ -734,7 +726,6 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	SkyPassShader->Release();
 	SH9Shader->Release();
 	MotionCameraShader->Release();
-	UH_SAFE_RELEASE(MotionCameraWorkaroundShader);
 	TemporalAAShader->Release();
 	ToneMapShader->Release();
 	GaussianFilterHShader->Release();
@@ -780,7 +771,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	const UHTextureFormat HistoryResultFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
 	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_R16_UNORM;
 	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UHTextureFormat::UH_FORMAT_X8_D24 : UHTextureFormat::UH_FORMAT_D32F;
-	const UHTextureFormat HDRFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
 	const UHTextureFormat MotionFormat = UHTextureFormat::UH_FORMAT_RG16F;
 	const UHTextureFormat MaskFormat = UHTextureFormat::UH_FORMAT_R8_UNORM;
 

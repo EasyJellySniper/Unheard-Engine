@@ -296,16 +296,6 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	RenderBuilder.SetViewport(RenderResolution);
 	RenderBuilder.SetScissor(RenderResolution);
 
-	if (GraphicInterface->IsAMDIntegratedGPU() && ThreadIdx == 0)
-	{
-		// draw camera motion again for a bug on AMD integreated GPUs
-		UHGraphicState* State = MotionCameraWorkaroundShader->GetState();
-		RenderBuilder.BindGraphicState(State);
-		RenderBuilder.BindDescriptorSet(MotionCameraWorkaroundShader->GetPipelineLayout(), MotionCameraWorkaroundShader->GetDescriptorSet(CurrentFrameRT));
-		RenderBuilder.BindVertexBuffer(nullptr);
-		RenderBuilder.DrawFullScreenQuad();
-	}
-
 	// bind texture table, they should only be bound once
 	if (MotionOpaqueShaders.size() > 0)
 	{

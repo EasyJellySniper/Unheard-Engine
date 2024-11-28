@@ -246,7 +246,6 @@ public:
 	bool IsDebugLayerEnabled() const;
 	bool IsHDRAvailable() const;
 	bool Is24BitDepthSupported() const;
-	bool IsAMDIntegratedGPU() const;
 	bool IsMeshShaderSupported() const;
 
 	// get all samplers
@@ -380,7 +379,6 @@ private:
 	bool bEnableRayTracing;
 	bool bSupportHDR;
 	bool bSupport24BitDepth;
-	bool bIsAMDIntegratedGPU;
 	bool bSupportMeshShader;
 	std::mutex Mutex;
 

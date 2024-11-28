@@ -331,7 +331,6 @@ private:
 	// -------------------------------------------- Motion vector Pass -------------------------------------------- //
 	UHRenderPassObject MotionCameraPassObj;
 	UniquePtr<UHMotionCameraPassShader> MotionCameraShader;
-	UniquePtr<UHMotionCameraPassShader> MotionCameraWorkaroundShader;
 
 	// store different motion pass object, thd id is buffer data index(per renderer)
 	// the motion shader is separate into opaque and translucent

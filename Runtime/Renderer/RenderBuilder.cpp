@@ -475,10 +475,9 @@ void UHRenderBuilder::ResourceBarrier(VkBuffer InBuffer, const uint64_t BufferSi
 // ResourceBarrier: Can push different textures and layouts at once
 void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
 {
-	// for amd integrated gpu, vkCmdPipelineBarrier2 won't work well
-	// fallback to old transition method in such circumstance
+	// flag to fallback to old resource barrier, for debug only
 	const bool bFallbackToOldResourceBarrier = false;
-	if (Gfx->IsAMDIntegratedGPU() || bFallbackToOldResourceBarrier)
+	if (bFallbackToOldResourceBarrier)
 	{
 		ResourceBarrier(InBarrier.Texture, InBarrier.Texture->GetImageLayout(InBarrier.BaseMipLevel), InBarrier.NewLayout, InBarrier.BaseMipLevel);
 		return;
@@ -489,7 +488,7 @@ void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
 
 void UHRenderBuilder::FlushResourceBarrier()
 {
-	if (ImageBarriers.size() == 0 || Gfx->IsAMDIntegratedGPU())
+	if (ImageBarriers.size() == 0)
 	{
 		return;
 	}
@@ -504,8 +503,9 @@ void UHRenderBuilder::FlushResourceBarrier()
 		VkImageMemoryBarrier2 TempBarrier{};
 		TempBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 
-		// old layout must be undefined
-		TempBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		// old layout must be properly set.
+		auto OldLayout = ImageBarriers[Idx].Texture->GetImageLayout(ImageBarriers[Idx].BaseMipLevel);
+		TempBarrier.oldLayout = OldLayout;
 		TempBarrier.newLayout = ImageBarriers[Idx].NewLayout;
 		TempBarrier.srcAccessMask = LayoutToAccessFlags[TempBarrier.oldLayout];
 		TempBarrier.dstAccessMask = LayoutToAccessFlags[TempBarrier.newLayout];
