@@ -43,6 +43,11 @@ void UHGPUMemory::AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex)
     }
 }
 
+void UHGPUMemory::Reset()
+{
+    CurrentOffset = 0;
+}
+
 uint64_t UHGPUMemory::BindMemory(uint64_t InSize, uint64_t InAlignment, VkBuffer InBuffer)
 {
     // make the size is always the multiple of alignment

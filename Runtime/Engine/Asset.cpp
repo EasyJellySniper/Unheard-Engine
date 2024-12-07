@@ -27,7 +27,44 @@ UHAssetManager::UHAssetManager()
 	BuiltInCube.Export(GBuiltInMeshAssetPath, false);
 
 	AssetMgrEditorOnly = this;
+#else
+	// load asset map during launch for release
+	std::ifstream FileIn(GAssetPath + GAssetMapName, std::ios::in | std::ios::binary);
+	if (FileIn.is_open())
+	{
+		size_t NumAssets;
+		FileIn.read(reinterpret_cast<char*>(&NumAssets), sizeof(NumAssets));
+
+		AllAssetsMap.resize(NumAssets);
+		for (size_t Idx = 0; Idx < NumAssets; Idx++)
+		{
+			FileIn.read(reinterpret_cast<char*>(&AllAssetsMap[Idx].AssetUUid), sizeof(AllAssetsMap[Idx].AssetUUid));
+			UHUtilities::ReadStringData(FileIn, AllAssetsMap[Idx].FilePath);
+		}
+	}
+	FileIn.close();
 #endif
+
+	GfxCache = nullptr;
+}
+
+void UHAssetManager::SetGfxCache(UHGraphic* InGfx)
+{
+	GfxCache = InGfx;
+}
+
+void UHAssetManager::ImportBuiltInAssets()
+{
+	// import all built in assets
+	std::filesystem::create_directories(GBuiltInMeshAssetPath);
+	for (std::filesystem::recursive_directory_iterator Idx(GBuiltInMeshAssetPath), end; Idx != end; Idx++)
+	{
+		if (std::filesystem::is_directory(Idx->path()))
+		{
+			continue;
+		}
+		ImportAsset(Idx->path());
+	}
 }
 
 void UHAssetManager::Release()
@@ -39,56 +76,31 @@ void UHAssetManager::Release()
 		{
 			Mesh->ReleaseCPUMeshData();
 			Mesh->Release();
-			Mesh.reset();
 		}
 	}
 
-#if WITH_EDITOR
-	// write shader include cache when exitng
-	UHShaderImporterInterface->WriteShaderIncludeCache();
-	UHShaderImporterInterface.reset();
-	UHMaterialImporterInterface.reset();
-	AssetMgrEditorOnly = nullptr;
-#endif
+	for (UHTexture2D* Tex : UHTexture2Ds)
+	{
+		GfxCache->RequestReleaseTexture2D(Tex);
+	}
+
+	for (UHTextureCube* Cube : UHCubemaps)
+	{
+		GfxCache->RequestReleaseTextureCube(Cube);
+	}
+
+	for (UHMaterial* Mat : UHMaterialsCache)
+	{
+		GfxCache->RequestReleaseMaterial(Mat);
+	}
+
+	for (UHAssetMap& Map : AllAssetsMap)
+	{
+		Map.Asset = nullptr;
+	}
 
 	// container cleanup
-	UHMeshes.clear();
-	UHMeshesCache.clear();
-	UHMaterialsCache.clear();
-	UHTexture2Ds.clear();
-}
-
-void UHAssetManager::ImportMeshes()
-{
-	// import UHMeshes
-	if (!std::filesystem::exists(GMeshAssetFolder))
-	{
-		std::filesystem::create_directories(GMeshAssetFolder);
-	}
-
-	for (std::filesystem::recursive_directory_iterator Idx(GMeshAssetFolder.c_str()), end; Idx != end; Idx++)
-	{
-		// skip directory
-		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GMeshAssetExtension)
-		{
-			continue;
-		}
-
-		// try to import UHMesh, transfer to list if it's loaded successfully
-		UniquePtr<UHMesh> LoadedMesh = MakeUnique<UHMesh>();
-		if (LoadedMesh->Import(Idx->path()))
-		{
-			UHMeshes.push_back(std::move(LoadedMesh));
-		}
-	}
-
-	// initialize the cache list as well
-	UHMeshesCache.resize(UHMeshes.size());
-	for (size_t Idx = 0; Idx < UHMeshesCache.size(); Idx++)
-	{
-		UHMeshesCache[Idx] = UHMeshes[Idx].get();
-		AllAssets.push_back(UHMeshes[Idx].get());
-	}
+	ClearAssetCaches();
 }
 
 void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
@@ -128,83 +140,110 @@ void UHAssetManager::CompileShader(std::string InShaderName, std::filesystem::pa
 #endif
 }
 
-void UHAssetManager::ImportTextures(UHGraphic* InGfx)
+void UHAssetManager::ClearAssetCaches()
 {
-	// the same as mesh, import raw textures first, then UH texture
-	if (!std::filesystem::exists(GTextureAssetFolder))
-	{
-		std::filesystem::create_directories(GTextureAssetFolder);
-	}
-
-	// load UH textures from asset folder
-	for (std::filesystem::recursive_directory_iterator Idx(GTextureAssetFolder.c_str()), end; Idx != end; Idx++)
-	{
-		// skip directory & wrong formats
-		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GTextureAssetExtension)
-		{
-			continue;
-		}
-
-		UniquePtr<UHTexture2D> LoadedTex = MakeUnique<UHTexture2D>();
-		if (LoadedTex->Import(Idx->path()))
-		{
-			// import successfully, request texture 2d from GFX
-			UHTexture2D* NewTex = InGfx->RequestTexture2D(LoadedTex, true);
-			UHTexture2Ds.push_back(NewTex);
-			AllAssets.push_back(NewTex);
-		}
-	}
+	UHMeshes.clear();
+	UHMeshesCache.clear();
+	UHMaterialsCache.clear();
+	UHTexture2Ds.clear();
+	ReferencedTexture2Ds.clear();
+	UHCubemaps.clear();
 }
 
-void UHAssetManager::ImportCubemaps(UHGraphic* InGfx)
+UHObject* UHAssetManager::ImportMesh(std::filesystem::path InPath)
 {
-	if (!std::filesystem::exists(GTextureAssetFolder))
-	{
-		std::filesystem::create_directories(GTextureAssetFolder);
-	}
+	UHObject* Result = nullptr;
+	UniquePtr<UHMesh> LoadedMesh = MakeUnique<UHMesh>();
 
-	// load UH cubes from asset folder
-	for (std::filesystem::recursive_directory_iterator Idx(GTextureAssetFolder.c_str()), end; Idx != end; Idx++)
+	if (LoadedMesh->Import(InPath))
 	{
-		// skip directory
-		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GCubemapAssetExtension)
+		UHMeshesCache.push_back(LoadedMesh.get());
+		if (GIsEditor)
 		{
-			continue;
+			AllAssetsMap.push_back(UHAssetMap(LoadedMesh.get(), InPath.string()));
 		}
 
-		UniquePtr<UHTextureCube> LoadedCube = MakeUnique<UHTextureCube>();
-		if (LoadedCube->Import(Idx->path()))
-		{
-			// import successfully, request texture cube from GFX
-			UHTextureInfo Info{};
-			Info.Format = LoadedCube->GetFormat();
-			Info.Extent = LoadedCube->GetExtent();
-
-			UHTextureCube* NewCube = InGfx->RequestTextureCube(LoadedCube);
-			UHCubemaps.push_back(NewCube);
-			AllAssets.push_back(NewCube);
-		}
+		Result = LoadedMesh.get();
+		UHMeshes.push_back(std::move(LoadedMesh));
 	}
+
+	return Result;
 }
 
-void UHAssetManager::ImportMaterials(UHGraphic* InGfx)
+UHObject* UHAssetManager::ImportTexture(std::filesystem::path InPath)
 {
-	// load all UHMaterials under asset folder
-	if (!std::filesystem::exists(GMaterialAssetPath))
-	{
-		std::filesystem::create_directories(GMaterialAssetPath);
-	}
+	UHObject* Result = nullptr;
+	UniquePtr<UHTexture2D> LoadedTex = MakeUnique<UHTexture2D>();
 
-	for (std::filesystem::recursive_directory_iterator Idx(GMaterialAssetPath.c_str()), end; Idx != end; Idx++)
+	if (LoadedTex->Import(InPath))
 	{
-		// skip directory
-		if (std::filesystem::is_directory(Idx->path()) || Idx->path().extension().string() != GMaterialAssetExtension)
+		// import successfully, request texture 2d from GFX
+		UHTexture2D* NewTex = GfxCache->RequestTexture2D(LoadedTex, true);
+		UHTexture2Ds.push_back(NewTex);
+		if (GIsEditor)
 		{
-			continue;
+			AllAssetsMap.push_back(UHAssetMap(NewTex, InPath.string()));
 		}
 
-		AddImportedMaterial(InGfx, Idx->path());
+		Result = NewTex;
 	}
+
+	return Result;
+}
+
+UHObject* UHAssetManager::ImportCubemap(std::filesystem::path InPath)
+{
+	UHObject* Result = nullptr;
+	UniquePtr<UHTextureCube> LoadedCube = MakeUnique<UHTextureCube>();
+
+	if (LoadedCube->Import(InPath))
+	{
+		// import successfully, request texture cube from GFX
+		UHTextureInfo Info{};
+		Info.Format = LoadedCube->GetFormat();
+		Info.Extent = LoadedCube->GetExtent();
+
+		UHTextureCube* NewCube = GfxCache->RequestTextureCube(LoadedCube);
+		UHCubemaps.push_back(NewCube);
+		if (GIsEditor)
+		{
+			AllAssetsMap.push_back(UHAssetMap(NewCube, InPath.string()));
+		}
+
+		Result = NewCube;
+	}
+
+	return Result;
+}
+
+UHObject* UHAssetManager::ImportMaterial(std::filesystem::path InPath)
+{
+	return AddImportedMaterial(InPath);
+}
+
+UHObject* UHAssetManager::ImportAsset(std::filesystem::path InPath)
+{
+	UHObject* Result = nullptr;
+	const std::string Extension = InPath.extension().string();
+
+	if (Extension == GMeshAssetExtension)
+	{
+		Result = ImportMesh(InPath);
+	}
+	else if (Extension == GTextureAssetExtension)
+	{
+		Result = ImportTexture(InPath);
+	}
+	else if (Extension == GCubemapAssetExtension)
+	{
+		Result = ImportCubemap(InPath);
+	}
+	else if (Extension == GMaterialAssetExtension)
+	{
+		Result = ImportMaterial(InPath);
+	}
+
+	return Result;
 }
 
 void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
@@ -355,30 +394,125 @@ UHMesh* UHAssetManager::GetMesh(std::string InName) const
 	return nullptr;
 }
 
-UHObject* UHAssetManager::GetAsset(UUID InAssetUuid) const
+UHObject* UHAssetManager::GetAsset(UUID InAssetUuid)
 {
-	for (UHObject* Obj : AllAssets)
+	for (UHAssetMap& AssetMap : AllAssetsMap)
 	{
-		if (Obj->GetRuntimeGuid() == InAssetUuid)
+		if (AssetMap.AssetUUid == InAssetUuid)
 		{
-			return Obj;
+			if (AssetMap.Asset != nullptr)
+			{
+				// safely get the object if it's created already
+				UHObject* Obj = SafeGetObjectFromTable<UHObject>(AssetMap.Asset->GetId());
+				if (Obj && Obj->GetRuntimeGuid() == InAssetUuid)
+				{
+					return Obj;
+				}
+			}
+			else
+			{
+				// load asset if not found and cache in the asset map
+				UHObject* Obj = ImportAsset(AssetMap.FilePath);
+				AssetMap.Asset = Obj;
+				return Obj;
+			}
 		}
 	}
 
 	return nullptr;
 }
 
-void UHAssetManager::AddImportedMaterial(UHGraphic* InGfx, std::filesystem::path InPath)
+UHObject* UHAssetManager::GetAsset(std::string InPath)
 {
-	UHMaterial* Mat = InGfx->RequestMaterial(InPath);
+	for (UHAssetMap& AssetMap : AllAssetsMap)
+	{
+		if (std::filesystem::path(AssetMap.FilePath) == std::filesystem::path(InPath))
+		{
+			if (AssetMap.Asset != nullptr)
+			{
+				// safely get the object if it's created already
+				UHObject* Obj = SafeGetObjectFromTable<UHObject>(AssetMap.Asset->GetId());
+				if (Obj && Obj->GetRuntimeGuid() == AssetMap.AssetUUid)
+				{
+					return Obj;
+				}
+			}
+			else
+			{
+				// load asset if not found and cache in the asset map
+				UHObject* Obj = ImportAsset(AssetMap.FilePath);
+				AssetMap.Asset = Obj;
+				return Obj;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+UHObject* UHAssetManager::AddImportedMaterial(std::filesystem::path InPath)
+{
+	UHObject* Result = nullptr;
+	UHMaterial* Mat = GfxCache->RequestMaterial(InPath);
+
 	if (Mat)
 	{
+		// it's also important to update the texture references after material is imported
+		for (const std::string& TextureName : Mat->GetRegisteredTextureNames())
+		{
+			GetAsset(GTextureAssetFolder + TextureName + GTextureAssetExtension);
+		}
+		MapTextureIndex(Mat);
+
 		UHMaterialsCache.push_back(Mat);
-		AllAssets.push_back(Mat);
+		if (GIsEditor)
+		{
+			AllAssetsMap.push_back(UHAssetMap(Mat, InPath.string()));
+		}
+
+		Result = Mat;
 	}
+
+	return Result;
 }
 
 #if WITH_EDITOR
+void UHAssetManager::ImportAssets()
+{
+	std::filesystem::create_directories(GMeshAssetFolder);
+	std::filesystem::create_directories(GTextureAssetFolder);
+	std::filesystem::create_directories(GMaterialAssetPath);
+
+	ClearAssetCaches();
+	AllAssetsMap.clear();
+
+	for (std::filesystem::recursive_directory_iterator Idx(GAssetPath), end; Idx != end; Idx++)
+	{
+		// skip directory
+		if (std::filesystem::is_directory(Idx->path()))
+		{
+			continue;
+		}
+
+		// load corresponding asset based on file type
+		ImportAsset(Idx->path());
+	}
+
+	// output asset map after import all
+	std::ofstream FileOut(GAssetPath + GAssetMapName, std::ios::out | std::ios::binary);
+
+	size_t NumAssets = AllAssetsMap.size();
+	FileOut.write(reinterpret_cast<const char*>(&NumAssets), sizeof(NumAssets));
+
+	for (size_t Idx = 0; Idx < NumAssets; Idx++)
+	{
+		FileOut.write(reinterpret_cast<const char*>(&AllAssetsMap[Idx].AssetUUid), sizeof(AllAssetsMap[Idx].AssetUUid));
+		UHUtilities::WriteStringData(FileOut, AllAssetsMap[Idx].FilePath);
+	}
+
+	FileOut.close();
+}
+
 void UHAssetManager::AddTexture2D(UHTexture2D* InTexture2D)
 {
 	if (!UHUtilities::FindByElement(UHTexture2Ds, InTexture2D))
@@ -434,23 +568,4 @@ void UHAssetManager::AddCubemap(UHTextureCube* InCube)
 {
 	UHCubemaps.push_back(InCube);
 }
-
-void UHAssetManager::RemoveCubemap(UHTextureCube* InCube)
-{
-	const int32_t Index = UHUtilities::FindIndex(UHCubemaps, InCube);
-	if (Index != UHINDEXNONE)
-	{
-		UHUtilities::RemoveByIndex(UHCubemaps, Index);
-	}
-	RemoveFromAssetList(InCube);
-}
 #endif
-
-void UHAssetManager::RemoveFromAssetList(UHObject* InObj)
-{
-	const int32_t Index = UHUtilities::FindIndex(AllAssets, InObj);
-	if (Index != UHINDEXNONE)
-	{
-		UHUtilities::RemoveByIndex(AllAssets, Index);
-	}
-}

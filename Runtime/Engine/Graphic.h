@@ -152,6 +152,7 @@ public:
 	// request a managed material
 	UHMaterial* RequestMaterial();
 	UHMaterial* RequestMaterial(std::filesystem::path InPath);
+	void RequestReleaseMaterial(UHMaterial* InMat);
 
 	// request a unique render buffer, due to the template, this can not be managed by Graphic class
 	template<typename T>

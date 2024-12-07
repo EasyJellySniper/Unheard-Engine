@@ -44,4 +44,5 @@ private:
 	float TimeSign;
 	UHDemoType TestType;
 	float PointLightTimeCounter;
+	UHEngine* EngineCache;
 };

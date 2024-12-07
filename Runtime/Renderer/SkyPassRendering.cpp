@@ -87,9 +87,9 @@ void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.BindDescriptorSet(SkyPassShader->GetPipelineLayout(), SkyPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw skybox renderer
-		RenderBuilder.BindVertexBuffer(SkyMeshRT->GetPositionBuffer()->GetBuffer());
-		RenderBuilder.BindIndexBuffer(SkyMeshRT);
-		RenderBuilder.DrawIndexed(SkyMeshRT->GetIndicesCount());
+		RenderBuilder.BindVertexBuffer(CubeMesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(CubeMesh);
+		RenderBuilder.DrawIndexed(CubeMesh->GetIndicesCount());
 
 		RenderBuilder.EndRenderPass();
 		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

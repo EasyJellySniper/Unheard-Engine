@@ -85,11 +85,14 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 		return false;
 	}
 
-	// import assets, texture needs graphic interface
-	UHEAsset->ImportTextures(UHEGraphic.get());
-	UHEAsset->ImportCubemaps(UHEGraphic.get());
-	UHEAsset->ImportMeshes();
-	UHEAsset->ImportMaterials(UHEGraphic.get());
+	UHEAsset->SetGfxCache(UHEGraphic.get());
+
+#if WITH_EDITOR
+	// import assets for editor
+	UHEAsset->ImportAssets();
+#else
+	UHEAsset->ImportBuiltInAssets();
+#endif
 
 	// init input 
 	UHERawInput = MakeUnique<UHRawInput>();
@@ -135,26 +138,6 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	// show window at the end of initialization
 	UHEConfig->ApplyPresentationSettings(UHEngineWindow);
 	UHEConfig->ApplyWindowStyle(UHWindowInstance, UHEngineWindow);
-
-	// @TODO: Think better release workflow
-#if WITH_RELEASE
-	// release all CPU data for texture/meshes for ship build
-	// they should be uploaded to GPU at this point
-	for (UHTexture2D* Tex : UHEAsset->GetTexture2Ds())
-	{
-		Tex->ReleaseCPUTextureData();
-}
-
-	for (UHTextureCube* Cube : UHEAsset->GetCubemaps())
-	{
-		Cube->ReleaseCPUData();
-	}
-
-	for (UHMesh* Mesh : UHEAsset->GetUHMeshes())
-	{
-		Mesh->ReleaseCPUMeshData();
-	}
-#endif
 
 	FramerateLimitThread = MakeUnique<UHThread>();
 	FramerateLimitThread->BeginThread(std::thread(&UHEngine::LimitFramerate, this));
@@ -233,9 +216,10 @@ void UHEngine::Update()
 	CurrentScene->Update();
 
 	// wait previous render task done before new updates
-#if WITH_RELEASE
-	UHERenderer->WaitPreviousRenderTask();
-#endif
+	if (GIsShipping)
+	{
+		UHERenderer->WaitPreviousRenderTask();
+	}
 
 	if (EngineResizeReason != UHEngineResizeReason::NotResizing)
 	{
@@ -342,9 +326,11 @@ UHDeferredShadingRenderer* UHEngine::GetSceneRenderer() const
 
 void UHEngine::BeginFPSLimiter()
 {
-#if WITH_RELEASE
-	FramerateLimitThread->WaitTask();
-#endif
+	if (GIsShipping)
+	{
+		FramerateLimitThread->WaitTask();
+	}
+
 	FrameBeginTime = UHEGameTimer->GetTime();
 }
 
@@ -374,9 +360,10 @@ void UHEngine::EndFPSLimiter()
 		WaitDurationMS = (DesiredDuration - Duration) * 1000.0f;
 
 		FramerateLimitThread->WakeThread();
-#if WITH_EDITOR
-		FramerateLimitThread->WaitTask();
-#endif
+		if (GIsEditor)
+		{
+			FramerateLimitThread->WaitTask();
+		}
 	}
 }
 
@@ -441,6 +428,17 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 	// wait all previous rendering done
 	UHERenderer->WaitPreviousRenderTask();
 	UHEGraphic->WaitGPU();
+	UH_SAFE_RELEASE(UHERenderer);
+
+	// release assets of previous map for re-import
+	// and also reset the shared memory
+	if (GIsShipping)
+	{
+		UHEAsset->Release();
+		UHEAsset->ImportBuiltInAssets();
+		UHEGraphic->GetImageSharedMemory()->Reset();
+		UHEGraphic->GetMeshSharedMemory()->Reset();
+	}
 
 	// recreate scene when loading
 	UH_SAFE_RELEASE(CurrentScene);
@@ -456,11 +454,11 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 	CurrentScene->Initialize(this);
 
 	// re-initialize renderer
-	UH_SAFE_RELEASE(UHERenderer);
 	if (!UHERenderer->Initialize(CurrentScene.get()))
 	{
 		UHE_LOG(L"Can't initialize renderer class!\n");
 	}
+	UHERenderer->InitRenderingResources();
 
 #if WITH_EDITOR
 	UHEEditor->RefreshWorldDialog();

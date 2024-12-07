@@ -11,22 +11,42 @@
 
 class UHGraphic;
 
+struct UHAssetMap
+{
+	UHAssetMap() 
+		: Asset(nullptr)
+		, AssetUUid(UUID())
+	{
+	}
+
+	UHAssetMap(UHObject* InObj, std::string InPath)
+		: AssetUUid(InObj->GetRuntimeGuid())
+		, FilePath(InPath)
+		, Asset(InObj)
+	{
+
+	}
+
+	UUID AssetUUid;
+	std::string FilePath;
+	UHObject* Asset;
+};
+
 // asset manager class in UH
 class UHAssetManager
 {
 public:
 	UHAssetManager();
+	void SetGfxCache(UHGraphic* InGfx);
+	void ImportBuiltInAssets();
 	void Release();
-	void ImportMeshes();
 
 	void TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
 		, std::vector<std::string> Defines, std::filesystem::path& OutputShaderPath);
 	void CompileShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
 		, std::vector<std::string> Defines);
 
-	void ImportTextures(UHGraphic* InGfx);
-	void ImportCubemaps(UHGraphic* InGfx);
-	void ImportMaterials(UHGraphic* InGfx);
+	UHObject* ImportAsset(std::filesystem::path InPath);
 	void MapTextureIndex(UHMaterial* InMat);
 
 	const std::vector<UHMesh*>& GetUHMeshes() const;
@@ -44,10 +64,12 @@ public:
 	UHMesh* GetMesh(std::string InName) const;
 
 	// general function for getting an asset, caller is responsible for type cast
-	UHObject* GetAsset(UUID InAssetUuid) const;
-	void AddImportedMaterial(UHGraphic* InGfx, std::filesystem::path InPath);
+	UHObject* GetAsset(UUID InAssetUuid);
+	UHObject* GetAsset(std::string InPath);
+	UHObject* AddImportedMaterial(std::filesystem::path InPath);
 
 #if WITH_EDITOR
+	void ImportAssets();
 	void AddTexture2D(UHTexture2D* InTexture2D);
 	void AddImportedMesh(UniquePtr<UHMesh>& InMesh);
 
@@ -56,11 +78,14 @@ public:
 	static std::string FindTexturePathName(std::string InName);
 
 	void AddCubemap(UHTextureCube* InCube);
-	void RemoveCubemap(UHTextureCube* InCube);
 #endif
 
 private:
-	void RemoveFromAssetList(UHObject* InObj);
+	void ClearAssetCaches();
+	UHObject* ImportMesh(std::filesystem::path InPath);
+	UHObject* ImportTexture(std::filesystem::path InPath);
+	UHObject* ImportCubemap(std::filesystem::path InPath);
+	UHObject* ImportMaterial(std::filesystem::path InPath);
 
 	// loaded meshes
 	std::vector<UniquePtr<UHMesh>> UHMeshes;
@@ -78,6 +103,8 @@ private:
 	static UHAssetManager* AssetMgrEditorOnly;
 #endif
 
+	UHGraphic* GfxCache;
+
 	// loaded & cached UH materials
 	std::vector<UHMaterial*> UHMaterialsCache;
 
@@ -87,5 +114,5 @@ private:
 	std::vector<UHTextureCube*> UHCubemaps;
 
 	// general list for looking up
-	std::vector<UHObject*> AllAssets;
+	std::vector<UHAssetMap> AllAssetsMap;
 };

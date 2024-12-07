@@ -40,9 +40,10 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_get_physical_device_properties2"
 		, "VK_EXT_swapchain_colorspace" };
 
-#if WITH_EDITOR
-	InstanceExtensions.push_back("VK_EXT_debug_utils");
-#endif
+	if (GIsEditor)
+	{
+		InstanceExtensions.push_back("VK_EXT_debug_utils");
+	}
 
 	DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		, "VK_EXT_full_screen_exclusive"
@@ -70,11 +71,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 // init graphics
 bool UHGraphic::InitGraphics(HWND Hwnd)
 {
-#if WITH_EDITOR
-	bUseValidationLayers = ConfigInterface->RenderingSetting().bEnableLayerValidation;
-#else
-	bUseValidationLayers = false;
-#endif
+	bUseValidationLayers = ConfigInterface->RenderingSetting().bEnableLayerValidation && GIsEditor;
 
 	// variable setting
 	WindowCache = Hwnd;
@@ -280,9 +277,10 @@ bool UHGraphic::CreateInstance()
 	}
 #endif
 
-#if WITH_EDITOR
-	InstanceExtensions.push_back("VK_EXT_debug_utils");
-#endif
+	if (GIsEditor)
+	{
+		InstanceExtensions.push_back("VK_EXT_debug_utils");
+	}
 
 	if (CheckInstanceExtension(InstanceExtensions))
 	{
@@ -1227,6 +1225,18 @@ UHMaterial* UHGraphic::RequestMaterial(std::filesystem::path InPath)
 	return nullptr;
 }
 
+void UHGraphic::RequestReleaseMaterial(UHMaterial* InMat)
+{
+	int32_t Idx = UHUtilities::FindIndex<UHMaterial>(MaterialPools, *InMat);
+	if (Idx == UHINDEXNONE)
+	{
+		return;
+	}
+
+	MaterialPools[Idx].reset();
+	UHUtilities::RemoveByIndex(MaterialPools, Idx);
+}
+
 UniquePtr<UHAccelerationStructure> UHGraphic::RequestAccelerationStructure()
 {
 	UniquePtr<UHAccelerationStructure> NewAS = MakeUnique<UHAccelerationStructure>();
@@ -1321,14 +1331,12 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OutName + GShaderAssetExtension;
 
 	// if it's a release build, and there is no material shader for it, use a fallback one
-#if WITH_RELEASE
-	if (!std::filesystem::exists(OutputShaderPath))
+	if (GIsShipping && !std::filesystem::exists(OutputShaderPath))
 	{
 		InShaderName = "FallbackPixelShader";
 		EntryName = "FallbackPS";
 		InSource = GRawShaderPath + InShaderName;
 	}
-#endif
 
 	UniquePtr<UHShader> NewShader = MakeUnique<UHShader>(OutName, InSource, EntryName, ProfileName, true, InMacro);
 	NewShader->SetGfxCache(this);

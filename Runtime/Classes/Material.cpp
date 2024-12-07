@@ -167,11 +167,12 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 // post import callback
 void UHMaterial::PostImport()
 {
-#if WITH_RELEASE
-	// doesn't need edit node data in release build
-	// the material node is still needed for copy parameters
-	EditGUIRelativePos.clear();
-#endif
+	if (GIsShipping)
+	{
+		// doesn't need edit node data in release build
+		// the material node is still needed for copy parameters
+		EditGUIRelativePos.clear();
+	}
 
 	if (Version < UH_ENUM_VALUE(UHMaterialVersion::AddRoughnessTexture))
 	{

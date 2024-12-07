@@ -155,8 +155,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 		VkMemoryRequirements MemRequirements{};
 		vkGetImageMemoryRequirements(LogicalDevice, ImageSource, &MemRequirements);
 
-#if WITH_EDITOR
-		if (!InInfo.bIsRT)
+		if (!InInfo.bIsRT && GIsEditor)
 		{
 			VkDeviceImageMemoryRequirements ImageMemoryReqs{};
 			ImageMemoryReqs.sType = VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS;
@@ -174,7 +173,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			vkGetDeviceImageMemoryRequirements(LogicalDevice, &ImageMemoryReqs, &MemoryReqs2);
 			MemRequirements = MemoryReqs2.memoryRequirements;
 		}
-#endif
+
 		// bind to shared memory if available, otherwise, creating memory individually
 		bool bExceedSharedMemory = false;
 		if (InSharedMemory)

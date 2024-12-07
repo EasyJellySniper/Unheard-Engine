@@ -2,6 +2,7 @@
 #include "../Runtime/Classes/Scene.h"
 #include "../Runtime/Engine/GameTimer.h"
 #include "../Runtime/Engine/Engine.h"
+#include "../Runtime/Engine/Input.h"
 #include <cmath>
 
 UHDemoScript DemoScript;
@@ -17,6 +18,7 @@ UHDemoScript::UHDemoScript()
 	, DefaultDirectionalLight(nullptr)
 	, SecondDirectionalLight(nullptr)
 	, DefaultSkyLight(nullptr)
+	, EngineCache(nullptr)
 {
 	SetName("Demo Script Component");
 }
@@ -36,6 +38,7 @@ void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 		InEngine->OnLoadScene("Assets/Scenes/VikingHouses_SpotLightNight.uhscene");
 	}
 
+	EngineCache = InEngine;
 	//ObsoleteInitialization(InScene, InAsset, InGfx);
 	//return;
 }
@@ -108,6 +111,23 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		for (UHSpotLightComponent* SpotLight : TestSpotLights2)
 		{
 			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+		}
+	}
+
+	const UHRawInput* Input = EngineCache->GetRawInput();
+	if (Input->IsKeyHold(VK_CONTROL))
+	{
+		if (Input->IsKeyUp('1'))
+		{
+			EngineCache->OnLoadScene("Assets/Scenes/VikingWithStones.uhscene");
+		}
+		else if (Input->IsKeyUp('2'))
+		{
+			EngineCache->OnLoadScene("Assets/Scenes/VikingHouses_PointLightNight.uhscene");
+		}
+		else if (Input->IsKeyUp('3'))
+		{
+			EngineCache->OnLoadScene("Assets/Scenes/VikingHouses_SpotLightNight.uhscene");
 		}
 	}
 }

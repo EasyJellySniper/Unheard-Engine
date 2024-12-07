@@ -130,12 +130,12 @@ void UHDeferredShadingRenderer::OcclusionPassTask(int32_t ThreadIdx)
 		RenderBuilder.BeginOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
 
 		RenderBuilder.BindGraphicState(UHOcclusionPassShader::GetOcclusionState());
-		RenderBuilder.BindVertexBuffer(SkyMeshRT->GetPositionBuffer()->GetBuffer());
-		RenderBuilder.BindIndexBuffer(SkyMeshRT);
+		RenderBuilder.BindVertexBuffer(CubeMesh->GetPositionBuffer()->GetBuffer());
+		RenderBuilder.BindIndexBuffer(CubeMesh);
 		RenderBuilder.BindDescriptorSet(OcclusionShader->GetPipelineLayout(), OcclusionShader->GetDescriptorSet(CurrentFrameRT));
 
 		// draw call
-		RenderBuilder.DrawIndexed(SkyMeshRT->GetIndicesCount());
+		RenderBuilder.DrawIndexed(CubeMesh->GetIndicesCount());
 		RenderBuilder.EndOcclusionQuery(OcclusionQuery[CurrentFrameRT], RendererIdx);
 
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());

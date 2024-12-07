@@ -4,6 +4,11 @@ uint32_t GFrameNumber = 0;
 
 #if WITH_EDITOR
 bool GEnableGPUTiming = true;
+bool GIsEditor = true;
+bool GIsShipping = false;
+#else
+bool GIsEditor = false;
+bool GIsShipping = true;
 #endif
 
 // the starting core of threads

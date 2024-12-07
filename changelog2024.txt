@@ -311,3 +311,14 @@ So I made another improvement again and should consider moving culling stuff fro
 Made specular calculation better. Separated specular/smoothness debug view, otherwise I couldn't debug alpha channel of a render texture.
 Removed all AMD integrated hacks and fixed real sources that caused rendering errors.
 Fixed RT reflection alpha output.
+
+04-12-2024:
+Refactored partial asset loading code for future changes.
+Trying to make the asset loading happen during scene loading only for release.
+Editor still needs all assets.
+
+05-12-2024:
+Finished a big refactoring about asset loading.
+It should now load only necessary assets in release build and didn't change much for editor.
+Added keyboard shortcut to load test scenes in game script.
+Added GIsShipping and GIsEditor to get rid of some macro.

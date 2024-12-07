@@ -96,18 +96,14 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	OcclusionThresholdRT = ConfigInterface->RenderingSetting().OcclusionTriangleThreshold;
 	bEnableDepthPrepassRT = GraphicInterface->IsDepthPrePassEnabled();
 
-	if (SkyMeshRT == nullptr)
-	{
-		SkyMeshRT = AssetManagerInterface->GetMesh("UHMesh_Cube");
-	}
-
 	// wake render thread
 	RenderThread->WakeThread();
 
-#if WITH_EDITOR
 	// only wait RT in editor, shipped build will wait in somewhere else by calling WaitPreviousRenderTask()
-	RenderThread->WaitTask();
-#endif
+	if (GIsEditor)
+	{
+		RenderThread->WaitTask();
+	}
 
 	// advance frame after rendering is done
 	CurrentFrameGT = (CurrentFrameGT + 1) % GMaxFrameInFlight;

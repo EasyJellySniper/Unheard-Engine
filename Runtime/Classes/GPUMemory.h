@@ -14,6 +14,7 @@ public:
 	UHGPUMemory();
 	void Release();
 	void AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex);
+	void Reset();
 
 	uint64_t BindMemory(uint64_t InSize, uint64_t InAlignment, VkBuffer InBuffer);
 	uint64_t BindMemory(uint64_t InSize, uint64_t InAlignment, VkImage InImage, uint64_t ReboundOffset = ~0);

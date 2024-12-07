@@ -3,7 +3,9 @@
 #include "Utility.h"
 
 // general paths
+static std::string GAssetPath = "Assets/";
 static std::string GTempFilePath = "Temp/";
+static std::string GAssetMapName = "AssetMap";
 
 // texture paths
 static std::string GTextureAssetFolder = "Assets/Textures/";

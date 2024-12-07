@@ -67,6 +67,7 @@ class UHDeferredShadingRenderer
 public:
 	UHDeferredShadingRenderer(UHEngine* InEngine);
 	bool Initialize(UHScene* InScene);
+	void InitRenderingResources();
 	void Release();
 
 	UHScene* GetCurrentScene() const;
@@ -326,7 +327,7 @@ private:
 	UniquePtr<UHSphericalHarmonicShader> SH9Shader;
 
 	UHRenderPassObject SkyboxPassObj;
-	UHMesh* SkyMeshRT;
+	UHMesh* CubeMesh;
 
 	// -------------------------------------------- Motion vector Pass -------------------------------------------- //
 	UHRenderPassObject MotionCameraPassObj;

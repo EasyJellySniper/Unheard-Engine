@@ -229,7 +229,7 @@ void UHMeshDialog::OnImport()
 		{
 			ImportMaterial->GenerateDefaultMaterialNodes();
 			ImportMaterial->Export(OutPath);
-			AssetMgr->AddImportedMaterial(Gfx, GMaterialAssetPath + ImportMaterial->GetSourcePath() + GMaterialAssetExtension);
+			AssetMgr->AddImportedMaterial(GMaterialAssetPath + ImportMaterial->GetSourcePath() + GMaterialAssetExtension);
 		}
 	}
 

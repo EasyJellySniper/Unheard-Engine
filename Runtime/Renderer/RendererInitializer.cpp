@@ -22,7 +22,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, bEnableAsyncComputeRT(false)
 	, CurrentScene(nullptr)
 	, SystemConstantsCPU(UHSystemConstants())
-	, SkyMeshRT(nullptr)
+	, CubeMesh(nullptr)
 	, DefaultSamplerIndex(UHINDEXNONE)
 	, LinearClampSamplerIndex(UHINDEXNONE)
 	, SkyCubeSamplerIndex(UHINDEXNONE)
@@ -87,10 +87,6 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 {
 	// scene setup
 	CurrentScene = InScene;
-	PrepareMeshes();
-	PrepareTextures();
-	PrepareSamplers();
-	GSkyLightCube = GetCurrentSkyCube();
 
 	// config setup
 	NumWorkerThreads = ConfigInterface->RenderingSetting().ParallelThreads;
@@ -102,13 +98,6 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		CreateRenderingBuffers();
 		CreateRenderPasses();
 		CreateRenderFrameBuffers();
-		PrepareRenderingShaders();
-
-		// create data buffers
-		CreateDataBuffers();
-
-		// update descriptor binding
-		UpdateDescriptors();
 
 		// create thread objects
 		CreateThreadObjects();
@@ -128,6 +117,22 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	}
 
 	return bIsRendererSuccess;
+}
+
+void UHDeferredShadingRenderer::InitRenderingResources()
+{
+	PrepareMeshes();
+	PrepareTextures();
+	PrepareSamplers();
+	GSkyLightCube = GetCurrentSkyCube();
+
+	PrepareRenderingShaders();
+
+	// create data buffers
+	CreateDataBuffers();
+
+	// update descriptor binding
+	UpdateDescriptors();
 }
 
 void UHDeferredShadingRenderer::Release()
@@ -154,9 +159,7 @@ void UHDeferredShadingRenderer::Release()
 	SceneRenderQueue.Release();
 	TranslucentParallelSubmitter.Release();
 
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported())
-#endif
+	if (GIsEditor || (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported()))
 	{
 		DepthParallelSubmitter.Release();
 	}
@@ -168,9 +171,7 @@ void UHDeferredShadingRenderer::Release()
 		MotionTranslucentParallelSubmitter.Release();
 	}
 
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		ReleaseOcclusionQuery();
 		OcclusionParallelSubmitter.Release();
@@ -192,11 +193,8 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 
 	// needs the cmd buffer
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
-
-	if (UHMesh* SkyMesh = AssetManagerInterface->GetMesh("UHMesh_Cube"))
-	{
-		SkyMesh->CreateGPUBuffers(GraphicInterface);
-	}
+	CubeMesh = AssetManagerInterface->GetMesh("UHMesh_Cube");
+	CubeMesh->CreateGPUBuffers(GraphicInterface);
 
 	std::unordered_set<uint32_t> MeshTable;
 	MeshInstanceCount = 0;
@@ -248,6 +246,15 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 
 	// create mesh tables
 	RecreateMeshTables();
+
+	// release CPU copy of meshes for shipping
+	if (GIsShipping)
+	{
+		for (UHMesh* Mesh : AssetManagerInterface->GetUHMeshes())
+		{
+			Mesh->ReleaseCPUMeshData();
+		}
+	}
 }
 
 void UHDeferredShadingRenderer::CheckTextureReference(std::vector<UHMaterial*> InMats)
@@ -340,6 +347,20 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	}
 
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
+
+	// release CPU texture data for shipping
+	if (GIsShipping)
+	{
+		for (UHTexture2D* Tex : AssetManagerInterface->GetTexture2Ds())
+		{
+			Tex->ReleaseCPUTextureData();
+		}
+
+		for (UHTextureCube* Cube : AssetManagerInterface->GetCubemaps())
+		{
+			Cube->ReleaseCPUData();
+		}
+	}
 }
 
 void UHDeferredShadingRenderer::PrepareSamplers()
@@ -382,9 +403,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// create all material shaders
 	if (!GraphicInterface->IsMeshShaderSupported())
 	{
-#if WITH_RELEASE
-		if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
-#endif
+		if (GIsEditor || ConfigInterface->RenderingSetting().bEnableDepthPrePass)
 		{
 			DepthPassShaders.reserve(std::numeric_limits<int16_t>::max());
 		}
@@ -404,9 +423,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	}
 
 	// create occlusion shaders if enabled
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		OcclusionPassShaders.resize(CurrentScene->GetAllRendererCount());
 		for (size_t Idx = 0; Idx < AllRenderers.size(); Idx++)
@@ -530,10 +547,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	else
 	{
 		// ------------------------------------------------ Depth pass descriptor update
-#if WITH_RELEASE
-	// always create depth pass stuff for toggling in editor
-		if (GraphicInterface->IsDepthPrePassEnabled())
-#endif
+		// always create depth pass stuff for toggling in editor
+		if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
 		{
 			for (const UHMeshRendererComponent* Renderer : CurrentScene->GetOpaqueRenderers())
 			{
@@ -551,9 +566,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	}
 
 	// ------------------------------------------------ Occlusion shader descriptor update
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 		{
@@ -703,9 +716,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 void UHDeferredShadingRenderer::ReleaseShaders()
 {
-#if WITH_RELEASE
-	if (GraphicInterface->IsDepthPrePassEnabled())
-#endif
+	if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
 	{
 		ClearContainer(DepthPassShaders);
 		ClearContainer(DepthMeshShaders);
@@ -719,17 +730,17 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	ClearContainer(TranslucentPassShaders);
 	ClearContainer(OcclusionPassShaders);
 
-	LightCullingShader->Release();
-	LightPassShader->Release();
-	ReflectionPassShader->Release();
-	RTReflectionMipmapShader->Release();
-	SkyPassShader->Release();
-	SH9Shader->Release();
-	MotionCameraShader->Release();
-	TemporalAAShader->Release();
-	ToneMapShader->Release();
-	GaussianFilterHShader->Release();
-	GaussianFilterVShader->Release();
+	UH_SAFE_RELEASE(LightCullingShader);
+	UH_SAFE_RELEASE(LightPassShader);
+	UH_SAFE_RELEASE(ReflectionPassShader);
+	UH_SAFE_RELEASE(RTReflectionMipmapShader);
+	UH_SAFE_RELEASE(SkyPassShader);
+	UH_SAFE_RELEASE(SH9Shader);
+	UH_SAFE_RELEASE(MotionCameraShader);
+	UH_SAFE_RELEASE(TemporalAAShader);
+	UH_SAFE_RELEASE(ToneMapShader);
+	UH_SAFE_RELEASE(GaussianFilterHShader);
+	UH_SAFE_RELEASE(GaussianFilterVShader);
 
 	if (GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled())
 	{
@@ -752,12 +763,12 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		UH_SAFE_RELEASE(SoftRTShadowShader);
 	}
 
-	TextureTable->Release();
-	SamplerTable->Release();
+	UH_SAFE_RELEASE(TextureTable);
+	UH_SAFE_RELEASE(SamplerTable);
 
 #if WITH_EDITOR
-	DebugViewShader->Release();
-	DebugBoundShader->Release();
+	UH_SAFE_RELEASE(DebugViewShader);
+	UH_SAFE_RELEASE(DebugBoundShader);
 #endif
 }
 
@@ -865,16 +876,12 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse ,GSceneNormal ,GSceneMaterial ,GSceneResult ,GSceneMip,GSceneVertexNormal };
 
 	// depth prepass
-#if WITH_RELEASE
-	if (GraphicInterface->IsDepthPrePassEnabled())
-#endif
+	if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
 	{
 		DepthPassObj = GraphicInterface->CreateRenderPass(UHTransitionInfo(), GSceneDepth);
 	}
 
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		// occlusion only needs depth load
 		OcclusionPassObj = GraphicInterface->CreateRenderPass(UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD), GSceneDepth);
@@ -922,16 +929,12 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	GBuffers.push_back(GSceneDepth);
 
 	// depth frame buffer
-#if WITH_RELEASE
-	if (GraphicInterface->IsDepthPrePassEnabled())
-#endif
+	if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
 	{
 		DepthPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth, DepthPassObj.RenderPass, RenderResolution);
 	}
 
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		OcclusionPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneDepth, OcclusionPassObj.RenderPass, RenderResolution);
 	}
@@ -966,16 +969,12 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects()
 {
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 
-#if WITH_RELEASE
-	if (GraphicInterface->IsDepthPrePassEnabled())
-#endif
+	if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
 	{
 		DepthPassObj.Release(LogicalDevice);
 	}
 
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		OcclusionPassObj.Release(LogicalDevice);
 	}
@@ -1061,9 +1060,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 	}
 
 	// create occlusion query anyway in editor build
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		CreateOcclusionQuery();
 	}
@@ -1140,9 +1137,7 @@ void UHDeferredShadingRenderer::CreateThreadObjects()
 #endif
 
 	// create parallel submitter
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported())
-#endif
+	if (GIsEditor || (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported()))
 	{
 		DepthParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
 			, "DepthPass");
@@ -1161,9 +1156,7 @@ void UHDeferredShadingRenderer::CreateThreadObjects()
 	TranslucentParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
 		, "TranslucentPass");
 
-#if WITH_RELEASE
-	if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
-#endif
+	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
 		OcclusionParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
 			, "OcclusionPass");
@@ -1686,9 +1679,7 @@ void UHDeferredShadingRenderer::RecreateMaterialShaders(UHMeshRendererComponent*
 
 	if (InMat->IsOpaque())
 	{
-#if WITH_RELEASE
-		if (GraphicInterface->IsDepthPrePassEnabled())
-#endif
+		if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
 		{
 			DepthPassShaders[RendererBufferIndex] = MakeUnique<UHDepthPassShader>(GraphicInterface, "DepthPassShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
 		}
@@ -1729,9 +1720,7 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	// create depth and base shader only for the opaque, but motion pass for both opaque/translucent
 	if (InMat->IsOpaque())
 	{
-#if WITH_RELEASE
-		if (ConfigInterface->RenderingSetting().bEnableDepthPrePass)
-#endif
+		if (GIsEditor || ConfigInterface->RenderingSetting().bEnableDepthPrePass)
 		{
 			UH_SAFE_RELEASE(DepthMeshShaders[MatDataIndex]);
 			DepthMeshShaders[MatDataIndex] = MakeUnique<UHDepthMeshShader>(GraphicInterface, "DepthMeshShader", DepthPassObj.RenderPass, InMat, BindlessLayouts);
