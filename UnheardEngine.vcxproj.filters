@@ -857,5 +857,6 @@
     <None Include="Shaders\DepthMeshShader.hlsl" />
     <None Include="Shaders\BaseMeshShader.hlsl" />
     <None Include="Shaders\MotionMeshShader.hlsl" />
+    <None Include="Shaders\BaseAmplificationShader.hlsl" />
   </ItemGroup>
 </Project>

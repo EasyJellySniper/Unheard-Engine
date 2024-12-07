@@ -306,6 +306,7 @@ void UHShaderImporter::CompileHLSL(std::string InShaderName, std::filesystem::pa
 
 	// write shader cache
 	WriteShaderCache(InSource, OutputShaderPath, EntryName, ProfileName, Defines);
+	WriteShaderIncludeCache();
 }
 
 std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData

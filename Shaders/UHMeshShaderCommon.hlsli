@@ -35,6 +35,11 @@ struct ObjectConstants
     float CPUPadding[15];
 };
 
+struct UHMeshPayload
+{
+    uint ShaderDataIndices[MESHSHADER_GROUP_SIZE];
+};
+
 uint3 GetIndices(ByteAddressBuffer InBuffer, uint InPrimIndex, uint InIndiceType)
 {
     // get index data based on indice type, it can be 16 or 32 bit
