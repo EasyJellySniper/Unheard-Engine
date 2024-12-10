@@ -19,6 +19,7 @@ UHRenderTexture* GSceneResult;
 UHRenderTexture* GSceneMip;
 UHRenderTexture* GSceneDepth;
 UHRenderTexture* GSceneTranslucentDepth;
+// vertex normal info used in ray tracing, used for pushing ray origin point from surface for a bit to avoid self occluding
 UHRenderTexture* GSceneVertexNormal;
 
 UHRenderTexture* GMotionVectorRT;
@@ -26,13 +27,17 @@ UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;
 
 UHRenderTexture* GRTShadowResult;
+// GRTSharedTextureRG can be reused after soft shadow is done
 UHRenderTexture* GRTSharedTextureRG;
+// GRTReflectionResult can be reused after translucent pass is done
 UHRenderTexture* GRTReflectionResult;
 UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
+// these two are for refraction use
 UHRenderTexture* GQuarterBlurredScene;
 UHRenderTexture* GOpaqueSceneResult;
 
+// these two are used for RT reflection, can be reused after RT reflection pass
 UHRenderTexture* GTranslucentBump;
 UHRenderTexture* GTranslucentSmoothness;
 

@@ -457,7 +457,7 @@
     <ClCompile Include="Runtime\Classes\Shader.cpp" />
     <ClCompile Include="Runtime\Components\Transform.cpp" />
     <ClCompile Include="Runtime\Classes\Scene.cpp" />
-    <ClCompile Include="Runtime\Renderer\RenderShared.cpp" />
+    <ClCompile Include="Runtime\Renderer\RendererShared.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightCullingShader.cpp" />

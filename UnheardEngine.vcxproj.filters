@@ -767,7 +767,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\RenderShared.cpp">
+    <ClCompile Include="Runtime\Renderer\RendererShared.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.cpp">

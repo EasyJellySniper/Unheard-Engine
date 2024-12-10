@@ -20,10 +20,13 @@ UHMaterialInputs GetMaterialInput(float2 UV0)
 void MotionObjectPS(MotionVertexOutput Vin
 	, bool bIsFrontFace : SV_IsFrontFace
 	, out float4 OutVelocity : SV_Target0
+#if TRANSLUCENT
 	, out float4 OutNormal : SV_Target1
 	, out float4 OutBump : SV_Target2
 	, out float OutSmoothness : SV_Target3
-	, out float OutMipRate : SV_Target4)
+	, out float OutMipRate : SV_Target4
+#endif
+)
 {
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
@@ -47,10 +50,6 @@ void MotionObjectPS(MotionVertexOutput Vin
 	float2 CurrScreenPos = (Vin.CurrPos.xy * 0.5f + 0.5f);
 
 	OutVelocity = float4(CurrScreenPos.xy - PrevScreenPos.xy, 0, 1);
-    OutNormal = 0;
-    OutBump = 0;
-    OutSmoothness = 0;
-    OutMipRate = 0;
     
 	// output a few buffer for special purposes (mainly used in ray tracing)
 #if TRANSLUCENT
