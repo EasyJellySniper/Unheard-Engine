@@ -114,16 +114,27 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
         RenderingSettings.bEnableAsyncCompute ? (void)DeferredRenderer->CreateAsyncComputeQueue() : DeferredRenderer->ReleaseAsyncComputeQueue();
     }
 
-    if (ImGui::Checkbox("Enable HDR", &RenderingSettings.bEnableHDR))
-    {
-        Engine->SetResizeReason(UHEngineResizeReason::ToggleHDR);
-    }
-
     ImGui::Checkbox("Enable Hardware Occlusion", &RenderingSettings.bEnableHardwareOcclusion);
     ImGui::InputInt("Occlusion triangle threshold", &RenderingSettings.OcclusionTriangleThreshold);
 
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
     ImGui::InputFloat("Final Reflection Strength", &RenderingSettings.FinalReflectionStrength);
+
+    // HDR settings
+    ImGui::NewLine();
+    ImGui::Text("---HDR Settings---");
+    if (ImGui::Checkbox("Enable HDR", &RenderingSettings.bEnableHDR))
+    {
+        Engine->SetResizeReason(UHEngineResizeReason::ToggleHDR);
+    }
+
+    if (ImGui::SliderFloat("HDR Whitepaper Nits", &RenderingSettings.HDRWhitePaperNits, 100.0f, 1000.0f, "%.1f"))
+    {
+        // align to a multiple of 10
+        RenderingSettings.HDRWhitePaperNits = MathHelpers::RoundUpToMultiple(RenderingSettings.HDRWhitePaperNits, 10.0f);
+    }
+
+    ImGui::SliderFloat("HDR Contrast", &RenderingSettings.HDRContrast, 0.5f, 2.5f, "%.1f");
 
     // raytracing settings
     ImGui::NewLine();

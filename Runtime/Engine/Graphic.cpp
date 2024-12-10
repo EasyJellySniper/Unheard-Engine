@@ -1915,32 +1915,6 @@ bool UHGraphic::CreateSwapChain()
 		SwapChainFrameBuffer[Idx] = CreateFrameBuffer(SwapChainRT[Idx], SwapChainRenderPass, Extent);
 	}
 
-	// HDR metadata setting
-	if (IsHDRAvailable())
-	{
-		VkHdrMetadataEXT HDRMetadata{};
-		HDRMetadata.sType = VK_STRUCTURE_TYPE_HDR_METADATA_EXT;
-
-		// follow the HDR10 metadata, Table 49. Color Spaces and Attributes from Vulkan specs
-		HDRMetadata.displayPrimaryRed.x = 0.708f;
-		HDRMetadata.displayPrimaryRed.y = 0.292f;
-		HDRMetadata.displayPrimaryGreen.x = 0.170f;
-		HDRMetadata.displayPrimaryGreen.y = 0.797f;
-		HDRMetadata.displayPrimaryBlue.x = 0.131f;
-		HDRMetadata.displayPrimaryBlue.y = 0.046f;
-		HDRMetadata.whitePoint.x = 0.3127f;
-		HDRMetadata.whitePoint.y = 0.3290f;
-
-		// @TODO: expose MaxOutputNits, MinOutputNits, MaxCLL, MaxFALL for user input
-		const float NitsToLumin = 10000.0f;
-		HDRMetadata.maxLuminance = 1000.0f * NitsToLumin;
-		HDRMetadata.minLuminance = 0.001f * NitsToLumin;
-		HDRMetadata.maxContentLightLevel = 2000.0f;
-		HDRMetadata.maxFrameAverageLightLevel = 500.0f;
-
-		GVkSetHdrMetadataEXT(LogicalDevice, 1, &SwapChain, &HDRMetadata);
-	}
-
 #if WITH_EDITOR
 	// init shared descriptor pool for editor use, hard-code size should suffice now
 	if (ImGuiDescriptorPool == nullptr)

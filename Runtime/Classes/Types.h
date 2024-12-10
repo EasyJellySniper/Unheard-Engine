@@ -75,6 +75,8 @@ namespace MathHelpers
 
         return (InVal + Divisor) / Divisor;
     }
+
+    float RoundUpToMultiple(float InVal, float InMultiple);
 }
 
 // operator for XMFLOAT3 multipication

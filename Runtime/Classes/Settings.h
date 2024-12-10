@@ -93,6 +93,8 @@ public:
 		, bEnableHDR(false)
 		, bEnableHardwareOcclusion(true)
 		, OcclusionTriangleThreshold(5000)
+		, HDRWhitePaperNits(200.0f)
+		, HDRContrast(1.3f)
 	{
 
 	}
@@ -121,7 +123,11 @@ public:
 	float FinalReflectionStrength;
 
 	bool bEnableAsyncCompute;
-	bool bEnableHDR;
 	bool bEnableHardwareOcclusion;
 	int32_t OcclusionTriangleThreshold;
+
+	// HDR settings
+	bool bEnableHDR;
+	float HDRWhitePaperNits;
+	float HDRContrast;
 };

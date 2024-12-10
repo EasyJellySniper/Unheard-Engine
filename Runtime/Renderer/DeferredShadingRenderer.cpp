@@ -76,24 +76,26 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 		return;
 	}
 
+	const UHRenderingSettings& RenderingSettings = ConfigInterface->RenderingSetting();
+
 	// sync value before wake up RT thread
 	CurrentFrameRT = CurrentFrameGT;
 	FrameNumberRT = GFrameNumber;
 	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
 	bIsSwapChainResetRT = bIsSwapChainResetGT;
-	bEnableAsyncComputeRT = ConfigInterface->RenderingSetting().bEnableAsyncCompute;
+	bEnableAsyncComputeRT = RenderingSettings.bEnableAsyncCompute;
 	bIsRenderingEnabledRT = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
 	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
 	bHasRefractionMaterialRT = bHasRefractionMaterialGT;
 	bHDREnabledRT = GraphicInterface->IsHDRAvailable();
-	RTCullingDistanceRT = ConfigInterface->RenderingSetting().RTCullingRadius;
-	RTReflectionQualityRT = ConfigInterface->RenderingSetting().RTReflectionQuality;
+	RTCullingDistanceRT = RenderingSettings.RTCullingRadius;
+	RTReflectionQualityRT = RenderingSettings.RTReflectionQuality;
 
 	// at least make it 'toggleable' partially
-	bIsRaytracingEnableRT = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
+	bIsRaytracingEnableRT = RenderingSettings.bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
 
-	bEnableHWOcclusionRT = ConfigInterface->RenderingSetting().bEnableHardwareOcclusion;
-	OcclusionThresholdRT = ConfigInterface->RenderingSetting().OcclusionTriangleThreshold;
+	bEnableHWOcclusionRT = RenderingSettings.bEnableHardwareOcclusion;
+	OcclusionThresholdRT = RenderingSettings.OcclusionTriangleThreshold;
 	bEnableDepthPrepassRT = GraphicInterface->IsDepthPrePassEnabled();
 
 	// wake render thread
@@ -192,6 +194,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		return;
 	}
 
+	const UHRenderingSettings& RenderingSettings = ConfigInterface->RenderingSetting();
+
 	// setup system constants and upload
 	SystemConstantsCPU.GViewProj = CurrentCamera->GetViewProjMatrix();
 	SystemConstantsCPU.GViewProjInv = CurrentCamera->GetInvViewProjMatrix();
@@ -218,7 +222,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	uint32_t Dummy;
 	GetLightCullingTileCount(SystemConstantsCPU.GLightTileCountX, Dummy);
 
-	if (ConfigInterface->RenderingSetting().bTemporalAA)
+	if (RenderingSettings.bTemporalAA)
 	{
 		XMFLOAT4 Offset = CurrentCamera->GetJitterOffset();
 		SystemConstantsCPU.GJitterOffsetX = Offset.x;
@@ -247,17 +251,17 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	FeatureData |= (GraphicInterface->IsDepthPrePassEnabled()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureDepthPrePass) : 0;
 	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
-	FeatureData |= (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::OcclusionCulling) : 0;
+	FeatureData |= (RenderingSettings.bEnableHardwareOcclusion) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::OcclusionCulling) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
 
-	SystemConstantsCPU.GDirectionalShadowRayTMax = ConfigInterface->RenderingSetting().RTShadowTMax;
+	SystemConstantsCPU.GDirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
 	SystemConstantsCPU.GLinearClampSamplerIndex = LinearClampSamplerIndex;
 	SystemConstantsCPU.GSkyCubeSamplerIndex = SkyCubeSamplerIndex;
 	SystemConstantsCPU.GPointClampSamplerIndex = PointClampSamplerIndex;
-	SystemConstantsCPU.RTReflectionQuality = ConfigInterface->RenderingSetting().RTReflectionQuality;
-	SystemConstantsCPU.RTReflectionRayTMax = ConfigInterface->RenderingSetting().RTReflectionTMax;
-	SystemConstantsCPU.RTReflectionSmoothCutoff = ConfigInterface->RenderingSetting().RTReflectionSmoothCutoff;
-	SystemConstantsCPU.GFinalReflectionStrength = ConfigInterface->RenderingSetting().FinalReflectionStrength;
+	SystemConstantsCPU.RTReflectionQuality = RenderingSettings.RTReflectionQuality;
+	SystemConstantsCPU.RTReflectionRayTMax = RenderingSettings.RTReflectionTMax;
+	SystemConstantsCPU.RTReflectionSmoothCutoff = RenderingSettings.RTReflectionSmoothCutoff;
+	SystemConstantsCPU.GFinalReflectionStrength = RenderingSettings.FinalReflectionStrength;
 	SystemConstantsCPU.GEnvCubeMipMapCount = (SkyCube != nullptr) ? static_cast<float>(SkyCube->GetMipMapCount()) : 0;
 	SystemConstantsCPU.GRefractionClearIndex = RefractionClearIndex;
 	SystemConstantsCPU.GRefractionBlurIndex = RefractionBlurredIndex;
@@ -285,7 +289,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 				ObjectConstantsCPU[RendererIdx] = Constant;
 
 				// setup occlusion data if necessary
-				if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+				if (RenderingSettings.bEnableHardwareOcclusion)
 				{
 					Constant.GWorld = Renderer->GetWorldBoundMatrix();
 					OcclusionConstantsCPU[RendererIdx] = Constant;
@@ -312,7 +316,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			size_t CopySize = (MaxDirtyObjIndex - MinDirtyObjIndex + 1) * GObjectConstantBuffer[CurrentFrameGT]->GetBufferStride();
 			GObjectConstantBuffer[CurrentFrameGT]->UploadData(&ObjectConstantsCPU[MinDirtyObjIndex], MinDirtyObjIndex, CopySize);
 
-			if (ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
+			if (RenderingSettings.bEnableHardwareOcclusion)
 			{
 				CopySize = (MaxDirtyObjIndex - MinDirtyObjIndex + 1) * GOcclusionConstantBuffer[CurrentFrameGT]->GetBufferStride();
 				GOcclusionConstantBuffer[CurrentFrameGT]->UploadData(&OcclusionConstantsCPU[MinDirtyObjIndex], MinDirtyObjIndex, CopySize);
@@ -373,6 +377,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SH9Constant.MipLevel = 4;
 	SH9Constant.Weight = 4.0f * G_PI / 64.0f;
 	SH9Shader->GetSH9Constants(CurrentFrameGT)->UploadAllData(&SH9Constant);
+
+	// upload tonemap data
+	ToneMapShader->UploadToneMapData(UHToneMapData(RenderingSettings.HDRWhitePaperNits, RenderingSettings.HDRContrast), CurrentFrameGT);
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()

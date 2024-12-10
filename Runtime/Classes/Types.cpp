@@ -224,6 +224,11 @@ namespace MathHelpers
 
         return static_cast<float>(V);
     }
+
+    float RoundUpToMultiple(float InVal, float InMultiple)
+    {
+        return std::roundf(InVal / InMultiple) * InMultiple;
+    }
 }
 
 // operator for XMFLOAT3 multipication

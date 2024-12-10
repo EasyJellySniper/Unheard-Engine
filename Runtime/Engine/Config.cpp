@@ -70,6 +70,8 @@ void UHConfigManager::LoadConfig()
 			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableHDR", RenderingSettings.bEnableHDR);
 			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
 			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "OcclusionTriangleThreshold", RenderingSettings.OcclusionTriangleThreshold);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRContrast", RenderingSettings.HDRContrast);
 
 			// clamp a few parameters
 			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
@@ -127,7 +129,8 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 		UHUtilities::WriteINIData(FileOut, "bEnableHDR", RenderingSettings.bEnableHDR);
 		UHUtilities::WriteINIData(FileOut, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
-		UHUtilities::WriteINIData(FileOut, "OcclusionTriangleThreshold", RenderingSettings.OcclusionTriangleThreshold);
+		UHUtilities::WriteINIData(FileOut, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
+		UHUtilities::WriteINIData(FileOut, "HDRContrast", RenderingSettings.HDRContrast);
 	}
 	FileOut.close();
 }

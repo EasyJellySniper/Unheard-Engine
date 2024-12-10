@@ -322,3 +322,8 @@ Finished a big refactoring about asset loading.
 It should now load only necessary assets in release build and didn't change much for editor.
 Added keyboard shortcut to load test scenes in game script.
 Added GIsShipping and GIsEditor to get rid of some macro.
+
+10-12-2024:
+Micro code refactor for my render texture usages. Just commented something.
+Removed the useless HDR metadata setting. Properly applied ST2084 curve in tone map pass and exposed HDRWhitePaper/HDRContrast settings.
+Might consider refactoring SDR brightness setting as well.
