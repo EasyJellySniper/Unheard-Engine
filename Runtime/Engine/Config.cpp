@@ -72,6 +72,7 @@ void UHConfigManager::LoadConfig()
 			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "OcclusionTriangleThreshold", RenderingSettings.OcclusionTriangleThreshold);
 			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
 			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRContrast", RenderingSettings.HDRContrast);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "GammaCorrection", RenderingSettings.GammaCorrection);
 
 			// clamp a few parameters
 			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
@@ -131,6 +132,7 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
 		UHUtilities::WriteINIData(FileOut, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
 		UHUtilities::WriteINIData(FileOut, "HDRContrast", RenderingSettings.HDRContrast);
+		UHUtilities::WriteINIData(FileOut, "GammaCorrection", RenderingSettings.GammaCorrection);
 	}
 	FileOut.close();
 }

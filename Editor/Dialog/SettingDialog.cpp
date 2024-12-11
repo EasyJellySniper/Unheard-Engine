@@ -120,6 +120,11 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
     ImGui::InputFloat("Final Reflection Strength", &RenderingSettings.FinalReflectionStrength);
 
+    // Common Gamma setting
+    ImGui::NewLine();
+    ImGui::Text("Non-HDR gamma correction");
+    ImGui::SliderFloat("Gamma Correction", &RenderingSettings.GammaCorrection, 0.5f, 5.0f, "%.1f");
+
     // HDR settings
     ImGui::NewLine();
     ImGui::Text("---HDR Settings---");

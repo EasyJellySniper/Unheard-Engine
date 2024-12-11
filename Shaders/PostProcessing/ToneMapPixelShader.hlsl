@@ -3,6 +3,7 @@
 
 cbuffer ToneMapData : register(b1)
 {
+    float GammaCorrection;
     float HDRPaperWhiteNits;
     float HDRContrast;
 };
@@ -70,6 +71,9 @@ float4 ToneMapPS(PostProcessVertexOutput Vin) : SV_Target
         Result = mul(GAcesInputMat, Result);
         Result = RRTAndODTFit(Result);
         Result = mul(GAcesOutputMat, Result);
+        
+        // final gamma correction
+        Result = pow(Result, 1.0f / GammaCorrection);
         Result = saturate(Result);
     }
 

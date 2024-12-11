@@ -3,12 +3,15 @@
 
 struct UHToneMapData
 {
-	UHToneMapData(float InPaperWhite, float InContrast)
-		: HDRPaperWhiteNits(InPaperWhite)
+	UHToneMapData(float InGamma, float InPaperWhite, float InContrast)
+		: GammaCorrection(InGamma)
+		, HDRPaperWhiteNits(InPaperWhite)
 		, HDRContrast(InContrast)
 	{
 
 	}
+
+	float GammaCorrection;
 	float HDRPaperWhiteNits;
 	float HDRContrast;
 };

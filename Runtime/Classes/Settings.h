@@ -93,6 +93,7 @@ public:
 		, bEnableHDR(false)
 		, bEnableHardwareOcclusion(true)
 		, OcclusionTriangleThreshold(5000)
+		, GammaCorrection(2.2f)
 		, HDRWhitePaperNits(200.0f)
 		, HDRContrast(1.3f)
 	{
@@ -108,6 +109,9 @@ public:
 	bool bEnableGPUTiming;
 	bool bEnableDepthPrePass;
 	int32_t ParallelThreads;
+
+	// common gamma settings
+	float GammaCorrection;
 
 	// RT common
 	float RTCullingRadius;
