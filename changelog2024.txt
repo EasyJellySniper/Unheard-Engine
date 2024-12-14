@@ -327,3 +327,8 @@ Added GIsShipping and GIsEditor to get rid of some macro.
 Micro code refactor for my render texture usages. Just commented something.
 Removed the useless HDR metadata setting. Properly applied ST2084 curve in tone map pass and exposed HDRWhitePaper/HDRContrast settings.
 Might consider refactoring SDR brightness setting as well.
+
+14-12-2024:
+Removed incorrect RT shadow hack in the shader.
+Added back face skip optimizations.
+Added comment about TMax prediction.

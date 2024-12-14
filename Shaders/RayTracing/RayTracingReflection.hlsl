@@ -379,6 +379,7 @@ void RTReflectionRayGen()
     ReflectRay.Direction = ReflectedRay;
 
     ReflectRay.TMin = RayGap;
+    // @TODO: See if it's possible to predict the TMax and prevent redundant searches
     ReflectRay.TMax = GRTReflectionRayTMax;
 
     UHDefaultPayload Payload = (UHDefaultPayload) 0;
