@@ -75,7 +75,6 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
 		ShadowRay.Direction = -DirLight.Dir;
 
 		ShadowRay.TMin = Gap;
-        // @TODO: See if it's possible to predict the TMax and prevent redundant searches
         ShadowRay.TMax = GDirectionalShadowRayTMax;
 
 		UHDefaultPayload Payload = (UHDefaultPayload)0;

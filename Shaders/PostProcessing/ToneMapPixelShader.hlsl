@@ -74,7 +74,6 @@ float4 ToneMapPS(PostProcessVertexOutput Vin) : SV_Target
         
         // final gamma correction
         Result = pow(Result, 1.0f / GammaCorrection);
-        Result = saturate(Result);
     }
 
     return float4(Result, 1.0f);

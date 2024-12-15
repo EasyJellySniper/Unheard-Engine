@@ -36,13 +36,11 @@ void UHDirectionalLightComponent::Update()
 		return;
 	}
 
-	// light update doesn't need to calculate world matrix
-	bTransformChanged = bIsWorldDirty;
-
-	if (IsTransformChanged())
+	// light update doesn't need to calculate world matrix so check bIsWorldDirty only
+	if (bIsWorldDirty)
 	{
 		SetRenderDirties(true);
-		bTransformChanged = false;
+		bIsWorldDirty = false;
 	}
 }
 
@@ -122,13 +120,11 @@ void UHPointLightComponent::Update()
 		return;
 	}
 
-	// light update doesn't need to calculate world matrix
-	bTransformChanged = bIsWorldDirty;
-
-	if (IsTransformChanged())
+	// light update doesn't need to calculate world matrix so check bIsWorldDirty only
+	if (bIsWorldDirty)
 	{
 		SetRenderDirties(true);
-		bTransformChanged = false;
+		bIsWorldDirty = false;
 	}
 }
 
@@ -236,13 +232,11 @@ void UHSpotLightComponent::Update()
 		return;
 	}
 
-	// light update doesn't need to calculate world matrix
-	bTransformChanged = bIsWorldDirty;
-
-	if (IsTransformChanged())
+	// light update doesn't need to calculate world matrix so check bIsWorldDirty only
+	if (bIsWorldDirty)
 	{
 		SetRenderDirties(true);
-		bTransformChanged = false;
+		bIsWorldDirty = false;
 	}
 }
 

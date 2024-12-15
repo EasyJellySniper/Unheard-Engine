@@ -331,4 +331,10 @@ Might consider refactoring SDR brightness setting as well.
 14-12-2024:
 Removed incorrect RT shadow hack in the shader.
 Added back face skip optimizations.
-Added comment about TMax prediction.
+Added comment about TMax predication.
+
+15-12-2024:
+Abandoned the TMax prediction idea as it didn't improve much.
+Refactored the Update() for light components.
+Removed comment about TMax predication.
+Removed unnecessary saturate in tone map shader, as the clamp should be done by the driver.
