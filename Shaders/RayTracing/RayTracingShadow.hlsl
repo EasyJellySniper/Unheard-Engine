@@ -56,43 +56,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
 	{
 		// shoot ray from world pos to light dir
 		UHDirectionalLight DirLight = UHDirLights[Ldx];
-        UHBRANCH
-        if (!DirLight.bIsEnabled)
-        {
-            continue;
-        }
-        
-        float NdotL = saturate(dot(-DirLight.Dir, WorldNormal));
-        if (NdotL == 0.0f)
-        {
-            // no need to trace for backface
-            continue;
-        }
-        NdotL *= saturate(DirLight.Color.a);
-
-		RayDesc ShadowRay = (RayDesc)0;
-		ShadowRay.Origin = WorldPos + WorldNormal * Gap;
-		ShadowRay.Direction = -DirLight.Dir;
-
-		ShadowRay.TMin = Gap;
-        ShadowRay.TMax = GDirectionalShadowRayTMax;
-
-		UHDefaultPayload Payload = (UHDefaultPayload)0;
-        Payload.MipLevel = MipLevel;
-        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
-
-		// store the max hit T to the result, system will perform PCSS later
-		// also output shadow attenuation, hit alpha and ndotl are considered
-		if (Payload.IsHit())
-		{
-			MaxDist = max(MaxDist, Payload.HitT);
-            Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
-        }
-        else
-        {
-			// add attenuation by ndotl
-            Atten += NdotL;
-        }
+        TraceDiretionalShadow(TLAS, DirLight, WorldPos, WorldNormal, Gap, MipLevel, Atten, MaxDist);
     }
     
     // evaluate if it's translucent or not from VertexNormalData.w
@@ -115,50 +79,8 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
         TileOffset += 4;
 		
         UHPointLight PointLight = UHPointLights[PointLightIdx];
-        UHBRANCH
-        if (!PointLight.bIsEnabled)
-        {
-            continue;
-        }        
-        LightToWorld = WorldPos - PointLight.Position;
-		
-		// point only needs to be traced by the length of LightToWorld
-        RayDesc ShadowRay = (RayDesc) 0;
-        ShadowRay.Origin = WorldPos + WorldNormal * Gap;
-        ShadowRay.Direction = -normalize(LightToWorld);
-        ShadowRay.TMin = Gap;
-        ShadowRay.TMax = length(LightToWorld);
-		
-		// do not trace out-of-range pixel
-        if (ShadowRay.TMax > PointLight.Radius)
-        {
-            continue;
-        }
-        
-        float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal));
-        if (NdotL == 0.0f)
-        {
-            // no need to trace for backface
-            continue;
-        }
-        NdotL *= saturate(PointLight.Color.a);
-        
-        UHDefaultPayload Payload = (UHDefaultPayload) 0;
-        Payload.MipLevel = MipLevel;
-        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
-		
-        if (Payload.IsHit())
-        {
-            MaxDist = max(MaxDist, Payload.HitT);
-            Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
-        }
-        else
-        {
-			// add attenuation by ndotl
-            Atten += NdotL;
-        }
+        TracePointShadow(TLAS, PointLight, WorldPos, WorldNormal, Gap, MipLevel, Atten, MaxDist);
     }
-	
 	
 	// ------------------------------------------------------------------------------------------ Spot Light Tracing
     TileOffset = GetSpotLightOffset(TileIndex);
@@ -171,49 +93,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
         TileOffset += 4;
 		
         UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
-        UHBRANCH
-        if (!SpotLight.bIsEnabled)
-        {
-            continue;
-        }
-        LightToWorld = WorldPos - SpotLight.Position;
-		
-		// point only needs to be traced by the length of LightToWorld
-        RayDesc ShadowRay = (RayDesc) 0;
-        ShadowRay.Origin = WorldPos + WorldNormal * Gap;
-        ShadowRay.Direction = -SpotLight.Dir;
-        ShadowRay.TMin = Gap;
-        ShadowRay.TMax = length(LightToWorld);
-		
-		// do not trace out-of-range pixel
-        float Rho = acos(dot(normalize(LightToWorld), SpotLight.Dir));
-        if (ShadowRay.TMax > SpotLight.Radius || Rho > SpotLight.Angle)
-        {
-            continue;
-        }
-        
-        float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal));
-        if (NdotL == 0.0f)
-        {
-            // no need to trace for backface
-            continue;
-        }
-        NdotL *= saturate(SpotLight.Color.a);
-		
-        UHDefaultPayload Payload = (UHDefaultPayload) 0;
-        Payload.MipLevel = MipLevel;
-        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
-		
-        if (Payload.IsHit())
-        {
-            MaxDist = max(MaxDist, Payload.HitT);
-            Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
-        }
-        else
-        {
-			// add attenuation by ndotl
-            Atten += NdotL;
-        }
+        TraceSpotShadow(TLAS, SpotLight, WorldPos, WorldNormal, Gap, MipLevel, Atten, MaxDist);
     }
 	
 	// saturate the attenuation and output
@@ -241,7 +121,7 @@ void RTShadowRayGen()
 
 	// calculate mip level before ray tracing kicks off
     float MipRate = MixedMipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
-	float MipLevel = max(0.5f * log2(MipRate * MipRate), 0);
+    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) + GRTMipBias;
 
     // trace shadow just once, it will take care opaque/translucent tracing at the same time
 	TraceShadow(PixelCoord, ScreenUV, MipRate, MipLevel);

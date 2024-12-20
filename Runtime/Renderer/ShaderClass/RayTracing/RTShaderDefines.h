@@ -12,6 +12,7 @@ struct UHDefaultPayload
 	// for opaque
 	XMFLOAT4 HitDiffuse;
 	XMFLOAT3 HitNormal;
+	XMFLOAT3 HitWorldNormal;
 	XMFLOAT4 HitSpecular;
 	XMFLOAT3 HitEmissive;
 	XMFLOAT2 HitScreenUV;
@@ -19,6 +20,7 @@ struct UHDefaultPayload
 	// for translucent
 	XMFLOAT4 HitDiffuseTrans;
 	XMFLOAT3 HitNormalTrans;
+	XMFLOAT3 HitWorldNormalTrans;
 	XMFLOAT4 HitSpecularTrans;
 	XMFLOAT4 HitEmissiveTrans;
 	XMFLOAT2 HitScreenUVTrans;
@@ -27,6 +29,7 @@ struct UHDefaultPayload
 	float HitRefraction;
 
 	uint32_t IsInsideScreen;
+	uint32_t HitInstanceIndex;
 };
 
 struct UHDefaultAttribute

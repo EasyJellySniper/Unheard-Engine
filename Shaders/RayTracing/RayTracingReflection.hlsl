@@ -24,7 +24,7 @@ Texture2D TranslucentBumpTexture : register(t11);
 Texture2D TranslucentSmoothTexture : register(t12);
 
 // lighting parameters
-Texture2D ScreenShadowTexture : register(t13);
+StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
 ByteAddressBuffer PointLightListTrans : register(t14);
 ByteAddressBuffer SpotLightListTrans : register(t15);
 
@@ -36,90 +36,53 @@ Texture2D BlurredSceneTexture : register(t17);
 SamplerState PointClampSampler : register(s18);
 SamplerState LinearClampSampler : register(s19);
 
-static const int GMaxDirLight = 4;
-static const int GMaxPointLight = 8;
-static const int GMaxSpotLight = 8;
+static const int GMaxDirLight = 2;
 
-void ConditionalCalculatePointLight(uint TileIndex, float AttenNoise, in UHDefaultPayload Payload, UHLightInfo LightInfo, inout float3 Result)
+void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload, UHLightInfo LightInfo, inout float3 Result)
 {
     // fetch tiled point light
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightListTrans.Load(TileOffset);
     TileOffset += 4;
     
-    float3 WorldPos = LightInfo.WorldPos;
-    float ShadowMask = LightInfo.ShadowMask;
-    
-    float3 LightToWorld;
-    float LightAtten;
-    
     UHBRANCH
-    if (Payload.IsInsideScreen)
-    {    
+    if (Payload.IsInsideScreen && PointLightCount > 0)
+    {
         for (uint Ldx = 0; Ldx < PointLightCount; Ldx++)
         {
             uint PointLightIdx = PointLightListTrans.Load(TileOffset);
             TileOffset += 4;
        
             UHPointLight PointLight = UHPointLights[PointLightIdx];
-            UHBRANCH
-            if (!PointLight.bIsEnabled)
-            {
-                continue;
-            }
-            LightInfo.LightColor = PointLight.Color.rgb;
-		
-            LightToWorld = WorldPos - PointLight.Position;
-            LightInfo.LightDir = normalize(LightToWorld);
-		
-		    // square distance attenuation
-            LightAtten = 1.0f - saturate(length(LightToWorld) / PointLight.Radius + AttenNoise);
-            LightAtten *= LightAtten;
-            LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-            Result += LightBRDF(LightInfo);
+            Result += CalculatePointLight(PointLight, LightInfo);
         }
     }
     else
     {
-        for (uint Ldx = 0; Ldx < min(GNumPointLights, GMaxPointLight); Ldx++)
+        UHInstanceLights Lights = InstanceLights[Payload.HitInstanceIndex];
+        for (uint Ldx = 0; Ldx < GMaxPointSpotLightPerInstance; Ldx++)
         {
-            UHPointLight PointLight = UHPointLights[Ldx];
-            UHBRANCH
-            if (!PointLight.bIsEnabled)
+            uint LightIndex = Lights.PointLightIndices[Ldx];
+            if (LightIndex == ~0)
             {
-                continue;
+                break;
             }
-            LightInfo.LightColor = PointLight.Color.rgb;
-		
-            LightToWorld = WorldPos - PointLight.Position;
-            LightInfo.LightDir = normalize(LightToWorld);
-		
-		    // square distance attenuation
-            LightAtten = 1.0f - saturate(length(LightToWorld) / PointLight.Radius + AttenNoise);
-            LightAtten *= LightAtten;
-            LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-            Result += LightBRDF(LightInfo);
+            
+            UHPointLight PointLight = UHPointLights[LightIndex];
+            Result += CalculatePointLight(PointLight, LightInfo);
         }
     }
 }
 
-void ConditionalCalculateSpotLight(uint TileIndex, float AttenNoise, in UHDefaultPayload Payload, UHLightInfo LightInfo, inout float3 Result)
+void ConditionalCalculateSpotLight(uint TileIndex, in UHDefaultPayload Payload, UHLightInfo LightInfo, inout float3 Result)
 {
     // fetch tiled spot light
     uint TileOffset = GetSpotLightOffset(TileIndex);
     uint SpotLightCount = SpotLightListTrans.Load(TileOffset);
     TileOffset += 4;
     
-    float3 WorldPos = LightInfo.WorldPos;
-    float ShadowMask = LightInfo.ShadowMask;
-    
-    float3 LightToWorld;
-    float LightAtten;
-    
     UHBRANCH
-    if (Payload.IsInsideScreen)
+    if (Payload.IsInsideScreen && SpotLightCount > 0)
     {        
         for (uint Ldx = 0; Ldx < SpotLightCount; Ldx++)
         {
@@ -127,64 +90,131 @@ void ConditionalCalculateSpotLight(uint TileIndex, float AttenNoise, in UHDefaul
             TileOffset += 4;
         
             UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
-            UHBRANCH
-            if (!SpotLight.bIsEnabled)
-            {
-                continue;
-            }
-        
-            LightInfo.LightColor = SpotLight.Color.rgb;
-            LightInfo.LightDir = SpotLight.Dir;
-            LightToWorld = WorldPos - SpotLight.Position;
-        
-            // squared distance attenuation
-            LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + AttenNoise);
-            LightAtten *= LightAtten;
-        
-            // squared spot angle attenuation
-            float Rho = dot(SpotLight.Dir, normalize(LightToWorld));
-            float SpotFactor = (Rho - cos(SpotLight.Angle)) / (cos(SpotLight.InnerAngle) - cos(SpotLight.Angle));
-            SpotFactor = saturate(SpotFactor);
-        
-            LightAtten *= SpotFactor * SpotFactor;
-            LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-            Result += LightBRDF(LightInfo);
+            Result += CalculateSpotLight(SpotLight, LightInfo);
         }
     }
     else
     {
-        for (uint Ldx = 0; Ldx < min(GNumSpotLights, GMaxSpotLight); Ldx++)
+        UHInstanceLights Lights = InstanceLights[Payload.HitInstanceIndex];
+        for (uint Ldx = 0; Ldx < GMaxPointSpotLightPerInstance; Ldx++)
         {
-            UHSpotLight SpotLight = UHSpotLights[Ldx];
-            UHBRANCH
-            if (!SpotLight.bIsEnabled)
+            uint LightIndex = Lights.SpotLightIndices[Ldx];
+            if (LightIndex == ~0)
             {
-                continue;
+                break;
             }
-        
-            LightInfo.LightColor = SpotLight.Color.rgb;
-            LightInfo.LightDir = SpotLight.Dir;
-            LightToWorld = WorldPos - SpotLight.Position;
-        
-            // squared distance attenuation
-            LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + AttenNoise);
-            LightAtten *= LightAtten;
-        
-            // squared spot angle attenuation
-            float Rho = dot(SpotLight.Dir, normalize(LightToWorld));
-            float SpotFactor = (Rho - cos(SpotLight.Angle)) / (cos(SpotLight.InnerAngle) - cos(SpotLight.Angle));
-            SpotFactor = saturate(SpotFactor);
-        
-            LightAtten *= SpotFactor * SpotFactor;
-            LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-            Result += LightBRDF(LightInfo);
+
+            UHSpotLight SpotLight = UHSpotLights[LightIndex];
+            Result += CalculateSpotLight(SpotLight, LightInfo);
         }
     }
 }
 
-float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldPos, float3 SceneWorldPos)
+float AccumulateShadowAtten(float InAtten, float NdotL, in UHDefaultPayload ReflectShadowPayload)
+{
+    if (ReflectShadowPayload.IsHit())
+    {
+        InAtten = lerp(InAtten + NdotL, InAtten, ReflectShadowPayload.HitAlpha);
+    }
+    else
+    {
+        InAtten += NdotL;
+    }
+    
+    return InAtten;
+}
+
+float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPayload Payload, float MipLevel)
+{
+    float Atten = 0.0f;
+    float3 HitWorldNormal = Payload.HitWorldNormal;
+    
+    RayDesc ShadowRay = (RayDesc)0;
+    ShadowRay.Origin = HitWorldPos;
+    ShadowRay.TMin = 0.01f;
+    float Dummy = 0.0f;
+    float Gap = 0.01f;
+    
+    // directional light shadows
+    if (GNumDirLights > 0)
+    {
+        // trace directional light, 1 should be enough
+        for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
+        {
+            UHDirectionalLight DirLight = UHDirLights[Ldx];
+            if (TraceDiretionalShadow(TLAS, DirLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy))
+            {
+                break;
+            }
+        }
+    }
+    
+    // point light shadows, reuse tile light information if hit pos is inside screen, otherwise fetch from instance data
+    UHInstanceLights Lights = InstanceLights[Payload.HitInstanceIndex];
+    
+    uint PointTileOffset = GetPointLightOffset(TileIndex);
+    uint PointLightCount = PointLightListTrans.Load(PointTileOffset);
+    if (Payload.IsInsideScreen && PointLightCount > 0)
+    {
+        PointTileOffset += 4;
+        for (uint Ldx = 0; Ldx < PointLightCount; Ldx++)
+        {
+            uint PointLightIdx = PointLightListTrans.Load(PointTileOffset);
+            PointTileOffset += 4;
+            
+            UHPointLight PointLight = UHPointLights[PointLightIdx];
+            TracePointShadow(TLAS, PointLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+        }
+    }
+    else if (GNumPointLights > 0)
+    {
+        for (uint Ldx = 0; Ldx < GMaxPointSpotLightPerInstance; Ldx++)
+        {
+            uint LightIndex = Lights.PointLightIndices[Ldx];
+            if (LightIndex == ~0)
+            {
+                break;
+            }
+            
+            UHPointLight PointLight = UHPointLights[LightIndex];
+            TracePointShadow(TLAS, PointLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+        }
+    }
+    
+    // spot light shadow, reuse tile light information if hit pos is inside screen, otherwise fetch from instance data
+    uint SpotTileOffset = GetSpotLightOffset(TileIndex);
+    uint SpotLightCount = SpotLightListTrans.Load(SpotTileOffset);
+    if (Payload.IsInsideScreen && SpotLightCount > 0)
+    {
+        SpotTileOffset += 4;
+        for (uint Ldx = 0; Ldx < SpotLightCount; Ldx++)
+        {
+            uint LightIdx = SpotLightListTrans.Load(SpotTileOffset);
+            SpotTileOffset += 4;
+            
+            UHSpotLight SpotLight = UHSpotLights[LightIdx];
+            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+        }
+    }
+    else if (GNumSpotLights > 0)
+    {
+        for (uint Ldx = 0; Ldx < GMaxPointSpotLightPerInstance; Ldx++)
+        {
+            uint LightIndex = Lights.SpotLightIndices[Ldx];
+            if (LightIndex == ~0)
+            {
+                break;
+            }
+            
+            UHSpotLight SpotLight = UHSpotLights[LightIndex];
+            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+        }
+    }
+    
+    return saturate(Atten);
+}
+
+float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldPos, float3 SceneWorldPos, float MipLevel)
 {
     // doing the same lighting as object pass except the indirect specular
     float3 Result = 0;
@@ -200,14 +230,17 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldP
         Payload.HitDiffuse = lerp(Payload.HitDiffuse, Payload.HitDiffuseTrans, TransOpacity);
         Payload.HitSpecular = lerp(Payload.HitSpecular, Payload.HitSpecularTrans, TransOpacity);
         Payload.HitNormal = lerp(Payload.HitNormal, Payload.HitNormalTrans, TransOpacity);
+        Payload.HitWorldNormal = lerp(Payload.HitWorldNormal, Payload.HitWorldNormalTrans, TransOpacity);
         Payload.HitEmissive.rgb = lerp(Payload.HitEmissive.rgb, Payload.HitEmissiveTrans.rgb, TransOpacity);
     }
+    Payload.HitNormal = normalize(Payload.HitNormal);
+    Payload.HitWorldNormal = normalize(Payload.HitWorldNormal);
     
     // light calculation, be sure to normalize normal vector before using it
     UHLightInfo LightInfo;
     LightInfo.Diffuse = Payload.HitDiffuse.rgb;
     LightInfo.Specular = Payload.HitSpecular;
-    LightInfo.Normal = normalize(Payload.HitNormal);
+    LightInfo.Normal = Payload.HitNormal;
     LightInfo.WorldPos = bHitTranslucent ? Payload.HitWorldPosTrans : HitWorldPos;
     
     // check whether it's a refraction material
@@ -248,49 +281,42 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldP
             ScreenUV = Payload.HitScreenUV;
             LightInfo.Diffuse = Payload.HitDiffuse.rgb;
             LightInfo.Specular = Payload.HitSpecular;
-            LightInfo.Normal = normalize(Payload.HitNormal);
+            LightInfo.Normal = Payload.HitNormal;
             LightInfo.WorldPos = HitWorldPos;
         }
     }
     
-    // shadows, reuse the screen shadow when possible
-    // @TODO: Fallback to other shadow method for the hit position outside of screen
-    float ShadowMask = (Payload.IsInsideScreen) ? ScreenShadowTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r : 1.0f;
-    LightInfo.ShadowMask = ShadowMask;
-    
-    // directional lights, with max number limitation
-    {
-        for (uint Ldx = 0; Ldx < min(GNumDirLights, GMaxDirLight); Ldx++)
-        {
-            UHBRANCH
-            if (!UHDirLights[Ldx].bIsEnabled)
-            {
-                continue;
-            }
-                    
-            LightInfo.LightColor = UHDirLights[Ldx].Color.rgb;
-            LightInfo.LightDir = UHDirLights[Ldx].Dir;
-            
-            Result += LightBRDF(LightInfo);
-        }
-    }
-    
     // for point lights and spot lights, fetch from tile-based light if it's inside screen
-    // otherwise, fetch from the closest lights to current camera for now, this can be improved by 3D culling instead in the future
+    // otherwise, fetch from the closest lights to current camera for now
     uint2 PixelCoord = uint2(ScreenUV * GResolution.xy);
     uint TileX = CoordToTileX(PixelCoord.x);
     uint TileY = CoordToTileY(PixelCoord.y);
     uint TileIndex = TileX + TileY * GLightTileCountX;
-    float AttenNoise = GetAttenuationNoise(PixelCoord.xy);
+    float AttenNoise = GetAttenuationNoise(PixelCoord.xy) * 0.1f;
+    
+    // trace shadow in reflection
+    LightInfo.ShadowMask = TraceShadowInReflection(LightInfo.WorldPos, TileIndex, Payload, MipLevel);
+    LightInfo.AttenNoise = AttenNoise;
+    
+    // directional lights, with max number limitation
+    if (GNumDirLights > 0)
+    {
+        for (uint Ldx = 0; Ldx < min(GNumDirLights, GMaxDirLight); Ldx++)
+        {
+            Result += CalculateDirLight(UHDirLights[Ldx], LightInfo);
+        }
+    }
     
     // point lights
+    if (GNumPointLights > 0)
     {
-        ConditionalCalculatePointLight(TileIndex, AttenNoise, Payload, LightInfo, Result);
+        ConditionalCalculatePointLight(TileIndex, Payload, LightInfo, Result);
     }
     
     // spot lights
+    if (GNumSpotLights > 0)
     {
-        ConditionalCalculateSpotLight(TileIndex, AttenNoise, Payload, LightInfo, Result);
+        ConditionalCalculateSpotLight(TileIndex, Payload, LightInfo, Result);
     }
     
     // indirect light and emissive
@@ -359,7 +385,7 @@ void RTReflectionRayGen()
     
     // Now fetch the data used for RT
     float MipRate = MixedMipTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r;
-    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0);
+    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) + GRTMipBias;
     
     float3 VertexNormal = DecodeNormal(MixedVertexNormalTexture.SampleLevel(PointClampSampler, ScreenUV, 0).xyz);
     // Select from translucent or opaque bump
@@ -391,7 +417,7 @@ void RTReflectionRayGen()
     {
         float3 HitWorldPos = ReflectRay.Origin + ReflectRay.Direction * Payload.HitT;
         float3 EyeVec = HitWorldPos - GCameraPos;
-        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, WorldPos);
+        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, WorldPos, MipLevel);
         
         if (bHalfPixel)
         {

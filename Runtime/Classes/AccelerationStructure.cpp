@@ -142,10 +142,6 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		// refresh transform once
 		InRenderers[Idx]->Update();
 		UHMaterial* Mat = InRenderers[Idx]->GetMaterial();
-		if (Mat->GetMaterialUsages().bIsSkybox)
-		{
-			continue;
-		}
 
 		// hit every thing for now
 		VkAccelerationStructureInstanceKHR InstanceKHR{};
@@ -279,16 +275,17 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 			std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
 		}
 
-		// check visibility
-		bool bIsVisible = Renderer->IsVisible();
-		if (Renderer->IsEnabled()
+		// check visibility, can't use IsVisible() as it's set by frustum culling
+		bool bIsVisible = Renderer->IsEnabled()
 #if WITH_EDITOR
 			&& Renderer->IsVisibleInEditor()
 #endif
-			)
+			;
+
+		if (bIsVisible)
 		{
-			// only check culling distance when the component is enabled or visiable in the editor
-			bIsVisible |= (Renderer->GetSquareDistanceToMainCam() < RTCullingDistance * RTCullingDistance);
+			// only check culling distance when the component is visible
+			bIsVisible &= (Renderer->GetSquareDistanceToMainCam() < RTCullingDistance * RTCullingDistance);
 		}
 		InstanceKHRs[Idx].mask = bIsVisible ? 0xff : 0;
 

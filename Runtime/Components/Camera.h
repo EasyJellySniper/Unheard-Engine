@@ -34,6 +34,7 @@ public:
 	XMFLOAT3 GetScreenPos(XMFLOAT3 InWorld) const;
 	BoundingBox GetScreenBound(BoundingBox InWorldBound) const;
 	float GetCullingDistance() const;
+	float GetNearPlane() const;
 
 #if WITH_EDITOR
 	virtual void OnGenerateDetailView() override;

@@ -1,13 +1,25 @@
 #ifndef UHRTCOMMOM_H
 #define UHRTCOMMOM_H
 
+#include "../UHInputs.hlsli"
 #include "../UHCommon.hlsli"
+#include "../UHLightCommon.hlsli"
 #define RT_MIPRATESCALE 100.0f
 
 // payload data bits
 #define PAYLOAD_ISREFLECTION 1 << 0
 #define PAYLOAD_HITTRANSLUCENT 1 << 1
 #define PAYLOAD_HITREFRACTION 1 << 2
+
+// perf hack mip bias for RT
+static const float GRTMipBias = 1.0f;
+static const uint GMaxPointSpotLightPerInstance = 16;
+
+struct UHInstanceLights
+{
+    uint PointLightIndices[GMaxPointSpotLightPerInstance];
+    uint SpotLightIndices[GMaxPointSpotLightPerInstance];
+};
 
 struct UHDefaultPayload
 {
@@ -26,6 +38,7 @@ struct UHDefaultPayload
 	// for opaque
     float4 HitDiffuse;
     float3 HitNormal;
+    float3 HitWorldNormal;
     float4 HitSpecular;
 	float3 HitEmissive;
     float2 HitScreenUV;
@@ -33,6 +46,7 @@ struct UHDefaultPayload
 	// for translucent
     float4 HitDiffuseTrans;
     float3 HitNormalTrans;
+    float3 HitWorldNormalTrans;
     float4 HitSpecularTrans;
 	// .a will store the opacity, which used differently from the HitAlpha above!
     float4 HitEmissiveTrans;
@@ -42,6 +56,7 @@ struct UHDefaultPayload
     float HitRefraction;
 	
     uint IsInsideScreen;
+    uint HitInstanceIndex;
 };
 
 RayDesc GenerateCameraRay(uint2 ScreenPos)
@@ -72,6 +87,164 @@ RayDesc GenerateCameraRay_UV(float2 ScreenUV)
 	CameraRay.TMax = float(1 << 20);
 
 	return CameraRay;
+}
+
+bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
+    , UHDirectionalLight DirLight
+    , float3 WorldPos
+    , float3 WorldNormal
+    , float Gap
+    , float MipLevel
+    , inout float Atten, inout float MaxDist)
+{
+	UHBRANCH
+    if (!DirLight.bIsEnabled)
+    {
+        return false;
+    }
+        
+    float NdotL = saturate(dot(-DirLight.Dir, WorldNormal));
+    if (NdotL == 0.0f)
+    {
+        // no need to trace for backface
+        return false;
+    }
+    NdotL *= saturate(DirLight.Color.a);
+
+    RayDesc ShadowRay = (RayDesc)0;
+    ShadowRay.Origin = WorldPos + WorldNormal * Gap;
+    ShadowRay.Direction = -DirLight.Dir;
+
+    ShadowRay.TMin = Gap;
+    ShadowRay.TMax = GDirectionalShadowRayTMax;
+
+    UHDefaultPayload Payload = (UHDefaultPayload) 0;
+    Payload.MipLevel = MipLevel;
+    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+
+	// store the max hit T to the result, system will perform PCSS later
+	// also output shadow attenuation, hit alpha and ndotl are considered
+    if (Payload.IsHit())
+    {
+        MaxDist = max(MaxDist, Payload.HitT);
+        Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+    }
+    else
+    {
+		// add attenuation by ndotl
+        Atten += NdotL;
+    }
+    
+    return true;
+}
+
+bool TracePointShadow(RaytracingAccelerationStructure TLAS
+    , UHPointLight PointLight
+    , float3 WorldPos
+    , float3 WorldNormal
+    , float Gap
+    , float MipLevel
+    , inout float Atten, inout float MaxDist)
+{
+    UHBRANCH
+    if (!PointLight.bIsEnabled)
+    {
+        return false;
+    }
+    float3 LightToWorld = WorldPos - PointLight.Position;
+		
+	// point only needs to be traced by the length of LightToWorld
+    RayDesc ShadowRay = (RayDesc)0;
+    ShadowRay.Origin = WorldPos + WorldNormal * Gap;
+    ShadowRay.Direction = -normalize(LightToWorld);
+    ShadowRay.TMin = Gap;
+    ShadowRay.TMax = length(LightToWorld);
+		
+	// do not trace out-of-range pixel
+    if (ShadowRay.TMax > PointLight.Radius)
+    {
+        return false;
+    }
+        
+    float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal));
+    if (NdotL == 0.0f)
+    {
+        // no need to trace for backface
+        return false;
+    }
+    NdotL *= saturate(PointLight.Color.a);
+        
+    UHDefaultPayload Payload = (UHDefaultPayload) 0;
+    Payload.MipLevel = MipLevel;
+    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+		
+    if (Payload.IsHit())
+    {
+        MaxDist = max(MaxDist, Payload.HitT);
+        Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+    }
+    else
+    {
+		// add attenuation by ndotl
+        Atten += NdotL;
+    }
+    
+    return true;
+}
+
+bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
+    , UHSpotLight SpotLight
+    , float3 WorldPos
+    , float3 WorldNormal
+    , float Gap
+    , float MipLevel
+    , inout float Atten, inout float MaxDist)
+{
+    UHBRANCH
+    if (!SpotLight.bIsEnabled)
+    {
+        return false;
+    }
+    float3 LightToWorld = WorldPos - SpotLight.Position;
+		
+		// point only needs to be traced by the length of LightToWorld
+    RayDesc ShadowRay = (RayDesc)0;
+    ShadowRay.Origin = WorldPos + WorldNormal * Gap;
+    ShadowRay.Direction = -SpotLight.Dir;
+    ShadowRay.TMin = Gap;
+    ShadowRay.TMax = length(LightToWorld);
+		
+		// do not trace out-of-range pixel
+    float Rho = acos(dot(normalize(LightToWorld), SpotLight.Dir));
+    if (ShadowRay.TMax > SpotLight.Radius || Rho > SpotLight.Angle)
+    {
+        return false;
+    }
+        
+    float NdotL = saturate(dot(ShadowRay.Direction, WorldNormal));
+    if (NdotL == 0.0f)
+    {
+        // no need to trace for backface
+        return false;
+    }
+    NdotL *= saturate(SpotLight.Color.a);
+		
+    UHDefaultPayload Payload = (UHDefaultPayload) 0;
+    Payload.MipLevel = MipLevel;
+    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+		
+    if (Payload.IsHit())
+    {
+        MaxDist = max(MaxDist, Payload.HitT);
+        Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+    }
+    else
+    {
+		// add attenuation by ndotl
+        Atten += NdotL;
+    }
+    
+    return true;
 }
 
 #endif

@@ -60,7 +60,6 @@ enum class UHMaterialCompileFlag
 
 struct UHMaterialUsage
 {
-	bool bIsSkybox = false;
 	bool bIsTangentSpace = false;
 	bool bUseRefraction = false;
 };

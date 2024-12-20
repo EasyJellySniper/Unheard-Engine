@@ -54,6 +54,8 @@ UHTextureCube* GBlackCube;
 
 // occlusion data
 UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
+// instance lights buffer
+UniquePtr<UHRenderBuffer<UHInstanceLights>> GInstanceLightsBuffer;
 
 std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMeshShaderData[GMaxFrameInFlight];
 std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionOpaqueShaderData[GMaxFrameInFlight];

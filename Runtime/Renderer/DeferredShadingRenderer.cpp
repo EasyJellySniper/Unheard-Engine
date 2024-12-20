@@ -248,10 +248,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	// pack system rendering feature data
 	uint32_t FeatureData = 0;
-	FeatureData |= (GraphicInterface->IsDepthPrePassEnabled()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureDepthPrePass) : 0;
 	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
-	FeatureData |= (RenderingSettings.bEnableHardwareOcclusion) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::OcclusionCulling) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.GDirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
@@ -266,6 +264,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.GRefractionClearIndex = RefractionClearIndex;
 	SystemConstantsCPU.GRefractionBlurIndex = RefractionBlurredIndex;
 	SystemConstantsCPU.GDefaultAnisoSamplerIndex = DefaultSamplerIndex;
+	SystemConstantsCPU.GNearPlane = CurrentCamera->GetNearPlane();
+	SystemConstantsCPU.GRTCullingDistance = RenderingSettings.RTCullingRadius;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -422,12 +422,7 @@ void UHDeferredShadingRenderer::FrustumCulling()
 
 			for (int32_t Idx = StartIdx; Idx < EndIdx; Idx++)
 			{
-				// skip skybox renderer
 				UHMeshRendererComponent* Renderer = Renderers[Idx];
-				if (Renderer->GetMaterial()->GetMaterialUsages().bIsSkybox)
-				{
-					continue;
-				}
 
 				const BoundingBox& RendererBound = Renderer->GetRendererBound();
 				const bool bVisible = (CameraFrustum.Contains(RendererBound) != DirectX::DISJOINT);
@@ -491,7 +486,7 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 	const float CullingDistance = CurrentCamera->GetCullingDistance();
 	for (UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
-		if (Renderer->GetMaterial()->GetMaterialUsages().bIsSkybox || !Renderer->IsVisible())
+		if (!Renderer->IsVisible())
 		{
 			continue;
 		}
@@ -749,6 +744,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				if (bIsRenderingEnabledRT)
 				{
 					BuildTopLevelAS(AsyncComputeBuilder);
+					CollectLightPass(AsyncComputeBuilder);
 					GenerateSH9Pass(AsyncComputeBuilder);
 				}
 
@@ -789,6 +785,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				if (!bEnableAsyncComputeRT)
 				{
 					BuildTopLevelAS(SceneRenderBuilder);
+					CollectLightPass(SceneRenderBuilder);
 					GenerateSH9Pass(SceneRenderBuilder);
 				}
 

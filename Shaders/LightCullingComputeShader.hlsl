@@ -70,13 +70,13 @@ void CalcFrustumPlanes(uint TileX, uint TileY, float MinZ, float MaxZ, out float
     Plane[3].w = 0;
 
     Plane[4].xyz = float3(0, 0, 1);
-    Plane[4].w = -MinZ;
+    Plane[4].w = MinZ;
 
     Plane[5].xyz = float3(0, 0, -1);
     Plane[5].w = MaxZ;
 }
 
-void CalcFrustumCorners(uint TileX, uint TileY, float MinZ, float MaxZ, out float3 Corners[8])
+float4 CalcFrustumSphere(uint TileX, uint TileY, float MinZ, float MaxZ)
 {
     // tile position in screen space
     float X = TileToCoordX(TileX);
@@ -85,6 +85,7 @@ void CalcFrustumCorners(uint TileX, uint TileY, float MinZ, float MaxZ, out floa
     float RY = TileToCoordY(TileY + 1);
 
 	// frustum corners - LB RB LT RT, at the near and far
+    float3 Corners[8];
     Corners[0] = float3(X, Y, MinZ);
     Corners[1] = float3(RX, Y, MinZ);
     Corners[2] = float3(X, RY, MinZ);
@@ -94,12 +95,23 @@ void CalcFrustumCorners(uint TileX, uint TileY, float MinZ, float MaxZ, out floa
     Corners[6] = float3(X, RY, MaxZ);
     Corners[7] = float3(RX, RY, MaxZ);
     
-    // note that these are world positions
+    float3 Center = 0.0f;
     UHUNROLL
     for (int Idx = 0; Idx < 8; Idx++)
     {
         Corners[Idx] = ComputeWorldPositionFromDeviceZ(Corners[Idx].xy * UHLIGHTCULLING_UPSCALE, Corners[Idx].z);
+        Center += Corners[Idx];
     }
+    Center *= 0.125f;
+
+    float Radius = 0;
+    UHUNROLL
+    for (Idx = 0; Idx < 8; Idx++)
+    {
+        Radius = max(Radius, length(Center - Corners[Idx]));
+    }
+    
+    return float4(Center, Radius);
 }
 
 void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
@@ -142,8 +154,8 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     MaxDepth = lerp(MaxDepth, 0.0001f, MaxDepth == 0.0f);
     MaxDepth = lerp(MaxDepth, MinDepth + 0.0001f, (MaxDepth - MinDepth) < UH_FLOAT_EPSILON);
     
-    float4 TileFrustum[6];
-    CalcFrustumPlanes(Gid.x, Gid.y, MaxDepth, MinDepth, TileFrustum);
+    // build frustum sphere for this tile
+    float4 FrustumSphere = CalcFrustumSphere(Gid.x, Gid.y, MaxDepth, MinDepth);
     
     for (uint LightIdx = GIndex; LightIdx < GNumPointLights; LightIdx += UHLIGHTCULLING_TILEX * UHLIGHTCULLING_TILEY)
     {
@@ -154,10 +166,8 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
             continue;
         }
         
-        float3 PointLightViewPos = WorldToViewPos(PointLight.Position);
-        
-        bool bIsOverlapped = SphereIntersectsFrustum(float4(PointLightViewPos, PointLight.Radius), TileFrustum);
-        if (bIsOverlapped)
+        // simple sphere-sphere test
+        if (SphereIntersectsSphere(FrustumSphere, float4(PointLight.Position, PointLight.Radius)))
         {
             uint StoreIdx = 0;
             InterlockedAdd(GTileLightCount, 1, StoreIdx);
@@ -191,27 +201,6 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
             OutPointLightListTrans.Store(TileOffset, min(GTileLightCount, GMaxPointLightPerTile));
         }
     }
-}
-
-bool IsTileWithinSpotAngle(const float3 Pos, const float3 Dir, const float Angle, const float3 Corners[8])
-{
-    // as long as ONE corner of a frustum is inside the spotlight range, return true
-    UHUNROLL
-    for (int Idx = 0; Idx < 8; Idx++)
-    {
-        const float3 LightToCorner = normalize(Corners[Idx] - Pos);
-        const float LightCornerAngle = acos(dot(LightToCorner, Dir));
-        
-        // give it a small tolerance when checking the angle
-        // this prevents the artifacts on the edge of the spot light
-        UHBRANCH
-        if (LightCornerAngle <= Angle + 1.0f)
-        {
-            return true;
-        }
-    }
-    
-    return false;
 }
 
 void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
@@ -254,12 +243,9 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     MaxDepth = lerp(MaxDepth, 0.0001f, MaxDepth == 0.0f);
     MaxDepth = lerp(MaxDepth, MinDepth + 0.0001f, (MaxDepth - MinDepth) < UH_FLOAT_EPSILON);
     
-    float4 TileFrustum[6];
-    CalcFrustumPlanes(Gid.x, Gid.y, MaxDepth, MinDepth, TileFrustum);
-    
-    float3 TileCornersWorld[8];
-    CalcFrustumCorners(Gid.x, Gid.y, MaxDepth, MinDepth, TileCornersWorld);
-    
+    // build frustum sphere for this tile
+    float4 FrustumSphere = CalcFrustumSphere(Gid.x, Gid.y, MaxDepth, MinDepth);
+
     for (uint LightIdx = GIndex; LightIdx < GNumSpotLights; LightIdx += UHLIGHTCULLING_TILEX * UHLIGHTCULLING_TILEY)
     {
         UHSpotLight SpotLight = UHSpotLights[LightIdx];
@@ -269,12 +255,9 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
             continue;
         }
         
-        float3 SpotLightViewPos = WorldToViewPos(SpotLight.Position);
-        
-        bool bIsOverlapped = SphereIntersectsFrustum(float4(SpotLightViewPos, SpotLight.Radius), TileFrustum)
-            && IsTileWithinSpotAngle(SpotLight.Position, SpotLight.Dir, SpotLight.Angle, TileCornersWorld);
-        
-        if (bIsOverlapped)
+        // transform the tile center to light space, no need to do this for corners as the frustum won't change
+        float3 TileCenterLightSpace = mul(float4(FrustumSphere.xyz, 1.0f), SpotLight.WorldToLight).xyz;
+        if (SphereIntersectsConeFrustum(float4(TileCenterLightSpace, FrustumSphere.w), SpotLight.Radius, SpotLight.Angle))
         {
             uint StoreIdx = 0;
             InterlockedAdd(GTileLightCount, 1, StoreIdx);

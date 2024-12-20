@@ -1,4 +1,6 @@
 // material commons
+#ifndef UHMATERIALCOMMON_H
+#define UHMATERIALCOMMON_H
 
 #define UH_ISOPAQUE 0
 #define UH_ISMASKED 1
@@ -11,3 +13,21 @@
 // material feature bits
 #define UH_TANGENT_SPACE 1 << 0
 #define UH_REFRACTION 1 << 1
+
+// material inputs from graph system
+struct UHMaterialInputs
+{
+    float3 Diffuse;
+    float Occlusion;
+    float3 Specular;
+    float3 Normal;
+    float Opacity;
+    float Metallic;
+    float Roughness;
+    float FresnelFactor;
+    float ReflectionFactor;
+    float3 Emissive;
+    float Refraction;
+};
+
+#endif

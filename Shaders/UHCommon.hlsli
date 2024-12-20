@@ -6,6 +6,26 @@
 #define UH_FLOAT_MAX 3.402823466e+38F
 #define UH_PI 3.141592653589793f
 
+struct UHRendererInstance
+{
+    // mesh index to lookup mesh data
+    uint MeshIndex;
+    // indice type
+    uint IndiceType;
+};
+
+static const float4 GBoxOffset[8] =
+{
+    float4(-1.0f, -1.0f, 1.0f, 0.0f),
+    float4(1.0f, -1.0f, 1.0f, 0.0f),
+    float4(1.0f, 1.0f, 1.0f, 0.0f),
+    float4(-1.0f, 1.0f, 1.0f, 0.0f),
+    float4(-1.0f, -1.0f, -1.0f, 0.0f),
+    float4(1.0f, -1.0f, -1.0f, 0.0f),
+    float4(1.0f, 1.0f, -1.0f, 0.0f),
+    float4(-1.0f, 1.0f, -1.0f, 0.0f)
+};
+
 float3 ComputeWorldPositionFromDeviceZ(float2 ScreenPos, float Depth, bool bNonJittered = false)
 {
 	// build NDC space position
@@ -141,21 +161,35 @@ bool BoxIntersectsSphere(float3 BoxMin, float3 BoxMax, float3 SphereCenter, floa
 
 // sphere-frustum intersection
 // Source: Real-time collision detection, Christer Ericson (2005)
+// note that this function is used for VIEW space position instead of world position
+// so there is a subtle difference than original implementation
 bool SphereIntersectsFrustum(float4 Sphere, float4 Plane[6])
 {
-    bool Result = true;
-
 	UHUNROLL
     for (int Idx = 0; Idx < 6; Idx++)
     {
         float d = dot(Sphere.xyz, Plane[Idx].xyz) + Plane[Idx].w;
-        if (d < -Sphere.w)
+        if (d + Sphere.w < 0)
         {
-            Result = false;
+            // it's outside one frustum plane already and is impossible to intersect
+            return false;
         }
     }
 
-    return Result;
+    return true;
+}
+
+bool SphereIntersectsSphere(float4 Sphere1, float4 Sphere2)
+{
+	// check whether the square distance of s1 and s2 is less than the sum of squared radius
+    // sqrt it when necessary (shouldn't need to)
+    float3 SphereVec = Sphere1.xyz - Sphere2.xyz;
+    float Dist = dot(SphereVec, SphereVec);
+
+    float RadiusSum = Sphere1.w + Sphere2.w;
+    RadiusSum *= RadiusSum;
+
+    return Dist < RadiusSum;
 }
 
 // 2D coordinate to random hash function
@@ -224,6 +258,123 @@ bool IsUVInsideScreen(float2 UV)
 float RGBToLuminance(float3 Color)
 {
     return (0.2126f * Color.r + 0.7152f * Color.g + 0.0722f * Color.b);
+}
+
+// sphere-cone intersection, NOTE that it's done in light space.
+// this means the cone position is the origin and input sphere needs to be transformed to light space first!
+bool SphereIntersectsConeFrustum(float4 Sphere, float ConeHeight, float ConeAngle)
+{
+    // build corner
+    // frustum corners - LB RB LT RT
+    float3 Corners[4];
+    float ConeRadius = tan(ConeAngle) * ConeHeight;
+    float DistToConeCorner = sqrt(ConeRadius * ConeRadius + ConeRadius * ConeRadius);
+    
+    Corners[0] = float3(-DistToConeCorner, -DistToConeCorner, ConeHeight);
+    Corners[1] = float3(DistToConeCorner, -DistToConeCorner, ConeHeight);
+    Corners[2] = float3(-DistToConeCorner, DistToConeCorner, ConeHeight);
+    Corners[3] = float3(DistToConeCorner, DistToConeCorner, ConeHeight);
+    
+    // buld planes
+    // plane order: Left, Right, Bottom, Top, Near, Far
+    float4 Plane[6];
+    
+    Plane[0].xyz = normalize(cross(Corners[2], Corners[0]));
+    Plane[0].w = 0;
+
+    Plane[1].xyz = -normalize(cross(Corners[3], Corners[1])); // flip so right plane point inside frustum
+    Plane[1].w = 0;
+
+    Plane[2].xyz = normalize(cross(Corners[0], Corners[1]));
+    Plane[2].w = 0;
+
+    Plane[3].xyz = -normalize(cross(Corners[2], Corners[3])); // flip so top plane point inside frustum
+    Plane[3].w = 0;
+
+    Plane[4].xyz = float3(0, 0, 1);
+    Plane[4].w = 0;
+
+    Plane[5].xyz = float3(0, 0, -1);
+    Plane[5].w = ConeHeight;
+    
+    return SphereIntersectsFrustum(Sphere, Plane);
+}
+
+void BoxIntersectsPlane(float3 Center, float3 Extent, float4 Plane, out bool bIsOutside)
+{
+    float Dist = dot(float4(Center, 1.0f), Plane);
+    
+    // Project the axes of the box onto the normal of the plane.  Half the
+    // length of the projection (sometime called the "radius") is equal to
+    // h(u) * abs(n dot b(u))) + h(v) * abs(n dot b(v)) + h(w) * abs(n dot b(w))
+    // where h(i) are extents of the box, n is the plane normal, and b(i) are the
+    // axes of the box. In this case b(i) = [(1,0,0), (0,1,0), (0,0,1)].
+    float Radius = dot(Extent, abs(Plane.xyz));
+    
+    // outside plane?
+    bIsOutside = Dist + Radius < 0;
+}
+
+bool BoxIntersectsFrustum(float3 BoxMin, float3 BoxMax, float4 Plane[6])
+{
+    float3 Center = (BoxMin + BoxMax) * 0.5f;
+    float3 Extent = (BoxMax - BoxMin) * 0.5f;
+    
+    // 6-plane test
+    UHUNROLL
+
+    for (int Idx = 0; Idx < 6; Idx++)
+    {
+        bool bIsOutside;
+    
+        BoxIntersectsPlane(Center, Extent, Plane[Idx], bIsOutside);
+        if (bIsOutside)
+        {
+            // box is outside any plane already, no need to continue
+            return false;
+        }
+    }
+    
+    // it's either contained by or intersects with the frustum
+    return true;
+}
+
+bool BoxIntersectsConeFrustum(float3 BoxMin, float3 BoxMax, float ConeHeight, float ConeAngle)
+{
+    // build corner
+    // frustum corners - LB RB LT RT
+    float3 Corners[4];
+    float ConeRadius = tan(ConeAngle) * ConeHeight;
+    float DistToConeCorner = sqrt(ConeRadius * ConeRadius + ConeRadius * ConeRadius);
+    
+    Corners[0] = float3(-DistToConeCorner, -DistToConeCorner, ConeHeight);
+    Corners[1] = float3(DistToConeCorner, -DistToConeCorner, ConeHeight);
+    Corners[2] = float3(-DistToConeCorner, DistToConeCorner, ConeHeight);
+    Corners[3] = float3(DistToConeCorner, DistToConeCorner, ConeHeight);
+    
+    // buld planes
+    // plane order: Left, Right, Bottom, Top, Near, Far
+    float4 Plane[6];
+    
+    Plane[0].xyz = normalize(cross(Corners[2], Corners[0]));
+    Plane[0].w = 0;
+
+    Plane[1].xyz = -normalize(cross(Corners[3], Corners[1])); // flip so right plane point inside frustum
+    Plane[1].w = 0;
+
+    Plane[2].xyz = normalize(cross(Corners[0], Corners[1]));
+    Plane[2].w = 0;
+
+    Plane[3].xyz = -normalize(cross(Corners[2], Corners[3])); // flip so top plane point inside frustum
+    Plane[3].w = 0;
+
+    Plane[4].xyz = float3(0, 0, 1);
+    Plane[4].w = 0;
+
+    Plane[5].xyz = float3(0, 0, -1);
+    Plane[5].w = ConeHeight;
+    
+    return BoxIntersectsFrustum(BoxMin, BoxMax, Plane);
 }
 
 #endif

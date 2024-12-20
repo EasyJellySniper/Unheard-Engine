@@ -30,8 +30,8 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
-	// shadow mask and light list
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	// light lists
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -96,7 +96,7 @@ void UHRTReflectionShader::BindParameters()
 	BindImage(GTranslucentSmoothness, 12);
 
 	// shadow mask and lighting list
-	BindImage(GRTShadowResult, 13);
+	BindStorage(GInstanceLightsBuffer.get(), 13, 0, true);
 	BindStorage(GPointLightListBuffer.get(), 14, 0, true);
 	BindStorage(GSpotLightListBuffer.get(), 15, 0, true);
 

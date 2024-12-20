@@ -82,6 +82,8 @@ struct UHSystemConstants
 	uint32_t GRefractionBlurIndex;
 
 	float GFinalReflectionStrength;
+	float GNearPlane;
+	float GRTCullingDistance;
 };
 
 struct UHObjectConstants
@@ -90,9 +92,11 @@ struct UHObjectConstants
 	XMFLOAT4X4 GWorldIT;
 	XMFLOAT4X4 GPrevWorld;
 	uint32_t InstanceIndex;
-
+	XMFLOAT3 WorldPos;
+	XMFLOAT3 BoundExtent;
+	
 	// align to 256 bytes
-	float CPUPadding[15];
+	float CPUPadding[9];
 };
 
 struct UHDirectionalLightConstants
@@ -114,6 +118,7 @@ struct UHPointLightConstants
 
 struct UHSpotLightConstants
 {
+	XMFLOAT4X4 WorldToLight;
 	// intensity is multiplied to Color before sending to GPU
 	XMFLOAT4 Color;
 	XMFLOAT3 Dir;
@@ -148,6 +153,7 @@ enum class UHRenderPassTypes
 	OcclusionPass,
 	BasePass,
 	UpdateTopLevelAS,
+	CollectLightPass,
 	GenerateSH9,
 	RayTracingShadow,
 	RayTracingReflection,
@@ -313,10 +319,8 @@ struct UHDebugBoundConstant
 
 enum class UHSystemRenderFeatureBits
 {
-	FeatureDepthPrePass = 1 << 0,
-	FeatureEnvCube = 1 << 1,
-	FeatureHDR = 1 << 2,
-	OcclusionCulling = 1 << 3,
+	FeatureEnvCube = 1 << 0,
+	FeatureHDR = 1 << 1
 };
 
 // constant types
@@ -341,4 +345,13 @@ struct UHMeshShaderData
 	uint32_t RendererIndex;
 	uint32_t MeshletIndex;
 	uint32_t bDoOcclusionTest;
+};
+
+// UHInstanceLights to store light indices per-instance
+// the workflow will do intersection test in compute shader
+const uint32_t GMaxPointSpotLightPerInstance = 16;
+struct UHInstanceLights
+{
+	uint32_t PointLightIndices[GMaxPointSpotLightPerInstance];
+	uint32_t SpotLightIndices[GMaxPointSpotLightPerInstance];
 };

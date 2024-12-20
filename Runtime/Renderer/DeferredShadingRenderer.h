@@ -42,24 +42,13 @@
 #include "ShaderClass/RayTracing/RTReflectionMipmap.h"
 #include "ShaderClass/RayTracing/RTMeshInstanceTable.h"
 #include "ShaderClass/OcclusionPassShader.h"
+#include "ShaderClass/RayTracing/CollectLightShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
 #include "ShaderClass/PostProcessing/DebugBoundShader.h"
 #endif
 #include "../../Editor/Editor/Profiler.h"
-
-enum class UHParallelTask
-{
-	None = -1,
-	FrustumCullingTask,
-	DepthPassTask,
-	OcclusionPassTask,
-	BasePassTask,
-	MotionOpaqueTask,
-	MotionTranslucentTask,
-	TranslucentBgPassTask
-};
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
 class UHDeferredShadingRenderer
@@ -202,6 +191,7 @@ private:
 
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
+	void CollectLightPass(UHRenderBuilder& RenderBuilder);
 	void ResolveOcclusionResult(UHRenderBuilder& RenderBuilder);
 	void RenderDepthPrePass(UHRenderBuilder& RenderBuilder);
 	void RenderOcclusionPass(UHRenderBuilder& RenderBuilder);
@@ -395,6 +385,8 @@ private:
 	UniquePtr<UHRTMeshInstanceTable> RTMeshInstanceTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
 	UniquePtr<UHRTTextureTable> RTTextureTable;
+	UniquePtr<UHCollectLightShader> CollectPointLightShader;
+	UniquePtr<UHCollectLightShader> CollectSpotLightShader;
 
 	uint32_t RTInstanceCount;
 	bool bIsRaytracingEnableRT;

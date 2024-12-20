@@ -50,32 +50,26 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     
 	float3 Result = 0;
     
+    // Shadow mask fetch
+    float ShadowMask = ScreenShadowTexture.SampleLevel(LinearClampped, UV, 0).r;
+    
     // Noise (dithering) to reduce color banding
     float AttenNoise = GetAttenuationNoise(DTid.xy);
     
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
-    float ShadowMask = ScreenShadowTexture.SampleLevel(LinearClampped, UV, 0).r;
-
     UHLightInfo LightInfo;
     LightInfo.Diffuse = Diffuse.rgb;
     LightInfo.Specular = Specular;
     LightInfo.Normal = Normal;
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
+    LightInfo.AttenNoise = AttenNoise;
     LightInfo.SpecularNoise = AttenNoise * lerp(0.5f, 0.02f, Specular.a);
 	
 	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{
         UHDirectionalLight DirLight = UHDirLights[Ldx];
-        UHBRANCH
-        if (!DirLight.bIsEnabled)
-        {
-            continue;
-        }
-        
-        LightInfo.LightColor = DirLight.Color.rgb;
-        LightInfo.LightDir = DirLight.Dir;
-        Result += LightBRDF(LightInfo);
+        Result += CalculateDirLight(DirLight, LightInfo);
     }
 	
     // ------------------------------------------------------------------------------------------ point lights accumulation
@@ -86,9 +80,6 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightList.Load(TileOffset);
     TileOffset += 4;
-	
-    float3 LightToWorld;
-    float LightAtten;
     
     UHLOOP
     for (Ldx = 0; Ldx < PointLightCount; Ldx++)
@@ -97,22 +88,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         TileOffset += 4;
        
         UHPointLight PointLight = UHPointLights[PointLightIdx];
-        UHBRANCH
-        if (!PointLight.bIsEnabled)
-        {
-            continue;
-        }
-        LightInfo.LightColor = PointLight.Color.rgb;
-		
-        LightToWorld = WorldPos - PointLight.Position;
-        LightInfo.LightDir = normalize(LightToWorld);
-		
-		// square distance attenuation, apply attenuation noise to reduce color banding
-        LightAtten = 1.0f - saturate(length(LightToWorld) / PointLight.Radius + AttenNoise);
-        LightAtten *= LightAtten;
-        LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-        Result += LightBRDF(LightInfo);
+        Result += CalculatePointLight(PointLight, LightInfo);
     }
     
     // ------------------------------------------------------------------------------------------ spot lights accumulation
@@ -128,29 +104,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         TileOffset += 4;
         
         UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
-        UHBRANCH
-        if (!SpotLight.bIsEnabled)
-        {
-            continue;
-        }
-        
-        LightInfo.LightColor = SpotLight.Color.rgb;
-        LightInfo.LightDir = SpotLight.Dir;
-        LightToWorld = WorldPos - SpotLight.Position;
-        
-        // squared distance attenuation
-        LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + AttenNoise);
-        LightAtten *= LightAtten;
-        
-        // squared spot angle attenuation
-        float Rho = dot(SpotLight.Dir, normalize(LightToWorld));
-        float SpotFactor = (Rho - cos(SpotLight.Angle)) / (cos(SpotLight.InnerAngle) - cos(SpotLight.Angle));
-        SpotFactor = saturate(SpotFactor);
-        
-        LightAtten *= SpotFactor * SpotFactor;
-        LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-        Result += LightBRDF(LightInfo);
+        Result += CalculateSpotLight(SpotLight, LightInfo);
     }
 
 	// indirect light accumulation

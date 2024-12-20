@@ -6,12 +6,6 @@ UHRTDefaultHitGroupShader::UHRTDefaultHitGroupShader(UHGraphic* InGfx, std::stri
 	// push all any hit shaders for material, following the pixel shader defines
 	for (size_t Idx = 0; Idx < Materials.size(); Idx++)
 	{
-		// skip skybox material
-		if (Materials[Idx]->GetMaterialUsages().bIsSkybox)
-		{
-			continue;
-		}
-
 		UHMaterialCompileData Data{};
 		Data.bIsHitGroup = true;
 		Data.MaterialCache = Materials[Idx];

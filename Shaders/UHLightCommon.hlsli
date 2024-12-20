@@ -1,6 +1,56 @@
+#ifndef UHLIGHTCOMMON_H
+#define UHLIGHTCOMMON_H
+
 #define UHLIGHTCULLING_TILEX 16
 #define UHLIGHTCULLING_TILEY 16
 #define UHLIGHTCULLING_UPSCALE 2
+
+#include "UHInputs.hlsli"
+#ifndef UHDIRLIGHT_BIND
+#define UHDIRLIGHT_BIND t3
+#endif
+
+#ifndef UHPOINTLIGHT_BIND
+#define UHPOINTLIGHT_BIND t4
+#endif
+
+#ifndef UHSPOTLIGHT_BIND
+#define UHSPOTLIGHT_BIND t5
+#endif
+
+struct UHDirectionalLight
+{
+	// color.a for intensity, but it's already applied to color
+    float4 Color;
+    float3 Dir;
+    bool bIsEnabled;
+};
+StructuredBuffer<UHDirectionalLight> UHDirLights : register(UHDIRLIGHT_BIND);
+
+struct UHPointLight
+{
+	// color.a for intensity, but it's already applied to color
+    float4 Color;
+    float Radius;
+    float3 Position;
+    bool bIsEnabled;
+};
+StructuredBuffer<UHPointLight> UHPointLights : register(UHPOINTLIGHT_BIND);
+
+struct UHSpotLight
+{
+	// world to light matrix, so the objects can transform to spot light space
+    float4x4 WorldToLight;
+	// color.a for intensity, but it's already applied to color
+    float4 Color;
+    float3 Dir;
+    float Radius;
+    float Angle;
+    float3 Position;
+    float InnerAngle;
+    bool bIsEnabled;
+};
+StructuredBuffer<UHSpotLight> UHSpotLights : register(UHSPOTLIGHT_BIND);
 
 struct UHLightInfo
 {
@@ -11,6 +61,7 @@ struct UHLightInfo
     float3 Normal;
     float3 WorldPos;
     float ShadowMask;
+    float AttenNoise;
     float SpecularNoise;
 };
 
@@ -93,3 +144,65 @@ float TileToCoordY(uint InY)
 {
     return InY * UHLIGHTCULLING_TILEY;
 }
+
+float3 CalculateDirLight(UHDirectionalLight DirLight, UHLightInfo LightInfo)
+{
+    UHBRANCH
+    if (!DirLight.bIsEnabled)
+    {
+        return 0;
+    }
+        
+    LightInfo.LightColor = DirLight.Color.rgb;
+    LightInfo.LightDir = DirLight.Dir;
+    return LightBRDF(LightInfo);
+}
+
+float3 CalculatePointLight(UHPointLight PointLight, UHLightInfo LightInfo)
+{
+    UHBRANCH
+    if (!PointLight.bIsEnabled)
+    {
+        return 0;
+    }
+    LightInfo.LightColor = PointLight.Color.rgb;
+		
+    float3 LightToWorld = LightInfo.WorldPos - PointLight.Position;
+    LightInfo.LightDir = normalize(LightToWorld);
+		
+	// square distance attenuation
+    float LightAtten = 1.0f - saturate(length(LightToWorld) / PointLight.Radius + LightInfo.AttenNoise);
+    LightAtten *= LightAtten;
+    LightInfo.ShadowMask = LightAtten * LightInfo.ShadowMask;
+		
+    return LightBRDF(LightInfo);
+}
+
+float3 CalculateSpotLight(UHSpotLight SpotLight, UHLightInfo LightInfo)
+{
+    UHBRANCH
+    if (!SpotLight.bIsEnabled)
+    {
+        return 0;
+    }
+        
+    LightInfo.LightColor = SpotLight.Color.rgb;
+    LightInfo.LightDir = SpotLight.Dir;
+    float3 LightToWorld = LightInfo.WorldPos - SpotLight.Position;
+        
+    // squared distance attenuation
+    float LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + LightInfo.AttenNoise);
+    LightAtten *= LightAtten;
+        
+    // squared spot angle attenuation
+    float Rho = dot(SpotLight.Dir, normalize(LightToWorld));
+    float SpotFactor = (Rho - cos(SpotLight.Angle)) / (cos(SpotLight.InnerAngle) - cos(SpotLight.Angle));
+    SpotFactor = saturate(SpotFactor);
+        
+    LightAtten *= SpotFactor * SpotFactor;
+    LightInfo.ShadowMask = LightAtten * LightInfo.ShadowMask;
+		
+    return LightBRDF(LightInfo);
+}
+
+#endif

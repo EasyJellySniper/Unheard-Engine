@@ -82,7 +82,6 @@ public:
 	void PostImport();
 
 	void SetName(std::string InName);
-	void SetIsSkybox(bool InFlag);
 	void SetCompileFlag(UHMaterialCompileFlag InFlag);
 	void SetRegisteredTextureIndexes(std::vector<int32_t> InData);
 	void AllocateMaterialBuffer();

@@ -197,15 +197,6 @@ void UHMaterial::SetName(std::string InName)
 	Name = InName;
 }
 
-void UHMaterial::SetIsSkybox(bool InFlag)
-{
-	MaterialUsages.bIsSkybox = InFlag;
-	if (MaterialUsages.bIsSkybox)
-	{
-		CullMode = UHCullMode::CullFront;
-	}
-}
-
 void UHMaterial::SetCompileFlag(UHMaterialCompileFlag InFlag)
 {
 	CompileFlag = InFlag;
@@ -213,12 +204,6 @@ void UHMaterial::SetCompileFlag(UHMaterialCompileFlag InFlag)
 
 void UHMaterial::SetRegisteredTextureIndexes(std::vector<int32_t> InData)
 {
-	// skybox isn't in bindless system, doesn't need this index lookup
-	if (MaterialUsages.bIsSkybox)
-	{
-		return;
-	}
-
 	RegisteredTextureIndexes = InData;
 }
 

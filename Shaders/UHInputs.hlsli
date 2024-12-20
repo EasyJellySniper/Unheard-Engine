@@ -16,20 +16,8 @@
 #define UHMAT_BIND b2
 #endif
 
-#ifndef UHDIRLIGHT_BIND
-#define UHDIRLIGHT_BIND t3
-#endif
-
 #ifndef UHGBUFFER_BIND
-#define UHGBUFFER_BIND t4
-#endif
-
-#ifndef UHPOINTLIGHT_BIND
-#define UHPOINTLIGHT_BIND t5
-#endif
-
-#ifndef UHSPOTLIGHT_BIND
-#define UHSPOTLIGHT_BIND t6
+#define UHGBUFFER_BIND t3
 #endif
 
 #define UHBRANCH [branch]
@@ -37,14 +25,18 @@
 #define UHUNROLL [unroll]
 #define UHLOOP [loop]
 
+// thread group define for numthreads() use, always make it 64 now
+#define UHTHREAD_GROUP1D 64
 #define UHTHREAD_GROUP2D_X 8
 #define UHTHREAD_GROUP2D_Y 8
+#define UHTHREAD_GROUP3D_X 4
+#define UHTHREAD_GROUP3D_Y 4
+#define UHTHREAD_GROUP3D_Z 4
 
-// system feature bits
-#define UH_DEPTH_PREPASS 1 << 0
-#define UH_ENV_CUBE 1 << 1
-#define UH_HDR 1 << 2
-#define UH_OCCLUSION_CULLING 1 << 3
+// system feature bits, used by GSystemRenderFeature in system constant
+// this needs to sync with UHSystemRenderFeatureBits in C++ side
+#define UH_ENV_CUBE 1 << 0
+#define UH_HDR 1 << 1
 
 struct VertexOutput
 {
@@ -144,6 +136,8 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     uint GRefractionBlurIndex;
 	
     float GFinalReflectionStrength;
+    float GNearPlane;
+    float GRTCullingDistance;
 }
 
 // IT means inverse-transposed
@@ -153,74 +147,14 @@ cbuffer ObjectConstants : register(UHOBJ_BIND)
 	float4x4 GWorldIT;
 	float4x4 GPrevWorld;
 	uint GInstanceIndex;
+    float3 GWorldPos;
+    float3 GBoundExtent;
 }
-
-// material inputs from graph system
-struct UHMaterialInputs
-{
-	float3 Diffuse;
-	float Occlusion;
-	float3 Specular;
-	float3 Normal;
-	float Opacity;
-	float Metallic;
-	float Roughness;
-	float FresnelFactor;
-	float ReflectionFactor;
-	float3 Emissive;
-	float Refraction;
-};
-
-struct UHDirectionalLight
-{
-	// color.a for intensity, but it's already applied to color
-	float4 Color;
-	float3 Dir;
-    bool bIsEnabled;
-};
-StructuredBuffer<UHDirectionalLight> UHDirLights : register(UHDIRLIGHT_BIND);
-
-struct UHPointLight
-{
-	// color.a for intensity, but it's already applied to color
-    float4 Color;
-    float Radius;
-    float3 Position;
-    bool bIsEnabled;
-};
-StructuredBuffer<UHPointLight> UHPointLights : register(UHPOINTLIGHT_BIND);
-
-struct UHSpotLight
-{
-	// color.a for intensity, but it's already applied to color
-    float4 Color;
-    float3 Dir;
-    float Radius;
-    float Angle;
-    float3 Position;
-    float InnerAngle;
-    bool bIsEnabled;
-};
-StructuredBuffer<UHSpotLight> UHSpotLights : register(UHSPOTLIGHT_BIND);
 
 // 0: Color + AO
 // 1: Normal
 // 2: Specular + Smoothness
 // 3: Depth
 Texture2D SceneBuffers[4] : register(UHGBUFFER_BIND);
-
-struct UHBoundingBox
-{
-    float3 BoxMax;
-    float3 BoxMin;
-};
-
-struct UHRendererInstance
-{
-    // mesh index to lookup mesh data
-    uint MeshIndex;
-    // indice type
-    uint IndiceType;
-};
 
 #endif

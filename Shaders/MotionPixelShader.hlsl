@@ -31,7 +31,7 @@ void MotionObjectPS(MotionVertexOutput Vin
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 	UHBRANCH
-    if (GBlendMode == UH_ISMASKED && !(GSystemRenderFeature & UH_DEPTH_PREPASS))
+    if (GBlendMode == UH_ISMASKED)
     {
         clip(MaterialInput.Opacity - GCutoff);
     }

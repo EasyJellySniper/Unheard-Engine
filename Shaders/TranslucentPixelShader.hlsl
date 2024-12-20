@@ -133,27 +133,24 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	// ------------------------------------------------------------------------------------------ dir lights accumulation
 	// sample shadows
     float ShadowMask = ScreenShadowTexture.Sample(LinearClamppedSampler, ScreenUV).r;
+    // get noise
+    float AttenNoise = GetAttenuationNoise(Vin.Position.xy);
+    
 	float3 Result = 0;
-
+    
 	// light calculation, be sure to normalize normal vector before using it	
+    // light functions will also fill necessary data
     UHLightInfo LightInfo;
     LightInfo.Diffuse = BaseColor;
     LightInfo.Specular = float4(Specular, Roughness);
     LightInfo.Normal = normalize(BumpNormal);
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
+    LightInfo.AttenNoise = AttenNoise;
 	
 	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{
-        UHBRANCH
-        if (!UHDirLights[Ldx].bIsEnabled)
-        {
-            continue;
-        }
-        
-        LightInfo.LightColor = UHDirLights[Ldx].Color.rgb;
-        LightInfo.LightDir = UHDirLights[Ldx].Dir;
-        Result += LightBRDF(LightInfo);
+        Result += CalculateDirLight(UHDirLights[Ldx], LightInfo);
     }
 	
 	// ------------------------------------------------------------------------------------------ point lights accumulation
@@ -164,10 +161,6 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     uint TileOffset = GetPointLightOffset(TileIndex);
     uint PointLightCount = PointLightListTrans.Load(TileOffset);
     TileOffset += 4;
-	
-    float3 LightToWorld;
-    float LightAtten;
-    float AttenNoise = GetAttenuationNoise(Vin.Position.xy);
     
     for (Ldx = 0; Ldx < PointLightCount; Ldx++)
     {
@@ -175,22 +168,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         TileOffset += 4;
        
         UHPointLight PointLight = UHPointLights[PointLightIdx];
-        UHBRANCH
-        if (!PointLight.bIsEnabled)
-        {
-            continue;
-        }
-        LightInfo.LightColor = PointLight.Color.rgb;
-		
-        LightToWorld = WorldPos - PointLight.Position;
-        LightInfo.LightDir = normalize(LightToWorld);
-		
-		// square distance attenuation
-        LightAtten = 1.0f - saturate(length(LightToWorld) / PointLight.Radius + AttenNoise);
-        LightAtten *= LightAtten;
-        LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-        Result += LightBRDF(LightInfo);
+        Result += CalculatePointLight(PointLight, LightInfo);
     }
 	
 	// ------------------------------------------------------------------------------------------ spot lights accumulation
@@ -206,29 +184,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
         TileOffset += 4;
         
         UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
-        UHBRANCH
-        if (!SpotLight.bIsEnabled)
-        {
-            continue;
-        }
-        
-        LightInfo.LightColor = SpotLight.Color.rgb;
-        LightInfo.LightDir = SpotLight.Dir;
-        LightToWorld = WorldPos - SpotLight.Position;
-        
-        // squared distance attenuation
-        LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + AttenNoise);
-        LightAtten *= LightAtten;
-        
-        // squared spot angle attenuation
-        float Rho = dot(SpotLight.Dir, normalize(LightToWorld));
-        float SpotFactor = (Rho - cos(SpotLight.Angle)) / (cos(SpotLight.InnerAngle) - cos(SpotLight.Angle));
-        SpotFactor = saturate(SpotFactor);
-        
-        LightAtten *= SpotFactor * SpotFactor;
-        LightInfo.ShadowMask = LightAtten * ShadowMask;
-		
-        Result += LightBRDF(LightInfo);
+        Result += CalculateSpotLight(SpotLight, LightInfo);
     }
 
 	// indirect light accumulation

@@ -309,10 +309,6 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 	{
 		UHMeshRendererComponent* Renderer = MotionOpaquesToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->GetMaterialUsages().bIsSkybox)
-		{
-			continue;
-		}
 
 		UHMesh* Mesh = Renderer->GetMesh();
 		const int32_t RendererIdx = Renderer->GetBufferDataIndex();
@@ -395,10 +391,6 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 	{
 		UHMeshRendererComponent* Renderer = TranslucentsToRender[I];
 		const UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat->GetMaterialUsages().bIsSkybox)
-		{
-			continue;
-		}
 
 		UHMesh* Mesh = Renderer->GetMesh();
 		const int32_t RendererIdx = Renderer->GetBufferDataIndex();

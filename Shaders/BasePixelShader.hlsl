@@ -30,10 +30,8 @@ void BasePS(VertexOutput Vin
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
 
-	// only clip objects without prepass
-	// otherwise, the equal test will suffice
 	UHBRANCH
-    if (GBlendMode == UH_ISMASKED && !(GSystemRenderFeature & UH_DEPTH_PREPASS))
+    if (GBlendMode == UH_ISMASKED)
     {
         clip(MaterialInput.Opacity - GCutoff);
     }

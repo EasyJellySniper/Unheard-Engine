@@ -89,8 +89,14 @@ void UHDirectionalLightComponent::OnGenerateDetailView()
 	ImGui::NewLine();
 	ImGui::Text("------ Directional Light ------");
 
-	ImGui::InputFloat3("LightColor", (float*)&LightColor);
-	ImGui::InputFloat("Intensity", &Intensity);
+	bool bDirty = false;
+	bDirty |= ImGui::InputFloat3("LightColor", (float*)&LightColor);
+	bDirty |= ImGui::InputFloat("Intensity", &Intensity);
+
+	if (bDirty)
+	{
+		SetRenderDirties(true);
+	}
 }
 
 void UHDirectionalLightComponent::SetLightColor(XMFLOAT3 InLightColor)
@@ -198,9 +204,15 @@ void UHPointLightComponent::OnGenerateDetailView()
 	ImGui::NewLine();
 	ImGui::Text("------ Point Light ------");
 
-	ImGui::InputFloat3("LightColor", (float*)&LightColor);
-	ImGui::InputFloat("Intensity", &Intensity);
-	ImGui::InputFloat("Radius", &Radius);
+	bool bDirty = false;
+	bDirty |= ImGui::InputFloat3("LightColor", (float*)&LightColor);
+	bDirty |= ImGui::InputFloat("Intensity", &Intensity);
+	bDirty |= ImGui::InputFloat("Radius", &Radius);
+
+	if (bDirty)
+	{
+		SetRenderDirties(true);
+	}
 }
 
 void UHPointLightComponent::SetLightColor(XMFLOAT3 InLightColor)
@@ -310,6 +322,14 @@ UHSpotLightConstants UHSpotLightComponent::GetConstants() const
 	Consts.Dir = Forward;
 	Consts.Position = Position;
 
+	// calculate world to light matrix without scale
+	XMMATRIX InvW = XMMatrixTranspose(XMMatrixTranslation(Position.x, Position.y, Position.z))
+		* XMMatrixTranspose(XMLoadFloat4x4(&RotationMatrix));
+
+	XMVECTOR Det = XMMatrixDeterminant(InvW);
+	InvW = XMMatrixInverse(&Det, InvW);
+	XMStoreFloat4x4(&Consts.WorldToLight, InvW);
+
 	return Consts;
 }
 
@@ -335,11 +355,17 @@ void UHSpotLightComponent::OnGenerateDetailView()
 	ImGui::NewLine();
 	ImGui::Text("------ Spot Light ------");
 
-	ImGui::InputFloat3("LightColor", (float*)&LightColor);
-	ImGui::InputFloat("Intensity", &Intensity);
-	ImGui::InputFloat("Radius", &Radius);
-	ImGui::InputFloat("Angle", &Angle);
+	bool bDirty = false;
+	bDirty |= ImGui::InputFloat3("LightColor", (float*)&LightColor);
+	bDirty |= ImGui::InputFloat("Intensity", &Intensity);
+	bDirty |= ImGui::InputFloat("Radius", &Radius);
+	bDirty |= ImGui::InputFloat("Angle", &Angle);
 	InnerAngle = Angle * 0.9f;
+
+	if (bDirty)
+	{
+		SetRenderDirties(true);
+	}
 }
 
 void UHSpotLightComponent::SetLightColor(XMFLOAT3 InLightColor)

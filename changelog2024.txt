@@ -338,3 +338,26 @@ Abandoned the TMax prediction idea as it didn't improve much.
 Refactored the Update() for light components.
 Removed comment about TMax predication.
 Removed unnecessary saturate in tone map shader, as the clamp should be done by the driver.
+
+17-12-2024:
+Started adding shadow ray trace in RT reflection. 
+I also spotted current method to receive point/spot lights are not good enough in RT reflection.
+I'm going to do a big refactoring.
+
+18-12-2024:
+Wrapped trace ray shadow functions for dir/point/spot lights.
+Started adding instance light intersection test.
+Removed bIsSkybox check everywhere, it's not needed now.
+Finally I finished the big refactoring for RT reflection lighting!
+But I also discovered current method to check obj-spot light intersection is wrong, and really needs a cone-box intersection.
+
+19-12-2024:
+Improved the cone intersection! Though it's an approx one.
+I build a sphere from box and construct a frustum for the cone, let it do a 6-plane check.
+Calculating with sphere is also faster.
+
+20-12-2024:
+Re-organized shader includes. Moved something to Common.hlsli instead of putting them all in Inputs.hlsli.
+Finally make the spot light collection work! But it's so easily to have a >8 light count, I'll test if box-cone intersection gives better result.
+Removed pre-pass check when doing cutoff, I find edge cases that could break it.
+Removed unused system feature enum. Done the box-cone test for spot light collection, but it's still easy to have >8 light count..I'll keep max count as 16 now.

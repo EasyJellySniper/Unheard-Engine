@@ -30,9 +30,11 @@ struct ObjectConstants
     float4x4 GWorldIT;
     float4x4 GPrevWorld;
     uint GInstanceIndex;
+    float3 GWorldPos;
+    float3 GBoundExtent;
     
     // align to 256 bytes, the buffer is used as storage in mesh shader, the structure must be the same as c++ define
-    float CPUPadding[15];
+    float CPUPadding[9];
 };
 
 struct UHMeshPayload

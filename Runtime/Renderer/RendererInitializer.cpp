@@ -206,7 +206,7 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 		UHMaterial* Mat = Renderer->GetMaterial();
 		Mesh->CreateGPUBuffers(GraphicInterface);
 
-		if (!Mat->GetMaterialUsages().bIsSkybox && GraphicInterface->IsRayTracingEnabled())
+		if (GraphicInterface->IsRayTracingEnabled())
 		{
 			Mesh->CreateBottomLevelAS(GraphicInterface, CreationCmd);
 		}
@@ -416,7 +416,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	for (UHMeshRendererComponent* Renderer : AllRenderers)
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
+		if (Mat)
 		{
 			RecreateMaterialShaders(Renderer, Mat);
 		}
@@ -429,7 +429,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		for (size_t Idx = 0; Idx < AllRenderers.size(); Idx++)
 		{
 			UHMaterial* Mat = AllRenderers[Idx]->GetMaterial();
-			if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
+			if (Mat)
 			{
 				OcclusionPassShaders[Idx] = MakeUnique<UHOcclusionPassShader>(GraphicInterface, "OcclusionPassShader", OcclusionPassObj.RenderPass);
 			}
@@ -458,10 +458,6 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 		for (UHMaterial* Mat : CurrentScene->GetMaterials())
 		{
-			if (Mat->GetMaterialUsages().bIsSkybox)
-			{
-				continue;
-			}
 			RecreateMeshShaders(Mat);
 		}
 	}
@@ -491,6 +487,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	{
 		RecreateRTShaders(std::vector<UHMaterial*>(), true);
 		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
+		CollectPointLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectPointLightShader", true);
+		CollectSpotLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectSpotLightShader", false);
 	}
 
 #if WITH_EDITOR
@@ -594,7 +592,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	for (const UHMeshRendererComponent* Renderer : CurrentScene->GetAllRenderers())
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat == nullptr || Mat->GetMaterialUsages().bIsSkybox)
+		if (Mat == nullptr)
 		{
 			continue;
 		}
@@ -657,6 +655,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		SoftRTShadowShader->BindParameters();
 		RTShadowShader->BindParameters();
 		RTReflectionShader->BindParameters();
+		CollectPointLightShader->BindParameters();
+		CollectSpotLightShader->BindParameters();
 	}
 
 	// ------------------------------------------------ mesh table descriptor update
@@ -761,6 +761,8 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		UH_SAFE_RELEASE(RTMaterialDataTable);
 		UH_SAFE_RELEASE(RTTextureTable);
 		UH_SAFE_RELEASE(SoftRTShadowShader);
+		UH_SAFE_RELEASE(CollectPointLightShader);
+		UH_SAFE_RELEASE(CollectSpotLightShader);
 	}
 
 	UH_SAFE_RELEASE(TextureTable);
@@ -1045,7 +1047,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		{
 			const UHMaterial* Mat = Renderers[Idx]->GetMaterial();
 			const UHMesh* Mesh = Renderers[Idx]->GetMesh();
-			if (!Mat || Mat->GetMaterialUsages().bIsSkybox || !Mesh)
+			if (!Mat || !Mesh)
 			{
 				continue;
 			}
@@ -1057,6 +1059,13 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		}
 
 		GRendererInstanceBuffer->UploadAllData(RendererInstances.data());
+
+		// create instance lights buffer
+		if (GIsEditor || ConfigInterface->RenderingSetting().bEnableRayTracing)
+		{
+			GInstanceLightsBuffer = GraphicInterface->RequestRenderBuffer<UHInstanceLights>(Renderers.size()
+				, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "InstanceLights");
+		}
 	}
 
 	// create occlusion query anyway in editor build
@@ -1184,15 +1193,12 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 		UH_SAFE_RELEASE(GDirectionalLightBuffer[Idx]);
 		UH_SAFE_RELEASE(GPointLightBuffer[Idx]);
 		UH_SAFE_RELEASE(GSpotLightBuffer[Idx]);
-
-		if (GraphicInterface->IsRayTracingEnabled())
-		{
-			UH_SAFE_RELEASE(GTopLevelAS[Idx]);
-		}
+		UH_SAFE_RELEASE(GTopLevelAS[Idx]);
 	}
 
 	UH_SAFE_RELEASE(GRendererInstanceBuffer);
 	UH_SAFE_RELEASE(GSH9Data);
+	UH_SAFE_RELEASE(GInstanceLightsBuffer);
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -1574,7 +1580,7 @@ void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRend
 	for (UHMeshRendererComponent* Renderer : InRenderers)
 	{
 		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat && !Mat->GetMaterialUsages().bIsSkybox)
+		if (Mat)
 		{
 			RecreateMaterialShaders(Renderer, Mat);
 		}
@@ -1716,6 +1722,10 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	};
 
 	const uint32_t MatDataIndex = InMat->GetBufferDataIndex();
+	if (MatDataIndex >= CurrentScene->GetMaterialCount())
+	{
+		return;
+	}
 
 	// create depth and base shader only for the opaque, but motion pass for both opaque/translucent
 	if (InMat->IsOpaque())

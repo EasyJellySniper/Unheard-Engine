@@ -270,6 +270,11 @@ float UHCameraComponent::GetCullingDistance() const
 	return CullingDistance;
 }
 
+float UHCameraComponent::GetNearPlane() const
+{
+	return NearPlane;
+}
+
 #if WITH_EDITOR
 void UHCameraComponent::OnGenerateDetailView()
 {
@@ -280,6 +285,8 @@ void UHCameraComponent::OnGenerateDetailView()
 
 	if (ImGui::InputFloat("NearPlane", &NearPlane))
 	{
+		// can't be zero near plane
+		NearPlane = max(NearPlane, 0.01f);
 		SetNearPlane(NearPlane);
 	}
 

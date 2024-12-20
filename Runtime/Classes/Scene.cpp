@@ -173,23 +173,6 @@ void UHScene::Update()
 			Light->Update();
 		}
 	}
-
-	if (!MainCamera)
-	{
-		return;
-	}
-
-	// sort point lights and spot lights based on distance to camera
-	const XMFLOAT3 CameraPos = MainCamera->GetPosition();
-	std::sort(PointLights.begin(), PointLights.end(), [&CameraPos](UHPointLightComponent* A, UHPointLightComponent* B)
-		{
-			return MathHelpers::VectorDistanceSqr(A->GetPosition(), CameraPos) < MathHelpers::VectorDistanceSqr(B->GetPosition(), CameraPos);
-		});
-
-	std::sort(SpotLights.begin(), SpotLights.end(), [&CameraPos](UHSpotLightComponent* A, UHSpotLightComponent* B)
-		{
-			return MathHelpers::VectorDistanceSqr(A->GetPosition(), CameraPos) < MathHelpers::VectorDistanceSqr(B->GetPosition(), CameraPos);
-		});
 }
 
 UHComponent* UHScene::RequestComponent(uint32_t InComponentClassId)
@@ -303,24 +286,20 @@ void UHScene::AddMeshRenderer(UHMeshRendererComponent* InRenderer)
 	{
 		InMaterial->SetBufferDataIndex(ConstIdx);
 	}
-	
-	if (!InMaterial->GetMaterialUsages().bIsSkybox)
+
+	switch (InMaterial->GetBlendMode())
 	{
-		// otherwise, adds cache based on blend mode
-		switch (InMaterial->GetBlendMode())
-		{
-		case UHBlendMode::Opaque:
-		case UHBlendMode::Masked:
-			OpaqueRenderers.push_back(Renderers.back());
-			break;
+	case UHBlendMode::Opaque:
+	case UHBlendMode::Masked:
+		OpaqueRenderers.push_back(Renderers.back());
+		break;
 
-		case UHBlendMode::TranditionalAlpha:
-			TranslucentRenderers.push_back(Renderers.back());
-			break;
+	case UHBlendMode::TranditionalAlpha:
+		TranslucentRenderers.push_back(Renderers.back());
+		break;
 
-		default:
-			break;
-		}
+	default:
+		break;
 	}
 }
 

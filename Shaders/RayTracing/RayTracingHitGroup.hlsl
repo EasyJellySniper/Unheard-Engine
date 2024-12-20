@@ -179,7 +179,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     ClipPos /= ClipPos.w;
 	
     float2 ScreenUV = ClipPos.xy * 0.5f + 0.5f;
-    bool bInsideScreen = IsUVInsideScreen(ScreenUV);
+    bool bInsideScreen = IsUVInsideScreen(ScreenUV) && (ClipPos.z > GNearPlane);
 	
 	// fetch material data
     float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
@@ -265,6 +265,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     
     Payload.HitDiffuse = Diffuse;
     Payload.HitNormal = BumpNormal;
+    Payload.HitWorldNormal = FlippedVertexNormal;
     Payload.HitSpecular = Specular;
     Payload.HitEmissive = Emissive;
     Payload.HitScreenUV = ScreenUV;
@@ -282,6 +283,7 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
     // closest hit shader, only opaque objects will reach here
     float PrevHitT = Payload.HitT;
 	Payload.HitT = RayTCurrent();
+    Payload.HitInstanceIndex = InstanceIndex();
 
 	// set alpha to 1 and cancel the flag of hit translucent if it's behind this opaque object
     Payload.HitAlpha = 1.0f;
@@ -359,6 +361,7 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
                     
                 Payload.HitDiffuseTrans = TransPayload.HitDiffuse;
                 Payload.HitNormalTrans = TransPayload.HitNormal;
+                Payload.HitWorldNormalTrans = TransPayload.HitWorldNormal;
                 Payload.HitSpecularTrans = TransPayload.HitSpecular;
                 Payload.HitEmissiveTrans = float4(TransPayload.HitEmissive, MaterialInput.Opacity);
                 Payload.HitScreenUVTrans = TransPayload.HitScreenUV;
@@ -366,6 +369,7 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
                 Payload.HitRefractScale = TransPayload.HitRefractScale;
                 Payload.HitRefraction = TransPayload.HitRefraction;
                 Payload.IsInsideScreen = TransPayload.IsInsideScreen;
+                Payload.HitInstanceIndex = InstanceIndex();
                 
                 if (Usages.MaterialFeature & UH_REFRACTION)
                 {

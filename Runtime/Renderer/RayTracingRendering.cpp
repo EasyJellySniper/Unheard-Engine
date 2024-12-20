@@ -48,10 +48,63 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 		return;
 	}
 
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Build TopLevel AS");
+
 	// https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#general-tips-for-building-acceleration-structures
 	// From Microsoft tips: Rebuild top-level acceleration structure every frame
 	// but I still choose to update AS instead of rebuilding, FPS is higher with updating
 	GTopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT, RTCullingDistanceRT);
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}
+
+void UHDeferredShadingRenderer::CollectLightPass(UHRenderBuilder& RenderBuilder)
+{
+	UHGameTimerScope Scope("CollectLightPass", false);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::CollectLightPass)], "CollectLightPass");
+	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
+	{
+		return;
+	}
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Collect Light");
+
+	if (CurrentScene->GetPointLightCount() > 0 || CurrentScene->GetSpotLightCount() > 0)
+	{
+		RenderBuilder.ClearUAVBuffer(GInstanceLightsBuffer->GetBuffer(), ~0);
+	}
+
+	// point light collection
+	if (CurrentScene->GetPointLightCount() > 0)
+	{
+		// bind state
+		UHComputeState* State = CollectPointLightShader->GetComputeState();
+		RenderBuilder.BindComputeState(State);
+
+		// bind sets
+		RenderBuilder.BindDescriptorSetCompute(CollectPointLightShader->GetPipelineLayout(), CollectPointLightShader->GetDescriptorSet(CurrentFrameRT));
+
+		// refactor this if there is a chance that RTInstanceCount > 64K
+		const uint32_t Gy = MathHelpers::RoundUpDivide(static_cast<uint32_t>(CurrentScene->GetPointLightCount()), GThreadGroup1D);
+		RenderBuilder.Dispatch(RTInstanceCount, Gy, 1);
+	}
+
+	// spot light collection
+	if (CurrentScene->GetSpotLightCount() > 0)
+	{
+		// bind state
+		UHComputeState* State = CollectSpotLightShader->GetComputeState();
+		RenderBuilder.BindComputeState(State);
+
+		// bind sets
+		RenderBuilder.BindDescriptorSetCompute(CollectSpotLightShader->GetPipelineLayout(), CollectSpotLightShader->GetDescriptorSet(CurrentFrameRT));
+
+		// refactor this if there is a chance that RTInstanceCount > 64K
+		const uint32_t Gy = MathHelpers::RoundUpDivide(static_cast<uint32_t>(CurrentScene->GetSpotLightCount()), GThreadGroup1D);
+		RenderBuilder.Dispatch(RTInstanceCount, Gy, 1);
+	}
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
 void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
@@ -66,6 +119,8 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 		}
 		return;
 	}
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Shadow");
 
 	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
 	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
@@ -93,6 +148,8 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 
 	// finally, transition to shader read only
 	RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
 void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder)
@@ -112,6 +169,8 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 		}
 		return;
 	}
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Reflection And Blur");
 
 	// buffer transition and TLAS bind
 	for (uint32_t Mdx = 0; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)
@@ -180,4 +239,6 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 		}
 		RenderBuilder.FlushResourceBarrier();
 	}
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

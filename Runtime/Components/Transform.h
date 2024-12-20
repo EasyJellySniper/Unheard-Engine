@@ -73,6 +73,8 @@ protected:
 	bool bIsWorldDirty;
 	bool bIsFirstFrame;
 
+	// rotation only matrix
+	XMFLOAT4X4 RotationMatrix;
 private:
 	// world matrix, also store previous frame's world matrix
 	XMFLOAT4X4 WorldMatrix;
@@ -80,7 +82,4 @@ private:
 
 	// world matrix IT
 	XMFLOAT4X4 WorldMatrixIT;
-
-	// rotation only matrix
-	XMFLOAT4X4 RotationMatrix;
 };

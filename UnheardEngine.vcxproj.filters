@@ -417,6 +417,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshInstanceTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -797,6 +800,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\OcclusionPassShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -858,5 +864,6 @@
     <None Include="Shaders\BaseMeshShader.hlsl" />
     <None Include="Shaders\MotionMeshShader.hlsl" />
     <None Include="Shaders\BaseAmplificationShader.hlsl" />
+    <None Include="Shaders\RayTracing\CollectLightComputeShader.hlsl" />
   </ItemGroup>
 </Project>

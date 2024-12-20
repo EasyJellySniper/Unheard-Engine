@@ -162,6 +162,8 @@ UHObjectConstants UHMeshRendererComponent::GetConstants() const
 	CB.GWorldIT = GetWorldMatrixIT();
 	CB.GPrevWorld = GetPrevWorldMatrix();
 	CB.InstanceIndex = GetBufferDataIndex();
+	CB.WorldPos = RendererBound.Center;
+	CB.BoundExtent = RendererBound.Extents;
 
 	return CB;
 }
