@@ -210,7 +210,7 @@ private:
 	void Dispatch2DEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHRenderBuilder& RenderBuilder);
 
-	void ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder, UHGaussianFilterConstants Constants);
+	void ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder);
 
 	uint32_t RenderSceneToSwapChain(UHRenderBuilder& RenderBuilder);
 
@@ -284,8 +284,7 @@ private:
 	int32_t LinearClampSamplerIndex;
 	int32_t PointClampSamplerIndex;
 	int32_t SkyCubeSamplerIndex;
-	int32_t RefractionClearIndex;
-	int32_t RefractionBlurredIndex;
+	int32_t OpaqueSceneTextureIndex;
 
 	// bindless table
 	UniquePtr<UHTextureTable> TextureTable;
@@ -349,7 +348,6 @@ private:
 
 	// gaussian constants
 	UHGaussianFilterConstants RayTracingGaussianConsts;
-	UHGaussianFilterConstants RefractionGaussianConsts;
 
 #if WITH_EDITOR
 	// debug view shader

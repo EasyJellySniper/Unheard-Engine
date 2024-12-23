@@ -15,7 +15,7 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 	if (bHasRefractionMaterialRT)
 	{
 		// Blur the opaque scene
-		ScreenshotForRefraction("Opaque Scene Blur", RenderBuilder, RefractionGaussianConsts);
+		ScreenshotForRefraction("Opaque Scene Blur", RenderBuilder);
 	}
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());

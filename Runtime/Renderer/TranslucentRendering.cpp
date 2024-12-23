@@ -17,22 +17,17 @@ private:
 	UHDeferredShadingRenderer* SceneRenderer = nullptr;
 };
 
-void UHDeferredShadingRenderer::ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder, UHGaussianFilterConstants Constants)
+void UHDeferredShadingRenderer::ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder)
 {
 	// blit the scene result to opaque scene result
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
 	RenderBuilder.FlushResourceBarrier();
 
 	RenderBuilder.Blit(GSceneResult, GOpaqueSceneResult);
-	RenderBuilder.Blit(GSceneResult, GQuarterBlurredScene);
-
-	DispatchGaussianFilter(RenderBuilder, PassName, GQuarterBlurredScene, GQuarterBlurredScene, Constants);
 
 	// final transition
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 	RenderBuilder.FlushResourceBarrier();
 }

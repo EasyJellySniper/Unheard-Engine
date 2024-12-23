@@ -33,8 +33,7 @@ UHRenderTexture* GRTSharedTextureRG;
 UHRenderTexture* GRTReflectionResult;
 UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
-// these two are for refraction use
-UHRenderTexture* GQuarterBlurredScene;
+// for refraction use
 UHRenderTexture* GOpaqueSceneResult;
 
 // these two are used for RT reflection, can be reused after RT reflection pass

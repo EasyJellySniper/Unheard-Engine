@@ -935,6 +935,9 @@ void UHMaterialDialog::ResaveAllMaterials()
         {
             AssetManager->GetMaterials()[Idx]->SetCompileFlag(UHMaterialCompileFlag::FullCompileResave);
             ResaveMaterial(Idx, true);
+
+            // need to mark the resave flag again for RT shaders
+            AssetManager->GetMaterials()[Idx]->SetCompileFlag(UHMaterialCompileFlag::FullCompileResave);
         }
 
         // recreate RT shaders in one go, much faster

@@ -7,7 +7,7 @@
 const std::string GDefaultSamplerIndexName = "GDefaultAnisoSamplerIndex";
 const std::string GDefaultTextureChannel0Name = "UV0";
 const int32_t GRTMaterialDataStartIndex = 3;
-const int32_t GSystemPreservedTextureSlots = 2;
+const int32_t GSystemPreservedTextureSlots = 1;
 
 // ------------------------------ header for material layout defines
 

@@ -261,11 +261,16 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.RTReflectionSmoothCutoff = RenderingSettings.RTReflectionSmoothCutoff;
 	SystemConstantsCPU.GFinalReflectionStrength = RenderingSettings.FinalReflectionStrength;
 	SystemConstantsCPU.GEnvCubeMipMapCount = (SkyCube != nullptr) ? static_cast<float>(SkyCube->GetMipMapCount()) : 0;
-	SystemConstantsCPU.GRefractionClearIndex = RefractionClearIndex;
-	SystemConstantsCPU.GRefractionBlurIndex = RefractionBlurredIndex;
+	SystemConstantsCPU.GOpaqueSceneTextureIndex = OpaqueSceneTextureIndex;
 	SystemConstantsCPU.GDefaultAnisoSamplerIndex = DefaultSamplerIndex;
 	SystemConstantsCPU.GNearPlane = CurrentCamera->GetNearPlane();
 	SystemConstantsCPU.GRTCullingDistance = RenderingSettings.RTCullingRadius;
+
+	// soft shadow settings
+	SystemConstantsCPU.GPCSSKernal = RenderingSettings.PCSSKernal;
+	SystemConstantsCPU.GPCSSMinPenumbra = RenderingSettings.PCSSMinPenumbra;
+	SystemConstantsCPU.GPCSSMaxPenumbra = RenderingSettings.PCSSMaxPenumbra;
+	SystemConstantsCPU.GPCSSBlockerDistScale = RenderingSettings.PCSSBlockerDistScale;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -768,9 +773,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				// first-chance resource barriers and resets
 				if (!bIsPresentedPreviously || bIsSwapChainResetRT)
 				{
-					SceneRenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-					SceneRenderBuilder.PushResourceBarrier(UHImageBarrier(GQuarterBlurredScene, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-					SceneRenderBuilder.FlushResourceBarrier();
+					SceneRenderBuilder.ResourceBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				}
 
 				if (bIsPresentedPreviously)

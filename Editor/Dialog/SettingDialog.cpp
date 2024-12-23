@@ -141,6 +141,29 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
 
     ImGui::SliderFloat("HDR Contrast", &RenderingSettings.HDRContrast, 0.5f, 2.5f, "%.1f");
 
+    // soft shadow settings
+    ImGui::NewLine();
+    ImGui::Text("---Soft shadow Settings---");
+    if (ImGui::InputInt("PCSS Kernal", &RenderingSettings.PCSSKernal))
+    {
+        RenderingSettings.PCSSKernal = std::clamp(RenderingSettings.PCSSKernal, 1, 3);
+    }
+
+    if (ImGui::InputFloat("PCSS Min Penumbra", &RenderingSettings.PCSSMinPenumbra))
+    {
+        RenderingSettings.PCSSMinPenumbra = std::max(RenderingSettings.PCSSMinPenumbra, 0.0f);
+    }
+
+    if (ImGui::InputFloat("PCSS Max Penumbra", &RenderingSettings.PCSSMaxPenumbra))
+    {
+        RenderingSettings.PCSSMaxPenumbra = std::max(RenderingSettings.PCSSMaxPenumbra, 0.0f);
+    }
+
+    if (ImGui::InputFloat("PCSS Blocker Dist Scale", &RenderingSettings.PCSSBlockerDistScale))
+    {
+        RenderingSettings.PCSSBlockerDistScale = std::max(RenderingSettings.PCSSBlockerDistScale, 0.0f);
+    }
+
     // raytracing settings
     ImGui::NewLine();
     ImGui::Text("---Raytracing Settings---");

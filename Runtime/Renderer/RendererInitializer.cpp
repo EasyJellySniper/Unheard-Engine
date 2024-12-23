@@ -27,8 +27,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, LinearClampSamplerIndex(UHINDEXNONE)
 	, SkyCubeSamplerIndex(UHINDEXNONE)
 	, PointClampSamplerIndex(UHINDEXNONE)
-	, RefractionClearIndex(UHINDEXNONE)
-	, RefractionBlurredIndex(UHINDEXNONE)
+	, OpaqueSceneTextureIndex(UHINDEXNONE)
 	, PostProcessResultIdx(0)
 	, bIsTemporalReset(true)
 	, RTInstanceCount(0)
@@ -782,7 +781,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	const UHTextureFormat SpecularFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 	const UHTextureFormat SceneResultFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
 	const UHTextureFormat HistoryResultFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
-	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_R16_UNORM;
+	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_R16F;
 	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UHTextureFormat::UH_FORMAT_X8_D24 : UHTextureFormat::UH_FORMAT_D32F;
 	const UHTextureFormat MotionFormat = UHTextureFormat::UH_FORMAT_RG16F;
 	const UHTextureFormat MaskFormat = UHTextureFormat::UH_FORMAT_R8_UNORM;
@@ -811,12 +810,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
 	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, HistoryResultFormat);
 	GOpaqueSceneResult = GraphicInterface->RequestRenderTexture("OpaqueSceneResult", RenderResolution, HistoryResultFormat);
-
-	// quarter blurred RT, use R11G11B10 should suffice
-	VkExtent2D QuarterBlurredResolution;
-	QuarterBlurredResolution.width = RenderResolution.width >> 2;
-	QuarterBlurredResolution.height = RenderResolution.height >> 2;
-	GQuarterBlurredScene = GraphicInterface->RequestRenderTexture("QuarterBlurredScene", QuarterBlurredResolution, HistoryResultFormat);
 
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
@@ -855,7 +848,6 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GPreviousSceneResult);
 	GraphicInterface->RequestReleaseRT(GOpaqueSceneResult);
 	GraphicInterface->RequestReleaseRT(GMotionVectorRT);
-	GraphicInterface->RequestReleaseRT(GQuarterBlurredScene);
 	GraphicInterface->RequestReleaseRT(GTranslucentBump);
 	GraphicInterface->RequestReleaseRT(GTranslucentSmoothness);
 
@@ -869,7 +861,6 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 
 	// cleanup gaussian constant
 	RayTracingGaussianConsts.Release(GraphicInterface);
-	RefractionGaussianConsts.Release(GraphicInterface);
 }
 
 void UHDeferredShadingRenderer::CreateRenderPasses()
@@ -1221,10 +1212,7 @@ void UHDeferredShadingRenderer::UpdateTextureDescriptors()
 
 	// bind necessary textures from system, be sure to match the number of GSystemPreservedTextureSlots definition
 	Texes.push_back(GOpaqueSceneResult);
-	RefractionClearIndex = 0;
-
-	Texes.push_back(GQuarterBlurredScene);
-	RefractionBlurredIndex = 1;
+	OpaqueSceneTextureIndex = 0;
 
 	assert(GSystemPreservedTextureSlots == static_cast<int32_t>(Texes.size()));
 
@@ -1286,17 +1274,6 @@ void UHDeferredShadingRenderer::InitGaussianConstants()
 				GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, true);
 		}
 	}
-
-	// for refraction use
-	TempRTFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
-	RefractionGaussianConsts.GBlurRadius = 3;
-	RefractionGaussianConsts.GBlurResolution[0] = GQuarterBlurredScene->GetExtent().width;
-	RefractionGaussianConsts.GBlurResolution[1] = GQuarterBlurredScene->GetExtent().height;
-	RefractionGaussianConsts.IterationCount = 2;
-
-	RefractionGaussianConsts.GaussianFilterTempRT0.push_back(GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", GQuarterBlurredScene->GetExtent(), TempRTFormat, true));
-	RefractionGaussianConsts.GaussianFilterTempRT1.push_back(GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", GQuarterBlurredScene->GetExtent(), TempRTFormat, true));
-	CalculateBlurWeights(RefractionGaussianConsts.GBlurRadius, &RefractionGaussianConsts.Weights[0]);
 }
 
 template <typename T1, typename T2>

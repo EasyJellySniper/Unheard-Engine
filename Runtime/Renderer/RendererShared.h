@@ -32,7 +32,6 @@ extern UHRenderTexture* GSceneVertexNormal;
 extern UHRenderTexture* GMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
-extern UHRenderTexture* GQuarterBlurredScene;
 extern UHRenderTexture* GOpaqueSceneResult;
 extern UHRenderTexture* GTranslucentBump;
 extern UHRenderTexture* GTranslucentSmoothness;

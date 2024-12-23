@@ -203,8 +203,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     float4 Specular = 0;
     float3 BumpNormal = 0;
     float3 Emissive = 0;
-    float2 RefractScale = 1;
-    float Refraction = 0;
+    float2 RefractOffset = 0;
     
     // evaluate if it can reuse GBuffer info
     bool bCanFetchScreenInfo = bIsOpaque && bInsideScreen && (length(GBufferVertexNormal.xyz - FlippedVertexNormal) < 0.01f);
@@ -233,15 +232,20 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
         float Metallic = MaterialInput.Metallic;
         float Roughness = MaterialInput.Roughness;
         float Smoothness = 1.0f - Roughness;
+        float SmoothnessSquare = Smoothness * Smoothness;
 
         BaseColor = BaseColor - BaseColor * Metallic;
         Diffuse = float4(saturate(BaseColor), Occlusion);
         
         BumpNormal = FlippedVertexNormal;
+        bool bRefraction = Usage.MaterialFeature & UH_REFRACTION;
         if (Usage.MaterialFeature & UH_TANGENT_SPACE)
         {
             BumpNormal = MaterialInput.Normal;
-            RefractScale *= BumpNormal.xy;
+            if (bRefraction)
+            {
+                RefractOffset = BumpNormal.xy * MaterialInput.Refraction;
+            }
             
 		    // tangent to world space
             float4 VertexTangent = GetHitTangent(PrimitiveIndex(), Attr);
@@ -254,13 +258,20 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
             BumpNormal = mul(BumpNormal, WorldTBN);
             BumpNormal *= (bIsFrontFace) ? 1 : -1;
         }
+        else if (bRefraction)
+        {
+            // refraction without input bump
+            float3 EyeVector = normalize(WorldPos - GCameraPos);
+            float3 RefractRay = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
+            
+            RefractOffset = (RefractRay.xy - EyeVector.xy) * 4.0f;
+        }
         
         Specular.rgb = MaterialInput.Specular;
         Specular.rgb = ComputeSpecularColor(Specular.rgb, MaterialInput.Diffuse, Metallic);
         Specular.a = Smoothness;
         
         Emissive = MaterialInput.Emissive;
-        Refraction = MaterialInput.Refraction;
     }
     
     Payload.HitDiffuse = Diffuse;
@@ -271,8 +282,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     Payload.HitScreenUV = ScreenUV;
     if (!bIsOpaque)
     {
-        Payload.HitRefractScale = RefractScale;
-        Payload.HitRefraction = Refraction;
+        Payload.HitRefractOffset = RefractOffset;
     }
     Payload.IsInsideScreen = bInsideScreen;
 }
@@ -366,11 +376,11 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
                 Payload.HitEmissiveTrans = float4(TransPayload.HitEmissive, MaterialInput.Opacity);
                 Payload.HitScreenUVTrans = TransPayload.HitScreenUV;
                 Payload.HitWorldPosTrans = WorldPos;
-                Payload.HitRefractScale = TransPayload.HitRefractScale;
-                Payload.HitRefraction = TransPayload.HitRefraction;
+                Payload.HitRefractOffset = TransPayload.HitRefractOffset;
                 Payload.IsInsideScreen = TransPayload.IsInsideScreen;
                 Payload.HitInstanceIndex = InstanceIndex();
                 
+                // set refraction flag
                 if (Usages.MaterialFeature & UH_REFRACTION)
                 {
                     Payload.PayloadData |= PAYLOAD_HITREFRACTION;

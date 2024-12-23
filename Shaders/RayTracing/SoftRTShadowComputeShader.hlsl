@@ -12,12 +12,95 @@ Texture2D MipRateTex : register(t4);
 SamplerState PointClampped : register(s5);
 SamplerState LinearClampped : register(s6);
 
-// hard code to 5x5 for now, for different preset, set different define from C++ side in the future
-#define PCSS_INNERLOOP 2
-#define PCSS_WEIGHT 0.04f
-#define PCSS_MINPENUMBRA 1.5f
-#define PCSS_MAXPENUMBRA 10.0f
-#define PCSS_BLOCKERSCALE 0.02f
+float Shadow3x3(float2 UV, float2 BaseShadowData, float BaseDepth, float Penumbra, float MipWeight)
+{
+	// actually sampling
+    float Atten = 0.0f;
+    float DepthDiffThres = lerp(0.0005f, 0.0001f, MipWeight);
+	
+	UHUNROLL
+    for (int I = -1; I <= 1; I++)
+    {
+		UHUNROLL
+        for (int J = -1; J <= 1; J++)
+        {
+            float2 ShadowUV = UV + float2(I, J) * Penumbra * GShadowResolution.zw;
+			
+            float CmpDepth = DepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r;
+            if (abs(CmpDepth - BaseDepth) > DepthDiffThres)
+            {
+                Atten += BaseShadowData.g;
+            }
+            else
+            {
+                Atten += InputRTShadow.SampleLevel(LinearClampped, ShadowUV, 0).g;
+            }
+        }
+    }
+    Atten *= 0.11111111f;
+    
+    return Atten;
+}
+
+float Shadow5x5(float2 UV, float2 BaseShadowData, float BaseDepth, float Penumbra, float MipWeight)
+{
+	// actually sampling
+    float Atten = 0.0f;
+    float DepthDiffThres = lerp(0.0005f, 0.0001f, MipWeight);
+	
+	UHUNROLL
+    for (int I = -2; I <= 2; I++)
+    {
+		UHUNROLL
+        for (int J = -2; J <= 2; J++)
+        {
+            float2 ShadowUV = UV + float2(I, J) * Penumbra * GShadowResolution.zw;
+			
+            float CmpDepth = DepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r;
+            if (abs(CmpDepth - BaseDepth) > DepthDiffThres)
+            {
+                Atten += BaseShadowData.g;
+            }
+            else
+            {
+                Atten += InputRTShadow.SampleLevel(LinearClampped, ShadowUV, 0).g;
+            }
+        }
+    }
+    Atten *= 0.04f;
+    
+    return Atten;
+}
+
+float Shadow7x7(float2 UV, float2 BaseShadowData, float BaseDepth, float Penumbra, float MipWeight)
+{
+	// actually sampling
+    float Atten = 0.0f;
+    float DepthDiffThres = lerp(0.0005f, 0.0001f, MipWeight);
+	
+	UHUNROLL
+    for (int I = -3; I <= 3; I++)
+    {
+		UHUNROLL
+        for (int J = -3; J <= 3; J++)
+        {
+            float2 ShadowUV = UV + float2(I, J) * Penumbra * GShadowResolution.zw;
+			
+            float CmpDepth = DepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r;
+            if (abs(CmpDepth - BaseDepth) > DepthDiffThres)
+            {
+                Atten += BaseShadowData.g;
+            }
+            else
+            {
+                Atten += InputRTShadow.SampleLevel(LinearClampped, ShadowUV, 0).g;
+            }
+        }
+    }
+    Atten *= 0.02040816f;
+    
+    return Atten;
+}
 
 void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, float MipRate)
 {
@@ -32,36 +115,27 @@ void SoftShadow(inout RWTexture2D<float> RTShadow, uint2 PixelCoord, float2 UV, 
 	// after getting distance to blocker, scale it down (or not) as penumbra number
     float2 BaseShadowData = InputRTShadow.SampleLevel(LinearClampped, UV, 0).rg;
     float DistToBlocker = BaseShadowData.r;
-	float Penumbra = lerp(PCSS_MINPENUMBRA, PCSS_MAXPENUMBRA, saturate(DistToBlocker * PCSS_BLOCKERSCALE));
+    float Penumbra = lerp(GPCSSMinPenumbra, GPCSSMaxPenumbra, saturate(DistToBlocker * GPCSSBlockerDistScale));
 
 	// lower the penumbra based on mip level, don't apply high penumbra at distant pixels
 	float MipWeight = saturate(MipRate * RT_MIPRATESCALE);
-    Penumbra = lerp(Penumbra, 1.0f, pow(MipWeight, 0.25f));
+    Penumbra = lerp(Penumbra, 0.0f, pow(MipWeight, 0.25f));
 
-	// actually sampling
+	// actually sampling, separate kernal functions as unroll for-loop performs better than a real for-loop
 	float Atten = 0.0f;
-	float DepthDiffThres = lerp(0.0005f, 0.0001f, MipWeight);
-	
-	UHUNROLL
-	for (int I = -PCSS_INNERLOOP; I <= PCSS_INNERLOOP; I++)
-	{
-		UHUNROLL
-		for (int J = -PCSS_INNERLOOP; J <= PCSS_INNERLOOP; J++)
-		{
-            float2 ShadowUV = UV + float2(I, J) * Penumbra * GShadowResolution.zw;
-			
-            float CmpDepth = DepthTexture.SampleLevel(PointClampped, ShadowUV, 0).r;
-            if ((CmpDepth - BaseDepth) > DepthDiffThres)
-            {
-                Atten += BaseShadowData.g;
-            }
-			else
-            {
-                Atten += InputRTShadow.SampleLevel(LinearClampped, ShadowUV, 0).g;
-            }
-        }
-	}
-	Atten *= PCSS_WEIGHT;
+    UHBRANCH
+    if (GPCSSKernal == 1)
+    {
+        Atten = Shadow3x3(UV, BaseShadowData, BaseDepth, Penumbra, MipWeight);
+    }
+    else if (GPCSSKernal == 2)
+    {
+        Atten = Shadow5x5(UV, BaseShadowData, BaseDepth, Penumbra, MipWeight);
+    }
+    else if (GPCSSKernal == 3)
+    {
+        Atten = Shadow7x7(UV, BaseShadowData, BaseDepth, Penumbra, MipWeight);
+    }
 
     RTShadow[PixelCoord] = Atten;
 }

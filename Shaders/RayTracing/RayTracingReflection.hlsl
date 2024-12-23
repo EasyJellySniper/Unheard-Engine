@@ -28,13 +28,9 @@ StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
 ByteAddressBuffer PointLightListTrans : register(t14);
 ByteAddressBuffer SpotLightListTrans : register(t15);
 
-// scene textures for refraction
-Texture2D SceneTexture : register(t16);
-Texture2D BlurredSceneTexture : register(t17);
-
 // samplers
-SamplerState PointClampSampler : register(s18);
-SamplerState LinearClampSampler : register(s19);
+SamplerState PointClampSampler : register(s16);
+SamplerState LinearClampSampler : register(s17);
 
 static const int GMaxDirLight = 2;
 
@@ -214,7 +210,13 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
     return saturate(Atten);
 }
 
-float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldPos, float3 SceneWorldPos, float MipLevel)
+float4 CalculateReflectionLighting(in UHDefaultPayload Payload
+    , float3 SceneWorldPos
+    , float3 SceneBump
+    , float3 HitWorldPos
+    , float MipLevel
+    , float RayGap
+    , float3 ReflectRay)
 {
     // doing the same lighting as object pass except the indirect specular
     float3 Result = 0;
@@ -244,45 +246,43 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldP
     LightInfo.WorldPos = bHitTranslucent ? Payload.HitWorldPosTrans : HitWorldPos;
     
     // check whether it's a refraction material
-    float3 RefractionResult = 0;
+    // if yes, shoot another ray for it
     if (bHitTranslucent && bHitRefraction)
     {
-        float3 EyeDir = LightInfo.WorldPos - GCameraPos;
-        float EyeLength = length(EyeDir);
-        EyeDir = normalize(EyeDir);
+        RayDesc RefractRay = (RayDesc) 0;
         
-        float3 RefractEyeVec = refract(EyeDir, LightInfo.Normal, Payload.HitRefraction);
-        float2 RefractOffset = (RefractEyeVec.xy - EyeDir.xy) / EyeLength;
-        float2 RefractUV = ScreenUV + Payload.HitRefractScale * RefractOffset;
-    
-        // @TODO: Refraction is only for the pixel inside the screen, improve this in the future
-        if (IsUVInsideScreen(RefractUV))
-        {
-            float3 SceneColor = SceneTexture.SampleLevel(LinearClampSampler, RefractUV, 0).rgb;
-            float3 BlurredSceneColor = BlurredSceneTexture.SampleLevel(LinearClampSampler, RefractUV, 0).rgb;
-    
-            // Use the scene color for refraction, the original BaseColor will be used as tint color instead
-            // Roughness will be used as a factor for lerp clear/blurred scene
-            float SmoothnessSquare = Payload.HitSpecular.a * Payload.HitSpecular.a;
-            float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, SmoothnessSquare * SmoothnessSquare);
-            RefractionResult = RefractionColor * LightInfo.Diffuse + Payload.HitEmissive.rgb;
+        // modify the ray direction related to camera
+        float3 EyeToHitPos = LightInfo.WorldPos - GCameraPos;
+        EyeToHitPos += float3(Payload.HitRefractOffset * 0.5f, 0.0f);
+        ReflectRay = normalize(EyeToHitPos);
+        
+        RefractRay.Origin = GCameraPos;
+        RefractRay.Direction = ReflectRay;
+        RefractRay.TMin = 0.0f;
+        RefractRay.TMax = GRTReflectionRayTMax;
+
+        UHDefaultPayload RefractPayload = (UHDefaultPayload) 0;
+        RefractPayload.MipLevel = MipLevel;
+        RefractPayload.PayloadData |= PAYLOAD_ISREFLECTION;
             
-            // final lerp with the scene color, which is different from the calculation in TranslucentPixelShader
-            // I'm lack of alpha blend output here and need to simulate it myself
-            RefractionResult = lerp(SceneColor, RefractionResult, Payload.HitAlpha);
-    
-            // Early return and do not proceed to lighting, refraction should rely on the lit opaque scene.
-            return float4(RefractionResult, 1.0f);
-        }
-        else
+        TraceRay(TLAS, RAY_FLAG_CULL_NON_OPAQUE, 0xff, 0, 0, 0, RefractRay, RefractPayload);
+            
+        // proceed to opaque lighting if hit
+        if (RefractPayload.IsHit())
         {
-            // fallback to opaque lighting
-            Payload = OriginPayload;
+            // set payload to the newly hit one
+            Payload = RefractPayload;
             ScreenUV = Payload.HitScreenUV;
             LightInfo.Diffuse = Payload.HitDiffuse.rgb;
             LightInfo.Specular = Payload.HitSpecular;
             LightInfo.Normal = Payload.HitNormal;
-            LightInfo.WorldPos = HitWorldPos;
+            LightInfo.WorldPos = RefractRay.Origin + RefractRay.Direction * Payload.HitT;
+            LightInfo.WorldPos += Payload.HitWorldNormal * 0.1f;
+        }
+        else
+        {
+            // consider the light is absorbed if the refract ray missed
+            return 0;
         }
     }
     
@@ -292,11 +292,10 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload, float3 HitWorldP
     uint TileX = CoordToTileX(PixelCoord.x);
     uint TileY = CoordToTileY(PixelCoord.y);
     uint TileIndex = TileX + TileY * GLightTileCountX;
-    float AttenNoise = GetAttenuationNoise(PixelCoord.xy) * 0.1f;
     
     // trace shadow in reflection
     LightInfo.ShadowMask = TraceShadowInReflection(LightInfo.WorldPos, TileIndex, Payload, MipLevel);
-    LightInfo.AttenNoise = AttenNoise;
+    LightInfo.AttenNoise = GetAttenuationNoise(PixelCoord.xy) * 0.1f;
     
     // directional lights, with max number limitation
     if (GNumDirLights > 0)
@@ -416,8 +415,8 @@ void RTReflectionRayGen()
     if (Payload.IsHit())
     {
         float3 HitWorldPos = ReflectRay.Origin + ReflectRay.Direction * Payload.HitT;
-        float3 EyeVec = HitWorldPos - GCameraPos;
-        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, WorldPos, MipLevel);
+        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, WorldPos, BumpNormal, HitWorldPos, MipLevel, RayGap
+            , ReflectRay.Direction);
         
         if (bHalfPixel)
         {

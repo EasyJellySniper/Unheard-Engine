@@ -35,10 +35,6 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// refraction textures
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-
 	// samplers
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
@@ -100,10 +96,6 @@ void UHRTReflectionShader::BindParameters()
 	BindStorage(GPointLightListBuffer.get(), 14, 0, true);
 	BindStorage(GSpotLightListBuffer.get(), 15, 0, true);
 
-	// refraction texture
-	BindImage(GOpaqueSceneResult, 16);
-	BindImage(GQuarterBlurredScene, 17);
-
-	BindSampler(GPointClampedSampler, 18);
-	BindSampler(GLinearClampedSampler, 19);
+	BindSampler(GPointClampedSampler, 16);
+	BindSampler(GLinearClampedSampler, 17);
 }

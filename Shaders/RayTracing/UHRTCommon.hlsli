@@ -52,8 +52,7 @@ struct UHDefaultPayload
     float4 HitEmissiveTrans;
     float2 HitScreenUVTrans;
     float3 HitWorldPosTrans;
-    float2 HitRefractScale;
-    float HitRefraction;
+    float2 HitRefractOffset;
 	
     uint IsInsideScreen;
     uint HitInstanceIndex;

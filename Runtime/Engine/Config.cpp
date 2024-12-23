@@ -73,11 +73,20 @@ void UHConfigManager::LoadConfig()
 			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
 			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRContrast", RenderingSettings.HDRContrast);
 			UHUtilities::ReadINIData<float>(FileIn, Section, "GammaCorrection", RenderingSettings.GammaCorrection);
+			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "PCSSKernal", RenderingSettings.PCSSKernal);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "PCSSMinPenumbra", RenderingSettings.PCSSMinPenumbra);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "PCSSMaxPenumbra", RenderingSettings.PCSSMaxPenumbra);
+			UHUtilities::ReadINIData<float>(FileIn, Section, "PCSSBlockerDistScale", RenderingSettings.PCSSBlockerDistScale);
 
 			// clamp a few parameters
 			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
 			RenderingSettings.RenderHeight = std::clamp(RenderingSettings.RenderHeight, 480, 16384);
 			RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, (int32_t)GMaxWorkerThreads);
+
+			RenderingSettings.PCSSKernal = std::clamp(RenderingSettings.PCSSKernal, 1, 3);
+			RenderingSettings.PCSSMinPenumbra = std::max(RenderingSettings.PCSSMinPenumbra, 0.0f);
+			RenderingSettings.PCSSMaxPenumbra = std::max(RenderingSettings.PCSSMaxPenumbra, 0.0f);
+			RenderingSettings.PCSSBlockerDistScale = std::max(RenderingSettings.PCSSBlockerDistScale, 0.0f);
 		}
 	}
 	FileIn.close();
@@ -130,9 +139,15 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 		UHUtilities::WriteINIData(FileOut, "bEnableHDR", RenderingSettings.bEnableHDR);
 		UHUtilities::WriteINIData(FileOut, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
+		UHUtilities::WriteINIData(FileOut, "OcclusionTriangleThreshold", RenderingSettings.OcclusionTriangleThreshold);
 		UHUtilities::WriteINIData(FileOut, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
 		UHUtilities::WriteINIData(FileOut, "HDRContrast", RenderingSettings.HDRContrast);
 		UHUtilities::WriteINIData(FileOut, "GammaCorrection", RenderingSettings.GammaCorrection);
+
+		UHUtilities::WriteINIData(FileOut, "PCSSKernal", RenderingSettings.PCSSKernal);
+		UHUtilities::WriteINIData(FileOut, "PCSSMinPenumbra", RenderingSettings.PCSSMinPenumbra);
+		UHUtilities::WriteINIData(FileOut, "PCSSMaxPenumbra", RenderingSettings.PCSSMaxPenumbra);
+		UHUtilities::WriteINIData(FileOut, "PCSSBlockerDistScale", RenderingSettings.PCSSBlockerDistScale);
 	}
 	FileOut.close();
 }

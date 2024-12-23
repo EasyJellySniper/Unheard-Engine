@@ -361,3 +361,16 @@ Re-organized shader includes. Moved something to Common.hlsli instead of putting
 Finally make the spot light collection work! But it's so easily to have a >8 light count, I'll test if box-cone intersection gives better result.
 Removed pre-pass check when doing cutoff, I find edge cases that could break it.
 Removed unused system feature enum. Done the box-cone test for spot light collection, but it's still easy to have >8 light count..I'll keep max count as 16 now.
+
+22-12-2024:
+Exposed PCSS settings and sent them to soft shadow shader. 
+Minor fix to depth diff rejection in soft shadow and erased edge artifact!
+Started refactoring material refraction. Done for the regular pass but not yet for refraction in RT reflection.
+Refactored the refraction in reflection, now it will always shoot a ray to prevent screen boundary issue.
+Though the result looks a bit different than rasterized refraction.
+Fixed a minor issue about hit group compilation. And finally refactored refraction in reflectoin.
+
+23-12-2024:
+Finalized refraction changes. But I'm seeing noise in refraction (not ray tracing) caused by TAA.
+Alright, fixed noise by stationary camera trick for now.
+Next is to consider reuse the reflection shader for translucent refraction or do ray tracing in translucent shader.

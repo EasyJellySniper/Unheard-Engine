@@ -96,6 +96,10 @@ public:
 		, GammaCorrection(2.2f)
 		, HDRWhitePaperNits(200.0f)
 		, HDRContrast(1.3f)
+		, PCSSKernal(2)
+		, PCSSMinPenumbra(1.5f)
+		, PCSSMaxPenumbra(10.0f)
+		, PCSSBlockerDistScale(0.02f)
 	{
 
 	}
@@ -134,4 +138,10 @@ public:
 	bool bEnableHDR;
 	float HDRWhitePaperNits;
 	float HDRContrast;
+
+	// soft shadow settings
+	int32_t PCSSKernal;
+	float PCSSMinPenumbra;
+	float PCSSMaxPenumbra;
+	float PCSSBlockerDistScale;
 };

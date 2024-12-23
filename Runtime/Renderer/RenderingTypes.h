@@ -78,12 +78,16 @@ struct UHSystemConstants
 
 	float GEnvCubeMipMapCount;
 	uint32_t GDefaultAnisoSamplerIndex;
-	uint32_t GRefractionClearIndex;
-	uint32_t GRefractionBlurIndex;
+	uint32_t GOpaqueSceneTextureIndex;
+	int32_t GPCSSKernal;
 
 	float GFinalReflectionStrength;
 	float GNearPlane;
 	float GRTCullingDistance;
+	float GPCSSMinPenumbra;
+
+	float GPCSSMaxPenumbra;
+	float GPCSSBlockerDistScale;
 };
 
 struct UHObjectConstants

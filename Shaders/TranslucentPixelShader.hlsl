@@ -53,30 +53,45 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     
     // Calc eye vector when necessary
     float3 EyeVector = 0;
-    float EyeLength = 0;
     bool bEnvCubeEnabled = (GSystemRenderFeature & UH_ENV_CUBE);
+    bool bIsTangentSpace = (GMaterialFeature & UH_TANGENT_SPACE);
     bool bRefraction = (GMaterialFeature & UH_REFRACTION);
 
     UHBRANCH
     if (bEnvCubeEnabled || bRefraction)
     {
-        EyeVector = WorldPos - GCameraPos;
-        EyeLength = length(EyeVector);
-        EyeVector = normalize(EyeVector);
+        EyeVector = normalize(WorldPos - GCameraPos);
     }
 
     float3 BumpNormal = 0;
-    float2 RefractScale = 1;
+    float2 RefractOffset = 0;
 #if TANGENT_SPACE
     BumpNormal = MaterialInput.Normal;
-    RefractScale *= BumpNormal.xy;
-        
+    
+    // calc refract offset by roughness, it should look more blurry with high roughness
+    UHBRANCH
+    if (bRefraction)
+    {
+        RefractOffset = BumpNormal.xy * GResolution.zw * 100.0f;
+    }
+    
 	// tangent to world space
-    BumpNormal = mul(BumpNormal, Vin.WorldTBN);
-#else    
-    BumpNormal = normalize(Vin.Normal);
+    BumpNormal = mul(BumpNormal, Vin.WorldTBN) * ((bIsFrontFace) ? 1 : -1);
+#else
+    BumpNormal = normalize(Vin.Normal) * ((bIsFrontFace) ? 1 : -1);
+    
+    // calc refract offset by roughness, it should look more blurry with high roughness
+    UHBRANCH
+    if (bRefraction)
+    {
+        // refraction is used as index here
+        float3 RefractRay = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
+        float EyeLength = length(WorldPos - GCameraPos);
+        
+        // calculate an offset and prevent it's distorting too much at long distance
+        RefractOffset = (RefractRay.xy - EyeVector.xy) / max(EyeLength, 0.01f);
+    }
 #endif
-    BumpNormal *= (bIsFrontFace) ? 1 : -1;
     
     // Base Color PBR
     BaseColor = saturate(BaseColor - BaseColor * Metallic);
@@ -85,25 +100,19 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
 	float3 Specular = MaterialInput.Specular;
 	Specular = ComputeSpecularColor(Specular, MaterialInput.Diffuse, Metallic);
     
-    // Refraction
+    // Refraction, available with bump normal only
 	UHBRANCH
     if (bRefraction)
     {
-        // Calc refract vector
-        float3 RefractEyeVec = refract(EyeVector, BumpNormal, MaterialInput.Refraction);
-        float2 RefractOffset = (RefractEyeVec.xy - EyeVector.xy) / EyeLength;
-        float2 RefractUV = ScreenUV + RefractScale * RefractOffset;
+        // apply refract offset to UV, refraction parameter is used as scaling for bump normal
+        float2 RefractUV = ScreenUV + RefractOffset * lerp(1, MaterialInput.Refraction, bIsTangentSpace);
+        if (RefractUV.x != saturate(RefractUV.x) || RefractUV.y != saturate(RefractUV.y))
+        {
+            RefractUV = ScreenUV;
+        }
     
-        // allows clampping refraction
-        float3 SceneColor = UHTextureTable[GRefractionClearIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
-        float3 BlurredSceneColor = UHTextureTable[GRefractionBlurIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
-    
-        // Use the scene color for refraction, the original BaseColor will be used as tint color instead
-        // Roughness will be used as a factor for lerp clear/blurred scene
-        // Also, prevent sampling blurred scene for distant pixels. Hard-code max distance 250 for now.
-        float DistFactor = saturate(EyeLength * 0.004f);
-        float3 RefractionColor = lerp(BlurredSceneColor, SceneColor, max(SmoothnessSquare * SmoothnessSquare, DistFactor));
-        float3 RefractionResult = RefractionColor * BaseColor;
+        float3 OpaqueSceneColor = UHTextureTable[GOpaqueSceneTextureIndex].SampleLevel(LinearClamppedSampler, RefractUV, 0).rgb;
+        float3 RefractionResult = OpaqueSceneColor * BaseColor;
         RefractionResult += MaterialInput.Emissive.rgb;
     
         // Early return and do not proceed to lighting, refraction should rely on the lit from scene color to prevent over bright.
