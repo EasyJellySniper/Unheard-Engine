@@ -380,15 +380,23 @@ void RTReflectionRayGen()
     
     // To UV
     float2 ScreenUV = (PixelCoord + 0.5f) * GResolution.zw;
-    float4 OpaqueBump = SceneBuffers[1].SampleLevel(PointClampSampler, ScreenUV, 0);
-    float4 TranslucentBump = TranslucentBumpTexture.SampleLevel(PointClampSampler, ScreenUV, 0);
+    float4 OpaqueBump = SceneBuffers[1][PixelCoord];
+    float4 TranslucentBump = TranslucentBumpTexture[PixelCoord];
     
     bool bHasOpaqueInfo = OpaqueBump.a == UH_OPAQUE_MASK;
     bool bHasTranslucentInfo = TranslucentBump.a == UH_TRANSLUCENT_MASK;
     bool bTraceThisPixel = bHasOpaqueInfo || bHasTranslucentInfo;
+    if (!bTraceThisPixel)
+    {
+        return;
+    }
     
-    float Smoothness = bHasTranslucentInfo ? TranslucentSmoothTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r
-        : SceneBuffers[2].SampleLevel(LinearClampSampler, ScreenUV, 0).a;
+    float Smoothness = bHasTranslucentInfo ? TranslucentSmoothTexture[PixelCoord].r
+        : SceneBuffers[2][PixelCoord].a;
+    if (Smoothness <= GRTReflectionSmoothCutoff)
+    {
+        return;
+    }
     
     // Now fetch the data used for RT
     float MipRate = MixedMipTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r;
@@ -412,7 +420,7 @@ void RTReflectionRayGen()
     ReflectRay.Direction = ReflectedRay;
 
     ReflectRay.TMin = RayGap;
-    ReflectRay.TMax = lerp(0, GRTReflectionRayTMax, (Smoothness > GRTReflectionSmoothCutoff) && bTraceThisPixel);
+    ReflectRay.TMax = GRTReflectionRayTMax;
 
     UHDefaultPayload Payload = (UHDefaultPayload) 0;
     Payload.MipLevel = MipLevel;
