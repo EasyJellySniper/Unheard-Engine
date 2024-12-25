@@ -143,6 +143,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
 	
     float GPCSSMaxPenumbra;
     float GPCSSBlockerDistScale;
+    uint GMaxReflectionRecursion;
 }
 
 // IT means inverse-transposed

@@ -254,6 +254,14 @@ std::string UHMaterialNode::EvalHLSL(const UHGraphPin* CallerPin)
 		return Code;
 	}
 
+	// ************** Early return if it needs smoothness only ************** //
+	if (CompileData.InputType == UHMaterialInputType::MaterialInputSmoothnessOnly)
+	{
+		InsertRoughnessCode(Code);
+		Code += ReturnCode;
+		return Code;
+	}
+
 	// ************** Early return if it needs opacity+normal+roughness only ************** //
 	if (CompileData.InputType == UHMaterialInputType::MaterialInputOpacityNormalRoughOnly)
 	{

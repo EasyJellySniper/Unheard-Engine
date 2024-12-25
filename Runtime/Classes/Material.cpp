@@ -17,6 +17,7 @@ UHMaterial::UHMaterial()
 	: CullMode(UHCullMode::CullNone)
 	, BlendMode(UHBlendMode::Opaque)
 	, CutoffValue(0.33f)
+	, MaxReflectionBounce(1)
 	, CompileFlag(UHMaterialCompileFlag::UpToDate)
 	, MaterialUsages(UHMaterialUsage{})
 	, MaterialBufferSize(0)
@@ -69,6 +70,7 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	FileIn.read(reinterpret_cast<char*>(&CullMode), sizeof(CullMode));
 	FileIn.read(reinterpret_cast<char*>(&BlendMode), sizeof(BlendMode));
 	FileIn.read(reinterpret_cast<char*>(&CutoffValue), sizeof(CutoffValue));
+	FileIn.read(reinterpret_cast<char*>(&MaxReflectionBounce), sizeof(MaxReflectionBounce));
 
 	// material graph data
 	UHUtilities::ReadStringVectorData(FileIn, RegisteredTextureNames);
@@ -181,7 +183,7 @@ void UHMaterial::PostImport()
 
 #if WITH_EDITOR
 	// evaluate material constant buffer size for the old assets
-	if (Version < UH_ENUM_VALUE(UHMaterialVersion::GoingBindless))
+	if (Version < UH_ENUM_VALUE(UHMaterialVersion::AddReflectionBounce))
 	{
 		GetCBufferDefineCode(MaterialBufferSize);
 	}
@@ -276,6 +278,10 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
 	BufferAddress += Stride;
 
+	// copy max reflection
+	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaxReflectionBounce, Stride);
+	BufferAddress += Stride;
+
 	// upload material data, the BufferAddress should reach the end of material buffer at this point
 	assert(MaterialBufferSize == BufferAddress);
 	MaterialConstantsGPU[CurrFrame]->UploadAllData(MaterialConstantsCPU.data(), MaterialBufferSize);
@@ -297,6 +303,10 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 		// copy usage value
 		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &UsageValue, Stride);
 
+		// copy max reflection value
+		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &MaxReflectionBounce, Stride);
+
+		assert(DstIndex == GRTMaterialDataStartIndex);
 		// ** End copy system values ** //
 
 		// copy texture indexes if necessary
@@ -409,7 +419,8 @@ bool UHMaterial::operator==(const UHMaterial& InMat)
 	return InMat.Name == Name
 		&& InMat.CullMode == CullMode
 		&& InMat.BlendMode == BlendMode
-		&& InMat.CutoffValue == InMat.CutoffValue;
+		&& InMat.CutoffValue == CutoffValue
+		&& InMat.MaxReflectionBounce == MaxReflectionBounce;
 }
 
 void UHMaterial::UpdateMaterialUsage()
@@ -478,6 +489,7 @@ void UHMaterial::Export(const std::filesystem::path InPath)
 	FileOut.write(reinterpret_cast<const char*>(&CullMode), sizeof(CullMode));
 	FileOut.write(reinterpret_cast<const char*>(&BlendMode), sizeof(BlendMode));
 	FileOut.write(reinterpret_cast<const char*>(&CutoffValue), sizeof(CutoffValue));
+	FileOut.write(reinterpret_cast<const char*>(&MaxReflectionBounce), sizeof(MaxReflectionBounce));
 
 	// material graph data
 	UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
@@ -592,8 +604,9 @@ std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)
 	Code += "\tfloat GCutoff;\n";
 	Code += "\tint GBlendMode;\n";
 	Code += "\tuint GMaterialFeature;\n";
+	Code += "\tuint GMaxReflectionBounce;\n";
 
-	OutSize += sizeof(float) * 3;
+	OutSize += sizeof(float) * 4;
 
 	return Code;
 }

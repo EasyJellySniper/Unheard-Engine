@@ -348,7 +348,8 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		, "//%UHS_INPUT_OpacityOnly"
 		, "//%UHS_INPUT_OpacityNormalRough"
 		, "//%UHS_INPUT_NormalOnly"
-		, "//%UHS_INPUT_EmissiveOnly"};
+		, "//%UHS_INPUT_EmissiveOnly"
+		, "//%UHS_INPUT_SmoothnessOnly"};
 
 	for (int32_t Idx = UH_ENUM_VALUE(UHMaterialInputType::MaterialInputMax) - 1; Idx >= 0 ; Idx--)
 	{

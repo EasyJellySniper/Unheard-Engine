@@ -40,18 +40,18 @@ void ReflectionCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
     float SpecFade = Specular.a * Specular.a;
     float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
     float3 IndirectSpecular = 0;
+    float3 EyeVector = normalize(WorldPos - GCameraPos);
+    
+    if ((GSystemRenderFeature & UH_ENV_CUBE))
+    {
+        float3 R = reflect(EyeVector, BumpNormal);
+        IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * GAmbientSky;
+    }
     
     // calc n dot v for fresnel
-    float3 EyeVector = normalize(WorldPos - GCameraPos);
-    float3 R = reflect(EyeVector, BumpNormal);
     float NdotV = abs(dot(BumpNormal, -EyeVector));
     // CurrSceneData.a = fresnel factor
     float3 Fresnel = SchlickFresnel(Specular.rgb, lerp(0, NdotV, CurrSceneData.a));
-	
-    if ((GSystemRenderFeature & UH_ENV_CUBE))
-    {
-        IndirectSpecular = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * GAmbientSky;
-    }
     
     // reflection from dynamic source (such as ray tracing)
     float4 DynamicReflection = RTReflection.SampleLevel(LinearClampped, UV, SpecMip);

@@ -265,6 +265,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.GDefaultAnisoSamplerIndex = DefaultSamplerIndex;
 	SystemConstantsCPU.GNearPlane = CurrentCamera->GetNearPlane();
 	SystemConstantsCPU.GRTCullingDistance = RenderingSettings.RTCullingRadius;
+	SystemConstantsCPU.GMaxReflectionRecursion = UHRTReflectionShader::MaxReflectionRecursion;
 
 	// soft shadow settings
 	SystemConstantsCPU.GPCSSKernal = RenderingSettings.PCSSKernal;

@@ -208,6 +208,13 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
             bHasPropertyChanged = true;
         }
 
+        int32_t Bounce = static_cast<int32_t>(CurrentMaterial->MaxReflectionBounce);
+        if (ImGui::SliderInt("Reflection Bounce", &Bounce, 1, UHRTReflectionShader::MaxReflectionRecursion))
+        {
+            CurrentMaterial->MaxReflectionBounce = static_cast<uint32_t>(Bounce);
+            bHasPropertyChanged = true;
+        }
+
         if (bHasPropertyChanged)
         {
             CurrentMaterial->SetRenderDirties(true);

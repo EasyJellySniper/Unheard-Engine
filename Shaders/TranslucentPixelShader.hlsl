@@ -124,16 +124,16 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     float SpecFade = SmoothnessSquare;
     float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
     
-    // calc fresnel
-    float3 R = reflect(EyeVector, BumpNormal);
-    float NdotV = abs(dot(BumpNormal, -EyeVector));
-    float3 Fresnel = SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
-    
 	UHBRANCH
     if (bEnvCubeEnabled)
     {
+        float3 R = reflect(EyeVector, BumpNormal);
         IndirectSpecular = EnvCube.SampleLevel(UHSamplerTable[GSkyCubeSamplerIndex], R, SpecMip).rgb * GAmbientSky;
     }
+    
+    // calc fresnel
+    float NdotV = abs(dot(BumpNormal, -EyeVector));
+    float3 Fresnel = SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
     
     float4 DynamicReflection = ScreenReflectionTexture.SampleLevel(UHSamplerTable[GLinearClampSamplerIndex], ScreenUV, SpecMip);
     IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);

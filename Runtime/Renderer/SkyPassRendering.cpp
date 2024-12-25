@@ -40,6 +40,11 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 		std::unique_lock<std::mutex> Lock(RenderThread->GetThreadMutex());
 		bNeedGenerateSH9RT = true;
 	}
+
+	if (bIsRaytracingEnableRT)
+	{
+		RTReflectionShader->BindSkyCube();
+	}
 }
 #endif
 

@@ -12,6 +12,7 @@ enum class UHMaterialInputType
 	MaterialInputOpacityNormalRoughOnly,
 	MaterialInputNormalOnly,
 	MaterialInputEmissiveOnly,
+	MaterialInputSmoothnessOnly,
 	MaterialInputMax,
 };
 

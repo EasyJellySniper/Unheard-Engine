@@ -27,10 +27,12 @@ Texture2D TranslucentSmoothTexture : register(t12);
 StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
 ByteAddressBuffer PointLightListTrans : register(t14);
 ByteAddressBuffer SpotLightListTrans : register(t15);
+TextureCube EnvCube : register(t16);
 
 // samplers
-SamplerState PointClampSampler : register(s16);
-SamplerState LinearClampSampler : register(s17);
+SamplerState PointClampSampler : register(s17);
+SamplerState LinearClampSampler : register(s18);
+SamplerState EnvSampler : register(s19);
 
 static const int GMaxDirLight = 2;
 
@@ -320,8 +322,28 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     
     // indirect light and emissive
     {
-        Result += ShadeSH9(Payload.HitDiffuse.rgb, float4(Payload.HitNormal, 1.0f), Payload.HitDiffuse.a);
+        float Occlusion = Payload.HitDiffuse.a;
+        Result += ShadeSH9(LightInfo.Diffuse.rgb, float4(LightInfo.Normal, 1.0f), Occlusion);
         Result += Payload.HitEmissive;
+        
+        // still need to sample sky reflection here, in case the ray is hitting a material that has high metallic
+        // which makes it black. Or the back side of an object (low lighting)
+        float SpecFade = LightInfo.Specular.a * LightInfo.Specular.a;
+        float SpecMip = (1.0f - SpecFade) * GEnvCubeMipMapCount;
+        
+        // here needs the previous ray dir for sky lookup as it might be from multiple bounce ray
+        // can't evaluate from camera pos
+        float3 EyeVector = Payload.RayDir;
+        float3 R = reflect(EyeVector, LightInfo.Normal);
+        
+        // fresnel calculation
+        float NdotV = abs(dot(LightInfo.Normal, -EyeVector));
+        // Payload.PackedData0.a for fresnel factor from material
+        float3 Fresnel = SchlickFresnel(LightInfo.Specular.rgb, lerp(0, NdotV, Payload.PackedData0.a));
+     
+        Result += EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * GAmbientSky * SpecFade * GFinalReflectionStrength
+            // occlusion is stored in diffuse.a
+            * Occlusion * Fresnel;
     }
     
     return float4(Result, Payload.HitAlpha);
@@ -365,22 +387,8 @@ void RTReflectionRayGen()
     bool bHasTranslucentInfo = TranslucentBump.a == UH_TRANSLUCENT_MASK;
     bool bTraceThisPixel = bHasOpaqueInfo || bHasTranslucentInfo;
     
-    // early return if it has no info  
-    UHBRANCH
-    if (!bTraceThisPixel)
-    {
-        return;
-    }
-    
     float Smoothness = bHasTranslucentInfo ? TranslucentSmoothTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r
         : SceneBuffers[2].SampleLevel(LinearClampSampler, ScreenUV, 0).a;
-    
-    // early return if it has low smoothness 
-    UHBRANCH
-    if (Smoothness <= GRTReflectionSmoothCutoff)
-    {
-        return;
-    }
     
     // Now fetch the data used for RT
     float MipRate = MixedMipTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r;
@@ -392,30 +400,32 @@ void RTReflectionRayGen()
     BumpNormal = DecodeNormal(BumpNormal);
 
     float SceneDepth = MixedDepthTexture.SampleLevel(PointClampSampler, ScreenUV, 0).r;
-    float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth);
+    float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth);
     
     // Calculate reflect ray
-    float3 EyeVector = normalize(WorldPos - GCameraPos);
+    float3 EyeVector = normalize(SceneWorldPos - GCameraPos);
     float3 ReflectedRay = reflect(EyeVector, BumpNormal);
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
     
     RayDesc ReflectRay = (RayDesc) 0;
-    ReflectRay.Origin = WorldPos + VertexNormal * RayGap;
+    ReflectRay.Origin = SceneWorldPos + VertexNormal * RayGap;
     ReflectRay.Direction = ReflectedRay;
 
     ReflectRay.TMin = RayGap;
-    ReflectRay.TMax = GRTReflectionRayTMax;
+    ReflectRay.TMax = lerp(0, GRTReflectionRayTMax, (Smoothness > GRTReflectionSmoothCutoff) && bTraceThisPixel);
 
     UHDefaultPayload Payload = (UHDefaultPayload) 0;
     Payload.MipLevel = MipLevel;
     Payload.PayloadData |= PAYLOAD_ISREFLECTION;
+    // init CurrentRecursion as 1
+    Payload.CurrentRecursion = 1;
 
     TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, 0, ReflectRay, Payload);
     
     if (Payload.IsHit())
     {
-        float3 HitWorldPos = ReflectRay.Origin + ReflectRay.Direction * Payload.HitT;
-        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, WorldPos, BumpNormal, HitWorldPos, MipLevel, RayGap
+        float3 HitWorldPos = Payload.PackedData0.xyz;
+        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, SceneWorldPos, BumpNormal, HitWorldPos, MipLevel, RayGap
             , ReflectRay.Direction);
         
         if (bHalfPixel)

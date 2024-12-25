@@ -88,6 +88,7 @@ struct UHSystemConstants
 
 	float GPCSSMaxPenumbra;
 	float GPCSSBlockerDistScale;
+	uint32_t GMaxReflectionRecursion;
 };
 
 struct UHObjectConstants

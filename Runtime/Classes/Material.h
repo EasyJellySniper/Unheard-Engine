@@ -13,6 +13,7 @@ enum class UHMaterialVersion
 	Initial,
 	GoingBindless,
 	AddRoughnessTexture,
+	AddReflectionBounce,
 	MaterialVersionMax
 };
 
@@ -145,6 +146,7 @@ private:
 	UHCullMode CullMode;
 	UHBlendMode BlendMode;
 	float CutoffValue;
+	uint32_t MaxReflectionBounce;
 
 	// material flags
 	UHMaterialCompileFlag CompileFlag;

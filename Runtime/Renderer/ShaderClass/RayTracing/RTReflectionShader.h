@@ -14,6 +14,10 @@ public:
 	virtual void OnCompile() override;
 
 	void BindParameters();
+	void BindSkyCube();
+
+	// set max recursion for the reflection, real recursion is still decided by material setting.
+	static const uint32_t MaxReflectionRecursion = 8;
 
 private:
 	std::vector<uint32_t> ClosestHitIDs;

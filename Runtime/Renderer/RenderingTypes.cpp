@@ -1,5 +1,6 @@
 #include "RenderingTypes.h"
 #include "Runtime/CoreGlobals.h"
+#include "Runtime/Renderer/ShaderClass/RayTracing/RTShaderDefines.h"
 
 // ---------------------------------------------------- UHDepthInfo
 UHDepthInfo::UHDepthInfo()
@@ -100,8 +101,8 @@ UHRayTracingInfo::UHRayTracingInfo()
 	, MaxRecursionDepth(1)
 	, RayGenShader(-1)
 	, MissShader(-1)
-	, PayloadSize(4)
-	, AttributeSize(8)
+	, PayloadSize(sizeof(UHDefaultPayload))
+	, AttributeSize(sizeof(UHDefaultAttribute))
 {
 
 }

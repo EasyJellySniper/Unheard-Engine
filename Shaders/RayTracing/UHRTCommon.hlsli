@@ -27,6 +27,36 @@ struct UHDefaultPayload
 	{ 
 		return HitT > 0; 
 	}
+    
+    // copy function, not all parameters are copied
+    void CopyFrom(UHDefaultPayload SrcPayload)
+    {
+        HitT = SrcPayload.HitT;
+        MipLevel = SrcPayload.MipLevel;
+        HitAlpha = SrcPayload.HitAlpha;
+        PayloadData = SrcPayload.PayloadData;
+        
+        HitDiffuse = SrcPayload.HitDiffuse;
+        HitNormal = SrcPayload.HitNormal;
+        HitWorldNormal = SrcPayload.HitWorldNormal;
+        HitSpecular = SrcPayload.HitSpecular;
+        HitEmissive = SrcPayload.HitEmissive;
+        HitScreenUV = SrcPayload.HitScreenUV;
+        
+        HitDiffuseTrans = SrcPayload.HitDiffuseTrans;
+        HitNormalTrans = SrcPayload.HitNormalTrans;
+        HitWorldNormalTrans = SrcPayload.HitWorldNormalTrans;
+        HitSpecularTrans = SrcPayload.HitSpecularTrans;
+        HitEmissiveTrans = SrcPayload.HitEmissiveTrans;
+        HitScreenUVTrans = SrcPayload.HitScreenUVTrans;
+        HitWorldPosTrans = SrcPayload.HitWorldPosTrans;
+        HitRefractOffset = SrcPayload.HitRefractOffset;
+        
+        IsInsideScreen = SrcPayload.IsInsideScreen;
+        HitInstanceIndex = SrcPayload.HitInstanceIndex;
+        PackedData0 = SrcPayload.PackedData0;
+        RayDir = SrcPayload.RayDir;
+    }
 
 	float HitT;
 	float MipLevel;
@@ -56,6 +86,10 @@ struct UHDefaultPayload
 	
     uint IsInsideScreen;
     uint HitInstanceIndex;
+    uint CurrentRecursion;
+    // PackedData0, this stores hit world position and the fresnel factor now
+    float4 PackedData0;
+    float3 RayDir;
 };
 
 RayDesc GenerateCameraRay(uint2 ScreenPos)

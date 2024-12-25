@@ -29,6 +29,10 @@ struct UHDefaultPayload
 
 	uint32_t IsInsideScreen;
 	uint32_t HitInstanceIndex;
+	uint32_t CurrentRecursion;
+	// xyz = world pos, w = fresnel factor
+	XMFLOAT4 PackedData0;
+	XMFLOAT3 RayDir;
 };
 
 struct UHDefaultAttribute

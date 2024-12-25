@@ -374,3 +374,8 @@ Fixed a minor issue about hit group compilation. And finally refactored refracti
 Finalized refraction changes. But I'm seeing noise in refraction (not ray tracing) caused by TAA.
 Alright, fixed noise by stationary camera trick for now.
 Next is to consider reuse the reflection shader for translucent refraction or do ray tracing in translucent shader.
+
+25-12-2024:
+Started implementing reflection bounce.
+Done the reflection bounce and fixed up random flickering caused by smoothness early return.
+I ended up controlling the TMax and made it 0 when early out is needed.
