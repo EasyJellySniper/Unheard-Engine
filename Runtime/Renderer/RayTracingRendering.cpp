@@ -123,7 +123,9 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Shadow");
 
 	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
-	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	RenderBuilder.ClearRenderTexture(GRTSharedTextureRG);
+	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
 	// bind descriptors and RT states
 	// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!
@@ -173,6 +175,9 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Reflection And Blur");
 
 	// buffer transition and TLAS bind
+	RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	RenderBuilder.ClearRenderTexture(GRTReflectionResult);
+
 	for (uint32_t Mdx = 0; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)
 	{
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_GENERAL, Mdx));

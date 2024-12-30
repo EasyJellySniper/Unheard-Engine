@@ -221,7 +221,7 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     , float3 ReflectRay)
 {
     // doing the same lighting as object pass except the indirect specular
-    float3 Result = 0;
+    precise float3 Result = 0;
     bool bHitTranslucent = (Payload.PayloadData & PAYLOAD_HITTRANSLUCENT) > 0;
     bool bHitRefraction = (Payload.PayloadData & PAYLOAD_HITREFRACTION) > 0;
     float2 ScreenUV = bHitTranslucent ? Payload.HitScreenUVTrans : Payload.HitScreenUV;
@@ -298,6 +298,7 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     // trace shadow in reflection
     LightInfo.ShadowMask = TraceShadowInReflection(LightInfo.WorldPos, TileIndex, Payload, MipLevel);
     LightInfo.AttenNoise = GetAttenuationNoise(PixelCoord.xy) * 0.1f;
+    LightInfo.SpecularNoise = LightInfo.AttenNoise * lerp(0.5f, 0.02f, LightInfo.Specular.a);
     
     // directional lights, with max number limitation
     if (GNumDirLights > 0)
@@ -356,22 +357,11 @@ void RTReflectionRayGen()
     bool bQuarterPixel = GRTReflectionQuality == 2;
     
     uint2 PixelCoord = DispatchRaysIndex().xy;
-    int Dx[3] = { 1, 0, 1 };
-    int Dy[3] = { 0, 1, 1 };
     if (bQuarterPixel)
     {
-        // for quarter tracing, adjust the pixel coord as cpp side will dispatch at half resolution
-        // also needs to clear its neighbor pixels
         PixelCoord *= 2;
-        for (int I = 0; I < 3; I++)
-        {
-            int2 Pos = PixelCoord + int2(Dx[I], Dy[I]);
-            Pos = min(Pos, GResolution.xy - 1);
-            OutResult[Pos] = 0.0f;
-        }
     }
     
-    OutResult[PixelCoord] = 0.0f;
     if (bHalfPixel && (PixelCoord.x & 1) != 0)
     {
         // for half tracing, skip it if the pattern isn't fit
@@ -408,17 +398,33 @@ void RTReflectionRayGen()
     BumpNormal = DecodeNormal(BumpNormal);
 
     float SceneDepth = MixedDepthTexture.SampleLevel(PointClampSampler, ScreenUV, 0).r;
-    float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth);
+    float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
     
     // Calculate reflect ray
-    float3 EyeVector = normalize(SceneWorldPos - GCameraPos);
+    // in real world, there aren't actually a "perfect" surface on most objects except mirrors
+    // so giving it a small distortion if it's using vertex normal
+    bool bUseVertexNormal = length(VertexNormal - BumpNormal) < 0.0001f;
+    
+    float3 EyeVector = SceneWorldPos - GCameraPos;
+    if (bUseVertexNormal)
+    {
+        float EyeLength = length(EyeVector);
+        float OffsetAlpha = saturate(EyeLength / 5.0f);
+        
+        float YOffset = SineApprox(PixelCoord.y * GResolution.w * UH_PI * 0.5f);
+        YOffset *= lerp(0.0f, 0.5f, OffsetAlpha);
+        
+        EyeVector += float3(0, YOffset, 0);
+    }
+    
+    EyeVector = normalize(EyeVector);
     float3 ReflectedRay = reflect(EyeVector, BumpNormal);
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
     
     RayDesc ReflectRay = (RayDesc) 0;
     ReflectRay.Origin = SceneWorldPos + VertexNormal * RayGap;
     ReflectRay.Direction = ReflectedRay;
-
+    
     ReflectRay.TMin = RayGap;
     ReflectRay.TMax = GRTReflectionRayTMax;
 
@@ -435,21 +441,23 @@ void RTReflectionRayGen()
         float3 HitWorldPos = Payload.PackedData0.xyz;
         OutResult[PixelCoord] = CalculateReflectionLighting(Payload, SceneWorldPos, BumpNormal, HitWorldPos, MipLevel, RayGap
             , ReflectRay.Direction);
-        
-        if (bHalfPixel)
+    }
+    
+    if (bHalfPixel)
+    {
+        // for half pixel tracing, fill the neighborhood pixels that are not traced this frame
+        OutResult[min(PixelCoord + uint2(1, 0), GResolution.xy - 1)] = OutResult[PixelCoord];
+    }
+    else if (bQuarterPixel)
+    {
+        // for quarter tracing, fill the neighborhood pixels with a 2x2 box
+        int Dx[3] = { 1, 0, 1 };
+        int Dy[3] = { 0, 1, 1 };
+        for (int I = 0; I < 3; I++)
         {
-            // for half pixel tracing, fill the neighborhood pixels that are not traced this frame
-            OutResult[min(PixelCoord + uint2(1, 0), GResolution.xy - 1)] = OutResult[PixelCoord];
-        }
-        else if (bQuarterPixel)
-        {
-            // for quarter tracing, fill the neighborhood pixels with a 2x2 box
-            for (int I = 0; I < 3; I++)
-            {
-                int2 Pos = PixelCoord + int2(Dx[I], Dy[I]);
-                Pos = min(Pos, GResolution.xy - 1);
-                OutResult[Pos] = OutResult[PixelCoord];
-            }
+            int2 Pos = PixelCoord + int2(Dx[I], Dy[I]);
+            Pos = min(Pos, GResolution.xy - 1);
+            OutResult[Pos] = OutResult[PixelCoord];
         }
     }
 }

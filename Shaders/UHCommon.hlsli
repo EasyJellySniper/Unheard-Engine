@@ -5,6 +5,7 @@
 #define UH_FLOAT_EPSILON 1.19209e-07
 #define UH_FLOAT_MAX 3.402823466e+38F
 #define UH_PI 3.141592653589793f
+#define UH_RAD_TO_DEG 57.29577866f
 
 struct UHRendererInstance
 {
@@ -375,6 +376,13 @@ bool BoxIntersectsConeFrustum(float3 BoxMin, float3 BoxMax, float ConeHeight, fl
     Plane[5].w = ConeHeight;
     
     return BoxIntersectsFrustum(BoxMin, BoxMax, Plane);
+}
+
+// https://en.wikipedia.org/wiki/Bh%C4%81skara_I%27s_sine_approximation_formula
+float SineApprox(float Angle)
+{
+    Angle *= UH_RAD_TO_DEG;
+    return 4.0f * Angle * (180.0f - Angle) / (40500.0f - Angle * (180.0f - Angle));
 }
 
 #endif

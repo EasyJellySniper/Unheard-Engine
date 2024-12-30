@@ -1,4 +1,5 @@
 #include "RendererShared.h"
+#include "Runtime/Engine/Graphic.h"
 
 UniquePtr<UHRenderBuffer<UHSystemConstants>> GSystemConstantBuffer[GMaxFrameInFlight];
 UniquePtr<UHRenderBuffer<UHObjectConstants>> GObjectConstantBuffer[GMaxFrameInFlight];
@@ -66,4 +67,34 @@ inline std::vector<UHTexture*> GetGBuffersSRV()
 	// get the GBuffer used in SRV
 	std::vector<UHTexture*> GBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth };
 	return GBuffers;
+}
+
+inline UHTexture2D* CreateTexture2D(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight
+	, UHTextureFormat InFormat, std::string InName)
+{
+	VkExtent2D Size;
+	Size.width = InWidth;
+	Size.height = InHeight;
+
+	UHTextureSettings TexSetting{};
+	TexSetting.bIsLinear = true;
+	TexSetting.bUseMipmap = false;
+
+	UniquePtr<UHTexture2D> Tex = MakeUnique<UHTexture2D>(InName, "", Size, InFormat, TexSetting);
+	return InGfx->RequestTexture2D(Tex, false);
+}
+
+inline UHTextureCube* CreateTextureCube(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight
+	, UHTextureFormat InFormat, std::string InName, bool bIsReadWrite)
+{
+	VkExtent2D Size;
+	Size.width = InWidth;
+	Size.height = InHeight;
+
+	UHTextureSettings TexSetting{};
+	TexSetting.bIsLinear = true;
+	TexSetting.bUseMipmap = false;
+
+	UniquePtr<UHTextureCube> Cube = MakeUnique<UHTextureCube>(InName, Size, InFormat, TexSetting);
+	return InGfx->RequestTextureCube(Cube);
 }

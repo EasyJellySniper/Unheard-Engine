@@ -36,7 +36,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
     }
 
 	// reconstruct world position and get world normal
-    float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth);
+    float3 WorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
 
 	// reconstruct normal, simply sample from the texture
     // likewise,  The MixedVertexNormalTexture contains both opaque/translucent's vertex normal
@@ -107,7 +107,6 @@ void RTShadowRayGen()
     // the tracing could be half-sized, but now the buffer is always the same resolution as rendering
     // so need to calculate proper pixel coordinate here
 	uint2 PixelCoord = DispatchRaysIndex().xy * GResolution.xy * GShadowResolution.zw;
-    OutShadowResult[PixelCoord] = float2(0.0f, 1.0f);
 	
 	// early return if no lights
 	UHBRANCH

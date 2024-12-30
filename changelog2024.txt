@@ -379,3 +379,7 @@ Next is to consider reuse the reflection shader for translucent refraction or do
 Started implementing reflection bounce.
 Done the reflection bounce and fixed up random flickering caused by smoothness early return.
 I ended up controlling the TMax and made it 0 when early out is needed.
+
+30-12-2024:
+Applied a small distortion to flat surface when doing ray tracing reflection.
+Moved the RT buffer clear to CPU side. Refactored unused code in RT shaders.

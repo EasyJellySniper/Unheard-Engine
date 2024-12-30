@@ -311,37 +311,26 @@ void UHDeferredShadingRenderer::PrepareTextures()
 
 
 	// Next, allocate system fallback textures
-	// @TODO: Might worth to implement a wrapper for this, or save as engine assets
-	VkExtent2D FallbackTexSize{};
-	FallbackTexSize.width = 2;
-	FallbackTexSize.height = 2;
-
-	UHTextureSettings FallbackTexSetting{};
-	FallbackTexSetting.bIsLinear = true;
-	FallbackTexSetting.bUseMipmap = false;
-
+	const uint32_t FallbackWidth = 2;
+	const uint32_t FallbackHeight = 2;
 	const UHTextureFormat FallbackTexFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 
 	// textures
 	{
 		std::vector<uint8_t> TexData(2 * 2 * GTextureFormatData[UH_ENUM_VALUE(FallbackTexFormat)].ByteSize, 255);
-
-		UniquePtr<UHTexture2D> FallbackTex = MakeUnique<UHTexture2D>("SystemWhiteTex", "", FallbackTexSize, FallbackTexFormat, FallbackTexSetting);
-		GWhiteTexture = GraphicInterface->RequestTexture2D(FallbackTex, false);
+		GWhiteTexture = CreateTexture2D(GraphicInterface, FallbackWidth, FallbackHeight, FallbackTexFormat, "SystemWhiteTex");
 		GWhiteTexture->SetTextureData(TexData);
 		GWhiteTexture->UploadToGPU(GraphicInterface, RenderBuilder);
 
 		memset(TexData.data(), 0, TexData.size());
-		FallbackTex = MakeUnique<UHTexture2D>("SystemBlackTex", "", FallbackTexSize, FallbackTexFormat, FallbackTexSetting);
-		GBlackTexture = GraphicInterface->RequestTexture2D(FallbackTex, false);
+		GBlackTexture = CreateTexture2D(GraphicInterface, FallbackWidth, FallbackHeight, FallbackTexFormat, "SystemBlackTex");
 		GBlackTexture->SetTextureData(TexData);
 		GBlackTexture->UploadToGPU(GraphicInterface, RenderBuilder);
 	}
 
 	// cubemaps
 	{
-		UniquePtr<UHTextureCube> FallbackCube = MakeUnique<UHTextureCube>("SystemBlackCube", FallbackTexSize, FallbackTexFormat, FallbackTexSetting);
-		GBlackCube = GraphicInterface->RequestTextureCube(FallbackCube);
+		GBlackCube = CreateTextureCube(GraphicInterface, FallbackWidth, FallbackHeight, FallbackTexFormat, "SystemBlackCube");
 		GBlackCube->Build(GraphicInterface, RenderBuilder);
 	}
 

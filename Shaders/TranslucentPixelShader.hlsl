@@ -156,6 +156,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
     LightInfo.AttenNoise = AttenNoise;
+    LightInfo.SpecularNoise = AttenNoise * lerp(0.5f, 0.02f, Smoothness);
 	
 	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
 	{

@@ -761,7 +761,9 @@ void UHRenderBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)
 void UHRenderBuilder::ClearRenderTexture(UHRenderTexture* InTexture)
 {
 	VkClearColorValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
-	const VkImageSubresourceRange Range = InTexture->GetImageViewInfo().subresourceRange;
+	VkImageSubresourceRange Range = InTexture->GetImageViewInfo().subresourceRange;
+	// always clears the first mip for now
+	Range.levelCount = 1;
 	vkCmdClearColorImage(CmdList, InTexture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &ClearColor, 1, &Range);
 }
 

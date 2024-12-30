@@ -75,3 +75,8 @@ extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTransluce
 
 // this is also used for ray tracing
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
+
+// wrapper function to create textures
+extern UHTexture2D* CreateTexture2D(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight, UHTextureFormat InFormat, std::string InName);
+extern UHTextureCube* CreateTextureCube(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight, UHTextureFormat InFormat
+	, std::string InName, bool bIsReadWrite = false);
