@@ -8,6 +8,7 @@ class UHLightBase : public UHTransformComponent, public UHRenderState
 public:
 	UHLightBase();
 	virtual ~UHLightBase() {}
+	virtual void OnActivityChanged() override;
 
 	virtual void SetLightColor(XMFLOAT3 InLightColor);
 	virtual void SetIntensity(float InIntensity);

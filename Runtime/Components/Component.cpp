@@ -32,6 +32,9 @@ bool UHComponent::IsEnabled() const
 void UHComponent::OnGenerateDetailView()
 {
 	ImGui::Text("------ Component ------");
-	ImGui::Checkbox("Enable", &bIsEnabled);
+	if (ImGui::Checkbox("Enable", &bIsEnabled))
+	{
+		OnActivityChanged();
+	}
 }
 #endif

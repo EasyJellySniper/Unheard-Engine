@@ -8,6 +8,11 @@ UHLightBase::UHLightBase()
 
 }
 
+void UHLightBase::OnActivityChanged()
+{
+	SetRenderDirties(true);
+}
+
 void UHLightBase::SetLightColor(XMFLOAT3 InLightColor)
 {
 	LightColor = InLightColor;

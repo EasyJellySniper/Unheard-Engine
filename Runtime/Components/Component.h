@@ -16,6 +16,7 @@ public:
 	virtual ~UHComponent() {}
 	virtual void OnSave(std::ofstream& OutStream) override;
 	virtual void OnLoad(std::ifstream& InStream) override;
+	virtual void OnActivityChanged() {}
 
 	// each component should implement Update() function
 	virtual void Update() = 0;
