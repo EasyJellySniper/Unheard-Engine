@@ -120,7 +120,8 @@ void RTShadowRayGen()
 
 	// calculate mip level before ray tracing kicks off
     float MipRate = MixedMipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
-    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) + GRTMipBias;
+    // simulate the mip level based on rendering resolution, carry mipmap count data in hit group if this is not enough
+    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
 
     // trace shadow just once, it will take care opaque/translucent tracing at the same time
 	TraceShadow(PixelCoord, ScreenUV, MipRate, MipLevel);

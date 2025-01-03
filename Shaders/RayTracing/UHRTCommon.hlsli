@@ -12,7 +12,7 @@
 #define PAYLOAD_HITREFRACTION 1 << 2
 
 // perf hack mip bias for RT, it also reduces the noise from sharp textures
-static const float GRTMipBias = 3.0f;
+static const float GRTMipBias = 2.0f;
 static const uint GMaxPointSpotLightPerInstance = 16;
 
 struct UHInstanceLights

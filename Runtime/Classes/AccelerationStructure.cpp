@@ -273,6 +273,10 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 		{
 			XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(Renderer->GetWorldMatrix());
 			std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
+
+			// refresh bottom level address
+			VkAccelerationStructureKHR BottomLevelAS = Renderer->GetMesh()->GetBottomLevelAS()->GetAS();
+			InstanceKHRs[Idx].accelerationStructureReference = GetDeviceAddress(BottomLevelAS);
 		}
 
 		// check visibility, can't use IsVisible() as it's set by frustum culling
@@ -308,6 +312,10 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 		{
 			InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
 		}
+
+		// set material buffer data index as SBT index, each material has an unique hitgroup shader
+		InstanceKHRs[Idx].instanceShaderBindingTableRecordOffset = Mat->GetBufferDataIndex();
+		InstanceKHRs[Idx].instanceCustomIndex = Mat->GetBufferDataIndex();
 	}
 
 	// upload all data in one call

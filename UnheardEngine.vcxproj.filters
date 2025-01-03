@@ -803,6 +803,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">

@@ -236,7 +236,7 @@ void UHMeshRendererComponent::OnGenerateDetailView()
 	const UHAssetManager* AssetMgr = UHAssetManager::GetAssetMgrEditor();
 
 	// mesh list
-	/*if (ImGui::BeginCombo("Mesh", (MeshCache) ? MeshCache->GetName().c_str() : "##"))
+	if (ImGui::BeginCombo("Mesh", (MeshCache) ? MeshCache->GetName().c_str() : "##"))
 	{
 		const std::vector<UHMesh*>& Meshes = AssetMgr->GetUHMeshes();
 		for (size_t Idx = 0; Idx < Meshes.size(); Idx++)
@@ -245,16 +245,15 @@ void UHMeshRendererComponent::OnGenerateDetailView()
 			if (ImGui::Selectable(Meshes[Idx]->GetName().c_str(), bIsSelected))
 			{
 				MeshCache = Meshes[Idx];
+				bIsWorldDirty = true;
+
+				// when a mesh changed, it has to recreate mesh shader data and upload renderer instances again
+				UHDeferredShadingRenderer::GetRendererEditorOnly()->RecreateMeshShaderData(MaterialCache);
+				UHDeferredShadingRenderer::GetRendererEditorOnly()->UploadRendererInstances();
+				UHDeferredShadingRenderer::GetRendererEditorOnly()->UpdateDescriptors();
 			}
 		}
 		ImGui::EndCombo();
-	}*/
-
-	// @TODO: Make mesh editable
-	ImGui::NewLine();
-	if (MeshCache)
-	{
-		ImGui::Text(("Mesh in use: " + MeshCache->GetName()).c_str());
 	}
 
 	// material list

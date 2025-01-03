@@ -144,6 +144,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     float GPCSSMaxPenumbra;
     float GPCSSBlockerDistScale;
     uint GMaxReflectionRecursion;
+    float GScreenMipCount;
 }
 
 // IT means inverse-transposed

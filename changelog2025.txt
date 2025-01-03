@@ -1,0 +1,4 @@
+03-01-2025:
+Refactor the texture and sampler table, try to let them create exact length of the actual texture counts for release build.
+Improved RT mipmaping a bit. Fixed the mesh asset UI for mesh renderer.
+Next is to try temporal denoise for RT reflection, it's still needed for bump normal reflection.

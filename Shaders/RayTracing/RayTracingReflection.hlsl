@@ -390,7 +390,8 @@ void RTReflectionRayGen()
     
     // Now fetch the data used for RT
     float MipRate = MixedMipTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r;
-    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) + GRTMipBias;
+    // simulate the mip level based on rendering resolution, carry mipmap count data in hit group if this is not enough
+    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
     
     float3 VertexNormal = DecodeNormal(MixedVertexNormalTexture.SampleLevel(PointClampSampler, ScreenUV, 0).xyz);
     // Select from translucent or opaque bump

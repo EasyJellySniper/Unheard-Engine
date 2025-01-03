@@ -75,7 +75,8 @@ public:
 
 	// update descriptors
 	void UpdateDescriptors();
-	void UpdateTextureDescriptors();
+	void RebuildTextureTable();
+	void RebuildSamplerTable();
 
 #if WITH_EDITOR
 	void SetDebugViewIndex(int32_t Idx);
@@ -98,6 +99,8 @@ public:
 	void RecreateMeshTables();
 	void RecreateMaterialShaders(UHMeshRendererComponent* InMeshRenderer, UHMaterial* InMat);
 	void RecreateMeshShaders(UHMaterial* InMat);
+	void RecreateMeshShaderData(UHMaterial* InMat);
+	void UploadRendererInstances();
 	void RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable);
 
 	void CalculateBlurWeights(const int32_t InRadius, float* OutWeights);
@@ -348,6 +351,9 @@ private:
 
 	// gaussian constants
 	UHGaussianFilterConstants RayTracingGaussianConsts;
+
+	// renderer instances
+	std::vector<UHRendererInstance> RendererInstances;
 
 #if WITH_EDITOR
 	// debug view shader

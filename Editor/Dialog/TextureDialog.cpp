@@ -194,7 +194,7 @@ void UHTextureDialog::OnCreationFinished(UHTexture* InTexture)
     const int32_t NewIdx = UHUtilities::FindIndex(AssetMgr->GetTexture2Ds(), static_cast<UHTexture2D*>(InTexture));
     SelectTexture(NewIdx);
     CurrentTextureIndex = NewIdx;
-    Renderer->UpdateTextureDescriptors();
+    Renderer->RebuildTextureTable();
 }
 
 void UHTextureDialog::SelectTexture(int32_t TexIndex)
@@ -247,7 +247,7 @@ void UHTextureDialog::ControlApply()
     CurrentTexture->SetExtent(W, H);
     CurrentTexture->SetTextureData(RawData);
     CurrentTexture->Recreate(true);
-    Renderer->UpdateTextureDescriptors();
+    Renderer->RebuildTextureTable();
 
     const bool bIsNormalChanged = NewSetting.bIsNormal != OldSetting.bIsNormal || NewSetting.CompressionSetting != OldSetting.CompressionSetting;
     if (bIsNormalChanged)

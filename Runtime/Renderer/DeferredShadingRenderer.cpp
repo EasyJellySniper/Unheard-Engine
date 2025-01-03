@@ -266,6 +266,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.GNearPlane = CurrentCamera->GetNearPlane();
 	SystemConstantsCPU.GRTCullingDistance = RenderingSettings.RTCullingRadius;
 	SystemConstantsCPU.GMaxReflectionRecursion = UHRTReflectionShader::MaxReflectionRecursion;
+	SystemConstantsCPU.GScreenMipCount = std::floorf(
+		std::log2f(std::max(SystemConstantsCPU.GResolution.x, SystemConstantsCPU.GResolution.y)));
 
 	// soft shadow settings
 	SystemConstantsCPU.GPCSSKernal = RenderingSettings.PCSSKernal;

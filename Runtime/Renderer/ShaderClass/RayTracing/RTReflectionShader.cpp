@@ -78,7 +78,7 @@ void UHRTReflectionShader::BindParameters()
 		BindTLAS(GTopLevelAS[Idx].get(), 1, Idx);
 	}
 
-	BindRWImage(GRTReflectionResult, 2);
+	BindRWImage(GRTReflectionResult, 2, 0);
 	BindImage(GetGBuffersSRV(), 3);
 
 	// lights

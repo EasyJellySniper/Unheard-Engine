@@ -494,6 +494,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.cpp" />
     <ClCompile Include="Runtime\Renderer\TranslucentRendering.cpp" />

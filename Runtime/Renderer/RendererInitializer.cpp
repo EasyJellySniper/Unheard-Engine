@@ -125,10 +125,13 @@ void UHDeferredShadingRenderer::InitRenderingResources()
 	PrepareSamplers();
 	GSkyLightCube = GetCurrentSkyCube();
 
-	PrepareRenderingShaders();
-
 	// create data buffers
 	CreateDataBuffers();
+
+	// Bindless table update after texture/sampler are ready
+	RebuildTextureTable();
+	RebuildSamplerTable();
+	PrepareRenderingShaders();
 
 	// update descriptor binding
 	UpdateDescriptors();
@@ -258,6 +261,7 @@ void UHDeferredShadingRenderer::PrepareMeshes()
 
 void UHDeferredShadingRenderer::CheckTextureReference(std::vector<UHMaterial*> InMats)
 {
+	const size_t OldReferenceTextureCount = AssetManagerInterface->GetReferencedTexture2Ds().size();
 	VkCommandBuffer CreationCmd = GraphicInterface->BeginOneTimeCmd();
 	UHRenderBuilder RenderBuilder(GraphicInterface, CreationCmd);
 
@@ -275,6 +279,13 @@ void UHDeferredShadingRenderer::CheckTextureReference(std::vector<UHMaterial*> I
 		AssetManagerInterface->MapTextureIndex(InMats[Idx]);
 	}
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
+
+	// need to rebuild texture table if the referenced texture count changed
+	const size_t NewReferenceTextureCount = AssetManagerInterface->GetReferencedTexture2Ds().size();
+	if (TextureTable != nullptr && OldReferenceTextureCount != NewReferenceTextureCount)
+	{
+		RebuildTextureTable();
+	}
 }
 
 void UHDeferredShadingRenderer::PrepareTextures()
@@ -383,8 +394,6 @@ void UHDeferredShadingRenderer::PrepareSamplers()
 void UHDeferredShadingRenderer::PrepareRenderingShaders()
 {
 	// bindless table
-	TextureTable = MakeUnique<UHTextureTable>(GraphicInterface, "TextureTable");
-	SamplerTable = MakeUnique<UHSamplerTable>(GraphicInterface, "SamplerTable");
 	const std::vector<VkDescriptorSetLayout> BindlessLayouts = { TextureTable->GetDescriptorSetLayout(), SamplerTable->GetDescriptorSetLayout()};
 	const std::vector<UHMeshRendererComponent*> AllRenderers = CurrentScene->GetAllRenderers();
 
@@ -505,9 +514,6 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 	GSkyLightCube = GetCurrentSkyCube();
 	const bool bEnableRayTracing = ConfigInterface->RenderingSetting().bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
-
-	// ------------------------------------------------ Bindless table update
-	UpdateTextureDescriptors();
 
 	// ------------------------------------------------ Mesh shader descriptor update
 	if (GraphicInterface->IsMeshShaderSupported())
@@ -1021,7 +1027,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 
 		// collect & upload mesh instance data
 		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-		std::vector<UHRendererInstance> RendererInstances(Renderers.size());
+		RendererInstances.resize(Renderers.size());
 
 		for (int32_t Idx = 0; Idx < static_cast<int32_t>(Renderers.size()); Idx++)
 		{
@@ -1038,7 +1044,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 			RendererInstances[Renderers[Idx]->GetBufferDataIndex()] = RendererInstance;
 		}
 
-		GRendererInstanceBuffer->UploadAllData(RendererInstances.data());
+		UploadRendererInstances();
 
 		// create instance lights buffer
 		if (GIsEditor || ConfigInterface->RenderingSetting().bEnableRayTracing)
@@ -1194,7 +1200,7 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 	MotionTranslucentMeshShaderData.clear();
 }
 
-void UHDeferredShadingRenderer::UpdateTextureDescriptors()
+void UHDeferredShadingRenderer::RebuildTextureTable()
 {
 	// ------------------------------------------------ Bindless table update
 	std::vector<UHTexture*> Texes;
@@ -1213,24 +1219,32 @@ void UHDeferredShadingRenderer::UpdateTextureDescriptors()
 	}
 
 	size_t ReferencedSize = Texes.size();
-	while (ReferencedSize < GTextureTableSize)
+	while (ReferencedSize < UHTextureTable::MaxNumTexes)
 	{
 		// fill with null image for non-referenced textures
 		Texes.push_back(nullptr);
 		ReferencedSize++;
 	}
+
+	UH_SAFE_RELEASE(TextureTable);
+	TextureTable = MakeUnique<UHTextureTable>(GraphicInterface, "TextureTable", static_cast<uint32_t>(Texes.size()));
 	TextureTable->BindImage(Texes, 0);
 
-	// bind sampler table
-	std::vector<UHSampler*> Samplers = GraphicInterface->GetSamplers();
-	ReferencedSize = Samplers.size();
-	while (ReferencedSize < GSamplerTableSize)
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
-		// fill with the first sampler as desciptor sampler can't be null
-		Samplers.push_back(Samplers[0]);
-		ReferencedSize++;
+		if (RTDescriptorSets[Idx].size() > 0)
+		{
+			RTDescriptorSets[Idx][1] = TextureTable->GetDescriptorSet(Idx);
+		}
 	}
+}
 
+void UHDeferredShadingRenderer::RebuildSamplerTable()
+{
+	// bind sampler table
+	UH_SAFE_RELEASE(SamplerTable);
+	const std::vector<UHSampler*>& Samplers = GraphicInterface->GetSamplers();
+	SamplerTable = MakeUnique<UHSamplerTable>(GraphicInterface, "SamplerTable", static_cast<uint32_t>(Samplers.size()));
 	SamplerTable->BindSampler(Samplers, 0);
 }
 
@@ -1719,6 +1733,20 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	MotionMeshShaders[MatDataIndex] = MakeUnique<UHMotionMeshShader>(GraphicInterface, "MotionMeshShader"
 		, InMat->IsOpaque() ? MotionOpaquePassObj.RenderPass : MotionTranslucentPassObj.RenderPass, InMat, BindlessLayouts);
 
+	RecreateMeshShaderData(InMat);
+}
+
+void UHDeferredShadingRenderer::RecreateMeshShaderData(UHMaterial* InMat)
+{
+	GraphicInterface->WaitGPU();
+
+	if (!InMat || !GraphicInterface->IsMeshShaderSupported())
+	{
+		return;
+	}
+
+	const uint32_t MatDataIndex = InMat->GetBufferDataIndex();
+
 	// count total meshlet number of a material group
 	uint32_t MeshletCountOfMaterialGroup = 0;
 
@@ -1727,10 +1755,20 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	{
 		if (const UHMeshRendererComponent* Renderer = CastObject<UHMeshRendererComponent>(Obj))
 		{
-			if (const UHMesh* Mesh = Renderer->GetMesh())
+			const UHMaterial* Mat = Renderer->GetMaterial();
+			const UHMesh* Mesh = Renderer->GetMesh();
+			if (!Mat || !Mesh)
 			{
-				MeshletCountOfMaterialGroup += Mesh->GetMeshletCount();
+				continue;
 			}
+
+			MeshletCountOfMaterialGroup += Mesh->GetMeshletCount();
+
+			// meanwhile, update renderer instance
+			UHRendererInstance RendererInstance;
+			RendererInstance.MeshIndex = Mesh->GetBufferDataIndex();
+			RendererInstance.IndiceType = Mesh->IsIndexBufer32Bit() ? 1 : 0;
+			RendererInstances[Renderer->GetBufferDataIndex()] = RendererInstance;
 		}
 	}
 
@@ -1754,6 +1792,14 @@ void UHDeferredShadingRenderer::RecreateMeshShaders(UHMaterial* InMat)
 	VisibleMeshShaderData[MatDataIndex].reserve(MeshletCountOfMaterialGroup);
 	MotionOpaqueMeshShaderData[MatDataIndex].reserve(MeshletCountOfMaterialGroup);
 	MotionTranslucentMeshShaderData[MatDataIndex].reserve(MeshletCountOfMaterialGroup);
+}
+
+void UHDeferredShadingRenderer::UploadRendererInstances()
+{
+	if (RendererInstances.size() > 0)
+	{
+		GRendererInstanceBuffer->UploadAllData(RendererInstances.data());
+	}
 }
 
 void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable)

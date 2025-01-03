@@ -192,7 +192,7 @@ void UHCubemapDialog::OnCreationFinished(UHTexture* InTexture)
     const int32_t NewIdx = UHUtilities::FindIndex(AssetMgr->GetCubemaps(), static_cast<UHTextureCube*>(InTexture));
     SelectCubemap(NewIdx);
     CurrentCubeIndex = NewIdx;
-    Renderer->UpdateTextureDescriptors();
+    Renderer->RebuildTextureTable();
     Renderer->RefreshSkyLight(false);
 }
 
