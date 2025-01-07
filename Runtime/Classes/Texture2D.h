@@ -20,7 +20,7 @@ public:
 	void SetTextureData(std::vector<uint8_t> InData);
 
 #if WITH_EDITOR
-	void Recreate(bool bNeedGeneratMipmap);
+	void Recreate(bool bNeedGeneratMipmap, const std::vector<uint8_t>& RawData);
 	virtual std::vector<uint8_t> ReadbackTextureData() override;
 	void Export(std::filesystem::path InTexturePath);
 #endif

@@ -2,3 +2,14 @@
 Refactor the texture and sampler table, try to let them create exact length of the actual texture counts for release build.
 Improved RT mipmaping a bit. Fixed the mesh asset UI for mesh renderer.
 Next is to try temporal denoise for RT reflection, it's still needed for bump normal reflection.
+
+04-01-2025:
+Fixed material bugs when connecting a texture node, as it didn't refresh properly.
+
+Next is to do the ray tracing reflection denoise, two ways to try:
+-Generate mipmap for scene normal, let it reflect the ray with smoother normals.
+-Extra compute shader pass to do soft RT reflection. Use a 3x3 or 5x5 mask to do adaptive min/max filtering.
+If average lumin is leaning max lumin, use the max result, otherwise use the min lumin. This might affect surfaces without bump normal though.
+
+07-01-2025:
+Fixed texture recreation behavior. Previous code refactoring broke the functionality.

@@ -245,8 +245,7 @@ void UHTextureDialog::ControlApply()
     uint32_t W, H;
     std::vector<uint8_t> RawData = TextureImporter.LoadTexture(RawSourcePath, W, H);
     CurrentTexture->SetExtent(W, H);
-    CurrentTexture->SetTextureData(RawData);
-    CurrentTexture->Recreate(true);
+    CurrentTexture->Recreate(true, RawData);
     Renderer->RebuildTextureTable();
 
     const bool bIsNormalChanged = NewSetting.bIsNormal != OldSetting.bIsNormal || NewSetting.CompressionSetting != OldSetting.CompressionSetting;

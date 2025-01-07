@@ -28,7 +28,11 @@ void UHTexture2D::Release()
 
 void UHTexture2D::ReleaseCPUTextureData()
 {
-	TextureData.clear();
+	if (GIsShipping)
+	{
+		TextureData.clear();
+	}
+
 	for (UHRenderBuffer<uint8_t>& Buffer : RawStageBuffers)
 	{
 		Buffer.Release();
@@ -73,7 +77,7 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 }
 
 #if WITH_EDITOR
-void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
+void UHTexture2D::Recreate(bool bNeedGeneratMipmap, const std::vector<uint8_t>& RawData)
 {
 	GfxCache->WaitGPU();
 	for (UHRenderBuffer<uint8_t>& Buffer : RawStageBuffers)
@@ -81,11 +85,17 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 		Buffer.Release();
 	}
 	Release();
+
+	// recreation workflow
+	// 1. Upload uncompressed data and generate mipmaps
+	// 2. Readback texture data for storage
+	// 3. Compress if requested
 	TextureSettings.bIsCompressed = false;
 	ImageFormat = UHTextureFormat::UH_FORMAT_NONE;
 	CreateTexture(bSharedMemory);
 
 	// upload the 1st slice and generate mip map
+	TextureData = RawData;
 	VkCommandBuffer UploadCmd = GfxCache->BeginOneTimeCmd();
 	UHRenderBuilder UploadBuilder(GfxCache, UploadCmd);
 	UploadToGPU(GfxCache, UploadBuilder);
@@ -94,7 +104,6 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap)
 		GenerateMipMaps(GfxCache, UploadBuilder);
 	}
 	GfxCache->EndOneTimeCmd(UploadCmd);
-
 
 	// readback CPU data for storage, this includes the mip map data
 	TextureData = ReadbackTextureData();
@@ -325,6 +334,13 @@ void UHTexture2D::UploadToGPU(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder
 		vkCmdCopyBufferToImage(InRenderBuilder.GetCmdList(), SrcBuffer, DstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
 		InRenderBuilder.ResourceBarrier(this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx);
 	}
+
+	// transition to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+	for (uint32_t Mdx = 0; Mdx < GetMipMapCount(); Mdx++)
+	{
+		InRenderBuilder.PushResourceBarrier(UHImageBarrier(this, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx));
+	}
+	InRenderBuilder.FlushResourceBarrier();
 
 	bHasUploadedToGPU = true;
 }

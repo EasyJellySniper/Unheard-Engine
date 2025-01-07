@@ -452,10 +452,10 @@ void UHMaterial::SetTexFileName(UHMaterialInputs TexType, std::string InName)
 
 void UHMaterial::SetMaterialBufferSize(size_t InSize)
 {
-	if (MaterialBufferSize != InSize)
+	MaterialBufferSize = InSize;
+	if (MaterialConstantsCPU.size() != MaterialBufferSize)
 	{
-		MaterialBufferSize = InSize;
-		// resize data buffer as well
+		// reallocate the material buffer if size changed
 		AllocateMaterialBuffer();
 	}
 }
@@ -492,6 +492,7 @@ void UHMaterial::Export(const std::filesystem::path InPath)
 	FileOut.write(reinterpret_cast<const char*>(&MaxReflectionBounce), sizeof(MaxReflectionBounce));
 
 	// material graph data
+	MaterialNode->CollectTextureNames(RegisteredTextureNames);
 	UHUtilities::WriteStringVectorData(FileOut, RegisteredTextureNames);
 	ExportGraphData(FileOut);
 

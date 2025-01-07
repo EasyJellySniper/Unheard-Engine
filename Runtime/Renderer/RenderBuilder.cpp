@@ -475,6 +475,13 @@ void UHRenderBuilder::ResourceBarrier(VkBuffer InBuffer, const uint64_t BufferSi
 // ResourceBarrier: Can push different textures and layouts at once
 void UHRenderBuilder::PushResourceBarrier(const UHImageBarrier InBarrier)
 {
+	VkImageLayout OldLayout = InBarrier.Texture->GetImageLayout(InBarrier.BaseMipLevel);
+	if (OldLayout == InBarrier.NewLayout)
+	{
+		// no need to transition the same layout
+		return;
+	}
+
 	// flag to fallback to old resource barrier, for debug only
 	const bool bFallbackToOldResourceBarrier = false;
 	if (bFallbackToOldResourceBarrier)
@@ -504,7 +511,7 @@ void UHRenderBuilder::FlushResourceBarrier()
 		TempBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 
 		// old layout must be properly set.
-		auto OldLayout = ImageBarriers[Idx].Texture->GetImageLayout(ImageBarriers[Idx].BaseMipLevel);
+		VkImageLayout OldLayout = ImageBarriers[Idx].Texture->GetImageLayout(ImageBarriers[Idx].BaseMipLevel);
 		TempBarrier.oldLayout = OldLayout;
 		TempBarrier.newLayout = ImageBarriers[Idx].NewLayout;
 		TempBarrier.srcAccessMask = LayoutToAccessFlags[TempBarrier.oldLayout];

@@ -427,7 +427,6 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
             SliceData[Idx] = Slices[Idx]->ReadbackTextureData();
-            Slices[Idx]->SetTextureData(SliceData[Idx]);
 
             // bypass gpu uploading and mipmap generation
             Slices[Idx]->SetHasUploadedToGPU(true);
@@ -437,7 +436,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             if (InputTexture->GetTextureSettings().CompressionSetting != UHTextureCompressionSettings::CompressionNone)
             {
                 Slices[Idx]->SetTextureSettings(InputTexture->GetTextureSettings());
-                Slices[Idx]->Recreate(false);
+                Slices[Idx]->Recreate(false, SliceData[Idx]);
             }
         }
 
@@ -576,8 +575,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             const std::string SliceName = "CubemapCreationSlice" + std::to_string(Idx);
             UniquePtr<UHTexture2D> Slice = MakeUnique<UHTexture2D>(SliceName, SliceName, Slices[Idx]->GetExtent(), Slices[Idx]->GetFormat(), Settings);
             Slices[Idx] = Gfx->RequestTexture2D(Slice, false);
-            Slices[Idx]->SetTextureData(Data);
-            Slices[Idx]->Recreate(false);
+            Slices[Idx]->Recreate(false, Data);
         }
 
         // Step 4 ------------------------------------------------- Recreate cubemap

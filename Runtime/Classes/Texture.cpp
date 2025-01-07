@@ -105,7 +105,10 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 	ImageExtent = InInfo.Extent;
 	MipMapCount = TextureSettings.bUseMipmap ? static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1 : 1;
 	TextureInfo = InInfo;
+
+	// init image layout
 	ImageLayouts.resize(MipMapCount);
+	memset(ImageLayouts.data(), 0, sizeof(VkImageLayout) * ImageLayouts.size());
 
 	// only create if the source is null, otherwise create image view only
 	if (ImageSource == nullptr)
