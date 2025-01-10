@@ -41,13 +41,15 @@ void TemporalAACS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
 	float3 Result = SceneTexture.SampleLevel(PointSampler, UV, 0).rgb;
 	float3 HistoryResult = HistoryTexture.SampleLevel(LinearSampler, HistoryUV, 0).rgb;
 
-	// cache the depth sampling
+	// cache the color sampling
 	GColorCache[GTid.x + GTid.y * UHTHREAD_GROUP2D_X] = Result;
 	GroupMemoryBarrierWithGroupSync();
 
-	// 3x3 color clamping
-	float3 MaxColor = -999;
-	float3 MinColor = 999;
+	// 3x3 color clamping within group memory
+	// this won't give the most precise color for the pixels that are close to the group edge
+	// but it's fast and good enough for now
+	float3 MaxColor = -UH_FLOAT_MAX;
+    float3 MinColor = UH_FLOAT_MAX;
 
 	UHUNROLL
 	for (int Idx = -1; Idx <= 1; Idx++)

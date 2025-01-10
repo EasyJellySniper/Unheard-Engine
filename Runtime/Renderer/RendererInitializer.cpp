@@ -101,8 +101,6 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 		// create thread objects
 		CreateThreadObjects();
 
-		InitGaussianConstants();
-
 		// reserve enough space for renderers, save the allocation time
 		OpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
 		MotionOpaquesToRender.reserve(CurrentScene->GetOpaqueRenderers().size());
@@ -486,6 +484,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
 		CollectPointLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectPointLightShader", true);
 		CollectSpotLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectSpotLightShader", false);
+		RTSmoothReflectHShader = MakeUnique<RTSmoothReflectShader>(GraphicInterface, "RTSmoothReflectHShader", false);
+		RTSmoothReflectVShader = MakeUnique<RTSmoothReflectShader>(GraphicInterface, "RTSmoothReflectVShader", true);
 	}
 
 #if WITH_EDITOR
@@ -651,6 +651,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		RTReflectionShader->BindParameters();
 		CollectPointLightShader->BindParameters();
 		CollectSpotLightShader->BindParameters();
+		RTSmoothReflectHShader->BindParameters();
+		RTSmoothReflectVShader->BindParameters();
 	}
 
 	// ------------------------------------------------ mesh table descriptor update
@@ -757,6 +759,8 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		UH_SAFE_RELEASE(SoftRTShadowShader);
 		UH_SAFE_RELEASE(CollectPointLightShader);
 		UH_SAFE_RELEASE(CollectSpotLightShader);
+		UH_SAFE_RELEASE(RTSmoothReflectHShader);
+		UH_SAFE_RELEASE(RTSmoothReflectVShader);
 	}
 
 	UH_SAFE_RELEASE(TextureTable);
@@ -1049,8 +1053,11 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 		// create instance lights buffer
 		if (GIsEditor || ConfigInterface->RenderingSetting().bEnableRayTracing)
 		{
-			GInstanceLightsBuffer = GraphicInterface->RequestRenderBuffer<UHInstanceLights>(Renderers.size()
-				, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "InstanceLights");
+			for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+			{
+				GInstanceLightsBuffer[Idx] = GraphicInterface->RequestRenderBuffer<UHInstanceLights>(Renderers.size()
+					, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "InstanceLights");
+			}
 		}
 	}
 
@@ -1180,11 +1187,11 @@ void UHDeferredShadingRenderer::ReleaseDataBuffers()
 		UH_SAFE_RELEASE(GPointLightBuffer[Idx]);
 		UH_SAFE_RELEASE(GSpotLightBuffer[Idx]);
 		UH_SAFE_RELEASE(GTopLevelAS[Idx]);
+		UH_SAFE_RELEASE(GInstanceLightsBuffer[Idx]);
 	}
 
 	UH_SAFE_RELEASE(GRendererInstanceBuffer);
 	UH_SAFE_RELEASE(GSH9Data);
-	UH_SAFE_RELEASE(GInstanceLightsBuffer);
 
 	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -1246,37 +1253,6 @@ void UHDeferredShadingRenderer::RebuildSamplerTable()
 	const std::vector<UHSampler*>& Samplers = GraphicInterface->GetSamplers();
 	SamplerTable = MakeUnique<UHSamplerTable>(GraphicInterface, "SamplerTable", static_cast<uint32_t>(Samplers.size()));
 	SamplerTable->BindSampler(Samplers, 0);
-}
-
-void UHDeferredShadingRenderer::InitGaussianConstants()
-{
-	UHTextureFormat TempRTFormat = bHDREnabledRT ? UHTextureFormat::UH_FORMAT_RGBA16F : UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
-
-	// initialize gaussian consts
-	if (GraphicInterface->IsRayTracingEnabled())
-	{
-		RayTracingGaussianConsts.GBlurRadius = 2;
-		RayTracingGaussianConsts.IterationCount = 2;
-		CalculateBlurWeights(RayTracingGaussianConsts.GBlurRadius, RayTracingGaussianConsts.Weights);
-
-		RayTracingGaussianConsts.GaussianFilterTempRT0.resize(GRTReflectionResult->GetMipMapCount());
-		RayTracingGaussianConsts.GaussianFilterTempRT1.resize(GRTReflectionResult->GetMipMapCount());
-
-		VkExtent2D FilterResolution;
-
-		// for RT use
-		for (uint32_t Idx = 2; Idx < GRTReflectionResult->GetMipMapCount(); Idx++)
-		{
-			FilterResolution.width = RenderResolution.width >> Idx;
-			FilterResolution.height = RenderResolution.height >> Idx;
-
-			RayTracingGaussianConsts.GaussianFilterTempRT0[Idx] =
-				GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, true);
-
-			RayTracingGaussianConsts.GaussianFilterTempRT1[Idx] =
-				GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, true);
-		}
-	}
 }
 
 template <typename T1, typename T2>

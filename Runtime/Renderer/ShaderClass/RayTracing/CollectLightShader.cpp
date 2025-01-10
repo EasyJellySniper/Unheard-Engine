@@ -42,7 +42,7 @@ void UHCollectLightShader::OnCompile()
 void UHCollectLightShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
-	BindStorage(GInstanceLightsBuffer.get(), 1, 0, true);
+	BindStorage(GInstanceLightsBuffer, 1, 0, true);
 	BindStorage(GPointLightBuffer, 2, 0, true);
 	BindStorage(GSpotLightBuffer, 3, 0, true);
 	BindStorage(GObjectConstantBuffer, 4, 0, true);

@@ -32,6 +32,7 @@ UHRenderTexture* GRTShadowResult;
 UHRenderTexture* GRTSharedTextureRG;
 // GRTReflectionResult can be reused after translucent pass is done
 UHRenderTexture* GRTReflectionResult;
+UHRenderTexture* GSmoothReflectVector;
 UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
 // for refraction use
@@ -55,7 +56,7 @@ UHTextureCube* GBlackCube;
 // occlusion data
 UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
 // instance lights buffer
-UniquePtr<UHRenderBuffer<UHInstanceLights>> GInstanceLightsBuffer;
+UniquePtr<UHRenderBuffer<UHInstanceLights>> GInstanceLightsBuffer[GMaxFrameInFlight];
 
 std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMeshShaderData[GMaxFrameInFlight];
 std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionOpaqueShaderData[GMaxFrameInFlight];

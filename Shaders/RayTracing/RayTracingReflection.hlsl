@@ -22,17 +22,18 @@ Texture2D MixedDepthTexture : register(t9);
 Texture2D MixedVertexNormalTexture : register(t10);
 Texture2D TranslucentBumpTexture : register(t11);
 Texture2D TranslucentSmoothTexture : register(t12);
+Texture2D SmoothReflectVecTexture : register(t13);
 
 // lighting parameters
-StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
-ByteAddressBuffer PointLightListTrans : register(t14);
-ByteAddressBuffer SpotLightListTrans : register(t15);
-TextureCube EnvCube : register(t16);
+StructuredBuffer<UHInstanceLights> InstanceLights : register(t14);
+ByteAddressBuffer PointLightListTrans : register(t15);
+ByteAddressBuffer SpotLightListTrans : register(t16);
+TextureCube EnvCube : register(t17);
 
 // samplers
-SamplerState PointClampSampler : register(s17);
-SamplerState LinearClampSampler : register(s18);
-SamplerState EnvSampler : register(s19);
+SamplerState PointClampSampler : register(s18);
+SamplerState LinearClampSampler : register(s19);
+SamplerState EnvSampler : register(s20);
 
 static const int GMaxDirLight = 2;
 
@@ -213,11 +214,8 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
 }
 
 float4 CalculateReflectionLighting(in UHDefaultPayload Payload
-    , float3 SceneWorldPos
-    , float3 SceneBump
     , float3 HitWorldPos
     , float MipLevel
-    , float RayGap
     , float3 ReflectRay)
 {
     // doing the same lighting as object pass except the indirect specular
@@ -395,8 +393,8 @@ void RTReflectionRayGen()
     
     float3 VertexNormal = DecodeNormal(MixedVertexNormalTexture.SampleLevel(PointClampSampler, ScreenUV, 0).xyz);
     // Select from translucent or opaque bump
-    float3 BumpNormal = bHasTranslucentInfo ? TranslucentBump.xyz : OpaqueBump.xyz;
-    BumpNormal = DecodeNormal(BumpNormal);
+    float3 SceneNormal = bHasTranslucentInfo ? TranslucentBump.xyz : OpaqueBump.xyz;
+    SceneNormal = DecodeNormal(SceneNormal);
 
     float SceneDepth = MixedDepthTexture.SampleLevel(PointClampSampler, ScreenUV, 0).r;
     float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
@@ -404,7 +402,7 @@ void RTReflectionRayGen()
     // Calculate reflect ray
     // in real world, there aren't actually a "perfect" surface on most objects except mirrors
     // so giving it a small distortion if it's using vertex normal
-    bool bUseVertexNormal = length(VertexNormal - BumpNormal) < 0.0001f;
+    bool bUseVertexNormal = length(VertexNormal - SceneNormal) < 0.0001f;
     
     float3 EyeVector = SceneWorldPos - GCameraPos;
     if (bUseVertexNormal)
@@ -417,9 +415,12 @@ void RTReflectionRayGen()
         
         EyeVector += float3(0, YOffset, 0);
     }
-    
     EyeVector = normalize(EyeVector);
-    float3 ReflectedRay = reflect(EyeVector, BumpNormal);
+    
+    // fetch refined eye vector for reflection to reduce noise for bump normal
+    // or reflect vertex normal ray
+    float3 ReflectedRay = bUseVertexNormal ? reflect(EyeVector, SceneNormal)
+        : SmoothReflectVecTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
     
     RayDesc ReflectRay = (RayDesc) 0;
@@ -440,8 +441,7 @@ void RTReflectionRayGen()
     if (Payload.IsHit())
     {
         float3 HitWorldPos = Payload.PackedData0.xyz;
-        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, SceneWorldPos, BumpNormal, HitWorldPos, MipLevel, RayGap
-            , ReflectRay.Direction);
+        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, MipLevel, ReflectRay.Direction);
     }
     
     if (bHalfPixel)

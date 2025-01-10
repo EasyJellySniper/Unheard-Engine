@@ -92,7 +92,7 @@ bool UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBu
 			// bind compute state
 			UHGraphicState* State = GaussianFilterVShader->GetComputeState();
 			RenderBuilder.BindComputeState(State);
-			GaussianFilterHShader->BindParameters(RenderBuilder, CurrentFrameRT, GaussianFilterTempRT0, GaussianFilterTempRT1);
+			GaussianFilterVShader->BindParameters(RenderBuilder, CurrentFrameRT, GaussianFilterTempRT0, GaussianFilterTempRT1);
 
 			// dispatch compute
 			RenderBuilder.Dispatch(FilterResolution.width, MathHelpers::RoundUpDivide(FilterResolution.height, GThreadGroup1D), 1);

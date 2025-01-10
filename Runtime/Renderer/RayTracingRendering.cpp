@@ -11,6 +11,35 @@ void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
 	GraphicInterface->RequestReleaseRT(GRTShadowResult);
 	GraphicInterface->RequestReleaseRT(GRTSharedTextureRG);
 	GraphicInterface->RequestReleaseRT(GRTReflectionResult);
+	GraphicInterface->RequestReleaseRT(GSmoothReflectVector);
+}
+
+void UHDeferredShadingRenderer::InitRTGaussianConstants()
+{
+	UHTextureFormat TempRTFormat = bHDREnabledRT ? UHTextureFormat::UH_FORMAT_RGBA16F : UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
+
+	// initialize gaussian consts
+	RayTracingGaussianConsts.GBlurRadius = 2;
+	RayTracingGaussianConsts.IterationCount = 2;
+	CalculateBlurWeights(RayTracingGaussianConsts.GBlurRadius, RayTracingGaussianConsts.Weights);
+
+	RayTracingGaussianConsts.GaussianFilterTempRT0.resize(GRTReflectionResult->GetMipMapCount());
+	RayTracingGaussianConsts.GaussianFilterTempRT1.resize(GRTReflectionResult->GetMipMapCount());
+
+	VkExtent2D FilterResolution;
+
+	// for RT use
+	for (uint32_t Idx = 2; Idx < GRTReflectionResult->GetMipMapCount(); Idx++)
+	{
+		FilterResolution.width = RenderResolution.width >> Idx;
+		FilterResolution.height = RenderResolution.height >> Idx;
+
+		RayTracingGaussianConsts.GaussianFilterTempRT0[Idx] =
+			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, true);
+
+		RayTracingGaussianConsts.GaussianFilterTempRT1[Idx] =
+			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, true);
+	}
 }
 
 void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
@@ -31,6 +60,13 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 		GRTSharedTextureRG = GraphicInterface->RequestRenderTexture("RTSharedTextureRG", RenderResolution, UHTextureFormat::UH_FORMAT_RG16F, true);
 		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTSharedTextureFloat", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA16F, true, true);
 
+		// refined normal at half size
+		VkExtent2D HalfRes = RenderResolution;
+		HalfRes.width >>= 1;
+		HalfRes.height >>= 1;
+		GSmoothReflectVector = GraphicInterface->RequestRenderTexture("SmoothReflectVector", HalfRes, UHTextureFormat::UH_FORMAT_RGBA16F, true);
+
+		InitRTGaussianConstants();
 		if (!bInitOnly)
 		{
 			// need to rewrite descriptors after resize
@@ -71,7 +107,7 @@ void UHDeferredShadingRenderer::CollectLightPass(UHRenderBuilder& RenderBuilder)
 
 	if (CurrentScene->GetPointLightCount() > 0 || CurrentScene->GetSpotLightCount() > 0)
 	{
-		RenderBuilder.ClearUAVBuffer(GInstanceLightsBuffer->GetBuffer(), ~0);
+		RenderBuilder.ClearUAVBuffer(GInstanceLightsBuffer[CurrentFrameRT]->GetBuffer(), ~0);
 	}
 
 	// point light collection
@@ -122,10 +158,8 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Shadow");
 
-	// clear and transition output buffer to VK_IMAGE_LAYOUT_GENERAL
-	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	RenderBuilder.ClearRenderTexture(GRTSharedTextureRG);
-	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
+	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	// bind descriptors and RT states
 	// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!
@@ -154,6 +188,38 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
+void UHDeferredShadingRenderer::DispatchSmoothReflectVectorPass(UHRenderBuilder& RenderBuilder)
+{
+	UHGameTimerScope Scope("SmoothReflectVectorPass", false);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SmoothReflectVectorPass)], "SmoothReflectVectorPass");
+
+	if (!bIsRaytracingEnableRT)
+	{
+		return;
+	}
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Smooth reflect vector pass");
+	RenderBuilder.ResourceBarrier(GSmoothReflectVector, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+	// two pass refine normal at half size
+	VkExtent2D HalfRes = RenderResolution;
+	HalfRes.width >>= 1;
+	HalfRes.height >>= 1;
+
+	UHComputeState* State = RTSmoothReflectHShader->GetComputeState();
+	RenderBuilder.BindComputeState(State);
+	RenderBuilder.BindDescriptorSetCompute(RTSmoothReflectHShader->GetPipelineLayout(), RTSmoothReflectHShader->GetDescriptorSet(CurrentFrameRT));
+	RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(HalfRes.width, GThreadGroup1D), HalfRes.height, 1);
+
+	State = RTSmoothReflectVShader->GetComputeState();
+	RenderBuilder.BindComputeState(State);
+	RenderBuilder.BindDescriptorSetCompute(RTSmoothReflectVShader->GetPipelineLayout(), RTSmoothReflectVShader->GetDescriptorSet(CurrentFrameRT));
+	RenderBuilder.Dispatch(HalfRes.width, MathHelpers::RoundUpDivide(HalfRes.height, GThreadGroup1D), 1);
+
+	RenderBuilder.ResourceBarrier(GSmoothReflectVector, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}
+
 void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("DispatchRayReflectionPass", false);
@@ -177,7 +243,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	// clear and transition output buffer to VK_IMAGE_LAYOUT_GENERAL
 	RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	RenderBuilder.ClearRenderTexture(GRTReflectionResult);
-	RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	// bind descriptors and RT states
 	// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!

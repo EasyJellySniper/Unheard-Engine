@@ -107,6 +107,7 @@ void RTShadowRayGen()
     // the tracing could be half-sized, but now the buffer is always the same resolution as rendering
     // so need to calculate proper pixel coordinate here
 	uint2 PixelCoord = DispatchRaysIndex().xy * GResolution.xy * GShadowResolution.zw;
+    OutShadowResult[PixelCoord] = 0;
 	
 	// early return if no lights
 	UHBRANCH

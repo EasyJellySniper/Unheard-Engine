@@ -34,8 +34,6 @@ void UHDeferredShadingRenderer::Resize()
 	// need to rewrite descriptors after resize
 	UpdateDescriptors();
 
-	InitGaussianConstants();
-
 	bIsTemporalReset = true;
 }
 
@@ -97,6 +95,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	bEnableHWOcclusionRT = RenderingSettings.bEnableHardwareOcclusion;
 	OcclusionThresholdRT = RenderingSettings.OcclusionTriangleThreshold;
 	bEnableDepthPrepassRT = GraphicInterface->IsDepthPrePassEnabled();
+	bTemporalAART = RenderingSettings.bTemporalAA;
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -802,6 +801,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				RenderSkyPass(SceneRenderBuilder);
 
 				PreReflectionPass(SceneRenderBuilder);
+				DispatchSmoothReflectVectorPass(SceneRenderBuilder);
 				DispatchRayReflectionPass(SceneRenderBuilder);
 				DrawReflectionPass(SceneRenderBuilder);
 

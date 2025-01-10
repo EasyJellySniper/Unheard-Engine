@@ -40,6 +40,7 @@ extern UHRenderTexture* GTranslucentSmoothness;
 extern UHRenderTexture* GRTShadowResult;
 extern UHRenderTexture* GRTSharedTextureRG;
 extern UHRenderTexture* GRTReflectionResult;
+extern UHRenderTexture* GSmoothReflectVector;
 extern UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
 // cubemaps
@@ -62,7 +63,7 @@ extern UHTextureCube* GBlackCube;
 extern UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
 
 // instance lights buffer
-extern UniquePtr<UHRenderBuffer<UHInstanceLights>> GInstanceLightsBuffer;
+extern UniquePtr<UHRenderBuffer<UHInstanceLights>> GInstanceLightsBuffer[GMaxFrameInFlight];
 
 extern std::vector<UHTexture*> GetGBuffersSRV();
 

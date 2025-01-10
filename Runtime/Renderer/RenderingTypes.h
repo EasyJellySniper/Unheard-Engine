@@ -162,6 +162,7 @@ enum class UHRenderPassTypes
 	CollectLightPass,
 	GenerateSH9,
 	RayTracingShadow,
+	SmoothReflectVectorPass,
 	RayTracingReflection,
 	LightCulling,
 	LightPass,
@@ -326,7 +327,8 @@ struct UHDebugBoundConstant
 enum class UHSystemRenderFeatureBits
 {
 	FeatureEnvCube = 1 << 0,
-	FeatureHDR = 1 << 1
+	FeatureHDR = 1 << 1,
+	FeatureDebug = 1 << 31,
 };
 
 // constant types

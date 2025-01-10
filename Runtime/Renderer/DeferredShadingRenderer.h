@@ -43,6 +43,7 @@
 #include "ShaderClass/RayTracing/RTMeshInstanceTable.h"
 #include "ShaderClass/OcclusionPassShader.h"
 #include "ShaderClass/RayTracing/CollectLightShader.h"
+#include "ShaderClass/RayTracing/RTSmoothReflectShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -189,7 +190,7 @@ private:
 	// get current skycube
 	UHTextureCube* GetCurrentSkyCube() const;
 
-	void InitGaussianConstants();
+	void InitRTGaussianConstants();
 
 
 	/************************************************ rendering functions ************************************************/
@@ -201,6 +202,7 @@ private:
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
+	void DispatchSmoothReflectVectorPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder);
 	void RenderLightPass(UHRenderBuilder& RenderBuilder);
 	void PreReflectionPass(UHRenderBuilder& RenderBuilder);
@@ -266,6 +268,7 @@ private:
 	int32_t OcclusionThresholdRT;
 	float RTCullingDistanceRT;
 	int32_t RTReflectionQualityRT;
+	bool bTemporalAART;
 
 	// current scene
 	UHScene* CurrentScene;
@@ -389,8 +392,11 @@ private:
 	UniquePtr<UHRTMeshInstanceTable> RTMeshInstanceTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
 	UniquePtr<UHRTTextureTable> RTTextureTable;
+
 	UniquePtr<UHCollectLightShader> CollectPointLightShader;
 	UniquePtr<UHCollectLightShader> CollectSpotLightShader;
+	UniquePtr<RTSmoothReflectShader> RTSmoothReflectHShader;
+	UniquePtr<RTSmoothReflectShader> RTSmoothReflectVShader;
 
 	uint32_t RTInstanceCount;
 	bool bIsRaytracingEnableRT;

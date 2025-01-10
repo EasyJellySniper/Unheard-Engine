@@ -76,7 +76,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 	// -------------------------- Temporal AA --------------------------//
 	{
 		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::TemporalAAPass)], "TemporalAAPass");
-		if (ConfigInterface->RenderingSetting().bTemporalAA)
+		if (bTemporalAART)
 		{
 			RenderBuilder.ResourceBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			if (!bIsTemporalReset)

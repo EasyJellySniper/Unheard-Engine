@@ -13,3 +13,12 @@ If average lumin is leaning max lumin, use the max result, otherwise use the min
 
 07-01-2025:
 Fixed texture recreation behavior. Previous code refactoring broke the functionality.
+
+09-01-2025:
+Did the normal vector refine for ray tracing use. It can reduce the noise indeed!
+But also introducing a few micro glitches, especially on vertex normals.
+Try if refine the eye(reflect) vector instead of normal is better!
+
+10-01-2025:
+Done the reflect vector smooth, result looks good.
+I also fixed a bug in CollectLightCS, ring buffer is still needed to avoid flickering.
