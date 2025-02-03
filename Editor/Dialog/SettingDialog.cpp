@@ -207,6 +207,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
 
     ImGui::InputFloat("RT Reflection TMax", &RenderingSettings.RTReflectionTMax);
     ImGui::InputFloat("RT Reflection Smooth Cutoff", &RenderingSettings.RTReflectionSmoothCutoff);
+    ImGui::Checkbox("RT Reflection Denoise", &RenderingSettings.bDenoiseRTReflection);
 
     ImGui::PopItemWidth();
     bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

@@ -193,7 +193,7 @@ void UHDeferredShadingRenderer::DispatchSmoothReflectVectorPass(UHRenderBuilder&
 	UHGameTimerScope Scope("SmoothReflectVectorPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SmoothReflectVectorPass)], "SmoothReflectVectorPass");
 
-	if (!bIsRaytracingEnableRT)
+	if (!bIsRaytracingEnableRT || !bDenoiseReflectionRT)
 	{
 		return;
 	}

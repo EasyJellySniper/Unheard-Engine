@@ -96,6 +96,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	OcclusionThresholdRT = RenderingSettings.OcclusionTriangleThreshold;
 	bEnableDepthPrepassRT = GraphicInterface->IsDepthPrePassEnabled();
 	bTemporalAART = RenderingSettings.bTemporalAA;
+	bDenoiseReflectionRT = RenderingSettings.bDenoiseRTReflection;
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -249,6 +250,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	uint32_t FeatureData = 0;
 	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
+	FeatureData |= RenderingSettings.bDenoiseRTReflection ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTReflectionDenoise) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.GDirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;

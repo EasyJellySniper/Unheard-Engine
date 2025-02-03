@@ -100,6 +100,7 @@ public:
 		, PCSSMinPenumbra(1.5f)
 		, PCSSMaxPenumbra(10.0f)
 		, PCSSBlockerDistScale(0.02f)
+		, bDenoiseRTReflection(true)
 	{
 
 	}
@@ -129,6 +130,7 @@ public:
 	float RTReflectionTMax;
 	float RTReflectionSmoothCutoff;
 	float FinalReflectionStrength;
+	bool bDenoiseRTReflection;
 
 	bool bEnableAsyncCompute;
 	bool bEnableHardwareOcclusion;

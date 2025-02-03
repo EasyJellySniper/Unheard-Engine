@@ -269,6 +269,7 @@ private:
 	float RTCullingDistanceRT;
 	int32_t RTReflectionQualityRT;
 	bool bTemporalAART;
+	bool bDenoiseReflectionRT;
 
 	// current scene
 	UHScene* CurrentScene;

@@ -419,7 +419,7 @@ void RTReflectionRayGen()
     
     // fetch refined eye vector for reflection to reduce noise for bump normal
     // or reflect vertex normal ray
-    float3 ReflectedRay = bUseVertexNormal ? reflect(EyeVector, SceneNormal)
+    float3 ReflectedRay = bUseVertexNormal || !(GSystemRenderFeature & UH_RTREFLECTION_DENOISE) ? reflect(EyeVector, SceneNormal)
         : SmoothReflectVecTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
     

@@ -66,6 +66,7 @@ void UHConfigManager::LoadConfig()
 			UHUtilities::ReadINIData<float>(FileIn, Section, "RTReflectionTMax", RenderingSettings.RTReflectionTMax);
 			UHUtilities::ReadINIData<float>(FileIn, Section, "RTReflectionSmoothCutoff", RenderingSettings.RTReflectionSmoothCutoff);
 			UHUtilities::ReadINIData<float>(FileIn, Section, "FinalReflectionStrength", RenderingSettings.FinalReflectionStrength);
+			UHUtilities::ReadINIData<bool>(FileIn, Section, "bDenoiseRTReflection", RenderingSettings.bDenoiseRTReflection);
 			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableHDR", RenderingSettings.bEnableHDR);
 			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
@@ -136,6 +137,7 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 		UHUtilities::WriteINIData(FileOut, "RTReflectionTMax", RenderingSettings.RTReflectionTMax);
 		UHUtilities::WriteINIData(FileOut, "RTReflectionSmoothCutoff", RenderingSettings.RTReflectionSmoothCutoff);
 		UHUtilities::WriteINIData(FileOut, "FinalReflectionStrength", RenderingSettings.FinalReflectionStrength);
+		UHUtilities::WriteINIData(FileOut, "bDenoiseRTReflection", RenderingSettings.bDenoiseRTReflection);
 		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
 		UHUtilities::WriteINIData(FileOut, "bEnableHDR", RenderingSettings.bEnableHDR);
 		UHUtilities::WriteINIData(FileOut, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
