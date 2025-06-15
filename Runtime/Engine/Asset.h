@@ -41,10 +41,8 @@ public:
 	void ImportBuiltInAssets();
 	void Release();
 
-	void TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
-		, std::vector<std::string> Defines, std::filesystem::path& OutputShaderPath);
-	void CompileShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
-		, std::vector<std::string> Defines);
+	void TranslateHLSL(UHShader* InShader, UHMaterialCompileData InData, std::filesystem::path& OutputShaderPath);
+	void CompileShader(UHShader* InShader);
 
 	UHObject* ImportAsset(std::filesystem::path InPath);
 	void MapTextureIndex(UHMaterial* InMat);

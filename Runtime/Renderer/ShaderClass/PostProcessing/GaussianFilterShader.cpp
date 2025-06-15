@@ -44,7 +44,7 @@ void UHGaussianFilterShader::OnCompile()
 void UHGaussianFilterShader::BindParameters(UHRenderBuilder& RenderBuilder, const int32_t CurrentFrame, UHTexture* Input, UHTexture* Output)
 {
 	PushConstantBuffer(GSystemConstantBuffer[CurrentFrame], 0, 0);
-	PushImage(Output, 1, true, UHINDEXNONE);
-	PushImage(Input, 2, false, UHINDEXNONE);
+	PushImage(Output, 1, true, 0);
+	PushImage(Input, 2, false, 0);
 	FlushPushDescriptor(RenderBuilder.GetCmdList());
 }

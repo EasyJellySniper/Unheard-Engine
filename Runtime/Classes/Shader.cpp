@@ -1,30 +1,40 @@
 #include "Shader.h"
 #include "../../Runtime/Engine/Graphic.h"
+#include "AssetPath.h"
 
 UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
 	, std::vector<std::string> InMacro)
-	: Shader(nullptr)
-	, ShaderName(InShaderName)
-	, SourcePath(InSource)
-	, EntryName(InEntryName)
-	, ProfileName(InProfileName)
-	, ShaderDefines(InMacro)
-	, bIsMaterialShader(false)
+	: UHShader(InShaderName, InSource, InEntryName, InProfileName, "", InMacro)
 {
-	Name = ShaderName;
+	
 }
 
 UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
-	, bool bInIsMaterialShader, std::vector<std::string> InMacro)
+	, std::string InMaterialName, std::vector<std::string> InMacro)
 	: Shader(nullptr)
 	, ShaderName(InShaderName)
 	, SourcePath(InSource)
 	, EntryName(InEntryName)
 	, ProfileName(InProfileName)
-	, bIsMaterialShader(bInIsMaterialShader)
+	, bIsMaterialShader(InMaterialName != "")
 	, ShaderDefines(InMacro)
 {
 	Name = ShaderName;
+
+	// Generate shader hash by string, format in shader name + entry name + macro name
+	// Or an extra material name if it's a material shader
+	std::string Key = InShaderName + InEntryName;
+	for (const std::string& Str : InMacro)
+	{
+		Key += Str;
+	}
+
+	if (bIsMaterialShader)
+	{
+		Key += InMaterialName;
+	}
+
+	ShaderHash = UHUtilities::StringToHash(Key);
 }
 
 void UHShader::Release()
@@ -57,22 +67,39 @@ std::string UHShader::GetEntryName() const
 	return EntryName;
 }
 
+std::string UHShader::GetProfileName() const
+{
+	return ProfileName;
+}
+
+std::vector<std::string> UHShader::GetShaderDefines() const
+{
+	return ShaderDefines;
+}
+
+size_t UHShader::GetShaderHash() const
+{
+	return ShaderHash;
+}
+
+std::filesystem::path UHShader::GetSourcePath() const
+{
+	return SourcePath;
+}
+
+std::filesystem::path UHShader::GetOutputPath() const
+{
+	const std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(SourcePath);
+	const std::string ShaderHashName = std::to_string(ShaderHash);
+	std::filesystem::path OutputPath = GShaderAssetFolder + OriginSubpath + ShaderHashName + GShaderAssetExtension;
+
+	return OutputPath;
+}
+
 bool UHShader::operator==(const UHShader& InShader)
 {
-	// check if shader defines are equal = size equal + individual equal
-	bool bDefineEqual = ShaderDefines.size() == InShader.ShaderDefines.size();
-	if (bDefineEqual)
-	{
-		for (size_t Idx = 0; Idx < ShaderDefines.size(); Idx++)
-		{
-			bDefineEqual &= ShaderDefines[Idx] == InShader.ShaderDefines[Idx];
-		}
-	}
-
-	return bDefineEqual
-		&& InShader.EntryName == EntryName
+	return InShader.ShaderHash == ShaderHash 
 		&& InShader.ProfileName == ProfileName
-		&& InShader.ShaderName == ShaderName
 		&& InShader.SourcePath == SourcePath
 		&& InShader.bIsMaterialShader == bIsMaterialShader;
 }

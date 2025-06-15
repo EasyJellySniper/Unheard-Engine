@@ -1296,18 +1296,11 @@ uint32_t UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pat
 
 	// ensure the shader is compiled (debug only)
 #if WITH_EDITOR
-	AssetManagerInterface->CompileShader(InShaderName, InSource, EntryName, ProfileName, InMacro);
+	AssetManagerInterface->CompileShader(NewShader.get());
 #endif
 
-	// get macro hash name
-	size_t MacroHash = UHUtilities::ShaderDefinesToHash(InMacro);
-	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
-
-	// find origin path and try to preserve file structure
-	std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(InSource);
-
 	// setup input shader path, read from compiled shader
-	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OriginSubpath + InShaderName + MacroHashName + GShaderAssetExtension;
+	std::filesystem::path OutputShaderPath = NewShader->GetOutputPath();
 	if (!CreateShaderModule(NewShader, OutputShaderPath))
 	{
 		return -1;
@@ -1328,18 +1321,11 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 	UHMaterial* InMat = InData.MaterialCache;
 	const std::string OriginSubpath = UHAssetPath::GetMaterialOriginSubpath(InData.MaterialCache->GetPath());
 	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetSourcePath(), InShaderName, MacroHashName);
-	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OutName + GShaderAssetExtension;
 
-	// if it's a release build, and there is no material shader for it, use a fallback one
-	if (GIsShipping && !std::filesystem::exists(OutputShaderPath))
-	{
-		InShaderName = "FallbackPixelShader";
-		EntryName = "FallbackPS";
-		InSource = GRawShaderPath + InShaderName;
-	}
-
-	UniquePtr<UHShader> NewShader = MakeUnique<UHShader>(OutName, InSource, EntryName, ProfileName, true, InMacro);
+	UniquePtr<UHShader> NewShader = MakeUnique<UHShader>(OutName, InSource, EntryName, ProfileName, OriginSubpath + InMat->GetName(), InMacro);
 	NewShader->SetGfxCache(this);
+
+	std::filesystem::path OutputShaderPath = NewShader->GetOutputPath();
 
 	// early return if it's exist in pool and does not need recompile
 	int32_t PoolIdx = UHUtilities::FindIndex<UHShader>(ShaderPools, *NewShader.get());
@@ -1351,7 +1337,7 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 	// almost the same as common shader flow, but this will go through HLSL translator instead
 	// only compile it when the compile flag or version is matched
 #if WITH_EDITOR
-	AssetManagerInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InData, InMacro, OutputShaderPath);
+	AssetManagerInterface->TranslateHLSL(NewShader.get(), InData, OutputShaderPath);
 #endif
 
 	if (!CreateShaderModule(NewShader, OutputShaderPath))

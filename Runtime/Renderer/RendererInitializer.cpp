@@ -477,6 +477,9 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	GaussianFilterHShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterHShader", UHGaussianFilterType::FilterHorizontal);
 	GaussianFilterVShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterVShader", UHGaussianFilterType::FilterVertical);
 
+	UpsampleNearest2x2Shader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmm2x2Shader", UHUpsampleMethod::Nearest2x2);
+	UpsampleNearestHShader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmmHShader", UHUpsampleMethod::NearestHorizontal);
+
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
@@ -737,6 +740,8 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	UH_SAFE_RELEASE(ToneMapShader);
 	UH_SAFE_RELEASE(GaussianFilterHShader);
 	UH_SAFE_RELEASE(GaussianFilterVShader);
+	UH_SAFE_RELEASE(UpsampleNearest2x2Shader);
+	UH_SAFE_RELEASE(UpsampleNearestHShader);
 
 	if (GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled())
 	{

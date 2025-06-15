@@ -8,6 +8,7 @@
 #include "Runtime/Classes/Utility.h"
 
 class UHMaterial;
+class UHShader;
 
 // shader asset cache
 struct UHMaterialAssetCache
@@ -39,8 +40,8 @@ class UHMaterialImporter
 public:
 	UHMaterialImporter();
 	void LoadMaterialCache();
-	void WriteMaterialCache(UHMaterial* InMat, std::string InShaderName, std::vector<std::string> Defines);
-	bool IsMaterialCached(UHMaterial* InMat, std::string InShaderName, std::vector<std::string> Defines);
+	void WriteMaterialCache(UHMaterial* InMat, UHShader* InShader);
+	bool IsMaterialCached(UHMaterial* InMat, UHShader* InShader);
 
 private:
 	std::vector<UHMaterialAssetCache> UHMaterialsCache;

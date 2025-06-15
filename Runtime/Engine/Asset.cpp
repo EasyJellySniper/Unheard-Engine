@@ -17,7 +17,8 @@ UHAssetManager::UHAssetManager()
 	// load shader cache after initialization
 	UHShaderImporterInterface = MakeUnique<UHShaderImporter>();
 	UHShaderImporterInterface->LoadShaderCache();
-	UHShaderImporterInterface->CompileHLSL("FallbackPixelShader", GRawShaderPath + "FallbackPixelShader.hlsl", "FallbackPS", "ps_6_0", std::vector<std::string>());
+	UHShader FallbackShader("FallbackPixelShader", GRawShaderPath + "FallbackPixelShader.hlsl", "FallbackPS", "ps_6_0", std::vector<std::string>());
+	UHShaderImporterInterface->CompileHLSL(&FallbackShader);
 
 	UHMaterialImporterInterface = MakeUnique<UHMaterialImporter>();
 	UHMaterialImporterInterface->LoadMaterialCache();
@@ -103,8 +104,7 @@ void UHAssetManager::Release()
 	ClearAssetCaches();
 }
 
-void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
-	, std::vector<std::string> Defines, std::filesystem::path& OutputShaderPath)
+void UHAssetManager::TranslateHLSL(UHShader* InShader, UHMaterialCompileData InData, std::filesystem::path& OutputShaderPath)
 {
 #if WITH_EDITOR
 	UHMaterial* InMat = InData.MaterialCache;
@@ -112,8 +112,8 @@ void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::pa
 
 	if (CompileFlag == UHMaterialCompileFlag::FullCompileTemporary
 		|| CompileFlag == UHMaterialCompileFlag::FullCompileResave
-		|| !UHMaterialImporterInterface->IsMaterialCached(InMat, InShaderName, Defines)
-		|| !UHShaderImporterInterface->IsShaderTemplateCached(InSource, EntryName, ProfileName))
+		|| !UHMaterialImporterInterface->IsMaterialCached(InMat, InShader)
+		|| !UHShaderImporterInterface->IsShaderTemplateCached(InShader->GetSourcePath(), InShader->GetEntryName(), InShader->GetProfileName()))
 	{
 		// mark as include changed when necessary
 		if (!UHShaderImporterInterface->IsShaderIncludeCached() && CompileFlag == UHMaterialCompileFlag::UpToDate)
@@ -121,22 +121,21 @@ void UHAssetManager::TranslateHLSL(std::string InShaderName, std::filesystem::pa
 			InMat->SetCompileFlag(UHMaterialCompileFlag::IncludeChanged);
 		}
 
-		OutputShaderPath = UHShaderImporterInterface->TranslateHLSL(InShaderName, InSource, EntryName, ProfileName, InData, Defines);
+		OutputShaderPath = UHShaderImporterInterface->TranslateHLSL(InShader, InData);
 
 		// don't write cache for temporrary compiliation
 		if (CompileFlag != UHMaterialCompileFlag::FullCompileTemporary)
 		{
-			UHMaterialImporterInterface->WriteMaterialCache(InMat, InShaderName, Defines);
+			UHMaterialImporterInterface->WriteMaterialCache(InMat, InShader);
 		}
 	}
 #endif
 }
 
-void UHAssetManager::CompileShader(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
-	, std::vector<std::string> Defines)
+void UHAssetManager::CompileShader(UHShader* InShader)
 {
 #if WITH_EDITOR
-	UHShaderImporterInterface->CompileHLSL(InShaderName, InSource, EntryName, ProfileName, Defines);
+	UHShaderImporterInterface->CompileHLSL(InShader);
 #endif
 }
 

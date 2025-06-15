@@ -22,3 +22,11 @@ Try if refine the eye(reflect) vector instead of normal is better!
 10-01-2025:
 Done the reflect vector smooth, result looks good.
 I also fixed a bug in CollectLightCS, ring buffer is still needed to avoid flickering.
+
+14-06-2025:
+Refactor the shader management, which includes shader output path and hash.
+Added UpsampleComputeShader implementation, I am going to move the fill code from both RT shadow/reflection to another pass.
+
+15-06-2025:
+Moved the upsample code from both RT shadow/reflection to a standalone pass.
+Refactor the vkCmdPushConstant() calls into GraphBuilder.

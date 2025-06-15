@@ -61,39 +61,44 @@ void UHShaderImporter::LoadShaderCache()
 		// load shader defines
 		UHUtilities::ReadStringVectorData(FileIn, Cache.Defines);
 
+		// load shader hash
+		FileIn.read(reinterpret_cast<char*>(&Cache.ShaderHash), sizeof(Cache.ShaderHash));
+
 		FileIn.close();
 
 		UHRawShadersCache.push_back(Cache);
 	}
 }
 
-void WriteShaderCache(std::filesystem::path SourcePath, std::filesystem::path UHShaderPath, std::string EntryName, std::string ProfileName
-	, std::vector<std::string> Defines = std::vector<std::string>())
+// Cache for common shaders.
+void WriteShaderCache(UHShader* InShader, std::filesystem::path OverrideOutputPath = "")
 {
 	// find origin path and try to preserve file structure
-	std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(SourcePath);
-
-	// output shader cache with source file name + macro name
-	size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
-	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
-	std::string CacheName = SourcePath.stem().string();
-
+	std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(InShader->GetSourcePath());
 	if (!std::filesystem::exists(GRawShaderCachePath + OriginSubpath))
 	{
 		std::filesystem::create_directories(GRawShaderCachePath + OriginSubpath);
 	}
 
-	std::ofstream FileOut(GRawShaderCachePath + OriginSubpath + CacheName + EntryName + MacroHashName + GShaderAssetCacheExtension, std::ios::out | std::ios::binary);
+	// output shader cache with shader hash name
+	std::ofstream FileOut(GRawShaderCachePath + OriginSubpath + std::to_string(InShader->GetShaderHash()) + GShaderAssetCacheExtension, std::ios::out | std::ios::binary);
 
 	// get last modified time
-	int64_t SourcLastModifiedTime = std::filesystem::last_write_time(SourcePath).time_since_epoch().count();
+	int64_t SourcLastModifiedTime = std::filesystem::last_write_time(InShader->GetSourcePath()).time_since_epoch().count();
 
-	UHUtilities::WriteStringData(FileOut, SourcePath.string());
+	UHUtilities::WriteStringData(FileOut, InShader->GetSourcePath().string());
 	FileOut.write(reinterpret_cast<const char*>(&SourcLastModifiedTime), sizeof(SourcLastModifiedTime));
-	UHUtilities::WriteStringData(FileOut, UHShaderPath.string());
-	UHUtilities::WriteStringData(FileOut, EntryName);
-	UHUtilities::WriteStringData(FileOut, ProfileName);
+
+	std::filesystem::path OutPath = OverrideOutputPath.empty() ? InShader->GetOutputPath() : OverrideOutputPath;
+	UHUtilities::WriteStringData(FileOut, OutPath.string());
+	UHUtilities::WriteStringData(FileOut, InShader->GetEntryName());
+	UHUtilities::WriteStringData(FileOut, InShader->GetProfileName());
+
+	std::vector<std::string> Defines = InShader->GetShaderDefines();
 	UHUtilities::WriteStringVectorData(FileOut, Defines);
+
+	size_t Hash = InShader->GetShaderHash();
+	FileOut.write(reinterpret_cast<const char*>(&Hash), sizeof(Hash));
 
 	FileOut.close();
 }
@@ -109,7 +114,8 @@ void UHShaderImporter::WriteShaderIncludeCache()
 	for (const std::string& Include : ShaderIncludes)
 	{
 		std::filesystem::path Path = GRawShaderPath + Include;
-		WriteShaderCache(Path, "", "", "");
+		UHShader Dummy("", Path, "", "", std::vector<std::string>());
+		WriteShaderCache(&Dummy);
 	}
 }
 
@@ -130,24 +136,24 @@ bool UHShaderImporter::IsShaderIncludeCached()
 	return bIsCached;
 }
 
-bool UHShaderImporter::IsShaderCached(std::filesystem::path SourcePath, std::filesystem::path UHShaderPath, std::string EntryName, std::string ProfileName
-	, std::vector<std::string> Defines)
+bool UHShaderImporter::IsShaderCached(UHShader* InShader)
 {
-	if (!std::filesystem::exists(SourcePath))
+	if (!std::filesystem::exists(InShader->GetSourcePath()))
 	{
 		return false;
 	}
 
 	UHRawShaderAssetCache InCache;
-	InCache.SourcePath = SourcePath;
-	InCache.UHShaderPath = UHShaderPath;
-	InCache.SourcLastModifiedTime = std::filesystem::last_write_time(SourcePath).time_since_epoch().count();
-	InCache.EntryName = EntryName;
-	InCache.ProfileName = ProfileName;
-	InCache.Defines = Defines;
+	InCache.SourcePath = InShader->GetSourcePath();
+	InCache.UHShaderPath = InShader->GetOutputPath();
+	InCache.SourcLastModifiedTime = std::filesystem::last_write_time(InCache.SourcePath).time_since_epoch().count();
+	InCache.EntryName = InShader->GetEntryName();
+	InCache.ProfileName = InShader->GetProfileName();
+	InCache.Defines = InShader->GetShaderDefines();
+	InCache.ShaderHash = InShader->GetShaderHash();
 
 	// the cache will also check the include files
-	return UHUtilities::FindByElement(UHRawShadersCache, InCache) && std::filesystem::exists(UHShaderPath) && IsShaderIncludeCached();
+	return UHUtilities::FindByElement(UHRawShadersCache, InCache) && std::filesystem::exists(InCache.UHShaderPath) && IsShaderIncludeCached();
 }
 
 bool UHShaderImporter::IsShaderTemplateCached(std::filesystem::path SourcePath, std::string EntryName, std::string ProfileName)
@@ -245,8 +251,7 @@ bool CompileShader(std::string CommandLine)
 	return true;
 }
 
-void UHShaderImporter::CompileHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
-	, std::vector<std::string> Defines)
+void UHShaderImporter::CompileHLSL(UHShader* InShader)
 {
 	// compile HLSL shader by calling dxc.exe, which supports Vulkan spir-v
 	// after it compiled succeed, export it to UH asset folder
@@ -254,28 +259,23 @@ void UHShaderImporter::CompileHLSL(std::string InShaderName, std::filesystem::pa
 
 
 	// find origin path and try to preserve file structure
-	std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(InSource);
-
-	// get macro hash name and setup output file name
-	size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
-	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
-	std::filesystem::path OutputShaderPath = GShaderAssetFolder + OriginSubpath + InShaderName + MacroHashName + GShaderAssetExtension;
-
+	std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(InShader->GetSourcePath());
+	std::filesystem::path OutputShaderPath = InShader->GetOutputPath();
 	if (!std::filesystem::exists(GShaderAssetFolder + OriginSubpath))
 	{
 		std::filesystem::create_directories(GShaderAssetFolder + OriginSubpath);
 	}
 
 	// check if shader is cached
-	if (IsShaderCached(InSource, OutputShaderPath, EntryName, ProfileName, Defines))
+	if (IsShaderCached(InShader))
 	{
 		return;
 	}
 
 	// compile, setup dx layout as well, be careful that the path must include "" mark in case there are folders with whitespace name
 	const std::string QuoteMark = "\"";
-	std::string CompileCmd = " -spirv -T " + ProfileName + " -E " + EntryName + " "
-		+ QuoteMark + std::filesystem::absolute(InSource).string() + QuoteMark
+	std::string CompileCmd = " -spirv -T " + InShader->GetProfileName() + " -E " + InShader->GetEntryName() + " "
+		+ QuoteMark + std::filesystem::absolute(InShader->GetSourcePath()).string() + QuoteMark
 		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
 		+ " -HV 2018 "
 		+ " -fvk-use-dx-layout "
@@ -283,34 +283,33 @@ void UHShaderImporter::CompileHLSL(std::string InShaderName, std::filesystem::pa
 		+ " -fspv-target-env=vulkan1.1spirv1.4 ";
 
 	// mesh shader extension
-	if (UHUtilities::StringFind(ProfileName, "as_") || UHUtilities::StringFind(ProfileName, "ms_"))
+	if (UHUtilities::StringFind(InShader->GetProfileName(), "as_") || UHUtilities::StringFind(InShader->GetProfileName(), "ms_"))
 	{
 		CompileCmd += " -fspv-extension=SPV_EXT_mesh_shader ";
 		CompileCmd += " -fspv-extension=SPV_EXT_descriptor_indexing ";
 	}
 
 	// add define command lines
-	for (const std::string& Define : Defines)
+	for (const std::string& Define : InShader->GetShaderDefines())
 	{
 		CompileCmd += " -D " + Define;
 	}
 
-	UHE_LOG(L"Compiling " + InSource.wstring() + L"...\n");
+	UHE_LOG(L"Compiling " + InShader->GetSourcePath().wstring() + L"...\n");
 	bool bCompileResult = CompileShader(CompileCmd);
 
 	if (!std::filesystem::exists(OutputShaderPath) || !bCompileResult)
 	{
-		UHE_LOG(L"Failed to compile shader " + InSource.wstring() + L"!\n");
+		UHE_LOG(L"Failed to compile shader " + InShader->GetSourcePath().wstring() + L"!\n");
 		return;
 	}
 
 	// write shader cache
-	WriteShaderCache(InSource, OutputShaderPath, EntryName, ProfileName, Defines);
+	WriteShaderCache(InShader);
 	WriteShaderIncludeCache();
 }
 
-std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
-	, std::vector<std::string> Defines)
+std::filesystem::path UHShaderImporter::TranslateHLSL(UHShader* InShader, UHMaterialCompileData InData)
 {
 	// Workflow of translate HLSL
 	// 1) Load shader template as string
@@ -319,7 +318,7 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 	// 4) Compile it and write cache, force write should be fine, compile should be happen when editing in material editor
 
 	std::string ShaderCode;
-	std::ifstream FileIn(std::filesystem::absolute(InSource).string().c_str(), std::ios::in);
+	std::ifstream FileIn(std::filesystem::absolute(InShader->GetSourcePath()).string().c_str(), std::ios::in);
 	if (FileIn.is_open())
 	{
 		std::stringstream Buffer;
@@ -331,7 +330,7 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 	if (ShaderCode.empty())
 	{
 		// failed to translate HLSL due to template not found
-		UHE_LOG("Shader template " + InShaderName + " not found.\n");
+		UHE_LOG("Shader template " + InShader->GetName() + " not found.\n");
 		return "";
 	}
 
@@ -357,7 +356,6 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		ShaderCode = UHUtilities::StringReplace(ShaderCode, ShaderInputIdentifiers[Idx], InData.MaterialCache->GetMaterialInputCode(InData));
 	}
 
-
 	if (!std::filesystem::exists(GTempFilePath))
 	{
 		std::filesystem::create_directories(GTempFilePath);
@@ -368,13 +366,11 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		std::filesystem::create_directories(GShaderAssetFolder);
 	}
 
-	// macro hash
-	const size_t MacroHash = UHUtilities::ShaderDefinesToHash(Defines);
-	const std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
-	const std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InData.MaterialCache->GetSourcePath(), InShaderName, MacroHashName);
+	const std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(InShader->GetSourcePath());
+	const std::string ShaderHashName = std::to_string(InShader->GetShaderHash());
 
 	// output temp shader file
-	const std::string TempShaderPath = GTempFilePath + OutName;
+	const std::string TempShaderPath = GTempFilePath + ShaderHashName;
 
 	std::ofstream FileOut((TempShaderPath + GRawShaderExtension).c_str(), std::ios::out);
 	FileOut << ShaderCode;
@@ -383,13 +379,13 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 	// deside the output shader path based on the compile flag
 	// Hit compile but not save it, it shall not refresh the regular spv file
 	// regular spv file should be also refreshed when include changes
-	std::string OutputShaderPath = (InData.MaterialCache->GetCompileFlag() == UHMaterialCompileFlag::FullCompileResave || InData.MaterialCache->GetCompileFlag() == UHMaterialCompileFlag::IncludeChanged)
-		? GShaderAssetFolder + OutName + GShaderAssetExtension
+	std::filesystem::path OutputShaderPath = (InData.MaterialCache->GetCompileFlag() == UHMaterialCompileFlag::FullCompileResave || InData.MaterialCache->GetCompileFlag() == UHMaterialCompileFlag::IncludeChanged)
+		? InShader->GetOutputPath()
 		: TempShaderPath + GShaderAssetExtension;
 
 	// compile, setup dx layout as well, be careful with path system, quotation mark is needed
 	const std::string QuoteMark = "\"";
-	std::string CompileCmd = " -spirv -T " + ProfileName + " -E " + EntryName + " "
+	std::string CompileCmd = " -spirv -T " + InShader->GetProfileName() + " -E " + InShader->GetEntryName() + " "
 		+ QuoteMark + std::filesystem::absolute(TempShaderPath + GRawShaderExtension).string() + QuoteMark
 		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
 		+ " -HV 2018 "
@@ -398,29 +394,29 @@ std::string UHShaderImporter::TranslateHLSL(std::string InShaderName, std::files
 		+ " -fspv-target-env=vulkan1.1spirv1.4 ";
 
 	// mesh shader extension
-	if (UHUtilities::StringFind(ProfileName, "as_") || UHUtilities::StringFind(ProfileName, "ms_"))
+	if (UHUtilities::StringFind(InShader->GetProfileName(), "as_") || UHUtilities::StringFind(InShader->GetProfileName(), "ms_"))
 	{
 		CompileCmd += " -fspv-extension=SPV_EXT_mesh_shader ";
 		CompileCmd += " -fspv-extension=SPV_EXT_descriptor_indexing ";
 	}
 
 	// add define command lines
-	for (const std::string& Define : Defines)
+	for (const std::string& Define : InShader->GetShaderDefines())
 	{
 		CompileCmd += " -D " + Define;
 	}
 
-	UHE_LOG("Compiling " + OutputShaderPath + "...\n");
+	UHE_LOG("Compiling " + OutputShaderPath.string() + "...\n");
 	bool bCompileResult = CompileShader(CompileCmd);
 
 	if (!std::filesystem::exists(OutputShaderPath) || !bCompileResult)
 	{
-		UHE_LOG("Failed to compile shader " + OutputShaderPath + "!\n");
+		UHE_LOG("Failed to compile shader " + OutputShaderPath.string() + "!\n");
 		return "";
 	}
 
-	// write shader cache, the template doesn't need macro and output shader path
-	WriteShaderCache(InSource, "", EntryName, ProfileName);
+	// write shader cache
+	WriteShaderCache(InShader, OutputShaderPath);
 
 	// return the output shader path
 	return OutputShaderPath;

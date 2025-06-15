@@ -343,6 +343,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshTable.h" />
@@ -485,6 +486,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp" />
@@ -725,6 +727,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\RayTracing\RTSmoothReflectVector.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\UpsampleComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -170,6 +170,21 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 	// trace!
 	RenderBuilder.TraceRay(RTShadowExtent, RTShadowShader->GetRayGenTable(), RTShadowShader->GetMissTable(), RTShadowShader->GetHitGroupTable());
 
+	// if it's half res tracing, upsample it before proceed to softing pass
+	if (RTShadowExtent.width != RenderResolution.width)
+	{
+		RenderBuilder.BindComputeState(UpsampleNearest2x2Shader->GetComputeState());
+
+		UHUpsampleConstants Consts;
+		Consts.OutputResolutionX = RenderResolution.width;
+		Consts.OutputResolutionY = RenderResolution.height;
+		UpsampleNearest2x2Shader->BindParameters(RenderBuilder, CurrentFrameRT, GRTSharedTextureRG, Consts);
+
+		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
+			, 1);
+	}
+
 	// transition soften pass RTs
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL));
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
@@ -180,7 +195,8 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 	RenderBuilder.BindComputeState(State);
 	RenderBuilder.BindDescriptorSetCompute(SoftRTShadowShader->GetPipelineLayout(), SoftRTShadowShader->GetDescriptorSet(CurrentFrameRT));
 	RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RTShadowExtent.width, GThreadGroup2D_X)
-		, MathHelpers::RoundUpDivide(RTShadowExtent.height, GThreadGroup2D_Y), 1);
+		, MathHelpers::RoundUpDivide(RTShadowExtent.height, GThreadGroup2D_Y)
+		, 1);
 
 	// finally, transition to shader read only
 	RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -251,17 +267,43 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	RenderBuilder.BindRTDescriptorSet(RTReflectionShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);
 	RenderBuilder.BindRTState(RTReflectionShader->GetRTState());
 
-	// trace! it will do full, full temopral or just half base on quality
+	// trace! it will do full, full temopral or just half base on quality.
+	// and does upsample if necessary
+	UHUpsampleConstants Consts;
+	Consts.OutputResolutionX = RenderResolution.width;
+	Consts.OutputResolutionY = RenderResolution.height;
+
 	if (RTReflectionQualityRT == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_Half))
 	{
 		VkExtent2D HalfRes = RenderResolution;
 		HalfRes.width >>= 1;
 		HalfRes.height >>= 1;
 		RenderBuilder.TraceRay(HalfRes, RTReflectionShader->GetRayGenTable(), RTReflectionShader->GetMissTable(), RTReflectionShader->GetHitGroupTable());
+
+		// Upsample after the half res tracing
+		RenderBuilder.BindComputeState(UpsampleNearest2x2Shader->GetComputeState());
+		UpsampleNearest2x2Shader->BindParameters(RenderBuilder, CurrentFrameRT, GRTReflectionResult, Consts);
+
+		RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
+			, 1);
 	}
 	else
 	{
 		RenderBuilder.TraceRay(RenderResolution, RTReflectionShader->GetRayGenTable(), RTReflectionShader->GetMissTable(), RTReflectionShader->GetHitGroupTable());
+
+		if (RTReflectionQualityRT == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
+		{
+			// Upsample after the half pixel tracing
+			RenderBuilder.BindComputeState(UpsampleNearestHShader->GetComputeState());
+			UpsampleNearestHShader->BindParameters(RenderBuilder, CurrentFrameRT, GRTReflectionResult, Consts);
+
+			RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+				, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
+				, 1);
+		}
 	}
 
 	// generate mips with custom shader and blur the mips [2, Max]
@@ -280,7 +322,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 			Constant.bUseAlphaWeight = (Mdx < 3) ? 1 : 0;
 
 			// push constant and descriptor in fly
-			vkCmdPushConstants(RenderBuilder.GetCmdList(), RTReflectionMipmapShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(UHMipmapConstants), &Constant);
+			RenderBuilder.PushConstant(RTReflectionMipmapShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, sizeof(UHMipmapConstants), &Constant);
 			RTReflectionMipmapShader->BindTextures(RenderBuilder, GRTReflectionResult, GRTReflectionResult, Mdx, CurrentFrameRT);
 
 			RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, Mdx);

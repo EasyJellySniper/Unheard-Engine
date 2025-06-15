@@ -839,3 +839,9 @@ void UHRenderBuilder::ResetGPUQuery(UHGPUQuery* InQuery)
 {
 	vkResetQueryPool(LogicalDevice, InQuery->GetQueryPool(), 0, InQuery->GetQueryCount());
 }
+
+void UHRenderBuilder::PushConstant(VkPipelineLayout InPipelineLayout, VkShaderStageFlags InShaderStageFlag, uint32_t InDataSize
+	, const void *Data)
+{
+	vkCmdPushConstants(CmdList, InPipelineLayout, InShaderStageFlag, 0, InDataSize, Data);
+}

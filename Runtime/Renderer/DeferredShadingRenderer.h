@@ -44,6 +44,7 @@
 #include "ShaderClass/OcclusionPassShader.h"
 #include "ShaderClass/RayTracing/CollectLightShader.h"
 #include "ShaderClass/RayTracing/RTSmoothReflectShader.h"
+#include "ShaderClass/PostProcessing/UpsampleShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -351,6 +352,8 @@ private:
 	UniquePtr<UHTemporalAAShader> TemporalAAShader;
 	UniquePtr<UHGaussianFilterShader> GaussianFilterHShader;
 	UniquePtr<UHGaussianFilterShader> GaussianFilterVShader;
+	UniquePtr<UHUpsampleShader> UpsampleNearest2x2Shader;
+	UniquePtr<UHUpsampleShader> UpsampleNearestHShader;
 	bool bIsTemporalReset;
 
 	// gaussian constants

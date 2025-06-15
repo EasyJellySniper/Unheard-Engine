@@ -144,12 +144,15 @@ public:
 	void ResetOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx, uint32_t Count);
 	void BeginOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx);
 	void EndOcclusionQuery(UHGPUQuery* InQuery, uint32_t Idx);
+	void ResetGPUQuery(UHGPUQuery* InQuery);
 
 	// predication
 	void BeginPredication(uint32_t Idx, VkBuffer InBuffer, bool bReversed = false);
 	void EndPredication();
 
-	void ResetGPUQuery(UHGPUQuery* InQuery);
+	// push constant
+	void PushConstant(VkPipelineLayout InPipelineLayout, VkShaderStageFlags InShaderStageFlag, uint32_t InDataSize
+		, const void* Data);
 
 #if WITH_EDITOR
 	int32_t DrawCalls;

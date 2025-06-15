@@ -63,8 +63,8 @@ bool UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBu
 	RenderBuilder.Blit(Input, GaussianFilterTempRT1, FilterResolution, FilterResolution, MipLevel);
 
 	// update constants
-	vkCmdPushConstants(RenderBuilder.GetCmdList(), GaussianFilterHShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Constants), &Constants);
-	vkCmdPushConstants(RenderBuilder.GetCmdList(), GaussianFilterVShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Constants), &Constants);
+	RenderBuilder.PushConstant(GaussianFilterHShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, sizeof(Constants), &Constants);
+	RenderBuilder.PushConstant(GaussianFilterVShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, sizeof(Constants), &Constants);
 
 	for (int32_t Idx = 0; Idx < Constants.IterationCount; Idx++)
 	{

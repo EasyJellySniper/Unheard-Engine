@@ -423,6 +423,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothReflectShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -812,6 +815,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothReflectShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -875,5 +881,6 @@
     <None Include="Shaders\BaseAmplificationShader.hlsl" />
     <None Include="Shaders\RayTracing\CollectLightComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RTSmoothReflectVector.hlsl" />
+    <None Include="Shaders\PostProcessing\UpsampleComputeShader.hlsl" />
   </ItemGroup>
 </Project>

@@ -126,19 +126,6 @@ void RTShadowRayGen()
 
     // trace shadow just once, it will take care opaque/translucent tracing at the same time
 	TraceShadow(PixelCoord, ScreenUV, MipRate, MipLevel);
-
-    // if it's half-sized tracing, fill the empty pixels on right and bottom
-    if (GResolution.x != GShadowResolution.x)
-    {
-        int Dx[3] = { 1,0,1 };
-        int Dy[3] = { 0,1,1 };
-        for (int I = 0; I < 3; I++)
-        {
-            int2 Pos = PixelCoord + int2(Dx[I], Dy[I]);
-            Pos = min(Pos, GResolution.xy - 1);
-            OutShadowResult[Pos] = OutShadowResult[PixelCoord];
-        }
-    }
 }
 
 [shader("miss")]

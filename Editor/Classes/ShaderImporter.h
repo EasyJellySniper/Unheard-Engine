@@ -7,6 +7,7 @@
 #include "Runtime/Classes/Utility.h"
 
 class UHMaterial;
+class UHShader;
 struct UHMaterialCompileData;
 
 // shader asset cache
@@ -14,6 +15,7 @@ struct UHRawShaderAssetCache
 {
 	UHRawShaderAssetCache()
 		: SourcLastModifiedTime(0)
+		, ShaderHash(0)
 	{
 
 	}
@@ -45,6 +47,7 @@ struct UHRawShaderAssetCache
 	std::string EntryName;
 	std::string ProfileName;
 	std::vector<std::string> Defines;
+	size_t ShaderHash;
 };
 
 class UHShaderImporter
@@ -55,13 +58,10 @@ public:
 	void LoadShaderCache();
 	void WriteShaderIncludeCache();
 	bool IsShaderIncludeCached();
-	bool IsShaderCached(std::filesystem::path SourcePath, std::filesystem::path UHShaderPath, std::string EntryName, std::string ProfileName
-		, std::vector<std::string> Defines);
+	bool IsShaderCached(UHShader* InShader);
 	bool IsShaderTemplateCached(std::filesystem::path SourcePath, std::string EntryName, std::string ProfileName);
-	void CompileHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName
-		, std::vector<std::string> Defines);
-	std::string TranslateHLSL(std::string InShaderName, std::filesystem::path InSource, std::string EntryName, std::string ProfileName, UHMaterialCompileData InData
-		, std::vector<std::string> Defines);
+	void CompileHLSL(UHShader* InShader);
+	std::filesystem::path TranslateHLSL(UHShader* InShader, UHMaterialCompileData InData);
 
 private:
 	std::vector<UHRawShaderAssetCache> UHRawShadersCache;

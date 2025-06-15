@@ -443,24 +443,6 @@ void RTReflectionRayGen()
         float3 HitWorldPos = Payload.PackedData0.xyz;
         OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, MipLevel, ReflectRay.Direction);
     }
-    
-    if (bHalfPixel)
-    {
-        // for half pixel tracing, fill the neighborhood pixels that are not traced this frame
-        OutResult[min(PixelCoord + uint2(1, 0), GResolution.xy - 1)] = OutResult[PixelCoord];
-    }
-    else if (bQuarterPixel)
-    {
-        // for quarter tracing, fill the neighborhood pixels with a 2x2 box
-        int Dx[3] = { 1, 0, 1 };
-        int Dy[3] = { 0, 1, 1 };
-        for (int I = 0; I < 3; I++)
-        {
-            int2 Pos = PixelCoord + int2(Dx[I], Dy[I]);
-            Pos = min(Pos, GResolution.xy - 1);
-            OutResult[Pos] = OutResult[PixelCoord];
-        }
-    }
 }
 
 [shader("miss")]

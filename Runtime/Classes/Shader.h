@@ -14,11 +14,16 @@ public:
 	UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
 		, std::vector<std::string> InMacro);
 	UHShader(std::string InShaderName, std::filesystem::path InSource, std::string InEntryName, std::string InProfileName
-		, bool bInIsMaterialShader, std::vector<std::string> InMacro);
+		, std::string InMaterialName, std::vector<std::string> InMacro);
 	void Release();
 
 	VkShaderModule GetShader() const;
 	std::string GetEntryName() const;
+	std::string GetProfileName() const;
+	std::vector<std::string> GetShaderDefines() const;
+	size_t GetShaderHash() const;
+	std::filesystem::path GetSourcePath() const;
+	std::filesystem::path GetOutputPath() const;
 
 	bool operator==(const UHShader& InShader);
 
@@ -26,6 +31,7 @@ private:
 	bool Create(VkShaderModuleCreateInfo InCreateInfo);
 
 	VkShaderModule Shader;
+	size_t ShaderHash;
 
 	std::string ShaderName;
 	std::filesystem::path SourcePath;
