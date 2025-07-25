@@ -67,12 +67,14 @@ public:
 	UHAssetManager* GetAssetManager() const;
 	UHConfigManager* GetConfigManager() const;
 	UHDeferredShadingRenderer* GetSceneRenderer() const;
+	UHScene* GetScene() const;
 
 	// FPS limiter function
 	void BeginFPSLimiter();
 	void EndFPSLimiter();
 	void LimitFramerate();
 
+	void ResetScene();
 	void OnSaveScene(std::filesystem::path OutputPath);
 	void OnLoadScene(std::filesystem::path InputPath);
 

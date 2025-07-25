@@ -25,6 +25,7 @@ UHDemoScript::UHDemoScript()
 
 void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 {
+	return;
 	if (TestType == UHDemoType::DayTest)
 	{
 		InEngine->OnLoadScene("Assets/Scenes/VikingWithStones.uhscene");
@@ -45,6 +46,7 @@ void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 
 void UHDemoScript::OnEngineUpdate(float DeltaTime)
 {
+	return;
 	float LightRotSpd = 5.0f * DeltaTime;
 	if (TestType == UHDemoType::DayTest)
 	{

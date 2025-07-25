@@ -98,29 +98,14 @@ void UHScene::Initialize(UHEngine* InEngine)
 	// after initialization actions
 	for (UniquePtr<UHComponent>& Component : ComponentPools)
 	{
+		// mesh renderer append is delayed because they need to wait both mesh and material to be loaded
 		if (Component->GetObjectClassId() == UHMeshRendererComponent::ClassId)
 		{
 			AddMeshRenderer((UHMeshRendererComponent*)Component.get());
 		}
 	}
 
-	// assign buffer index for renderers, moveable objects first
-	int32_t BufferIdx = 0;
-	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
-	{
-		if (Renderers[Idx]->IsMoveable())
-		{
-			Renderers[Idx]->SetBufferDataIndex(BufferIdx++);
-		}
-	}
-
-	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
-	{
-		if (!Renderers[Idx]->IsMoveable())
-		{
-			Renderers[Idx]->SetBufferDataIndex(BufferIdx++);
-		}
-	}
+	RefreshRendererBufferDataIndex();
 }
 
 void UHScene::Release()
@@ -171,6 +156,27 @@ void UHScene::Update()
 		if (Light->IsWorldDirty())
 		{
 			Light->Update();
+		}
+	}
+}
+
+void UHScene::RefreshRendererBufferDataIndex()
+{
+	// assign buffer index for renderers, moveable objects first
+	int32_t BufferIdx = 0;
+	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
+	{
+		if (Renderers[Idx]->IsMoveable())
+		{
+			Renderers[Idx]->SetBufferDataIndex(BufferIdx++);
+		}
+	}
+
+	for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
+	{
+		if (!Renderers[Idx]->IsMoveable())
+		{
+			Renderers[Idx]->SetBufferDataIndex(BufferIdx++);
 		}
 	}
 }
@@ -270,6 +276,12 @@ void UHScene::AddMeshRenderer(UHMeshRendererComponent* InRenderer)
 	if (InRenderer->GetMesh() == nullptr || InRenderer->GetMaterial() == nullptr)
 	{
 		UHE_LOG(L"Missing mesh or material in mesh renderer!\n");
+	}
+
+	if (UHUtilities::FindIndex(Renderers, InRenderer) != UHINDEXNONE)
+	{
+		// renderer already in scene, skip it
+		return;
 	}
 
 	Renderers.push_back(InRenderer);

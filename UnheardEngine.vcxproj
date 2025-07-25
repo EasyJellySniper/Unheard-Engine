@@ -256,6 +256,7 @@
     <ClInclude Include="Editor\Controls\Slider.h" />
     <ClInclude Include="Editor\Controls\TextBox.h" />
     <ClInclude Include="Editor\Dialog\CubemapDialog.h" />
+    <ClInclude Include="Editor\Dialog\FbxImportDialog.h" />
     <ClInclude Include="Editor\Dialog\InfoDialog.h" />
     <ClInclude Include="Editor\Dialog\MeshDialog.h" />
     <ClInclude Include="Editor\Dialog\StatusDialog.h" />
@@ -394,6 +395,7 @@
     <ClCompile Include="Editor\Controls\Slider.cpp" />
     <ClCompile Include="Editor\Controls\TextBox.cpp" />
     <ClCompile Include="Editor\Dialog\CubemapDialog.cpp" />
+    <ClCompile Include="Editor\Dialog\FbxImportDialog.cpp" />
     <ClCompile Include="Editor\Dialog\InfoDialog.cpp" />
     <ClCompile Include="Editor\Dialog\MeshDialog.cpp" />
     <ClCompile Include="Editor\Dialog\StatusDialog.cpp" />

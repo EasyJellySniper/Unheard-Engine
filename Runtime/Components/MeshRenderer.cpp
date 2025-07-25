@@ -236,13 +236,13 @@ void UHMeshRendererComponent::OnGenerateDetailView()
 	const UHAssetManager* AssetMgr = UHAssetManager::GetAssetMgrEditor();
 
 	// mesh list
-	if (ImGui::BeginCombo("Mesh", (MeshCache) ? MeshCache->GetName().c_str() : "##"))
+	if (ImGui::BeginCombo("Mesh", (MeshCache) ? MeshCache->GetSourcePath().c_str() : "##"))
 	{
 		const std::vector<UHMesh*>& Meshes = AssetMgr->GetUHMeshes();
 		for (size_t Idx = 0; Idx < Meshes.size(); Idx++)
 		{
 			bool bIsSelected = (MeshCache == Meshes[Idx]);
-			if (ImGui::Selectable(Meshes[Idx]->GetName().c_str(), bIsSelected))
+			if (ImGui::Selectable(Meshes[Idx]->GetSourcePath().c_str(), bIsSelected))
 			{
 				MeshCache = Meshes[Idx];
 				bIsWorldDirty = true;
@@ -257,13 +257,13 @@ void UHMeshRendererComponent::OnGenerateDetailView()
 	}
 
 	// material list
-	if (ImGui::BeginCombo("Material", (MaterialCache) ? MaterialCache->GetName().c_str() : "##"))
+	if (ImGui::BeginCombo("Material", (MaterialCache) ? MaterialCache->GetSourcePath().c_str() : "##"))
 	{
 		const std::vector<UHMaterial*>& Materials = AssetMgr->GetMaterials();
 		for (size_t Idx = 0; Idx < Materials.size(); Idx++)
 		{
 			bool bIsSelected = (MaterialCache == Materials[Idx]);
-			if (ImGui::Selectable(Materials[Idx]->GetName().c_str(), bIsSelected))
+			if (ImGui::Selectable(Materials[Idx]->GetSourcePath().c_str(), bIsSelected))
 			{
 				UHMaterial* OldMat = MaterialCache;
 				UHMaterial* NewMat = Materials[Idx];

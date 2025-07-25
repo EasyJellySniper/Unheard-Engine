@@ -80,13 +80,13 @@ public:
 	UHAccelerationStructure* GetBottomLevelAS() const;
 	int32_t GetHighestIndex() const;
 
+	void RecalculateMeshBound();
 	bool Import(std::filesystem::path InUHMeshPath);
 
 #if WITH_EDITOR
 	void SetImportedTransform(XMFLOAT3 InTranslation, XMFLOAT3 InRotation, XMFLOAT3 InScale);
 	void SetImportedMaterialName(std::string InName);
 	void SetSourcePath(const std::string InPath);
-	void ApplyUnitScale();
 	void Export(std::filesystem::path OutputFolder, bool bOverwrite = true);
 #endif
 

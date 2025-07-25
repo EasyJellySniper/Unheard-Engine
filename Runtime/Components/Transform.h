@@ -20,7 +20,7 @@ enum class UHTransformSpace
 // based on left coordinate system
 // while rendering related stuffs will be convert to RH to fit Vulkan spec
 // +X: right
-// +Y: down
+// +Y: up
 // +Z: forward
 class UHTransformComponent : public UHComponent
 {

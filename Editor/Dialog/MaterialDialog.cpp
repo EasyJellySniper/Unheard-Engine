@@ -889,7 +889,21 @@ void UHMaterialDialog::RecompileMaterial(int32_t MatIndex, bool bDelayRTShaderCr
     }
 
     UHMaterial* Mat = AssetManager->GetMaterials()[MatIndex];
-    Renderer->RefreshMaterialShaders(Mat, false, bDelayRTShaderCreation);
+    
+    bool bNeedRefreshShaders = false;
+    for (const UHObject* Obj : Mat->GetReferenceObjects())
+    {
+        if (Obj->GetObjectClassId() == UHMeshRendererComponent::ClassId)
+        {
+            bNeedRefreshShaders = true;
+        }
+    }
+
+    // only refresh shaders when the material is actually used in rendering
+    if (bNeedRefreshShaders)
+    {
+        Renderer->RefreshMaterialShaders(Mat, false, bDelayRTShaderCreation);
+    }
 }
 
 void UHMaterialDialog::ResaveMaterial(int32_t MatIndex, bool bDelayRTShaderCreation)

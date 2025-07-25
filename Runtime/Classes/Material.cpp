@@ -629,6 +629,16 @@ UHMaterialProperty UHMaterial::GetMaterialProps() const
 	return MaterialProps;
 }
 
+bool IsTextureExist(std::string FileName)
+{
+	bool bResult = UHAssetManager::GetTexture2DByPathEditor(FileName) != nullptr;
+	if (!bResult)
+	{
+		UHE_LOG("Texture " + FileName + " is missing. Material will skip this node.\n");
+	}
+
+	return bResult;
+}
 
 void UHMaterial::GenerateDefaultMaterialNodes()
 {
@@ -699,7 +709,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* DiffusePin = NewParameterNode->GetOutputs()[0].get();
 		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)]->ConnectFrom(DiffusePin);
 	}
-	else
+	else if (IsTextureExist(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Diffuse)]))
 	{
 		// Diffuse = DiffuseColor * DiffuseTexture
 		Pos.x = -GUIToFurtherLeft;
@@ -735,7 +745,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* OcclusionPin = NewParameterNode->GetOutputs()[0].get();
 		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)]->ConnectFrom(OcclusionPin);
 	}
-	else
+	else if (IsTextureExist(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Occlusion)]))
 	{
 		// Occlusion = Occlusion * OcclusionTexture
 		Pos.x = -GUIToFurtherLeft;
@@ -772,7 +782,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* SpecularPin = NewParameterNode->GetOutputs()[0].get();
 		MaterialPins[UH_ENUM_VALUE(UHMaterialInputs::Specular)]->ConnectFrom(SpecularPin);
 	}
-	else
+	else if (IsTextureExist(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Specular)]))
 	{
 		// Specular = SpecularColor * SpecularTexture
 		Pos.x = -GUIToFurtherLeft;
@@ -797,7 +807,8 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		MathPin->GetOriginNode()->GetInputs()[1]->ConnectFrom(SpecularTexPin);
 	}
 
-	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Normal)].empty())
+	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Normal)].empty()
+		&& IsTextureExist(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Normal)]))
 	{
 		// Normal = BumpScale * BumpTexture
 		Pos.x = -GUIToFurtherLeft;
@@ -823,7 +834,8 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	}
 
 	// add opacity
-	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Opacity)].empty())
+	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Opacity)].empty()
+		&& IsTextureExist(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Opacity)]))
 	{
 		// Opacity = OpacityColor * OpacityTexture
 		Pos.x = -GUIToFurtherLeft;
@@ -849,7 +861,8 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	}
 
 	// add roughness
-	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Roughness)].empty())
+	if (!TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Roughness)].empty()
+		&& IsTextureExist(TexFileNames[UH_ENUM_VALUE(UHMaterialInputs::Roughness)]))
 	{
 		// Roughness = Roughness
 		Pos.x = -GUIToFurtherLeft;

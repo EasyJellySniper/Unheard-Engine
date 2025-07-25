@@ -27,6 +27,7 @@ private:
 	void ControlTextureCreate();
 	void ControlCubemapCreate();
 	void ControlBrowserInput();
+	void ControlBrowserInputPath();
 	void ControlBrowserOutputFolder();
 
 	UHAssetManager* AssetMgr;
@@ -37,6 +38,7 @@ private:
 	UHTextureSettings CurrentEditingSettings;
 
 	std::string CurrentSourceFile;
+	std::string CurrentSourceFolder;
 	std::string CurrentOutputPath;
 	std::string CurrentSelectedSlice[6];
 	std::string CurrentSelectedPanorama;

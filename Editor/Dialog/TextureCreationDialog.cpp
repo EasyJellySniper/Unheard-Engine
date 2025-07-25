@@ -34,7 +34,7 @@ UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDial
     , bNeedCreatingTexture(false)
     , bNeedCreatingCube(false)
 {
-    CurrentOutputPath = "Assets\\Textures";
+    CurrentOutputPath = "";
 }
 
 UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDialog* InCubemapDialog, UHAssetManager* InAssetMgr)
@@ -48,7 +48,7 @@ UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDial
     , bNeedCreatingTexture(false)
     , bNeedCreatingCube(false)
 {
-    CurrentOutputPath = "Assets\\Textures";
+    CurrentOutputPath = "";
 }
 
 void UHTextureCreationDialog::Update(bool& bIsDialogActive)
@@ -120,6 +120,14 @@ void UHTextureCreationDialog::ShowTexture2DCreationUI()
         if (ImGui::Button("Browse"))
         {
             ControlBrowserInput();
+        }
+
+        ImGui::Text("Input Path (for multiple textures import):");
+        ImGui::Text(CurrentSourceFolder.c_str());
+        ImGui::SameLine();
+        if (ImGui::Button("Browse Path"))
+        {
+            ControlBrowserInputPath();
         }
 
         ImGui::Text("Output Path:");
@@ -206,9 +214,23 @@ void UHTextureCreationDialog::ShowCubemapCreationUI()
     ImGui::EndChild();
 }
 
+bool IsSupportedImageFormat(std::string InExtension)
+{
+    for (int32_t Idx = 0; Idx < GNumMaxSupportedImageFormat; Idx++)
+    {
+        if (GSupportedImageFormat[Idx] ==  UHUtilities::ToLowerString(InExtension))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void UHTextureCreationDialog::ControlTextureCreate()
 {
     const std::filesystem::path InputSource = CurrentSourceFile;
+    const std::filesystem::path InputFolder = CurrentSourceFolder;
     std::filesystem::path OutputFolder = CurrentOutputPath;
     std::filesystem::path TextureAssetPath = GTextureAssetFolder;
     TextureAssetPath = std::filesystem::absolute(TextureAssetPath);
@@ -217,7 +239,10 @@ void UHTextureCreationDialog::ControlTextureCreate()
     bIsValidOutputFolder |= UHUtilities::StringFind(OutputFolder.string() + "\\", TextureAssetPath.string());
     bIsValidOutputFolder |= UHUtilities::StringFind(TextureAssetPath.string(), OutputFolder.string() + "\\");
 
-    if (!std::filesystem::exists(InputSource))
+    bool bSingleInputSource = std::filesystem::exists(InputSource);
+    bool bMultipleInputSources = std::filesystem::exists(InputFolder);
+
+    if (!bSingleInputSource && !bMultipleInputSources)
     {
         MessageBoxA(nullptr, "Invalid input source!", "Texture Creation", MB_OK);
         return;
@@ -234,24 +259,59 @@ void UHTextureCreationDialog::ControlTextureCreate()
 
     UHStatusDialogScope StatusDialog("Creating...");
 
-    std::filesystem::path RawSourcePath = std::filesystem::relative(InputSource);
-    if (RawSourcePath.string().empty())
+    if (bSingleInputSource)
     {
-        RawSourcePath = InputSource;
+        std::filesystem::path RawSourcePath = std::filesystem::relative(InputSource);
+        if (RawSourcePath.string().empty())
+        {
+            RawSourcePath = InputSource;
+        }
+
+        UHTextureSettings TextureSetting = CurrentEditingSettings;
+        TextureSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
+        ValidateTextureSetting(TextureSetting);
+
+        UHTexture* NewTex = TextureImporter->ImportRawTexture(RawSourcePath, OutputFolder, TextureSetting);
+        if (NewTex)
+        {
+            TextureDialog->OnCreationFinished(NewTex);
+        }
+        else
+        {
+            MessageBoxA(nullptr, "Texture creation failed.", "Texture Creation", MB_OK);
+        }
     }
 
-    UHTextureSettings TextureSetting = CurrentEditingSettings;
-    TextureSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
-    ValidateTextureSetting(TextureSetting);
+    if (bMultipleInputSources)
+    {
+        // iterate all image files under the input path
+        std::vector<UHTexture*> NewTexes;
+        for (std::filesystem::recursive_directory_iterator Idx(InputFolder), end; Idx != end; Idx++)
+        {
+            if (std::filesystem::is_directory(Idx->path()) || !IsSupportedImageFormat(Idx->path().extension().string()))
+            {
+                continue;
+            }
+            
+            std::filesystem::path RawSourcePath = std::filesystem::relative(Idx->path());
+            if (RawSourcePath.string().empty())
+            {
+                RawSourcePath = Idx->path();
+            }
 
-    UHTexture* NewTex = TextureImporter->ImportRawTexture(RawSourcePath, OutputFolder, TextureSetting);
-    if (NewTex)
-    {
-        TextureDialog->OnCreationFinished(NewTex);
-    }
-    else
-    {
-        MessageBoxA(nullptr, "Texture creation failed.", "Texture Creation", MB_OK);
+            UHTextureSettings TextureSetting = CurrentEditingSettings;
+            TextureSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
+            ValidateTextureSetting(TextureSetting);
+
+            UHTexture* NewTex = TextureImporter->ImportRawTexture(RawSourcePath, OutputFolder, TextureSetting, true);
+            if (NewTex)
+            {
+                NewTexes.push_back(NewTex);
+            }
+        }
+
+        TextureDialog->OnCreationFinished(NewTexes);
+        MessageBoxA(nullptr, "Multiple Texture import successfully.", "Texture Import", MB_OK);
     }
 }
 
@@ -623,12 +683,23 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
 void UHTextureCreationDialog::ControlBrowserInput()
 {
-    CurrentSourceFile = UHUtilities::ToStringA(UHEditorUtil::FileSelectInput(GImageFilter));
+    std::filesystem::path DefaultPath = UHUtilities::ToStringW(GRawTextureAssetPath);
+    DefaultPath = std::filesystem::absolute(DefaultPath);
+    CurrentSourceFile = UHUtilities::ToStringA(UHEditorUtil::FileSelectInput(GImageFilter, DefaultPath.wstring()));
+}
+
+void UHTextureCreationDialog::ControlBrowserInputPath()
+{
+    std::filesystem::path DefaultPath = UHUtilities::ToStringW(GRawTextureAssetPath);
+    DefaultPath = std::filesystem::absolute(DefaultPath);
+    CurrentSourceFolder = UHUtilities::ToStringA(UHEditorUtil::FileSelectOutputFolder(DefaultPath.wstring()));
 }
 
 void UHTextureCreationDialog::ControlBrowserOutputFolder()
 {
-    CurrentOutputPath = UHUtilities::ToStringA(UHEditorUtil::FileSelectOutputFolder());
+    std::filesystem::path DefaultPath = UHUtilities::ToStringW(GTextureAssetFolder);
+    DefaultPath = std::filesystem::absolute(DefaultPath);
+    CurrentOutputPath = UHUtilities::ToStringA(UHEditorUtil::FileSelectOutputFolder(DefaultPath.wstring()));
 }
 
 #endif

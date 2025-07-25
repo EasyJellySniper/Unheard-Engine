@@ -322,6 +322,24 @@ int32_t UHMesh::GetHighestIndex() const
 	return HighestIndex;
 }
 
+void UHMesh::RecalculateMeshBound()
+{
+	// calc the mesh center and mesh bound
+	constexpr float Inf = std::numeric_limits<float>::infinity();
+	XMFLOAT3 MinPoint = XMFLOAT3(Inf, Inf, Inf);
+	XMFLOAT3 MaxPoint = XMFLOAT3(-Inf, -Inf, -Inf);
+
+	for (const XMFLOAT3& P : PositionData)
+	{
+		MinPoint = MathHelpers::MinVector(P, MinPoint);
+		MaxPoint = MathHelpers::MaxVector(P, MaxPoint);
+	}
+
+	MeshCenter = (MinPoint + MaxPoint) * 0.5f;
+	XMFLOAT3 MeshExtent = (MaxPoint - MinPoint) * 0.5f;
+	MeshBound = BoundingBox(MeshCenter, MeshExtent);
+}
+
 // function for importing UHAsset
 bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 {
@@ -362,19 +380,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	IndiceCount = static_cast<uint32_t>(IndicesData.size());
 
 	// calc the mesh center and mesh bound
-	constexpr float Inf = std::numeric_limits<float>::infinity();
-	XMFLOAT3 MinPoint = XMFLOAT3(Inf, Inf, Inf);
-	XMFLOAT3 MaxPoint = XMFLOAT3(-Inf, -Inf, -Inf);
-
-	for (const XMFLOAT3& P : PositionData)
-	{
-		MinPoint = MathHelpers::MinVector(P, MinPoint);
-		MaxPoint = MathHelpers::MaxVector(P, MaxPoint);
-	}
-
-	MeshCenter = (MinPoint + MaxPoint) * 0.5f;
-	XMFLOAT3 MeshExtent = (MaxPoint - MinPoint) * 0.5f;
-	MeshBound = BoundingBox(MeshCenter, MeshExtent);
+	RecalculateMeshBound();
 
 	CheckAndConvertToIndices16();
 	if (Version < UH_ENUM_VALUE(UHMeshVersion::StoreSourcePath))
@@ -417,30 +423,6 @@ void UHMesh::SetImportedMaterialName(std::string InName)
 void UHMesh::SetSourcePath(const std::string InPath)
 {
 	SourcePath = InPath;
-}
-
-void UHMesh::ApplyUnitScale()
-{
-	// apply unit scale to imported mesh
-	float UnitScale = 0.01f;
-	XMMATRIX S = XMMatrixScaling(UnitScale, UnitScale, UnitScale);
-
-	for (XMFLOAT3& Data : PositionData)
-	{
-		XMVECTOR P = XMLoadFloat3(&Data);
-		P = XMVector3Transform(P, S);
-		XMStoreFloat3(&Data, P);
-	}
-
-	// imported transform needs to be adjust as well (except scale)
-	XMVECTOR T = XMLoadFloat3(&ImportedTranslation);
-	XMVECTOR R = XMLoadFloat3(&ImportedRotation);
-
-	T = XMVector3Transform(T, S);
-	R = XMVector3Transform(R, S);
-
-	XMStoreFloat3(&ImportedTranslation, T);
-	XMStoreFloat3(&ImportedRotation, R);
 }
 
 void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)

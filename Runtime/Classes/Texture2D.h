@@ -22,7 +22,7 @@ public:
 #if WITH_EDITOR
 	void Recreate(bool bNeedGeneratMipmap, const std::vector<uint8_t>& RawData);
 	virtual std::vector<uint8_t> ReadbackTextureData() override;
-	void Export(std::filesystem::path InTexturePath);
+	void Export(std::filesystem::path InTexturePath, bool bOverwrite = true);
 #endif
 	const std::vector<uint8_t>& GetTextureData() const;
 

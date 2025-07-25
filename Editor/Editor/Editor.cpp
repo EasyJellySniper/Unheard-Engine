@@ -32,7 +32,8 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHProf
     MaterialDialog = MakeUnique<UHMaterialDialog>(HInstance, HWnd, AssetManager, DeferredRenderer);
     CubemapDialog = MakeUnique<UHCubemapDialog>(AssetManager, Gfx, DeferredRenderer);
     InfoDialog = MakeUnique<UHInfoDialog>(HWnd, WorldDialog.get());
-    MeshDialog = MakeUnique<UHMeshDialog>(AssetManager, Gfx, DeferredRenderer, Input);
+    MeshDialog = MakeUnique<UHMeshDialog>(AssetManager, Gfx);
+    FbxImportDialog = MakeUnique<UHFbxImportDialog>(Engine);
 
     // always showing world / info dialog after initialization
     WorldDialog->ShowDialog();
@@ -50,6 +51,7 @@ void UHEditor::OnEditorUpdate()
     MaterialDialog->Update(bIsDialogActive);
     CubemapDialog->Update(bIsDialogActive);
     MeshDialog->Update(bIsDialogActive);
+    FbxImportDialog->Update(bIsDialogActive);
 
     if (!Config->PresentationSetting().bFullScreen)
     {
@@ -85,6 +87,9 @@ void UHEditor::OnMenuSelection(int32_t WmId)
         break;
     case ID_WINDOW_PROFILES:
         ProfileDialog->ShowDialog();
+        break;
+    case ID_WINDOW_FBXIMPORT:
+        FbxImportDialog->ShowDialog();
         break;
     case ID_WINDOW_MATERIAL:
         MaterialDialog->ShowDialog();

@@ -426,6 +426,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Editor\Dialog\FbxImportDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -816,6 +819,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Editor\Dialog\FbxImportDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -185,13 +185,35 @@ void UHTextureDialog::Update(bool& bIsDialogActive)
 
 void UHTextureDialog::OnCreationFinished(UHTexture* InTexture)
 {
-    if (!UHUtilities::FindByElement(AssetMgr->GetTexture2Ds(), dynamic_cast<UHTexture2D*>(InTexture)))
+    if (InTexture == nullptr)
     {
-        AssetMgr->AddTexture2D(dynamic_cast<UHTexture2D*>(InTexture));
+        return;
     }
+
+    AssetMgr->AddTexture2D(dynamic_cast<UHTexture2D*>(InTexture));
 
     // force selecting the created texture
     const int32_t NewIdx = UHUtilities::FindIndex(AssetMgr->GetTexture2Ds(), static_cast<UHTexture2D*>(InTexture));
+    SelectTexture(NewIdx);
+    CurrentTextureIndex = NewIdx;
+    Renderer->RebuildTextureTable();
+}
+
+// OnCreationFinished, multiple files version
+void UHTextureDialog::OnCreationFinished(std::vector<UHTexture*> InTextures)
+{
+    if (InTextures.size() == 0)
+    {
+        return;
+    }
+
+    for (size_t Idx = 0; Idx < InTextures.size(); Idx++)
+    {
+        AssetMgr->AddTexture2D(dynamic_cast<UHTexture2D*>(InTextures[Idx]));
+    }
+
+    // force selecting the created texture
+    const int32_t NewIdx = UHUtilities::FindIndex(AssetMgr->GetTexture2Ds(), static_cast<UHTexture2D*>(InTextures[0]));
     SelectTexture(NewIdx);
     CurrentTextureIndex = NewIdx;
     Renderer->RebuildTextureTable();

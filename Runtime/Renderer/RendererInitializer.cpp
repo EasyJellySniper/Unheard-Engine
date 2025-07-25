@@ -318,28 +318,15 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		Cube->Build(GraphicInterface, RenderBuilder);
 	}
 
-
-	// Next, allocate system fallback textures
-	const uint32_t FallbackWidth = 2;
-	const uint32_t FallbackHeight = 2;
-	const UHTextureFormat FallbackTexFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
-
-	// textures
+	// built-in textures
 	{
-		std::vector<uint8_t> TexData(2 * 2 * GTextureFormatData[UH_ENUM_VALUE(FallbackTexFormat)].ByteSize, 255);
-		GWhiteTexture = CreateTexture2D(GraphicInterface, FallbackWidth, FallbackHeight, FallbackTexFormat, "SystemWhiteTex");
-		GWhiteTexture->SetTextureData(TexData);
+		GWhiteTexture = AssetManagerInterface->GetTexture2D("UHWhiteTex");
+		GBlackTexture = AssetManagerInterface->GetTexture2D("UHBlackTex");
+
 		GWhiteTexture->UploadToGPU(GraphicInterface, RenderBuilder);
-
-		memset(TexData.data(), 0, TexData.size());
-		GBlackTexture = CreateTexture2D(GraphicInterface, FallbackWidth, FallbackHeight, FallbackTexFormat, "SystemBlackTex");
-		GBlackTexture->SetTextureData(TexData);
 		GBlackTexture->UploadToGPU(GraphicInterface, RenderBuilder);
-	}
 
-	// cubemaps
-	{
-		GBlackCube = CreateTextureCube(GraphicInterface, FallbackWidth, FallbackHeight, FallbackTexFormat, "SystemBlackCube");
+		GBlackCube = AssetManagerInterface->GetCubemapByName("UHBlackCube");
 		GBlackCube->Build(GraphicInterface, RenderBuilder);
 	}
 
@@ -1078,6 +1065,7 @@ void UHDeferredShadingRenderer::CreateOcclusionQuery()
 	const uint32_t Count = static_cast<uint32_t>(CurrentScene->GetAllRendererCount());
 	if (Count > 0)
 	{
+		UHRenderBuilder Builder(GraphicInterface, nullptr);
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
 			// will do predication rendering on GPU instead of traditional readback
@@ -1085,6 +1073,9 @@ void UHDeferredShadingRenderer::CreateOcclusionQuery()
 			GOcclusionResult[Idx] = GraphicInterface->RequestRenderBuffer<uint32_t>(Count
 				, VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 				, "OcclusionResult");
+
+			// reset occlusion query on host
+			Builder.ResetGPUQuery(OcclusionQuery[Idx]);
 		}
 
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
@@ -1522,36 +1513,7 @@ void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRend
 		CurrentScene->AddMeshRenderer(MeshRenderer);
 	}
 
-	// data buffer recreating
-	if (CurrentScene->GetAllRendererCount() > ObjectConstantsCPU.size())
-	{
-		const size_t RendererCount = CurrentScene->GetAllRendererCount();
-		ObjectConstantsCPU.resize(RendererCount);
-		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
-		{
-			UH_SAFE_RELEASE(GObjectConstantBuffer[Idx]);
-			GObjectConstantBuffer[Idx]->CreateBuffer(RendererCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-		}
-	}
-
-	// do the same as initialization
-	PrepareMeshes();
-	PrepareTextures();
-
-	for (UHMeshRendererComponent* Renderer : InRenderers)
-	{
-		UHMaterial* Mat = Renderer->GetMaterial();
-		if (Mat)
-		{
-			RecreateMaterialShaders(Renderer, Mat);
-		}
-	}
-
-	if (GraphicInterface->IsRayTracingEnabled())
-	{
-		RecreateRTShaders(std::vector<UHMaterial*>(), true);
-	}
-	UpdateDescriptors();
+	CurrentScene->RefreshRendererBufferDataIndex();
 }
 
 void UHDeferredShadingRenderer::ToggleDepthPrepass()

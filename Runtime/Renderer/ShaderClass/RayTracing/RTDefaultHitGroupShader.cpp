@@ -1,4 +1,5 @@
 #include "RTDefaultHitGroupShader.h"
+#include "Runtime/Components/MeshRenderer.h"
 
 UHRTDefaultHitGroupShader::UHRTDefaultHitGroupShader(UHGraphic* InGfx, std::string Name, const std::vector<UHMaterial*>& Materials)
 	: UHShaderClass(InGfx, Name, typeid(UHRTDefaultHitGroupShader), nullptr)
@@ -31,6 +32,21 @@ void UHRTDefaultHitGroupShader::UpdateHitShader(UHGraphic* InGfx, UHMaterial* In
 
 	const int32_t Index = UHUtilities::FindIndex(AllMaterials, InMat);
 	if (Index == UHINDEXNONE)
+	{
+		return;
+	}
+
+	bool bNeedRefreshShaders = false;
+	for (const UHObject* Obj : InMat->GetReferenceObjects())
+	{
+		if (Obj->GetObjectClassId() == UHMeshRendererComponent::ClassId)
+		{
+			bNeedRefreshShaders = true;
+		}
+	}
+
+	// only need to refresh shaders if the material is actually used for rendering
+	if (!bNeedRefreshShaders)
 	{
 		return;
 	}

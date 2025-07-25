@@ -173,7 +173,8 @@ void CompressionSettingToFormat(const UHTextureSettings& InSetting, UHTextureFor
 }
 
 // import raw texture from a specified path, this should be called after something like open file dialog
-UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath, std::filesystem::path OutputFolder, UHTextureSettings InSettings)
+UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath, std::filesystem::path OutputFolder, UHTextureSettings InSettings
+	, bool bMuteFinishMsg)
 {
 	if (!std::filesystem::exists(SourcePath))
 	{
@@ -209,7 +210,10 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	{
 		OutputTex->Recreate(true, TextureData);
 		OutputTex->Export(OutputPathName);
-		MessageBoxA(nullptr, ("Import " + OutputTex->GetName() + " successfully.").c_str(), "Texture Import", MB_OK);
+		if (!bMuteFinishMsg)
+		{
+			MessageBoxA(nullptr, ("Import " + OutputTex->GetName() + " successfully.").c_str(), "Texture Import", MB_OK);
+		}
 	}
 
 	return OutputTex;

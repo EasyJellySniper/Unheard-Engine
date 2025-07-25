@@ -14,6 +14,8 @@ class UHDeferredShadingRenderer;
 // compression mode text, need to follow the enum order defined in Texture.h
 const std::vector<std::wstring> GCompressionModeText = { L"None", L"BC1 (RGB)", L"BC3 (RGBA)", L"BC4 (R)", L"BC5 (RG)", L"BC6H (RGB HDR)" };
 const COMDLG_FILTERSPEC GImageFilter = { {L"Image Formats"}, { L"*.jpg;*.jpeg;*.png;*.bmp;*.exr"} };
+const int32_t GNumMaxSupportedImageFormat = 5;
+const std::string GSupportedImageFormat[GNumMaxSupportedImageFormat] = { ".jpg",".jpeg",".png",".bmp",".exr" };
 
 class UHTextureDialog : public UHDialog
 {
@@ -24,6 +26,7 @@ public:
 	void Init();
 	virtual void Update(bool& bIsDialogActive) override;
 	void OnCreationFinished(UHTexture* InTexture);
+	void OnCreationFinished(std::vector<UHTexture*> InTextures);
 
 private:
 	void SelectTexture(int32_t TexIndex);

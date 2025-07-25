@@ -232,8 +232,13 @@ std::vector<uint8_t> UHTexture2D::ReadbackTextureData()
 	return NewData;
 }
 
-void UHTexture2D::Export(std::filesystem::path InTexturePath)
+void UHTexture2D::Export(std::filesystem::path InTexturePath, bool bOverwrite)
 {
+	if (!bOverwrite && std::filesystem::exists(InTexturePath.string() + GTextureAssetExtension))
+	{
+		return;
+	}
+
 	// open UHTexture file
 	std::ofstream FileOut(InTexturePath.string() + GTextureAssetExtension, std::ios::out | std::ios::binary);
 

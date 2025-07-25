@@ -31,6 +31,7 @@ public:
 	void Release();
 	void Update();
 
+	void RefreshRendererBufferDataIndex();
 	UHComponent* RequestComponent(uint32_t InComponentClassId);
 
 #if WITH_EDITOR

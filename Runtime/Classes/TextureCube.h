@@ -24,8 +24,7 @@ public:
 #if WITH_EDITOR
 	void SetSlices(std::vector<UHTexture2D*> InSlices);
 	void Recreate(UHTextureFormat NewFormat);
-	void Export(std::filesystem::path InCubePath);
-	void SetSourcePath(std::filesystem::path InPath);
+	void Export(std::filesystem::path InCubePath, bool bOverwrite = true);
 	size_t GetDataSize() const;
 #endif
 

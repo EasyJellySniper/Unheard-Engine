@@ -4,6 +4,7 @@
 UHLightBase::UHLightBase()
 	: LightColor(XMFLOAT3(1, 1, 1))
 	, Intensity(1.0f)
+	, LightType(UHLightType::Max)
 {
 
 }
@@ -26,12 +27,18 @@ void UHLightBase::SetIntensity(float InIntensity)
 	SetRenderDirties(true);
 }
 
+UHLightType UHLightBase::GetLightType() const
+{
+	return LightType;
+}
+
 
 // ************************************** Directional Light ************************************** //
 UHDirectionalLightComponent::UHDirectionalLightComponent()
 {
 	SetName("DirectionalLightComponent" + std::to_string(GetId()));
 	ObjectClassIdInternal = ClassId;
+	LightType = UHLightType::Directional;
 }
 
 void UHDirectionalLightComponent::Update()
@@ -122,6 +129,7 @@ UHPointLightComponent::UHPointLightComponent()
 {
 	SetName("PointLightComponent" + std::to_string(GetId()));
 	ObjectClassIdInternal = ClassId;
+	LightType = UHLightType::Point;
 }
 
 void UHPointLightComponent::Update()
@@ -240,6 +248,7 @@ UHSpotLightComponent::UHSpotLightComponent()
 {
 	SetName("SpotLightComponent" + std::to_string(GetId()));
 	ObjectClassIdInternal = ClassId;
+	LightType = UHLightType::Spot;
 }
 
 void UHSpotLightComponent::Update()

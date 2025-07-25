@@ -98,6 +98,7 @@ public:
 #if WITH_EDITOR
 	virtual std::vector<uint8_t> ReadbackTextureData() { return std::vector<uint8_t>(); }
 	void SetTextureSettings(UHTextureSettings InSetting);
+	void SetSourcePath(std::string InPath);
 	void SetRawSourcePath(std::string InPath);
 	void SetExtent(uint32_t Width, uint32_t Height);
 #endif

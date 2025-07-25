@@ -2,6 +2,15 @@
 #include "../Renderer/RenderingTypes.h"
 #include "Transform.h"
 
+// light type
+enum class UHLightType
+{
+	Directional,
+	Point,
+	Spot,
+	Max
+};
+
 // shared light base class
 class UHLightBase : public UHTransformComponent, public UHRenderState
 {
@@ -13,9 +22,12 @@ public:
 	virtual void SetLightColor(XMFLOAT3 InLightColor);
 	virtual void SetIntensity(float InIntensity);
 
+	UHLightType GetLightType() const;
+
 protected:
 	XMFLOAT3 LightColor;
 	float Intensity;
+	UHLightType LightType;
 };
 
 // directional lighting component, this cares direction only, which can be obtained from transform component

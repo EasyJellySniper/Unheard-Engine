@@ -41,6 +41,11 @@ void UHTexture::SetTextureSettings(UHTextureSettings InSetting)
 	TextureSettings = InSetting;
 }
 
+void UHTexture::SetSourcePath(std::string InPath)
+{
+	SourcePath = InPath;
+}
+
 void UHTexture::SetRawSourcePath(std::string InPath)
 {
 	RawSourcePath = InPath;

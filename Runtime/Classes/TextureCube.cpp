@@ -112,8 +112,13 @@ void UHTextureCube::Recreate(UHTextureFormat NewFormat)
 	bIsCubeBuilt = false;
 }
 
-void UHTextureCube::Export(std::filesystem::path InCubePath)
+void UHTextureCube::Export(std::filesystem::path InCubePath, bool bOverwrite)
 {
+	if (!bOverwrite && std::filesystem::exists(InCubePath.string() + GCubemapAssetExtension))
+	{
+		return;
+	}
+
 	// open UHTexture file
 	std::ofstream FileOut(InCubePath.string() + GCubemapAssetExtension, std::ios::out | std::ios::binary);
 
@@ -139,11 +144,6 @@ void UHTextureCube::Export(std::filesystem::path InCubePath)
 	FileOut.write(reinterpret_cast<char*>(&TextureSettings), sizeof(TextureSettings));
 
 	FileOut.close();
-}
-
-void UHTextureCube::SetSourcePath(std::filesystem::path InPath)
-{
-	SourcePath = InPath.string();
 }
 
 size_t UHTextureCube::GetDataSize() const

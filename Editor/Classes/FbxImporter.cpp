@@ -4,8 +4,13 @@
 #include <fstream>
 #include "Runtime/Classes/Utility.h"
 #include "Runtime/Classes/AssetPath.h"
+#include "Runtime/Classes/Mesh.h"
+#include "Runtime/Classes/Material.h"
+#include "Runtime/Components/Camera.h"
+#include "Runtime/Components/Light.h"
 
 UHFbxImporter::UHFbxImporter()
+	: ConvertUnit(UHFbxConvertUnit::Meter)
 {
 	// create fbx manager
 	FbxSDKManager = FbxManager::Create();
@@ -18,15 +23,43 @@ UHFbxImporter::~UHFbxImporter()
 	FbxSDKManager = nullptr;
 }
 
-void UHFbxImporter::ImportRawFbx(std::filesystem::path InPath
-	, std::filesystem::path InTextureRefPath
-	, std::vector<UniquePtr<UHMesh>>& ImportedMesh
-	, std::vector<UniquePtr<UHMaterial>>& ImportedMaterial)
+void UHFbxImporter::SetConvertUnit(UHFbxConvertUnit InUnit)
 {
+	ConvertUnit = InUnit;
+}
+
+void UHFbxImporter::SetMaterialOutputPath(std::string InPath)
+{
+	MaterialOutputPath = InPath;
+}
+
+bool IsNodeAttributeType(const FbxNode* InNode, FbxNodeAttribute::EType InAttributeType)
+{
+	if (InNode == nullptr)
+	{
+		return false;
+	}
+
+	for (int32_t Idx = 0; Idx < InNode->GetNodeAttributeCount(); Idx++)
+	{
+		if (InNode->GetNodeAttributeByIndex(Idx)->GetAttributeType() == InAttributeType)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+UHFbxImportedData UHFbxImporter::ImportRawFbx(std::filesystem::path InPath, std::filesystem::path InTextureRefPath)
+{
+	UHFbxImportedData OutData{};
+
 	// IO settings initialization
 	FbxIOSettings* FbxSDKIOSettings = FbxIOSettings::Create(FbxSDKManager, IOSROOT);
 	FbxSDKManager->SetIOSettings(FbxSDKIOSettings);
 	ImportedMaterialNames.clear();
+	FbxNodes.clear();
 
 	// importer initialization, create fbx importer
 	FbxImporter* FbxSDKImporter = FbxImporter::Create(FbxSDKManager, "UHFbxImporter");
@@ -34,25 +67,60 @@ void UHFbxImporter::ImportRawFbx(std::filesystem::path InPath
 	{
 		// it could be here if non-fbx file was found
 		UHE_LOG(L"Failed to load " + InPath.wstring() + L"\n");
-		return;
+		return OutData;
 	}
 
 	// Import the contents of the file into the scene.
 	FbxScene* Scene = FbxScene::Create(FbxSDKManager, "UHFbxScene");
 	if (FbxSDKImporter->Import(Scene))
 	{
-		// force as meter
-		FbxSystemUnit::m.ConvertScene(Scene);
+		if (ConvertUnit == UHFbxConvertUnit::Meter)
+		{
+			// force as meter
+			FbxSystemUnit::m.ConvertScene(Scene);
+		}
+		else if (ConvertUnit == UHFbxConvertUnit::Centimeter)
+		{
+			// force as cm
+			FbxSystemUnit::cm.ConvertScene(Scene);
+		}
 
-		// force Y up
-		FbxAxisSystem::MayaYUp.ConvertScene(Scene);
+		// force convert to the axis system I need
+		FbxAxisSystem UHAxisSystem;
+		if (FbxAxisSystem::ParseAxisSystem("xyz", UHAxisSystem))
+		{
+			UHAxisSystem.DeepConvertScene(Scene);
+		}
 
-		// force breaking into single mesh
+		// force triangle meshes
 		FbxGeometryConverter GeoConverter(FbxSDKManager);
-		GeoConverter.SplitMeshesPerMaterial(Scene, true);
+		GeoConverter.Triangulate(Scene, true);
 
-		// create UHMeshes after importing
-		CreateUHMeshes(Scene->GetRootNode(), InPath, InTextureRefPath, ImportedMesh, ImportedMaterial);
+		// collect ALL fbx nodes as a vector for easy access later
+		CollectFBXNodes(Scene->GetRootNode());
+
+		// import fbx data based on the node type
+		for (size_t NodeIdx = 0; NodeIdx < FbxNodes.size(); NodeIdx++)
+		{
+			FbxNode* Node = FbxNodes[NodeIdx];
+			if (Node == nullptr)
+			{
+				continue;
+			}
+
+			if (IsNodeAttributeType(Node, FbxNodeAttribute::eMesh))
+			{
+				ImportMeshesAndMaterials(Node, InPath, InTextureRefPath, OutData.ImportedMesh, OutData.ImportedMaterial);
+			}
+			else if (IsNodeAttributeType(Node, FbxNodeAttribute::eCamera))
+			{
+				ImportCameras(Node, OutData.ImportedCameraData);
+			}
+			else if (IsNodeAttributeType(Node, FbxNodeAttribute::eLight))
+			{
+				ImportLights(Node, OutData.ImportedLightData);
+			}
+		}
 	}
 
 	FbxSDKImporter->Destroy();
@@ -62,316 +130,90 @@ void UHFbxImporter::ImportRawFbx(std::filesystem::path InPath
 	FbxSDKIOSettings->Destroy();
 	FbxSDKIOSettings = nullptr;
 	ImportedMaterialNames.clear();
+	FbxNodes.clear();
+
+	return OutData;
 }
 
-// reav vertices and indices based on element UV index array
-bool ReconstructVerticesAndIndices(FbxMesh* InMesh, std::vector<XMFLOAT3>& OutVertices, std::vector<uint32_t>& OutIndices)
+void UHFbxImporter::CollectFBXNodes(FbxNode* InNode)
 {
-	FbxGeometryElementUV* UVElement = InMesh->GetElementUV(0, FbxLayerElement::eTextureDiffuse);
-	if (!UVElement)
+	if (InNode == nullptr)
 	{
-		// try creating UVs if there isn't 
-		UVElement = InMesh->CreateElementUV(0, FbxLayerElement::eTextureDiffuse);
+		return;
 	}
 
-	if (UVElement->GetMappingMode() != FbxGeometryElement::eByPolygonVertex && UVElement->GetMappingMode() != FbxGeometryElement::eByControlPoint)
+	// recursively collecting nodes
+	FbxNodes.push_back(InNode);
+	for (int32_t Idx = 0; Idx < InNode->GetChildCount(); Idx++)
 	{
-		UHE_LOG(L"Unsupported UV mapping mode.\n");
-		return false;
+		CollectFBXNodes(InNode->GetChild(Idx));
 	}
+}
 
-	const bool bUseIndex = UVElement->GetReferenceMode() != FbxGeometryElement::eDirect;
-	const int32_t IndexCount = (bUseIndex) ? UVElement->GetIndexArray().GetCount() : 0;
-	const int32_t PolyCount = InMesh->GetPolygonCount();
-	const int32_t VertexCount = UVElement->GetDirectArray().GetCount();
-	const FbxVector4* MeshPos = InMesh->GetControlPoints();
-	const int32_t OldVertexCount = static_cast<int32_t>(OutVertices.size());
-
-	// no need to read VB based on UV information if it's already correct
-	if (OldVertexCount == VertexCount)
+void ExtractTexturesFromFbx(FbxProperty Property, UHMaterial* UHMat, std::filesystem::path InTextureRefPath)
+{
+	int32_t TextureCount = Property.GetSrcObjectCount<FbxTexture>();
+	for (int32_t Idx = 0; Idx < TextureCount; Idx++)
 	{
-		return false;
-	}
-
-	// inconsistent VB/IB should be with polygon vertex mode only
-	if (UVElement->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-	{
-		OutVertices.clear();
-		OutVertices.resize(VertexCount);
-		OutIndices.clear();
-		OutIndices.resize(IndexCount);
-
-		// fill vertex by polygon
-		int32_t PolyIndexCounter = 0;
-		for (int32_t PolyIndex = 0; PolyIndex < PolyCount; PolyIndex++)
+		// skip layred texture for now
+		FbxLayeredTexture* LayeredTexture = Property.GetSrcObject<FbxLayeredTexture>(Idx);
+		if (LayeredTexture)
 		{
-			const int32_t PolySize = InMesh->GetPolygonSize(PolyIndex);
-			for (int32_t VertIndex = 0; VertIndex < PolySize; VertIndex++)
+			continue;
+		}
+
+		// get regular texture info
+		FbxTexture* Texture = Property.GetSrcObject<FbxTexture>(Idx);
+		if (Texture)
+		{
+			// get texture type and filename
+			std::string TexType = Property.GetNameAsCStr();
+			FbxFileTexture* FileTexture = FbxCast<FbxFileTexture>(Texture);
+			std::filesystem::path TexFileName = FileTexture->GetFileName();
+			TexFileName = InTextureRefPath.string() + "/" + TexFileName.stem().string();
+			TexFileName = std::filesystem::relative(TexFileName, GTextureAssetFolder);
+			std::string TexFileNameString = TexFileName.string();
+			TexFileNameString = UHUtilities::StringReplace(TexFileNameString, "\\", "/");
+
+			if (TexType == FbxSurfaceMaterial::sDiffuse)
 			{
-				int32_t PosIndex = bUseIndex ? UVElement->GetIndexArray().GetAt(PolyIndexCounter) : PolyIndexCounter;
-				int32_t ControlPointIdx = InMesh->GetPolygonVertex(PolyIndex, VertIndex);
-
-				XMFLOAT3 NewPos;
-				NewPos.x = static_cast<float>(MeshPos[ControlPointIdx][0]);
-				NewPos.y = static_cast<float>(MeshPos[ControlPointIdx][1]);
-				NewPos.z = static_cast<float>(MeshPos[ControlPointIdx][2]);
-				OutVertices[PosIndex] = NewPos;
-
-				// fill index too if it has no index buffer
-				if (!bUseIndex)
-				{
-					OutIndices[PolyIndexCounter] = PolyIndexCounter;
-				}
-				PolyIndexCounter++;
+				UHMat->SetTexFileName(UHMaterialInputs::Diffuse, TexFileNameString);
 			}
-		}
-
-		// fill index
-		for (int32_t Idx = 0; Idx < IndexCount; Idx++)
-		{
-			OutIndices[Idx] = UVElement->GetIndexArray().GetAt(Idx);
-		}
-	}
-
-	return true;
-}
-
-// read uv information, modification is made for outputing the same number UVs as vertexes
-// reference: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_mesh_8cxx_example_html
-std::vector<XMFLOAT2> ReadUVs(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, const std::vector<uint32_t>& Indices)
-{
-	// output the same counts as vertex buffer
-	std::vector<XMFLOAT2> Result;
-	Result.resize(VertexCount);
-
-	FbxGeometryElementUV* UVElement = InMesh->GetElementUV(0, FbxLayerElement::eTextureDiffuse);
-	if (!UVElement)
-	{
-		// try creating UVs if there isn't 
-		UVElement = InMesh->CreateElementUV(0, FbxLayerElement::eTextureDiffuse);
-	}
-
-	if (UVElement->GetMappingMode() != FbxGeometryElement::eByPolygonVertex && UVElement->GetMappingMode() != FbxGeometryElement::eByControlPoint)
-	{
-		UHE_LOG(L"Unsupported UV mapping mode.\n");
-		return Result;
-	}
-
-	// index array, where holds the index referenced to the uv data
-	const bool bUseIndex = UVElement->GetReferenceMode() != FbxGeometryElement::eDirect;
-	const int32_t IndexCount = (bUseIndex) ? UVElement->GetIndexArray().GetCount() : 0;
-	const int32_t PolyCount = InMesh->GetPolygonCount();
-
-	if (UVElement->GetMappingMode() == FbxGeometryElement::eByControlPoint)
-	{
-		// mapping by control point simply loops vertex count
-		for (int32_t ControlIdx = 0; ControlIdx < VertexCount; ControlIdx++)
-		{
-			FbxVector2 UVValue;
-
-			// the index depends on the reference mode
-			int32_t UVIndex = bUseIndex ? UVElement->GetIndexArray().GetAt(ControlIdx) : ControlIdx;
-			UVValue = UVElement->GetDirectArray().GetAt(UVIndex);
-
-			// output to corresponding location, inverse UV y for Vulkan spec
-			Result[UVIndex].x = static_cast<float>(UVValue[0]);
-			Result[UVIndex].y = 1.0f - static_cast<float>(UVValue[1]);
-		}
-	}
-	else if (UVElement->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-	{
-		int32_t PolyIndexCounter = 0;
-		for (int32_t PolyIndex = 0; PolyIndex < PolyCount; PolyIndex++)
-		{
-			const int32_t PolySize = InMesh->GetPolygonSize(PolyIndex);
-			for (int32_t VertIndex = 0; VertIndex < PolySize; VertIndex++)
+			else if (TexType == FbxSurfaceMaterial::sDiffuseFactor)
 			{
-				FbxVector2 UVValue;
+				// treat diffuse factor map as AO map
+				UHMat->SetTexFileName(UHMaterialInputs::Occlusion, TexFileNameString);
+			}
+			else if (TexType == FbxSurfaceMaterial::sSpecular 
+				|| TexType == FbxSurfaceMaterial::sReflectionFactor
+				|| TexType == FbxSurfaceMaterial::sSpecularFactor)
+			{
+				UHMat->SetTexFileName(UHMaterialInputs::Specular, TexFileNameString);
+			}
+			else if (TexType == FbxSurfaceMaterial::sNormalMap || TexType == FbxSurfaceMaterial::sBump)
+			{
+				// old Bump map (gray) will be used as normal in UH
+				// always ask artists use Normal map
+				UHMat->SetTexFileName(UHMaterialInputs::Normal, TexFileNameString);
+			}
+			else if (TexType == FbxSurfaceMaterial::sTransparentColor || TexType == FbxSurfaceMaterial::sTransparencyFactor)
+			{
+				UHMat->SetTexFileName(UHMaterialInputs::Opacity, TexFileNameString);
 
-				//the UV index depends on the reference mode
-				int32_t UVIndex = bUseIndex ? UVElement->GetIndexArray().GetAt(PolyIndexCounter) : PolyIndexCounter;
-				UVValue = UVElement->GetDirectArray().GetAt(UVIndex);
-				PolyIndexCounter++;
-
-				// output to corresponding location, inverse UV y for Vulkan spec
-				if (bMapToReconstruct)
-				{
-					int32_t OutIdx = bUseIndex ? UVIndex : Indices[UVIndex];
-					Result[OutIdx].x = static_cast<float>(UVValue[0]);
-					Result[OutIdx].y = 1.0f - static_cast<float>(UVValue[1]);
-				}
-				else
-				{
-					int32_t ControlIdx = InMesh->GetPolygonVertex(PolyIndex, VertIndex);
-					Result[ControlIdx].x = static_cast<float>(UVValue[0]);
-					Result[ControlIdx].y = 1.0f - static_cast<float>(UVValue[1]);
-				}
+				// default to masked object if it contains opacity texture
+				UHMat->SetBlendMode(UHBlendMode::Masked);
+			}
+			else if (TexType == FbxSurfaceMaterial::sShininess)
+			{
+				// roughness texture setting
+				UHMat->SetTexFileName(UHMaterialInputs::Roughness, TexFileNameString);
+			}
+			else
+			{
+				UHE_LOG(L"Unsupported texture type detected: " + UHUtilities::ToStringW(TexType) + L". This one will be skipped.\n");
 			}
 		}
 	}
-
-	return Result;
-}
-
-// the same method as read uvs but it's for normals
-std::vector<XMFLOAT3> ReadNormals(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, const std::vector<uint32_t>& Indices)
-{
-	// output the same counts as vertex buffer
-	std::vector<XMFLOAT3> Result;
-	Result.resize(VertexCount);
-
-	const FbxGeometryElementNormal* NormalElement = InMesh->GetElementNormal(0);
-	if (!NormalElement)
-	{
-		// try creating normals if there isn't
-		NormalElement = InMesh->CreateElementNormal();
-	}
-
-	if (NormalElement->GetMappingMode() != FbxGeometryElement::eByPolygonVertex && NormalElement->GetMappingMode() != FbxGeometryElement::eByControlPoint)
-	{
-		UHE_LOG(L"Unsupported normal mapping mode.\n");
-		return Result;
-	}
-
-	// index array, where holds the index referenced to the uv data
-	const bool bUseIndex = NormalElement->GetReferenceMode() != FbxGeometryElement::eDirect;
-	const int32_t IndexCount = (bUseIndex) ? NormalElement->GetIndexArray().GetCount() : 0;
-	const int32_t PolyCount = InMesh->GetPolygonCount();
-
-	if (NormalElement->GetMappingMode() == FbxGeometryElement::eByControlPoint)
-	{
-		// mapping by control point simply loops vertex count
-		for (int32_t ControlIdx = 0; ControlIdx < VertexCount; ControlIdx++)
-		{
-			FbxVector4 NormalValue;
-
-			// the index depends on the reference mode
-			int32_t NormalIndex = bUseIndex ? NormalElement->GetIndexArray().GetAt(ControlIdx) : ControlIdx;
-			NormalValue = NormalElement->GetDirectArray().GetAt(NormalIndex);
-
-			// output to corresponding location
-			Result[NormalIndex].x = static_cast<float>(NormalValue[0]);
-			Result[NormalIndex].y = static_cast<float>(NormalValue[1]);
-			Result[NormalIndex].z = static_cast<float>(NormalValue[2]);
-		}
-	}
-	else if (NormalElement->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-	{
-		int32_t PolyIndexCounter = 0;
-		for (int32_t PolyIndex = 0; PolyIndex < PolyCount; PolyIndex++)
-		{
-			const int32_t PolySize = InMesh->GetPolygonSize(PolyIndex);
-			for (int32_t VertIndex = 0; VertIndex < PolySize; VertIndex++)
-			{
-				FbxVector4 NormalValue;
-
-				// the index depends on the reference mode
-				int32_t NormalIndex = bUseIndex ? NormalElement->GetIndexArray().GetAt(PolyIndexCounter) : PolyIndexCounter;
-				NormalValue = NormalElement->GetDirectArray().GetAt(NormalIndex);
-				PolyIndexCounter++;
-
-				// output to corresponding location
-				if (bMapToReconstruct)
-				{
-					int32_t OutIdx = bUseIndex ? NormalIndex : Indices[NormalIndex];
-					Result[OutIdx].x = static_cast<float>(NormalValue[0]);
-					Result[OutIdx].y = static_cast<float>(NormalValue[1]);
-					Result[OutIdx].z = static_cast<float>(NormalValue[2]);
-				}
-				else
-				{
-					int32_t ControlIdx = InMesh->GetPolygonVertex(PolyIndex, VertIndex);
-					Result[ControlIdx].x = static_cast<float>(NormalValue[0]);
-					Result[ControlIdx].y = static_cast<float>(NormalValue[1]);
-					Result[ControlIdx].z = static_cast<float>(NormalValue[2]);
-				}
-			}
-		}
-	}
-
-	return Result;
-}
-
-std::vector<XMFLOAT4> ReadTangents(FbxMesh* InMesh, int32_t VertexCount, bool bMapToReconstruct, const std::vector<uint32_t>& Indices)
-{
-	// output the same counts as vertex buffer
-	std::vector<XMFLOAT4> Result;
-	Result.resize(VertexCount);
-
-	const FbxGeometryElementTangent* TangentElement = InMesh->GetElementTangent(0);
-	if (!TangentElement)
-	{
-		// try creating Tangents if there isn't
-		InMesh->GenerateTangentsDataForAllUVSets(true);
-		TangentElement = InMesh->GetElementTangent(0);
-	}
-
-	if (TangentElement->GetMappingMode() != FbxGeometryElement::eByPolygonVertex && TangentElement->GetMappingMode() != FbxGeometryElement::eByControlPoint)
-	{
-		UHE_LOG(L"Unsupported Tangent mapping mode.\n");
-		return Result;
-	}
-
-	// index array, where holds the index referenced to the uv data
-	const bool bUseIndex = TangentElement->GetReferenceMode() != FbxGeometryElement::eDirect;
-	const int32_t IndexCount = (bUseIndex) ? TangentElement->GetIndexArray().GetCount() : 0;
-	const int32_t PolyCount = InMesh->GetPolygonCount();
-
-	if (TangentElement->GetMappingMode() == FbxGeometryElement::eByControlPoint)
-	{
-		// mapping by control point simply loops vertex count
-		for (int32_t ControlIdx = 0; ControlIdx < VertexCount; ControlIdx++)
-		{
-			FbxVector4 TangentValue;
-
-			// the index depends on the reference mode
-			int32_t TangentIndex = bUseIndex ? TangentElement->GetIndexArray().GetAt(ControlIdx) : ControlIdx;
-			TangentValue = TangentElement->GetDirectArray().GetAt(TangentIndex);
-
-			// output to corresponding location
-			Result[TangentIndex].x = static_cast<float>(TangentValue[0]);
-			Result[TangentIndex].y = static_cast<float>(TangentValue[1]);
-			Result[TangentIndex].z = static_cast<float>(TangentValue[2]);
-			Result[TangentIndex].w = static_cast<float>(TangentValue[3]);
-		}
-	}
-	else if (TangentElement->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
-	{
-		int32_t PolyIndexCounter = 0;
-		for (int32_t PolyIndex = 0; PolyIndex < PolyCount; PolyIndex++)
-		{
-			const int32_t PolySize = InMesh->GetPolygonSize(PolyIndex);
-			for (int32_t VertIndex = 0; VertIndex < PolySize; VertIndex++)
-			{
-				FbxVector4 TangentValue;
-
-				// the index depends on the reference mode
-				int32_t TangentIndex = bUseIndex ? TangentElement->GetIndexArray().GetAt(PolyIndexCounter) : PolyIndexCounter;
-				TangentValue = TangentElement->GetDirectArray().GetAt(TangentIndex);
-				PolyIndexCounter++;
-
-				// output to corresponding location
-				if (bMapToReconstruct)
-				{
-					int32_t OutIdx = bUseIndex ? TangentIndex : Indices[TangentIndex];
-					Result[OutIdx].x = static_cast<float>(TangentValue[0]);
-					Result[OutIdx].y = static_cast<float>(TangentValue[1]);
-					Result[OutIdx].z = static_cast<float>(TangentValue[2]);
-					Result[OutIdx].w = static_cast<float>(TangentValue[3]);
-				}
-				else
-				{
-					int32_t ControlIdx = InMesh->GetPolygonVertex(PolyIndex, VertIndex);
-					Result[ControlIdx].x = static_cast<float>(TangentValue[0]);
-					Result[ControlIdx].y = static_cast<float>(TangentValue[1]);
-					Result[ControlIdx].z = static_cast<float>(TangentValue[2]);
-					Result[ControlIdx].w = static_cast<float>(TangentValue[3]);
-				}
-			}
-		}
-	}
-
-	return Result;
 }
 
 // mirror from FBX example: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_material_8cxx_example_html
@@ -383,7 +225,7 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 	// only import single material per mesh at the moment
 	if (MatCount > 0)
 	{
-		FbxPropertyT<FbxDouble3> FbxDouble3;
+		FbxPropertyT<FbxDouble3> FbxDoubleVec3;
 		FbxPropertyT<FbxDouble> FbxDouble1;
 		FbxColor Color;
 
@@ -392,37 +234,37 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 		UHMat->SetName(Mat->GetName());
 
 		// extract matarial props that are suitable for UH
-		UHMaterialProperty MatProps;
+		UHMaterialProperty MatProps{};
 
 		if (Mat->GetClassId().Is(FbxSurfacePhong::ClassId))
 		{
 			// diffuse
-			FbxDouble3 = ((FbxSurfacePhong*)Mat)->Diffuse;
+			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Diffuse;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->DiffuseFactor;
-			MatProps.Diffuse.x = static_cast<float>(FbxDouble3.Get()[0] * FbxDouble1);
-			MatProps.Diffuse.y = static_cast<float>(FbxDouble3.Get()[1] * FbxDouble1);
-			MatProps.Diffuse.z = static_cast<float>(FbxDouble3.Get()[2] * FbxDouble1);
+			MatProps.Diffuse.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Diffuse.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Diffuse.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// opacity
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->TransparencyFactor;
 			MatProps.Opacity = static_cast<float>(FbxDouble1.Get());
 
 			// emissive
-			FbxDouble3 = ((FbxSurfacePhong*)Mat)->Emissive;
+			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Emissive;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->EmissiveFactor;
-			MatProps.Emissive.x = static_cast<float>(FbxDouble3.Get()[0] * FbxDouble1);
-			MatProps.Emissive.y = static_cast<float>(FbxDouble3.Get()[1] * FbxDouble1);
-			MatProps.Emissive.z = static_cast<float>(FbxDouble3.Get()[2] * FbxDouble1);
+			MatProps.Emissive.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Emissive.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Emissive.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// roughness
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->Shininess;
 			MatProps.Roughness = 1.0f - static_cast<float>(FbxDouble1.Get() / 255.0f);
 
 			// specular color
-			FbxDouble3 = ((FbxSurfacePhong*)Mat)->Specular;
-			MatProps.Specular.x = static_cast<float>(FbxDouble3.Get()[0]);
-			MatProps.Specular.y = static_cast<float>(FbxDouble3.Get()[1]);
-			MatProps.Specular.z = static_cast<float>(FbxDouble3.Get()[2]);
+			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Specular;
+			MatProps.Specular.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
+			MatProps.Specular.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+			MatProps.Specular.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
 
 			// bump scale
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->BumpFactor;
@@ -431,22 +273,22 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 		else if (Mat->GetClassId().Is(FbxSurfaceLambert::ClassId))
 		{
 			// diffuse
-			FbxDouble3 = ((FbxSurfacePhong*)Mat)->Diffuse;
+			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Diffuse;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->DiffuseFactor;
-			MatProps.Diffuse.x = static_cast<float>(FbxDouble3.Get()[0] * FbxDouble1);
-			MatProps.Diffuse.y = static_cast<float>(FbxDouble3.Get()[1] * FbxDouble1);
-			MatProps.Diffuse.z = static_cast<float>(FbxDouble3.Get()[2] * FbxDouble1);
+			MatProps.Diffuse.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Diffuse.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Diffuse.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// opacity
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->TransparencyFactor;
 			MatProps.Opacity = static_cast<float>(FbxDouble1.Get());
 
 			// emissive
-			FbxDouble3 = ((FbxSurfacePhong*)Mat)->Emissive;
+			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Emissive;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->EmissiveFactor;
-			MatProps.Emissive.x = static_cast<float>(FbxDouble3.Get()[0] * FbxDouble1);
-			MatProps.Emissive.y = static_cast<float>(FbxDouble3.Get()[1] * FbxDouble1);
-			MatProps.Emissive.z = static_cast<float>(FbxDouble3.Get()[2] * FbxDouble1);
+			MatProps.Emissive.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Emissive.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Emissive.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// bump scale
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->BumpFactor;
@@ -454,7 +296,64 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 		}
 		else
 		{
-			UHE_LOG(L"Unsupported material: " + MatName + L". This won't be imported. (Use Phong or Lambert)\n");
+			// weird case, it is a FbxSurfaceMaterial but not using phone/lambert at all?
+			// get whatever it can provide to us
+			FbxProperty FbxProp{};
+
+			// diffuse
+			FbxProp = Mat->FindProperty(Mat->sDiffuse);
+			if (FbxProp.IsValid())
+			{
+				FbxDoubleVec3 = FbxProp;
+				MatProps.Diffuse.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
+				MatProps.Diffuse.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+				MatProps.Diffuse.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
+			}
+
+			// opacity
+			FbxProp = Mat->FindProperty(Mat->sTransparencyFactor);
+			if (FbxProp.IsValid())
+			{
+				FbxDouble1 = FbxProp;
+				MatProps.Opacity = static_cast<float>(FbxDouble1.Get());
+			}
+
+			// emissive
+			FbxProp = Mat->FindProperty(Mat->sEmissive);
+			if (FbxProp.IsValid())
+			{
+				FbxDoubleVec3 = FbxProp;
+				MatProps.Emissive.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
+				MatProps.Emissive.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+				MatProps.Emissive.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
+			}
+
+			// roughness
+			FbxProp = Mat->FindProperty(Mat->sShininess);
+			if (FbxProp.IsValid())
+			{
+				FbxDouble1 = FbxProp;
+				MatProps.Roughness = 1.0f - static_cast<float>(FbxDouble1.Get() / 255.0f);
+				MatProps.Roughness = std::clamp(MatProps.Roughness, 0.0f, 1.0f);
+			}
+
+			// specular
+			FbxProp = Mat->FindProperty(Mat->sSpecular);
+			if (FbxProp.IsValid())
+			{
+				FbxDoubleVec3 = FbxProp;
+				MatProps.Specular.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
+				MatProps.Specular.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+				MatProps.Specular.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
+			}
+
+			// bump factor
+			FbxProp = Mat->FindProperty(Mat->sBumpFactor);
+			if (FbxProp.IsValid())
+			{
+				FbxDouble1 = FbxProp;
+				MatProps.BumpScale = static_cast<float>(FbxDouble1.Get());
+			}
 		}
 
 		if (MatCount > 1)
@@ -464,73 +363,14 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 
 		UHMat->SetMaterialProps(MatProps);
 
-		// try to iterate textures, reference: https://help.autodesk.com/view/FBX/2016/ENU/?guid=__cpp_ref__import_scene_2_display_texture_8cxx_example_html
+		// iterate textures, https://help.autodesk.com/cloudhelp/2018/ENU/FBX-Developer-Help/cpp_ref/_import_scene_2_display_texture_8cxx-example.html
 		int32_t TextureIndex;
 		FBXSDK_FOR_EACH_TEXTURE(TextureIndex)
 		{
 			FbxProperty Property = Mat->FindProperty(FbxLayerElement::sTextureChannelNames[TextureIndex]);
 			if (Property.IsValid())
 			{
-				int32_t TextureCount = Property.GetSrcObjectCount<FbxTexture>();
-				for (int32_t Idx = 0; Idx < TextureCount; Idx++)
-				{
-					// skip layred texture for now
-					FbxLayeredTexture* LayeredTexture = Property.GetSrcObject<FbxLayeredTexture>(Idx);
-					if (LayeredTexture)
-					{
-						continue;
-					}
-
-					// get regular texture info
-					FbxTexture* Texture = Property.GetSrcObject<FbxTexture>(Idx);
-					if (Texture)
-					{
-						// get texture type and filename
-						std::string TexType = Property.GetNameAsCStr();
-						FbxFileTexture* FileTexture = FbxCast<FbxFileTexture>(Texture);
-						std::filesystem::path TexFileName = FileTexture->GetFileName();
-						TexFileName = InTextureRefPath.string() + "/" + TexFileName.stem().string();
-						TexFileName = std::filesystem::relative(TexFileName, GTextureAssetFolder);
-						std::string TexFileNameString = TexFileName.string();
-						TexFileNameString = UHUtilities::StringReplace(TexFileNameString, "\\", "/");
-						
-						if (TexType == "DiffuseColor")
-						{
-							UHMat->SetTexFileName(UHMaterialInputs::Diffuse, TexFileNameString);
-						}
-						else if (TexType == "DiffuseFactor")
-						{
-							// treat diffuse factor map as AO map
-							UHMat->SetTexFileName(UHMaterialInputs::Occlusion, TexFileNameString);
-						}
-						else if (TexType == "SpecularColor")
-						{
-							UHMat->SetTexFileName(UHMaterialInputs::Specular, TexFileNameString);
-						}
-						else if (TexType == "NormalMap" || TexType == "Bump")
-						{
-							// old Bump map (gray) will be used as normal in UH
-							// always ask artists use Normal map
-							UHMat->SetTexFileName(UHMaterialInputs::Normal, TexFileNameString);
-						}
-						else if (TexType == "TransparentColor")
-						{
-							UHMat->SetTexFileName(UHMaterialInputs::Opacity, TexFileNameString);
-
-							// default to masked object if it contains opacity texture
-							UHMat->SetBlendMode(UHBlendMode::Masked);
-						}
-						else if (TexType == "ShininessExponent")
-						{
-							// roughness texture setting
-							UHMat->SetTexFileName(UHMaterialInputs::Roughness, TexFileNameString);
-						}
-						else
-						{
-							UHE_LOG(L"Unsupported texture type detected: " + UHUtilities::ToStringW(TexType) + L". This one will be skipped.\n");
-						}
-					}
-				}
+				ExtractTexturesFromFbx(Property, UHMat.get(), InTextureRefPath);
 			}
 		}
 	}
@@ -538,7 +378,8 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 	return UHMat;
 }
 
-void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
+// reference: https://help.autodesk.com/cloudhelp/2018/ENU/FBX-Developer-Help/cpp_ref/_import_scene_2_display_mesh_8cxx-example.html
+void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::path InPath
 	, std::filesystem::path InTextureRefPath
 	, std::vector<UniquePtr<UHMesh>>& ImportedMesh
 	, std::vector<UniquePtr<UHMaterial>>& ImportedMaterial)
@@ -547,150 +388,301 @@ void UHFbxImporter::CreateUHMeshes(FbxNode* InNode, std::filesystem::path InPath
 	// if normal/tangent data is missing, I'd rely on Fbx's generation only
 	// vertices and indices are loaded separaterly, so GetPolygonVertices() is the only polygon usage here
 	// this fits graphic API's vertex/index buffer concept well
-
-	// check if it's mesh node
-	bool bIsMeshNode = false;
-	for (int32_t Idx = 0; Idx < InNode->GetNodeAttributeCount(); Idx++)
+	// the caller should check whether it's a mesh node
+	if (InNode == nullptr || InNode->GetMesh()->GetControlPointsCount() == 0)
 	{
-		if (InNode->GetNodeAttributeByIndex(Idx)->GetAttributeType() == FbxNodeAttribute::eMesh)
-		{
-			bIsMeshNode = true;
-			break;
-		}
+		return;
 	}
 
-	if (bIsMeshNode && InNode->GetMesh()->GetControlPointsCount() > 0)
+	std::wstring NodeNameW = UHUtilities::ToStringW(InNode->GetName());
+	FbxMesh* InMesh = InNode->GetMesh();
+
+	if (InMesh->GetTextureUVCount() == 0)
 	{
-		std::wstring NodeNameW = UHUtilities::ToStringW(InNode->GetName());
-		FbxMesh* InMesh = InNode->GetMesh();
+		UHE_LOG(L"Fbx without texture UV found, this mesh will be ignored: " + NodeNameW + L"\n");
+		return;
+	}
 
-		// convert to triangle if it's not
-		if (!InMesh->IsTriangleMesh())
+	if (InMesh->GetElementNormal() == nullptr)
+	{
+		InMesh->GenerateNormals(true);
+	}
+
+	if (InMesh->GetElementTangent() == nullptr)
+	{
+		InMesh->GenerateTangentsData(0, true);
+	}
+
+	FbxAMatrix FinalMatrix = InNode->EvaluateGlobalTransform();
+	FbxVector4 FinalPos = FinalMatrix.GetT();
+	FbxVector4 FinalRot = FinalMatrix.GetR();
+	FbxVector4 FinalScale = FinalMatrix.GetS();
+
+	// only create UH mesh if it's mesh node and valid transform
+	UniquePtr<UHMesh> NewMesh = MakeUnique<UHMesh>(InNode->GetName());
+	const bool bNeedDuplication = InMesh->GetTextureUVCount() >= InMesh->GetControlPointsCount();
+	const int32_t OutputVertexCount = bNeedDuplication ? InMesh->GetTextureUVCount() : InMesh->GetControlPointsCount();
+
+	// start adding mesh infors
+	std::vector<uint32_t> MeshIndices;
+	std::vector<XMFLOAT3> MeshVertices(OutputVertexCount);
+	std::vector<XMFLOAT2> MeshUVs(OutputVertexCount);
+	std::vector<XMFLOAT3> MeshNormals(OutputVertexCount);
+	std::vector<XMFLOAT4> MeshTangents(OutputVertexCount);
+
+	// get source vertices
+	FbxVector4* MeshPos = InMesh->GetControlPoints();
+
+	// iterate all triangles and load vertices/indices/UVs/Normals/Tangents at once
+	// the code below will also reconstruct the triangles based on the UV indices
+	// as there is a chance that a fbx mesh has higher UV counts than vertex counts
+	// in that case, I need to duplicate triangles for the engine use
+
+	// accumulate the vertex id for normal/tangent lookup
+	// not sure why FBX SDK uses two different ways in their sample code!
+	int32_t VertexId = 0;
+	for (int32_t Idx = 0; Idx < InMesh->GetPolygonCount(); Idx++)
+	{
+		const FbxGeometryElementUV* UVElement = InMesh->GetElementUV();
+		int32_t UVIndex = UHINDEXNONE;
+
+		for (int32_t Jdx = 0; Jdx < 3; Jdx++)
 		{
-			// meshes could be non-triangle, triangulating them!
-			// **warning: This is a time-consuming operation, try to ask artists export as triangle before importing here, I really want to get rid of this call lol
-			FbxGeometryConverter GeoConverter(FbxSDKManager);
-			FbxNodeAttribute* NewNode = GeoConverter.Triangulate(InNode->GetNodeAttribute(), true);
-			InMesh = NewNode->GetNode()->GetMesh();
-		}
+			// index to control point (original vertices)
+			const int32_t ControlIndex = InMesh->GetPolygonVertex(Idx, Jdx);
 
-		// get proper transformation from FBX, reference: https://stackoverflow.com/questions/34452946/how-can-i-get-the-correct-position-of-fbx-mesh
-		FbxAMatrix MatrixGeo;
-		MatrixGeo.SetIdentity();
-		const FbxVector4 LT = InNode->GetGeometricTranslation(FbxNode::eSourcePivot);
-		const FbxVector4 LR = InNode->GetGeometricRotation(FbxNode::eSourcePivot);
-		const FbxVector4 LS = InNode->GetGeometricScaling(FbxNode::eSourcePivot);
-		MatrixGeo.SetT(LT);
-		MatrixGeo.SetR(LR);
-		MatrixGeo.SetS(LS);
-		FbxAMatrix LocalMatrix = InNode->EvaluateLocalTransform();
-
-		FbxNode* ParentNode = InNode->GetParent();
-		FbxAMatrix ParentMatrix;
-		ParentMatrix.SetIdentity();
-		if (ParentNode)
-		{
-			ParentMatrix = ParentNode->EvaluateLocalTransform();
-		}
-
-		while ((ParentNode = ParentNode->GetParent()) != NULL)
-		{
-			ParentMatrix = ParentNode->EvaluateLocalTransform() * ParentMatrix;
-		}
-
-		FbxAMatrix FinalMatrix = ParentMatrix * LocalMatrix * MatrixGeo;
-		FbxVector4 FinalPos = FinalMatrix.GetT();
-		FbxVector4 FinalRot = FinalMatrix.GetR();
-		FbxVector4 FinalScale = FinalMatrix.GetS();
-
-		// only create UH mesh if it's mesh node and valid transform
-		UniquePtr<UHMesh> NewMesh = MakeUnique<UHMesh>(InNode->GetName());
-
-		// prepare vertex data
-		int32_t VertexCount = InMesh->GetControlPointsCount();
-
-		// simply get all control points as vertices
-		FbxVector4* MeshPos = InMesh->GetControlPoints();
-		std::vector<XMFLOAT3> MeshVertices;
-		for (int32_t Idx = 0; Idx < VertexCount; Idx++)
-		{
-			XMFLOAT3 Pos;
-			Pos.x = static_cast<float>(MeshPos[Idx][0]);
-			Pos.y = static_cast<float>(MeshPos[Idx][1]);
-			Pos.z = static_cast<float>(MeshPos[Idx][2]);
-			MeshVertices.push_back(Pos);
-		}
-
-		// basic info fetched, start to add indices
-		std::vector<uint32_t> MeshIndices;
-		for (int32_t Idx = 0; Idx < InMesh->GetPolygonCount(); Idx++)
-		{
-			// get index to control point and push them, after Triangulate call here is guaranteed to be triangle
-			MeshIndices.push_back(InMesh->GetPolygonVertex(Idx, 0));
-			MeshIndices.push_back(InMesh->GetPolygonVertex(Idx, 1));
-			MeshIndices.push_back(InMesh->GetPolygonVertex(Idx, 2));
-		}
-
-		// when fetching other data like normal/uv, always mapping to control point, I'll store index to another array
-		// for now, if data is missing, I'll simply use FBX function for creating them
-		
-		// try read VB/IB again for some special cases, e.g. Having 81 control points but having 102 UVs? Need to reconstruct the VB/IB based on UV.
-		bool bIsReconstruct = ReconstructVerticesAndIndices(InMesh, MeshVertices, MeshIndices);
-		NewMesh->SetIndicesData(MeshIndices);
-		VertexCount = static_cast<int32_t>(MeshVertices.size());
-
-		// get UV
-		std::vector<XMFLOAT2> MeshUV0 = ReadUVs(InMesh, VertexCount, bIsReconstruct, MeshIndices);
-
-		// get normal, and ensure it's not zero vector
-		std::vector<XMFLOAT3> MeshNormal = ReadNormals(InMesh, VertexCount, bIsReconstruct, MeshIndices);
-		for (XMFLOAT3& N : MeshNormal)
-		{
-			if (MathHelpers::IsVectorNearlyZero(N))
+			// UV index setup
+			if (UVElement->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
 			{
-				N = XMFLOAT3(0.0001f, 0.0001f, 0.0001f);
+				UVIndex = UVElement->GetReferenceMode() == FbxGeometryElement::eIndexToDirect
+					? UVElement->GetIndexArray().GetAt(VertexId)
+					: VertexId;
 			}
-		}
-
-		// get tangent
-		std::vector<XMFLOAT4> MeshTangent = ReadTangents(InMesh, VertexCount, bIsReconstruct, MeshIndices);
-		for (XMFLOAT4& T : MeshTangent)
-		{
-			if (MathHelpers::IsVectorNearlyZero(T))
+			else if (UVElement->GetMappingMode() == FbxGeometryElement::eByControlPoint)
 			{
-				T = XMFLOAT4(0.0001f, 0.0001f, 0.0001f, 0.0001f);
+				UVIndex = UVElement->GetReferenceMode() == FbxGeometryElement::eIndexToDirect
+					? UVElement->GetIndexArray().GetAt(ControlIndex)
+					: ControlIndex;
 			}
+
+			const int32_t OutputIndex = bNeedDuplication ? UVIndex : ControlIndex;
+
+			// indices
+			MeshIndices.push_back(OutputIndex);
+
+			// vertices
+			{
+				XMFLOAT3 Pos;
+				Pos.x = static_cast<float>(MeshPos[ControlIndex][0]);
+				Pos.y = static_cast<float>(MeshPos[ControlIndex][1]);
+				Pos.z = static_cast<float>(MeshPos[ControlIndex][2]);
+				MeshVertices[OutputIndex] = Pos;
+			}
+
+			// UVs
+			{
+				FbxVector2 UVValue = UVElement->GetDirectArray().GetAt(UVIndex);
+				MeshUVs[OutputIndex].x = static_cast<float>(UVValue[0]);
+				MeshUVs[OutputIndex].y = 1.0f - static_cast<float>(UVValue[1]);
+			}
+
+			// Normals
+			{
+				const FbxGeometryElementNormal* NormalElement = InMesh->GetElementNormal();
+				int32_t NormalIndex = UHINDEXNONE;
+
+				if (NormalElement->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
+				{
+					NormalIndex = NormalElement->GetReferenceMode() == FbxGeometryElement::eIndexToDirect
+						? NormalElement->GetIndexArray().GetAt(VertexId)
+						: VertexId;
+				}
+				else if (NormalElement->GetMappingMode() == FbxGeometryElement::eByControlPoint)
+				{
+					NormalIndex = NormalElement->GetReferenceMode() == FbxGeometryElement::eIndexToDirect
+						? NormalElement->GetIndexArray().GetAt(ControlIndex)
+						: ControlIndex;
+				}
+
+				FbxVector4 NormalValue = NormalElement->GetDirectArray().GetAt(NormalIndex);
+				MeshNormals[OutputIndex].x = static_cast<float>(NormalValue[0]);
+				MeshNormals[OutputIndex].y = static_cast<float>(NormalValue[1]);
+				MeshNormals[OutputIndex].z = static_cast<float>(NormalValue[2]);
+			}
+
+			// Tangents
+			{
+				const FbxGeometryElementTangent* TangentElement = InMesh->GetElementTangent();
+				int32_t TangentIndex = UHINDEXNONE;
+
+				if (TangentElement->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
+				{
+					TangentIndex = TangentElement->GetReferenceMode() == FbxGeometryElement::eIndexToDirect
+						? TangentElement->GetIndexArray().GetAt(VertexId)
+						: VertexId;
+				}
+				else if (TangentElement->GetMappingMode() == FbxGeometryElement::eByControlPoint)
+				{
+					TangentIndex = TangentElement->GetReferenceMode() == FbxGeometryElement::eIndexToDirect
+						? TangentElement->GetIndexArray().GetAt(ControlIndex)
+						: ControlIndex;
+				}
+
+				FbxVector4 TangentValue = TangentElement->GetDirectArray().GetAt(TangentIndex);
+				MeshTangents[OutputIndex].x = static_cast<float>(TangentValue[0]);
+				MeshTangents[OutputIndex].y = static_cast<float>(TangentValue[1]);
+				MeshTangents[OutputIndex].z = static_cast<float>(TangentValue[2]);
+				MeshTangents[OutputIndex].w = static_cast<float>(TangentValue[3]);
+			}
+
+			VertexId++;
 		}
-
-		// setup imported transform at the end
-		XMFLOAT3 Pos = XMFLOAT3(static_cast<float>(FinalPos[0]), static_cast<float>(FinalPos[1]), static_cast<float>(FinalPos[2]));
-		XMFLOAT3 Rot = XMFLOAT3(static_cast<float>(FinalRot[0]), static_cast<float>(FinalRot[1]), static_cast<float>(FinalRot[2]));
-		XMFLOAT3 Scale = XMFLOAT3(static_cast<float>(FinalScale[0]), static_cast<float>(FinalScale[1]), static_cast<float>(FinalScale[2]));
-		NewMesh->SetImportedTransform(Pos, Rot, Scale);
-
-		// set data to UHMesh class
-		NewMesh->SetPositionData(MeshVertices);
-		NewMesh->SetUV0Data(MeshUV0);
-		NewMesh->SetNormalData(MeshNormal);
-		NewMesh->SetTangentData(MeshTangent);
-
-		// at last, try to import material as well
-		UniquePtr<UHMaterial> NewMat = ImportMaterial(InNode, InTextureRefPath);
-		NewMesh->SetImportedMaterialName(NewMat->GetName());
-		if (!UHUtilities::FindByElement(ImportedMaterialNames, NewMat->GetName()))
-		{
-			ImportedMaterialNames.push_back(NewMat->GetName());
-			ImportedMaterial.push_back(std::move(NewMat));
-		}
-
-		ImportedMesh.push_back(std::move(NewMesh));
 	}
 
-	// continue to process child node if there is any
-	for (int32_t Idx = 0; Idx < InNode->GetChildCount(); Idx++)
+	NewMesh->SetIndicesData(MeshIndices);
+
+	// get normal, and ensure it's not zero vector
+	for (XMFLOAT3& N : MeshNormals)
 	{
-		CreateUHMeshes(InNode->GetChild(Idx), InPath, InTextureRefPath, ImportedMesh, ImportedMaterial);
+		if (MathHelpers::IsVectorNearlyZero(N))
+		{
+			N = XMFLOAT3(0.0001f, 0.0001f, 0.0001f);
+		}
 	}
+
+	// get tangent
+	for (XMFLOAT4& T : MeshTangents)
+	{
+		if (MathHelpers::IsVectorNearlyZero(T))
+		{
+			T = XMFLOAT4(0.0001f, 0.0001f, 0.0001f, 0.0001f);
+		}
+	}
+
+	// setup imported transform at the end
+	XMFLOAT3 Pos = XMFLOAT3(static_cast<float>(FinalPos[0]), static_cast<float>(FinalPos[1]), static_cast<float>(FinalPos[2]));
+	XMFLOAT3 Rot = XMFLOAT3(static_cast<float>(FinalRot[0]), static_cast<float>(FinalRot[1]), static_cast<float>(FinalRot[2]));
+	XMFLOAT3 Scale = XMFLOAT3(static_cast<float>(FinalScale[0]), static_cast<float>(FinalScale[1]), static_cast<float>(FinalScale[2]));
+	NewMesh->SetImportedTransform(Pos, Rot, Scale);
+
+	// set data to UHMesh class
+	NewMesh->SetPositionData(MeshVertices);
+	NewMesh->SetUV0Data(MeshUVs);
+	NewMesh->SetNormalData(MeshNormals);
+	NewMesh->SetTangentData(MeshTangents);
+	NewMesh->RecalculateMeshBound();
+
+	// at last, try to import material as well
+	UniquePtr<UHMaterial> NewMat = ImportMaterial(InNode, InTextureRefPath);
+
+	// setup source path of materials with ./ prefix removed
+	std::filesystem::path OutPath = MaterialOutputPath + "/" + NewMat->GetName() + GMaterialAssetExtension;
+	std::filesystem::path SourcePath = std::filesystem::relative(MaterialOutputPath, GMaterialAssetPath).string() + "/" + NewMat->GetName();
+	NewMat->SetSourcePath(UHUtilities::StringReplace(SourcePath.string(), "./", ""));
+	NewMesh->SetImportedMaterialName(NewMat->GetSourcePath());
+
+	if (!UHUtilities::FindByElement(ImportedMaterialNames, NewMat->GetSourcePath()))
+	{
+		ImportedMaterialNames.push_back(NewMat->GetSourcePath());
+		ImportedMaterial.push_back(std::move(NewMat));
+	}
+
+	ImportedMesh.push_back(std::move(NewMesh));
+}
+
+void UHFbxImporter::ImportCameras(FbxNode* InNode, std::vector<UHFbxCameraData>& ImportedCameraData)
+{
+	if (InNode == nullptr)
+	{
+		return;
+	}
+
+	// create and set camera properties
+	FbxCamera* InCamera = InNode->GetCamera();
+
+	UHFbxCameraData NewCameraData;
+	NewCameraData.Name = InCamera->GetName();
+	NewCameraData.NearPlane = static_cast<float>(InCamera->GetNearPlane());
+	NewCameraData.CullingDistance = static_cast<float>(InCamera->GetFarPlane());
+	NewCameraData.Fov = static_cast<float>(InCamera->FieldOfView.Get());
+
+	// camera transform
+	FbxAMatrix CameraMatrix = InNode->EvaluateGlobalTransform();
+	FbxVector4 CameraPos = CameraMatrix.GetT();
+	FbxVector4 CameraRot = CameraMatrix.GetR();
+
+	NewCameraData.Position = XMFLOAT3(
+		static_cast<float>(CameraPos[0])
+		, static_cast<float>(CameraPos[1])
+		, static_cast<float>(CameraPos[2]));
+
+	// discard camera pitch and roll for good
+	NewCameraData.Rotation = XMFLOAT3(
+		0.0f
+		, static_cast<float>(CameraRot[1])
+		, 0.0f);
+
+	ImportedCameraData.push_back(NewCameraData);
+}
+
+void UHFbxImporter::ImportLights(FbxNode* InNode, std::vector<UHFbxLightData>& ImportedLightData)
+{
+	if (InNode == nullptr)
+	{
+		return;
+	}
+
+	FbxLight* InLight = InNode->GetLight();
+	FbxDouble3 LightColor = InLight->Color.Get();
+	FbxDouble LightIntensity = InLight->Intensity.Get();
+
+	// light transform
+	FbxAMatrix LightMatrix = InNode->EvaluateGlobalTransform();
+	FbxVector4 LightPos = LightMatrix.GetT();
+	FbxVector4 LightRot = LightMatrix.GetR();
+
+	UHFbxLightData NewLightData;
+	NewLightData.Name = InLight->GetName();
+	if (InLight->LightType.Get() == FbxLight::EType::eDirectional)
+	{
+		NewLightData.Type = UHLightType::Directional;
+	}
+	else if (InLight->LightType.Get() == FbxLight::EType::ePoint)
+	{
+		NewLightData.Type = UHLightType::Point;
+	}
+	else if (InLight->LightType.Get() == FbxLight::EType::eSpot)
+	{
+		NewLightData.Type = UHLightType::Spot;
+	}
+	else
+	{
+		UHE_LOG(L"Unsupported light type detected (area or volume). This light will be ignored for now.");
+		return;
+	}
+
+	NewLightData.LightColor = XMFLOAT3(
+		static_cast<float>(LightColor[0]),
+		static_cast<float>(LightColor[1]),
+		static_cast<float>(LightColor[2])
+	);
+
+	// at least give a default intensity if it's too small
+	NewLightData.Intensity = std::max(static_cast<float>(LightIntensity / 10000.0f), 5.0f);
+	NewLightData.Radius = std::max(static_cast<float>(InLight->FarAttenuationEnd.Get()), 10.0f);
+	NewLightData.SpotAngle = static_cast<float>(InLight->OuterAngle.Get());
+
+	NewLightData.Position = XMFLOAT3(
+		static_cast<float>(LightPos[0])
+		, static_cast<float>(LightPos[1])
+		, static_cast<float>(LightPos[2]));
+
+	NewLightData.Rotation = XMFLOAT3(
+		static_cast<float>(LightRot[0])
+		, static_cast<float>(LightRot[1])
+		, static_cast<float>(LightRot[2]));
+
+	ImportedLightData.push_back(NewLightData);
 }
 
 #endif

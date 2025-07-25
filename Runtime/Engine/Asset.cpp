@@ -27,6 +27,64 @@ UHAssetManager::UHAssetManager()
 	UHMesh BuiltInCube = UHGeometryHelper::CreateCubeMesh();
 	BuiltInCube.Export(GBuiltInMeshAssetPath, false);
 
+	// generate built-in textures
+	{
+		const uint32_t FallbackWidth = 2;
+		const uint32_t FallbackHeight = 2;
+		const UHTextureFormat FallbackTexFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
+
+		UHTextureSettings TexSettings{};
+		TexSettings.bIsLinear = true;
+		TexSettings.bUseMipmap = false;
+
+		VkExtent2D SystemTexSize;
+		SystemTexSize.width = FallbackWidth;
+		SystemTexSize.height = FallbackHeight;
+
+		if (!std::filesystem::exists(GBuiltInTextureAssetPath))
+		{
+			std::filesystem::create_directories(GBuiltInTextureAssetPath);
+		}
+
+		// 2x2 white tex
+		std::unique_ptr<UHTexture2D> SystemTex = MakeUnique<UHTexture2D>("UHWhiteTex", "UHWhiteTex", SystemTexSize, FallbackTexFormat, TexSettings);
+		std::vector<uint8_t> TexData(2 * 2 * GTextureFormatData[UH_ENUM_VALUE(FallbackTexFormat)].ByteSize, 255);
+		SystemTex->SetTextureData(TexData);
+		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
+
+		// 2x2 black tex
+		SystemTex = MakeUnique<UHTexture2D>("UHBlackTex", "UHBlackTex", SystemTexSize, FallbackTexFormat, TexSettings);
+		memset(TexData.data(), 0, TexData.size());
+		SystemTex->SetTextureData(TexData);
+		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
+
+		// 2x2 black cube
+		std::unique_ptr<UHTextureCube> SystemCube = MakeUnique<UHTextureCube>("UHBlackCube", SystemTexSize, FallbackTexFormat, TexSettings);
+		SystemCube->SetSourcePath("UHBlackCube");
+		for (int32_t Idx = 0; Idx < 6; Idx++)
+		{
+			SystemCube->SetCubeData(TexData, Idx);
+		}
+		SystemCube->Export(GBuiltInTextureAssetPath + SystemCube->GetName(), false);
+
+		// 2x2 default sky
+		SystemCube = MakeUnique<UHTextureCube>("UHDefaultSkyCube", SystemTexSize, FallbackTexFormat, TexSettings);
+		SystemCube->SetSourcePath("UHDefaultSkyCube");
+		for (size_t Idx = 0; Idx < TexData.size(); Idx += 4)
+		{
+			TexData[Idx] = 135;
+			TexData[Idx + 1] = 206;
+			TexData[Idx + 2] = 235;
+			TexData[Idx + 3] = 255;
+		}
+
+		for (int32_t Idx = 0; Idx < 6; Idx++)
+		{
+			SystemCube->SetCubeData(TexData, Idx);
+		}
+		SystemCube->Export(GBuiltInTextureAssetPath + SystemCube->GetName(), false);
+	}
+
 	AssetMgrEditorOnly = this;
 #else
 	// load asset map during launch for release
@@ -57,8 +115,21 @@ void UHAssetManager::SetGfxCache(UHGraphic* InGfx)
 void UHAssetManager::ImportBuiltInAssets()
 {
 	// import all built in assets
+
+	// meshes
 	std::filesystem::create_directories(GBuiltInMeshAssetPath);
 	for (std::filesystem::recursive_directory_iterator Idx(GBuiltInMeshAssetPath), end; Idx != end; Idx++)
+	{
+		if (std::filesystem::is_directory(Idx->path()))
+		{
+			continue;
+		}
+		ImportAsset(Idx->path());
+	}
+
+	// textures
+	std::filesystem::create_directories(GBuiltInTextureAssetPath);
+	for (std::filesystem::recursive_directory_iterator Idx(GBuiltInTextureAssetPath), end; Idx != end; Idx++)
 	{
 		if (std::filesystem::is_directory(Idx->path()))
 		{
@@ -258,7 +329,7 @@ void UHAssetManager::MapTextureIndex(UHMaterial* InMat)
 	{
 		for (int32_t Jdx = 0; Jdx < UHTexture2Ds.size(); Jdx++)
 		{
-			if (UHTexture2Ds[Jdx]->GetSourcePath() == RegisteredTexture 
+			if (std::filesystem::path(UHTexture2Ds[Jdx]->GetSourcePath()) == std::filesystem::path(RegisteredTexture)
 #if WITH_EDITOR
 				|| UHTexture2Ds[Jdx]->GetSourcePath() == FindTexturePathName(RegisteredTexture)
 #endif
@@ -370,7 +441,7 @@ UHMaterial* UHAssetManager::GetMaterial(std::string InName) const
 	// get material by name, don't use this except for initialization!
 	for (UHMaterial* Mat : UHMaterialsCache)
 	{
-		if (Mat->GetName() == InName)
+		if (Mat->GetName() == InName || Mat->GetSourcePath() == InName)
 		{
 			return Mat;
 		}
@@ -540,7 +611,8 @@ UHTexture2D* UHAssetManager::GetTexture2DByPathEditor(std::string InPathName)
 
 	for (UHTexture2D* Tex : AssetMgrEditorOnly->GetTexture2Ds())
 	{
-		if (Tex->GetSourcePath() == AssetMgrEditorOnly->FindTexturePathName(InPathName))
+		if (Tex->GetSourcePath() == AssetMgrEditorOnly->FindTexturePathName(InPathName)
+			|| std::filesystem::path(Tex->GetSourcePath()) == std::filesystem::path(InPathName))
 		{
 			return Tex;
 		}
@@ -554,7 +626,7 @@ std::string UHAssetManager::FindTexturePathName(std::string InName)
 {
 	for (const UHTexture2D* Tex : AssetMgrEditorOnly->GetTexture2Ds())
 	{
-		if (Tex->GetName() == InName)
+		if (Tex->GetName() == InName || std::filesystem::path(Tex->GetSourcePath()) == std::filesystem::path(InName))
 		{
 			return Tex->GetSourcePath();
 		}

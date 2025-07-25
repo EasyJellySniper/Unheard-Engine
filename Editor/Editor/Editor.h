@@ -13,6 +13,7 @@
 #include "../Dialog/CubemapDialog.h"
 #include "../Dialog/InfoDialog.h"
 #include "../Dialog/MeshDialog.h"
+#include "../Dialog/FbxImportDialog.h"
 
 class UHEngine;
 class UHGraphic;
@@ -54,6 +55,7 @@ private:
 	// custom dialogs
 	UniquePtr<UHProfileDialog> ProfileDialog;
 	UniquePtr<UHSettingDialog> SettingDialog;
+	UniquePtr<UHFbxImportDialog> FbxImportDialog;
 	UniquePtr<UHWorldDialog> WorldDialog;
 	UniquePtr<UHTextureDialog> TextureDialog;
 	UniquePtr<UHMaterialDialog> MaterialDialog;

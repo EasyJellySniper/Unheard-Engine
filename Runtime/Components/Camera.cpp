@@ -292,6 +292,8 @@ void UHCameraComponent::OnGenerateDetailView()
 
 	if (ImGui::InputFloat("FovY", &FovYDeg))
 	{
+		// can't be zero FOV
+		FovYDeg = max(FovYDeg, 1.0f);
 		SetFov(FovYDeg);
 	}
 

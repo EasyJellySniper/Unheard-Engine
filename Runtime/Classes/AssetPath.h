@@ -9,8 +9,10 @@ static std::string GAssetMapName = "AssetMap";
 
 // texture paths
 static std::string GTextureAssetFolder = "Assets/Textures/";
+static std::string GBuiltInTextureAssetPath = "Assets/Textures/BuiltIn/";
 static std::string GTextureAssetExtension = ".uhtexture";
 static std::string GCubemapAssetExtension = ".uhcubemap";
+static std::string GRawTextureAssetPath = "RawAssets/Textures/";
 
 // mesh paths
 static std::string GMeshAssetFolder = "Assets/Meshes/";

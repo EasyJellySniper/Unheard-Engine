@@ -30,3 +30,30 @@ Added UpsampleComputeShader implementation, I am going to move the fill code fro
 15-06-2025:
 Moved the upsample code from both RT shadow/reflection to a standalone pass.
 Refactor the vkCmdPushConstant() calls into GraphBuilder.
+
+21-07-2025:
+Refactor FBX importer code and make it import cameras/lights as well.
+Need to test it with a new interior scene.
+
+22-07-2025:
+Another big refactoring which includes separate FBX import UI from mesh dialog, and fullfill cameras/lights import.
+Importing goes well but I need to find a better asset, Wood_Interior is missing texture reference.
+I should consider adding a default cubemap/skylight. It's still dark with dir light only if there is no other light sources in FBX.
+Also, try releasing previous scene when importing.
+
+23-07-2025:
+Make it release previous scene when importing. Now I can look for a good interior scene for the next subject.
+Implemented multiple texture import, still need to check the compression setting though.
+Fixed various bugs I find during FBX import..
+Next to do - 
+1. display source path for the mesh component drop down list.
+2. Redirect to texture asset output when browsing the output path in texture creation dialog.
+3. Add unit conversion option for FBX (cm or mm).
+4. Study correct way to get texture names from FBX. Might just need to read the FBX sample carefully for other weird thing happened too.
+
+24-07-2025:
+Fixed various bugs during editing. Still need to try different FBX models.
+
+25-07-2025:
+Simplified fbx import process. It will now iterate all triangles and collect all mesh infos at once.
+Still need to debug for certain meshes. Two more models were imported well! I think some assets are just bad for use.

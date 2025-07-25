@@ -324,6 +324,11 @@ UHDeferredShadingRenderer* UHEngine::GetSceneRenderer() const
 	return UHERenderer.get();
 }
 
+UHScene* UHEngine::GetScene() const
+{
+	return CurrentScene.get();
+}
+
 void UHEngine::BeginFPSLimiter()
 {
 	if (GIsShipping)
@@ -404,6 +409,28 @@ void UHEngine::LimitFramerate()
 	}
 }
 
+void UHEngine::ResetScene()
+{
+	// wait all previous rendering done
+	UHERenderer->WaitPreviousRenderTask();
+	UHEGraphic->WaitGPU();
+	UH_SAFE_RELEASE(UHERenderer);
+
+	// release assets of previous map for re-import
+	// and also reset the shared memory
+	if (GIsShipping)
+	{
+		UHEAsset->Release();
+		UHEAsset->ImportBuiltInAssets();
+		UHEGraphic->GetImageSharedMemory()->Reset();
+		UHEGraphic->GetMeshSharedMemory()->Reset();
+	}
+
+	// recreate scene when loading
+	UH_SAFE_RELEASE(CurrentScene);
+	CurrentScene = MakeUnique<UHScene>();
+}
+
 void UHEngine::OnSaveScene(std::filesystem::path OutputPath)
 {
 	if (CurrentScene == nullptr)
@@ -425,24 +452,7 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 		return;
 	}
 
-	// wait all previous rendering done
-	UHERenderer->WaitPreviousRenderTask();
-	UHEGraphic->WaitGPU();
-	UH_SAFE_RELEASE(UHERenderer);
-
-	// release assets of previous map for re-import
-	// and also reset the shared memory
-	if (GIsShipping)
-	{
-		UHEAsset->Release();
-		UHEAsset->ImportBuiltInAssets();
-		UHEGraphic->GetImageSharedMemory()->Reset();
-		UHEGraphic->GetMeshSharedMemory()->Reset();
-	}
-
-	// recreate scene when loading
-	UH_SAFE_RELEASE(CurrentScene);
-	CurrentScene = MakeUnique<UHScene>();
+	ResetScene();
 
 	// load scene file
 	std::ifstream FileIn(InputPath.string().c_str(), std::ios::in | std::ios::binary);
