@@ -386,28 +386,45 @@ bool UHGraphic::CreatePhysicalDevice()
 	std::vector<VkPhysicalDevice> Devices(DeviceCount);
 	vkEnumeratePhysicalDevices(VulkanInstance, &DeviceCount, Devices.data());
 
-	// choose a suitable device
-	const VkPhysicalDeviceType TestDeviceType = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+	AvailableGpuNames.clear();
+	AvailableGpuNames.resize(DeviceCount);
+
+	// choose a suitable device based on config setting
+	// if there isn't a selected GPU name, it will search based on the default method
+	UHRenderingSettings& RenderingSettings = ConfigInterface->RenderingSetting();
 	std::string SelectedDeviceName;
+
+	// first loop to check available GPUs and whether GPU config is correct
+	bool bIsValidGpuConfig = false;
 	for (uint32_t Idx = 0; Idx < DeviceCount; Idx++)
 	{
-		// use device properties 2
+		// collect available GPU names
 		VkPhysicalDeviceProperties2 DeviceProperties{};
 		DeviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 		vkGetPhysicalDeviceProperties2(Devices[Idx], &DeviceProperties);
-		UHE_LOG(L"Trying GPU device: " + UHUtilities::ToStringW(DeviceProperties.properties.deviceName) + L"\n");
+		AvailableGpuNames[Idx] = DeviceProperties.properties.deviceName;
 
-		// choose 1st available GPU for use
-		if ((DeviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-			|| DeviceProperties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-			&& CheckDeviceExtension(Devices[Idx], DeviceExtensions))
+		// select the device that matches config setting
+		// trim the whitespace and tab character before comparison
+		if (RenderingSettings.SelectedGpuName == AvailableGpuNames[Idx])
 		{
 			PhysicalDevice = Devices[Idx];
-			SelectedDeviceName = DeviceProperties.properties.deviceName;
-			if (TestDeviceType == DeviceProperties.properties.deviceType)
+			SelectedDeviceName = AvailableGpuNames[Idx];
+			bIsValidGpuConfig = true;
+		}
+	}
+
+	if (!bIsValidGpuConfig)
+	{
+		// fallback to default behavior for GPU selection
+		for (uint32_t Idx = 0; Idx < DeviceCount; Idx++)
+		{
+			if (CheckDeviceExtension(Devices[Idx], DeviceExtensions))
 			{
-				break;
+				PhysicalDevice = Devices[Idx];
+				SelectedDeviceName = AvailableGpuNames[Idx];
 			}
+			break;
 		}
 	}
 
@@ -416,6 +433,9 @@ bool UHGraphic::CreatePhysicalDevice()
 		UHE_LOG(L"Failed to find a suitable GPU!\n");
 		return false;
 	}
+
+	// sync selected GPU to config setting after the successful initialization
+	RenderingSettings.SelectedGpuName = SelectedDeviceName;
 
 	std::wostringstream Msg;
 	Msg << L"Selected device: " << SelectedDeviceName.c_str() << std::endl;
@@ -1697,6 +1717,11 @@ std::vector<uint32_t> UHGraphic::GetDeviceMemoryTypeIndices() const
 uint32_t UHGraphic::GetHostMemoryTypeIndex() const
 {
 	return HostMemoryTypeIndex;
+}
+
+std::vector<std::string> UHGraphic::GetAvailableGpuNames() const
+{
+	return AvailableGpuNames;
 }
 
 #if WITH_EDITOR

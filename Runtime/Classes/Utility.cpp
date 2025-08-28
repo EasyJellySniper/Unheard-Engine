@@ -6,7 +6,7 @@ namespace UHUtilities
 	std::unordered_map<size_t, size_t> IniSectionCache;
 
 	// generic write string data
-	void WriteStringData(std::ofstream& FileOut, std::string InString)
+	void WriteStringData(std::ofstream& FileOut, const std::string& InString)
 	{
 		// don't write if file it's not opened
 		if (FileOut.fail())
@@ -64,17 +64,17 @@ namespace UHUtilities
 		}
 	}
 
-	std::string ToStringA(std::wstring InStringW)
+	std::string ToStringA(const std::wstring& InStringW)
 	{
 		return std::filesystem::path(InStringW).string();
 	}
 
-	std::wstring ToStringW(std::string InStringA)
+	std::wstring ToStringW(const std::string& InStringA)
 	{
 		return std::filesystem::path(InStringA).wstring();
 	}
 
-	std::string RemoveChars(std::string InString, std::string InChars)
+	std::string RemoveChars(std::string InString, const std::string& InChars)
 	{
 		for (size_t Idx = 0; Idx < InChars.length(); Idx++)
 		{
@@ -85,7 +85,7 @@ namespace UHUtilities
 		return InString;
 	}
 
-	std::string RemoveSubString(std::string InString, std::string InSubString)
+	std::string RemoveSubString(std::string InString, const std::string& InSubString)
 	{
 		size_t Pos = InString.find(InSubString);
 		if (Pos == std::string::npos)
@@ -94,6 +94,22 @@ namespace UHUtilities
 		}
 
 		return InString.erase(Pos, InSubString.length());
+	}
+
+	std::string TrimString(const std::string& InString)
+	{
+		// early out if no contents
+		if (InString.empty())
+		{
+			return InString;
+		}
+
+		const std::string& Whitespace = " \t";
+		const auto StringBegin = InString.find_first_not_of(Whitespace);
+		const auto StringEnd = InString.find_last_not_of(Whitespace);
+		const auto StringRange = StringEnd - StringBegin + 1;
+
+		return InString.substr(StringBegin, StringRange);
 	}
 
 	void WriteINISection(std::ofstream& FileOut, std::string InSection)
@@ -108,9 +124,10 @@ namespace UHUtilities
 
 		// early out if section has been cached
 		const size_t SectionHash = StringToHash(Section);
-		if (IniSectionCache.find(SectionHash) != IniSectionCache.end())
+		const auto SectionHashIter = IniSectionCache.find(SectionHash);
+		if (SectionHashIter != IniSectionCache.end())
 		{
-			return IniSectionCache[SectionHash];
+			return SectionHashIter->second;
 		}
 
 		std::string Line;
@@ -136,7 +153,7 @@ namespace UHUtilities
 	}
 
 	// djb2 string to hash, reference: http://www.cse.yorku.ca/~oz/hash.html
-	size_t StringToHash(std::string InString)
+	size_t StringToHash(const std::string& InString)
 	{
 		size_t Hash = 5381;
 
@@ -148,7 +165,7 @@ namespace UHUtilities
 	}
 
 	// inline function for convert shader defines to hash
-	size_t ShaderDefinesToHash(std::vector<std::string> Defines)
+	size_t ShaderDefinesToHash(const std::vector<std::string>& Defines)
 	{
 		std::string MacroString;
 		for (const std::string& Str : Defines)
@@ -170,17 +187,17 @@ namespace UHUtilities
 		return InString;
 	}
 
-	bool StringFind(std::string InString, std::string InSearch)
+	bool StringFind(const std::string& InString, const std::string& InSearch)
 	{
 		return InString.find(InSearch) != std::string::npos;
 	}
 
-	size_t StringFindIndex(std::string InString, std::string InSearch)
+	size_t StringFindIndex(const std::string& InString, const std::string& InSearch)
 	{
 		return InString.find(InSearch);
 	}
 
-	std::string StringReplace(std::string InString, std::string InKeyWord, std::string InValue)
+	std::string StringReplace(std::string InString, const std::string& InKeyWord, const std::string& InValue)
 	{
 		size_t MarkerPos = StringFindIndex(InString, InKeyWord);
 		while (MarkerPos != std::string::npos)
@@ -192,7 +209,7 @@ namespace UHUtilities
 		return InString;
 	}
 
-	std::wstring FloatToWString(float InValue, int32_t InPrecision)
+	std::wstring FloatToWString(const float InValue, const int32_t InPrecision)
 	{
 		std::wstringstream Stream;
 		Stream << std::fixed << std::setprecision(InPrecision) << InValue;
@@ -200,7 +217,7 @@ namespace UHUtilities
 		return Stream.str();
 	}
 
-	std::string FloatToString(float InValue, int32_t InPrecision)
+	std::string FloatToString(const float InValue, const int32_t InPrecision)
 	{
 		std::stringstream Stream;
 		Stream << std::fixed << std::setprecision(InPrecision) << InValue;

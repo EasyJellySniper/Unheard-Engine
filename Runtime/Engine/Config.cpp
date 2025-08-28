@@ -6,8 +6,11 @@
 #include "../../UnheardEngine.h"
 #include "../CoreGlobals.h"
 
+// wrapper for Set/GetUHESetting
+#define SET_UHE_SETTING(x,y) SetUHESetting(#x, #y, x.y)
+#define GET_UHE_SETTING(x,y) GetUHESetting(#x, #y, x.y)
+
 UHConfigManager::UHConfigManager()
-	:  PresentationSettings(UHPresentationSettings())
 {
 
 }
@@ -15,141 +18,158 @@ UHConfigManager::UHConfigManager()
 // load config
 void UHConfigManager::LoadConfig()
 {
-	std::ifstream FileIn(L"UHESettings.ini", std::ios::in);
-	if (FileIn.is_open())
+	UHESettings = LoadIniFile("UHESettings.ini");
+	
+	// presentation settings
 	{
-		// presentation settings
-		std::string Section = "PresentationSettings";
-		{
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "WindowWidth", PresentationSettings.WindowWidth);
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "WindowHeight", PresentationSettings.WindowHeight);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bVsync", PresentationSettings.bVsync);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bFullScreen", PresentationSettings.bFullScreen);
-		}
-
-		// engine settings
-		Section = "EngineSettings";
-		{
-			UHUtilities::ReadINIData<float>(FileIn, Section, "DefaultCameraMoveSpeed", EngineSettings.DefaultCameraMoveSpeed);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "MouseRotationSpeed", EngineSettings.MouseRotationSpeed);
-			UHUtilities::ReadINIData<char>(FileIn, Section, "ForwardKey", EngineSettings.ForwardKey);
-			UHUtilities::ReadINIData<char>(FileIn, Section, "BackKey", EngineSettings.BackKey);
-			UHUtilities::ReadINIData<char>(FileIn, Section, "LeftKey", EngineSettings.LeftKey);
-			UHUtilities::ReadINIData<char>(FileIn, Section, "RightKey", EngineSettings.RightKey);
-			UHUtilities::ReadINIData<char>(FileIn, Section, "DownKey", EngineSettings.DownKey);
-			UHUtilities::ReadINIData<char>(FileIn, Section, "UpKey", EngineSettings.UpKey);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "FPSLimit", EngineSettings.FPSLimit);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "MeshBufferMemoryBudgetMB", EngineSettings.MeshBufferMemoryBudgetMB);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "ImageMemoryBudgetMB", EngineSettings.ImageMemoryBudgetMB);
-
-			// clamp a few parameters
-			EngineSettings.MeshBufferMemoryBudgetMB = std::clamp(EngineSettings.MeshBufferMemoryBudgetMB, 0.1f, std::numeric_limits<float>::max());
-			EngineSettings.ImageMemoryBudgetMB = std::clamp(EngineSettings.ImageMemoryBudgetMB, 256.0f, std::numeric_limits<float>::max());
-		}
-
-		// rendering settings
-		Section = "RenderingSettings";
-		{
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RenderWidth", RenderingSettings.RenderWidth);
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RenderHeight", RenderingSettings.RenderHeight);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bTemporalAA", RenderingSettings.bTemporalAA);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableRayTracing", RenderingSettings.bEnableRayTracing);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableGPULabeling", RenderingSettings.bEnableGPULabeling);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableLayerValidation", RenderingSettings.bEnableLayerValidation);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableGPUTiming", RenderingSettings.bEnableGPUTiming);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableDepthPrePass", RenderingSettings.bEnableDepthPrePass);
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "ParallelThreads", RenderingSettings.ParallelThreads);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "RTCullingRadius", RenderingSettings.RTCullingRadius);
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RTShadowQuality", RenderingSettings.RTShadowQuality);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "RTShadowTMax", RenderingSettings.RTShadowTMax);
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "RTReflectionQuality", RenderingSettings.RTReflectionQuality);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "RTReflectionTMax", RenderingSettings.RTReflectionTMax);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "RTReflectionSmoothCutoff", RenderingSettings.RTReflectionSmoothCutoff);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "FinalReflectionStrength", RenderingSettings.FinalReflectionStrength);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bDenoiseRTReflection", RenderingSettings.bDenoiseRTReflection);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableHDR", RenderingSettings.bEnableHDR);
-			UHUtilities::ReadINIData<bool>(FileIn, Section, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "OcclusionTriangleThreshold", RenderingSettings.OcclusionTriangleThreshold);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "HDRContrast", RenderingSettings.HDRContrast);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "GammaCorrection", RenderingSettings.GammaCorrection);
-			UHUtilities::ReadINIData<int32_t>(FileIn, Section, "PCSSKernal", RenderingSettings.PCSSKernal);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "PCSSMinPenumbra", RenderingSettings.PCSSMinPenumbra);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "PCSSMaxPenumbra", RenderingSettings.PCSSMaxPenumbra);
-			UHUtilities::ReadINIData<float>(FileIn, Section, "PCSSBlockerDistScale", RenderingSettings.PCSSBlockerDistScale);
-
-			// clamp a few parameters
-			RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
-			RenderingSettings.RenderHeight = std::clamp(RenderingSettings.RenderHeight, 480, 16384);
-			RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, (int32_t)GMaxWorkerThreads);
-
-			RenderingSettings.PCSSKernal = std::clamp(RenderingSettings.PCSSKernal, 1, 3);
-			RenderingSettings.PCSSMinPenumbra = std::max(RenderingSettings.PCSSMinPenumbra, 0.0f);
-			RenderingSettings.PCSSMaxPenumbra = std::max(RenderingSettings.PCSSMaxPenumbra, 0.0f);
-			RenderingSettings.PCSSBlockerDistScale = std::max(RenderingSettings.PCSSBlockerDistScale, 0.0f);
-		}
+		GET_UHE_SETTING(PresentationSettings, WindowWidth);
+		GET_UHE_SETTING(PresentationSettings, WindowHeight);
+		GET_UHE_SETTING(PresentationSettings, bVsync);
+		GET_UHE_SETTING(PresentationSettings, bFullScreen);
 	}
-	FileIn.close();
+
+	// engine settings
+	{
+		GET_UHE_SETTING(EngineSettings, DefaultCameraMoveSpeed);
+		GET_UHE_SETTING(EngineSettings, MouseRotationSpeed);
+		GET_UHE_SETTING(EngineSettings, ForwardKey);
+		GET_UHE_SETTING(EngineSettings, BackKey);
+		GET_UHE_SETTING(EngineSettings, LeftKey);
+		GET_UHE_SETTING(EngineSettings, RightKey);
+		GET_UHE_SETTING(EngineSettings, DownKey);
+		GET_UHE_SETTING(EngineSettings, UpKey);
+		GET_UHE_SETTING(EngineSettings, FPSLimit);
+		GET_UHE_SETTING(EngineSettings, MeshBufferMemoryBudgetMB);
+		GET_UHE_SETTING(EngineSettings, ImageMemoryBudgetMB);
+
+		// clamp a few parameters
+		EngineSettings.MeshBufferMemoryBudgetMB = std::clamp(EngineSettings.MeshBufferMemoryBudgetMB, 0.1f, std::numeric_limits<float>::max());
+		EngineSettings.ImageMemoryBudgetMB = std::clamp(EngineSettings.ImageMemoryBudgetMB, 256.0f, std::numeric_limits<float>::max());
+	}
+
+	// rendering settings
+	{
+		GET_UHE_SETTING(RenderingSettings, RenderWidth);
+		GET_UHE_SETTING(RenderingSettings, RenderHeight);
+		GET_UHE_SETTING(RenderingSettings, bTemporalAA);
+		GET_UHE_SETTING(RenderingSettings, bEnableRayTracing);
+		GET_UHE_SETTING(RenderingSettings, bEnableGPULabeling);
+		GET_UHE_SETTING(RenderingSettings, bEnableLayerValidation);
+		GET_UHE_SETTING(RenderingSettings, bEnableGPUTiming);
+		GET_UHE_SETTING(RenderingSettings, bEnableDepthPrePass);
+		GET_UHE_SETTING(RenderingSettings, ParallelThreads);
+		GET_UHE_SETTING(RenderingSettings, RTCullingRadius);
+		GET_UHE_SETTING(RenderingSettings, RTShadowQuality);
+		GET_UHE_SETTING(RenderingSettings, RTShadowTMax);
+		GET_UHE_SETTING(RenderingSettings, RTReflectionQuality);
+		GET_UHE_SETTING(RenderingSettings, RTReflectionTMax);
+		GET_UHE_SETTING(RenderingSettings, RTReflectionSmoothCutoff);
+		GET_UHE_SETTING(RenderingSettings, FinalReflectionStrength);
+		GET_UHE_SETTING(RenderingSettings, bDenoiseRTReflection);
+		GET_UHE_SETTING(RenderingSettings, bEnableAsyncCompute);
+		GET_UHE_SETTING(RenderingSettings, bEnableHDR);
+		GET_UHE_SETTING(RenderingSettings, OcclusionTriangleThreshold);
+		GET_UHE_SETTING(RenderingSettings, HDRWhitePaperNits);
+		GET_UHE_SETTING(RenderingSettings, HDRContrast);
+		GET_UHE_SETTING(RenderingSettings, GammaCorrection);
+		GET_UHE_SETTING(RenderingSettings, PCSSKernal);
+		GET_UHE_SETTING(RenderingSettings, PCSSMinPenumbra);
+		GET_UHE_SETTING(RenderingSettings, PCSSMaxPenumbra);
+		GET_UHE_SETTING(RenderingSettings, PCSSBlockerDistScale);
+		GET_UHE_SETTING(RenderingSettings, bEnableHardwareOcclusion);
+		GET_UHE_SETTING(RenderingSettings, SelectedGpuName);
+
+		// clamp a few parameters
+		RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
+		RenderingSettings.RenderHeight = std::clamp(RenderingSettings.RenderHeight, 480, 16384);
+		RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, (int32_t)GMaxWorkerThreads);
+
+		RenderingSettings.PCSSKernal = std::clamp(RenderingSettings.PCSSKernal, 1, 3);
+		RenderingSettings.PCSSMinPenumbra = std::max(RenderingSettings.PCSSMinPenumbra, 0.0f);
+		RenderingSettings.PCSSMaxPenumbra = std::max(RenderingSettings.PCSSMaxPenumbra, 0.0f);
+		RenderingSettings.PCSSBlockerDistScale = std::max(RenderingSettings.PCSSBlockerDistScale, 0.0f);
+	}
+}
+
+// this function will apply config from all kinds of settings to UHIniData array, mainly for saving purpose later
+void UHConfigManager::ApplyConfig()
+{
+	// presentation settings
+	{
+		SET_UHE_SETTING(PresentationSettings, WindowWidth);
+		SET_UHE_SETTING(PresentationSettings, WindowHeight);
+		SET_UHE_SETTING(PresentationSettings, bVsync);
+		SET_UHE_SETTING(PresentationSettings, bFullScreen);
+	}
+
+	// engine settings
+	{
+		SET_UHE_SETTING(EngineSettings, DefaultCameraMoveSpeed);
+		SET_UHE_SETTING(EngineSettings, MouseRotationSpeed);
+		SET_UHE_SETTING(EngineSettings, ForwardKey);
+		SET_UHE_SETTING(EngineSettings, BackKey);
+		SET_UHE_SETTING(EngineSettings, LeftKey);
+		SET_UHE_SETTING(EngineSettings, RightKey);
+		SET_UHE_SETTING(EngineSettings, DownKey);
+		SET_UHE_SETTING(EngineSettings, UpKey);
+		SET_UHE_SETTING(EngineSettings, FPSLimit);
+		SET_UHE_SETTING(EngineSettings, MeshBufferMemoryBudgetMB);
+		SET_UHE_SETTING(EngineSettings, ImageMemoryBudgetMB);
+	}
+
+	// rendering settings
+	{
+		SET_UHE_SETTING(RenderingSettings, RenderWidth);
+		SET_UHE_SETTING(RenderingSettings, RenderHeight);
+		SET_UHE_SETTING(RenderingSettings, bTemporalAA);
+		SET_UHE_SETTING(RenderingSettings, bEnableRayTracing);
+		SET_UHE_SETTING(RenderingSettings, bEnableGPULabeling);
+		SET_UHE_SETTING(RenderingSettings, bEnableLayerValidation);
+		SET_UHE_SETTING(RenderingSettings, bEnableGPUTiming);
+		SET_UHE_SETTING(RenderingSettings, bEnableDepthPrePass);
+		SET_UHE_SETTING(RenderingSettings, ParallelThreads);
+		SET_UHE_SETTING(RenderingSettings, RTCullingRadius);
+		SET_UHE_SETTING(RenderingSettings, RTShadowQuality);
+		SET_UHE_SETTING(RenderingSettings, RTShadowTMax);
+		SET_UHE_SETTING(RenderingSettings, RTReflectionQuality);
+		SET_UHE_SETTING(RenderingSettings, RTReflectionTMax);
+		SET_UHE_SETTING(RenderingSettings, RTReflectionSmoothCutoff);
+		SET_UHE_SETTING(RenderingSettings, FinalReflectionStrength);
+		SET_UHE_SETTING(RenderingSettings, bDenoiseRTReflection);
+		SET_UHE_SETTING(RenderingSettings, bEnableAsyncCompute);
+		SET_UHE_SETTING(RenderingSettings, bEnableHDR);
+		SET_UHE_SETTING(RenderingSettings, OcclusionTriangleThreshold);
+		SET_UHE_SETTING(RenderingSettings, HDRWhitePaperNits);
+		SET_UHE_SETTING(RenderingSettings, HDRContrast);
+		SET_UHE_SETTING(RenderingSettings, GammaCorrection);
+		SET_UHE_SETTING(RenderingSettings, PCSSKernal);
+		SET_UHE_SETTING(RenderingSettings, PCSSMinPenumbra);
+		SET_UHE_SETTING(RenderingSettings, PCSSMaxPenumbra);
+		SET_UHE_SETTING(RenderingSettings, PCSSBlockerDistScale);
+		SET_UHE_SETTING(RenderingSettings, bEnableHardwareOcclusion);
+		SET_UHE_SETTING(RenderingSettings, SelectedGpuName);
+	}
 }
 
 // save config
 void UHConfigManager::SaveConfig(HWND InWindow)
 {
+	ApplyConfig();
+
 	std::ofstream FileOut(L"UHESettings.ini", std::ios::out);
 	if (FileOut.is_open())
 	{
-		UHUtilities::WriteINISection(FileOut, "PresentationSettings");
-		UHUtilities::WriteINIData(FileOut, "WindowWidth", PresentationSettings.WindowWidth);
-		UHUtilities::WriteINIData(FileOut, "WindowHeight", PresentationSettings.WindowHeight);
-		UHUtilities::WriteINIData(FileOut, "bVsync", PresentationSettings.bVsync);
-		UHUtilities::WriteINIData(FileOut, "bFullScreen", PresentationSettings.bFullScreen);
-		FileOut << std::endl;
+		for (size_t SectionIdx = 0; SectionIdx < UHESettings.size(); SectionIdx++)
+		{
+			UHUtilities::WriteINISection(FileOut, UHESettings[SectionIdx].SectionName);
+			for (size_t KeyValueIdx = 0; KeyValueIdx < UHESettings[SectionIdx].KeyValue.size(); KeyValueIdx++)
+			{
+				const UHIniKeyValue& KeyValue = UHESettings[SectionIdx].KeyValue[KeyValueIdx];
+				UHUtilities::WriteINIData(FileOut, KeyValue.KeyName, KeyValue.ValueName);
+			}
 
-		UHUtilities::WriteINISection(FileOut, "EngineSettings");
-		UHUtilities::WriteINIData(FileOut, "DefaultCameraMoveSpeed", EngineSettings.DefaultCameraMoveSpeed);
-		UHUtilities::WriteINIData(FileOut, "MouseRotationSpeed", EngineSettings.MouseRotationSpeed);
-		UHUtilities::WriteINIData(FileOut, "ForwardKey", EngineSettings.ForwardKey);
-		UHUtilities::WriteINIData(FileOut, "BackKey", EngineSettings.BackKey);
-		UHUtilities::WriteINIData(FileOut, "LeftKey", EngineSettings.LeftKey);
-		UHUtilities::WriteINIData(FileOut, "RightKey", EngineSettings.RightKey);
-		UHUtilities::WriteINIData(FileOut, "DownKey", EngineSettings.DownKey);
-		UHUtilities::WriteINIData(FileOut, "UpKey", EngineSettings.UpKey);
-		UHUtilities::WriteINIData(FileOut, "FPSLimit", EngineSettings.FPSLimit);
-		UHUtilities::WriteINIData(FileOut, "MeshBufferMemoryBudgetMB", EngineSettings.MeshBufferMemoryBudgetMB);
-		UHUtilities::WriteINIData(FileOut, "ImageMemoryBudgetMB", EngineSettings.ImageMemoryBudgetMB);
-		FileOut << std::endl;
-
-		UHUtilities::WriteINISection(FileOut, "RenderingSettings");
-		UHUtilities::WriteINIData(FileOut, "RenderWidth", RenderingSettings.RenderWidth);
-		UHUtilities::WriteINIData(FileOut, "RenderHeight", RenderingSettings.RenderHeight);
-		UHUtilities::WriteINIData(FileOut, "bTemporalAA", RenderingSettings.bTemporalAA);
-		UHUtilities::WriteINIData(FileOut, "bEnableRayTracing", RenderingSettings.bEnableRayTracing);
-		UHUtilities::WriteINIData(FileOut, "bEnableGPULabeling", RenderingSettings.bEnableGPULabeling);
-		UHUtilities::WriteINIData(FileOut, "bEnableLayerValidation", RenderingSettings.bEnableLayerValidation);
-		UHUtilities::WriteINIData(FileOut, "bEnableGPUTiming", RenderingSettings.bEnableGPUTiming);
-		UHUtilities::WriteINIData(FileOut, "bEnableDepthPrePass", RenderingSettings.bEnableDepthPrePass);
-		UHUtilities::WriteINIData(FileOut, "ParallelThreads", RenderingSettings.ParallelThreads);
-		UHUtilities::WriteINIData(FileOut, "RTCullingRadius", RenderingSettings.RTCullingRadius);
-		UHUtilities::WriteINIData(FileOut, "RTShadowQuality", RenderingSettings.RTShadowQuality);
-		UHUtilities::WriteINIData(FileOut, "RTShadowTMax", RenderingSettings.RTShadowTMax);
-		UHUtilities::WriteINIData(FileOut, "RTReflectionQuality", RenderingSettings.RTReflectionQuality);
-		UHUtilities::WriteINIData(FileOut, "RTReflectionTMax", RenderingSettings.RTReflectionTMax);
-		UHUtilities::WriteINIData(FileOut, "RTReflectionSmoothCutoff", RenderingSettings.RTReflectionSmoothCutoff);
-		UHUtilities::WriteINIData(FileOut, "FinalReflectionStrength", RenderingSettings.FinalReflectionStrength);
-		UHUtilities::WriteINIData(FileOut, "bDenoiseRTReflection", RenderingSettings.bDenoiseRTReflection);
-		UHUtilities::WriteINIData(FileOut, "bEnableAsyncCompute", RenderingSettings.bEnableAsyncCompute);
-		UHUtilities::WriteINIData(FileOut, "bEnableHDR", RenderingSettings.bEnableHDR);
-		UHUtilities::WriteINIData(FileOut, "bEnableHardwareOcclusion", RenderingSettings.bEnableHardwareOcclusion);
-		UHUtilities::WriteINIData(FileOut, "OcclusionTriangleThreshold", RenderingSettings.OcclusionTriangleThreshold);
-		UHUtilities::WriteINIData(FileOut, "HDRWhitePaperNits", RenderingSettings.HDRWhitePaperNits);
-		UHUtilities::WriteINIData(FileOut, "HDRContrast", RenderingSettings.HDRContrast);
-		UHUtilities::WriteINIData(FileOut, "GammaCorrection", RenderingSettings.GammaCorrection);
-
-		UHUtilities::WriteINIData(FileOut, "PCSSKernal", RenderingSettings.PCSSKernal);
-		UHUtilities::WriteINIData(FileOut, "PCSSMinPenumbra", RenderingSettings.PCSSMinPenumbra);
-		UHUtilities::WriteINIData(FileOut, "PCSSMaxPenumbra", RenderingSettings.PCSSMaxPenumbra);
-		UHUtilities::WriteINIData(FileOut, "PCSSBlockerDistScale", RenderingSettings.PCSSBlockerDistScale);
+			FileOut << std::endl;
+		}
 	}
 	FileOut.close();
 }

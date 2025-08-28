@@ -57,3 +57,11 @@ Fixed various bugs during editing. Still need to try different FBX models.
 25-07-2025:
 Simplified fbx import process. It will now iterate all triangles and collect all mesh infos at once.
 Still need to debug for certain meshes. Two more models were imported well! I think some assets are just bad for use.
+
+27-08-2025:
+Add the ability to select GPU used for rendering.
+Next I will try to refactor config load/save structures.
+
+28-08-2025:
+Implemented a simple IniManager.
+Refactor constness of string paramaters in UHUtilities functions.

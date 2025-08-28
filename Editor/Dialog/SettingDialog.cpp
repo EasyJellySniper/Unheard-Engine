@@ -76,6 +76,30 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
 
     // rendering settings
     ImGui::Text("---Rendering Settings---");
+
+    // selected GPU setting
+    char Dummy[40];
+    memset(Dummy, 65, sizeof(char) * 40);
+    Dummy[39] = '\0';
+
+    // give a good size for combo list display
+    ImGui::SetNextItemWidth(ImGui::CalcTextSize(Dummy).x);
+    if (ImGui::BeginCombo("Selected GPU*", RenderingSettings.SelectedGpuName.c_str()))
+    {
+        const std::vector<std::string>& AvailableGpus = Engine->GetGfx()->GetAvailableGpuNames();
+        for (size_t Idx = 0; Idx < AvailableGpus.size(); Idx++)
+        {
+            const bool bIsSelected = (RenderingSettings.SelectedGpuName == AvailableGpus[Idx]);
+            if (ImGui::Selectable(AvailableGpus[Idx].c_str(), bIsSelected))
+            {
+                RenderingSettings.SelectedGpuName = AvailableGpus[Idx];
+                break;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::NewLine();
+
     ImGui::InputInt("##", &TempWidth);
     ImGui::SameLine();
     ImGui::InputInt("Render Resolution (W/H)", &TempHeight);

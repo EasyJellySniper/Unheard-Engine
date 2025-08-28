@@ -270,6 +270,8 @@ public:
 	std::vector<uint32_t> GetDeviceMemoryTypeIndices() const;
 	uint32_t GetHostMemoryTypeIndex() const;
 
+	std::vector<std::string> GetAvailableGpuNames() const;
+
 #if WITH_EDITOR
 	uint32_t GetMinImageCount() const;
 	bool RecreateImGui();
@@ -407,6 +409,9 @@ protected:
 	UniquePtr<UHGPUMemory> ImageSharedMemory;
 	std::vector<uint32_t> DeviceMemoryTypeIndices;
 	uint32_t HostMemoryTypeIndex;
+
+	// available GPUs for editor use
+	std::vector<std::string> AvailableGpuNames;
 
 #if WITH_EDITOR
 	uint32_t MinImageCount;

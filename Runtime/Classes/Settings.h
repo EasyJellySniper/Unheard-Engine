@@ -35,7 +35,7 @@ public:
 		, RightKey('d')
 		, DownKey('q')
 		, UpKey('e')
-		, FPSLimit(60.0f)
+		, FPSLimit(0.0f)
 		, MeshBufferMemoryBudgetMB(512.0f)
 		, ImageMemoryBudgetMB(1024.0f)
 	{
@@ -77,22 +77,22 @@ public:
 		, RenderHeight(1080)
 		, bTemporalAA(true)
 		, bEnableRayTracing(true)
-		, bEnableGPULabeling(true)
-		, bEnableLayerValidation(true)
-		, bEnableGPUTiming(true)
-		, bEnableDepthPrePass(false)
-		, ParallelThreads(0)
+		, bEnableGPULabeling(false)
+		, bEnableLayerValidation(false)
+		, bEnableGPUTiming(false)
+		, bEnableDepthPrePass(true)
+		, ParallelThreads(8)
 		, RTCullingRadius(100.0f)
 		, RTShadowQuality(UH_ENUM_VALUE(UHRTShadowQuality::RTShadow_Half))
 		, RTShadowTMax(100.0f)
 		, RTReflectionQuality(UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
 		, RTReflectionTMax(100)
 		, RTReflectionSmoothCutoff(0.5f)
-		, FinalReflectionStrength(0.75f)
-		, bEnableAsyncCompute(false)
+		, FinalReflectionStrength(0.25f)
+		, bEnableAsyncCompute(true)
 		, bEnableHDR(false)
 		, bEnableHardwareOcclusion(true)
-		, OcclusionTriangleThreshold(5000)
+		, OcclusionTriangleThreshold(500)
 		, GammaCorrection(2.2f)
 		, HDRWhitePaperNits(200.0f)
 		, HDRContrast(1.3f)
@@ -101,6 +101,7 @@ public:
 		, PCSSMaxPenumbra(10.0f)
 		, PCSSBlockerDistScale(0.02f)
 		, bDenoiseRTReflection(true)
+		, SelectedGpuName("")
 	{
 
 	}
@@ -146,4 +147,7 @@ public:
 	float PCSSMinPenumbra;
 	float PCSSMaxPenumbra;
 	float PCSSBlockerDistScale;
+
+	// rendering device selection
+	std::string SelectedGpuName;
 };

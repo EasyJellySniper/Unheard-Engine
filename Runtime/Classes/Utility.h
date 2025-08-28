@@ -140,7 +140,7 @@ namespace UHUtilities
 
 	// remove by index
 	template<class T>
-	inline void RemoveByIndex(std::vector<T>& InVector, int32_t InIndex, int32_t InLast = UHINDEXNONE)
+	inline void RemoveByIndex(std::vector<T>& InVector, const int32_t InIndex, const int32_t InLast = UHINDEXNONE)
 	{
 		if (InLast == UHINDEXNONE)
 		{
@@ -153,7 +153,7 @@ namespace UHUtilities
 	}
 
 	// generic write string data
-	void WriteStringData(std::ofstream& FileOut, std::string InString);
+	void WriteStringData(std::ofstream& FileOut, const std::string& InString);
 
 	// generic read string data
 	void ReadStringData(std::ifstream& FileIn, std::string& OutString);
@@ -196,13 +196,15 @@ namespace UHUtilities
 	void WriteStringVectorData(std::ofstream& FileOut, std::vector<std::string>& InVector);
 	void ReadStringVectorData(std::ifstream& FileIn, std::vector<std::string>& OutVector);
 
-	std::string ToStringA(std::wstring InStringW);
+	std::string ToStringA(const std::wstring& InStringW);
 
-	std::wstring ToStringW(std::string InStringA);
+	std::wstring ToStringW(const std::string& InStringA);
 
-	std::string RemoveChars(std::string InString, std::string InChars);
+	std::string RemoveChars(std::string InString, const std::string& InChars);
 
-	std::string RemoveSubString(std::string InString, std::string InSubString);
+	std::string RemoveSubString(std::string InString, const std::string& InSubString);
+
+	std::string TrimString(const std::string& InString);
 
 	void WriteINISection(std::ofstream& FileOut, std::string InSection);
 
@@ -210,6 +212,12 @@ namespace UHUtilities
 	inline void WriteINIData(std::ofstream& FileOut, std::string Key, T Value)
 	{
 		FileOut << Key << "=" << std::to_string(Value) << std::endl;
+	}
+
+	// write ini data string version
+	inline void WriteINIData(std::ofstream& FileOut, std::string Key, std::string Value)
+	{
+		FileOut << Key << "=" << Value << std::endl;
 	}
 
 	size_t SeekINISection(std::ifstream& FileIn, std::string Section);
@@ -258,21 +266,65 @@ namespace UHUtilities
 		// no value found, the OutValue will remain the same
 	}
 
+	// read ini data string version
+	inline void ReadINIData(std::ifstream& FileIn, std::string Section, std::string Key, std::string& OutValue)
+	{
+		// this function simply reads ini data, doesn't consider comment yet
+		const size_t StartPos = SeekINISection(FileIn, Section);
+		if (StartPos == std::string::npos)
+		{
+			return;
+		}
+
+		if (!FileIn.good())
+		{
+			// in case setting are not found (new value)
+			FileIn.clear();
+		}
+		FileIn.seekg(StartPos);
+
+		std::string KeyFound;
+		std::string ValueFound;
+
+		std::string Line;
+		while (std::getline(FileIn, Line))
+		{
+			Line = RemoveChars(Line, " \t");
+
+			size_t KeyPos = Line.find('=');
+			if (KeyPos != std::string::npos)
+			{
+				KeyFound = Line.substr(0, KeyPos);
+				ValueFound = Line.substr(KeyPos + 1, Line.length() - KeyPos - 1);
+
+				if (KeyFound == Key)
+				{
+					// string to double anyway
+					// then cast it to target type
+					OutValue = ValueFound;
+					return;
+				}
+			}
+		}
+
+		// no value found, the OutValue will remain the same
+	}
+
 	// djb2 string to hash, reference: http://www.cse.yorku.ca/~oz/hash.html
-	size_t StringToHash(std::string InString);
+	size_t StringToHash(const std::string& InString);
 
 	// inline function for convert shader defines to hash
-	size_t ShaderDefinesToHash(std::vector<std::string> Defines);
+	size_t ShaderDefinesToHash(const std::vector<std::string>& Defines);
 
 	std::string ToLowerString(std::string InString);
 
-	bool StringFind(std::string InString, std::string InSearch);
+	bool StringFind(const std::string& InString, const std::string& InSearch);
 
-	size_t StringFindIndex(std::string InString, std::string InSearch);
+	size_t StringFindIndex(const std::string& InString, const std::string& InSearch);
 
-	std::string StringReplace(std::string InString, std::string InKeyWord, std::string InValue);
+	std::string StringReplace(std::string InString, const std::string& InKeyWord, const std::string& InValue);
 
-	std::wstring FloatToWString(float InValue, int32_t InPrecision = 2);
+	std::wstring FloatToWString(const float InValue, const int32_t InPrecision = 2);
 
-	std::string FloatToString(float InValue, int32_t InPrecision = 2);
+	std::string FloatToString(const float InValue, const int32_t InPrecision = 2);
 }

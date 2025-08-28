@@ -289,6 +289,7 @@
     <ClInclude Include="Runtime\Classes\AssetPath.h" />
     <ClInclude Include="Runtime\Classes\GPUMemory.h" />
     <ClInclude Include="Runtime\Classes\GPUQuery.h" />
+    <ClInclude Include="Runtime\Classes\IniManager.h" />
     <ClInclude Include="Runtime\Classes\TextureCompressor.h" />
     <ClInclude Include="Runtime\Classes\TextureFormat.h" />
     <ClInclude Include="Runtime\Classes\Thread.h" />
@@ -425,6 +426,7 @@
     <ClCompile Include="Runtime\Classes\AccelerationStructure.cpp" />
     <ClCompile Include="Runtime\Classes\GPUMemory.cpp" />
     <ClCompile Include="Runtime\Classes\GPUQuery.cpp" />
+    <ClCompile Include="Runtime\Classes\IniManager.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCompressor.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCube.cpp" />
     <ClCompile Include="Runtime\Classes\TextureFormat.cpp" />

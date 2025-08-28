@@ -25,6 +25,7 @@ UHDemoScript::UHDemoScript()
 
 void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 {
+	InEngine->OnLoadScene("Assets/Scenes/test.uhscene");
 	return;
 	if (TestType == UHDemoType::DayTest)
 	{
