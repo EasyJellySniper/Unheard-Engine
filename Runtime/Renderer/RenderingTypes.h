@@ -162,7 +162,7 @@ enum class UHRenderPassTypes
 	CollectLightPass,
 	GenerateSH9,
 	RayTracingShadow,
-	SmoothReflectVectorPass,
+	SmoothSceneNormalPass,
 	RayTracingReflection,
 	LightCulling,
 	LightPass,
@@ -328,7 +328,7 @@ enum class UHSystemRenderFeatureBits
 {
 	FeatureEnvCube = 1 << 0,
 	FeatureHDR = 1 << 1,
-	FeatureRTReflectionDenoise = 1 << 2,
+	FeatureUseSmoothNormalForRaytracing = 1 << 2,
 	FeatureDebug = 1 << 31,
 };
 

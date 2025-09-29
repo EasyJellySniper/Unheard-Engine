@@ -11,7 +11,7 @@ void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
 	GraphicInterface->RequestReleaseRT(GRTShadowResult);
 	GraphicInterface->RequestReleaseRT(GRTSharedTextureRG);
 	GraphicInterface->RequestReleaseRT(GRTReflectionResult);
-	GraphicInterface->RequestReleaseRT(GSmoothReflectVector);
+	GraphicInterface->RequestReleaseRT(GSmoothSceneNormal);
 }
 
 void UHDeferredShadingRenderer::InitRTGaussianConstants()
@@ -58,13 +58,13 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 
 		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, UHTextureFormat::UH_FORMAT_R8_UNORM, true);
 		GRTSharedTextureRG = GraphicInterface->RequestRenderTexture("RTSharedTextureRG", RenderResolution, UHTextureFormat::UH_FORMAT_RG16F, true);
-		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTSharedTextureFloat", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA16F, true, true);
+		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTReflectionResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM, true, true);
 
 		// refined normal at half size
 		VkExtent2D HalfRes = RenderResolution;
 		HalfRes.width >>= 1;
 		HalfRes.height >>= 1;
-		GSmoothReflectVector = GraphicInterface->RequestRenderTexture("SmoothReflectVector", HalfRes, UHTextureFormat::UH_FORMAT_RGBA16F, true);
+		GSmoothSceneNormal = GraphicInterface->RequestRenderTexture("SmoothSceneNormal", HalfRes, UHTextureFormat::UH_FORMAT_A2B10G10R10, true);
 
 		InitRTGaussianConstants();
 		if (!bInitOnly)
@@ -204,18 +204,18 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
-void UHDeferredShadingRenderer::DispatchSmoothReflectVectorPass(UHRenderBuilder& RenderBuilder)
+void UHDeferredShadingRenderer::DispatchSmoothSceneNormalPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGameTimerScope Scope("SmoothReflectVectorPass", false);
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SmoothReflectVectorPass)], "SmoothReflectVectorPass");
+	UHGameTimerScope Scope("SmoothSceneNormalPass", false);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SmoothSceneNormalPass)], "SmoothSceneNormalPass");
 
 	if (!bIsRaytracingEnableRT || !bDenoiseReflectionRT)
 	{
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Smooth reflect vector pass");
-	RenderBuilder.ResourceBarrier(GSmoothReflectVector, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Smooth scene normal pass");
+	RenderBuilder.ResourceBarrier(GSmoothSceneNormal, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	// two pass refine normal at half size
 	VkExtent2D HalfRes = RenderResolution;
@@ -232,7 +232,7 @@ void UHDeferredShadingRenderer::DispatchSmoothReflectVectorPass(UHRenderBuilder&
 	RenderBuilder.BindDescriptorSetCompute(RTSmoothReflectVShader->GetPipelineLayout(), RTSmoothReflectVShader->GetDescriptorSet(CurrentFrameRT));
 	RenderBuilder.Dispatch(HalfRes.width, MathHelpers::RoundUpDivide(HalfRes.height, GThreadGroup1D), 1);
 
-	RenderBuilder.ResourceBarrier(GSmoothReflectVector, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	RenderBuilder.ResourceBarrier(GSmoothSceneNormal, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 

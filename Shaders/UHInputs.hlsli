@@ -37,7 +37,7 @@
 // this needs to sync with UHSystemRenderFeatureBits in C++ side
 #define UH_ENV_CUBE 1 << 0
 #define UH_HDR 1 << 1
-#define UH_RTREFLECTION_DENOISE 1 << 2
+#define UH_USE_SMOOTH_NORMAL_RAYTRACING 1 << 2
 #define UH_DEBUGING 1 << 31
 
 struct VertexOutput

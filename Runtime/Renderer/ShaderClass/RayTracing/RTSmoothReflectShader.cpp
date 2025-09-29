@@ -31,7 +31,7 @@ void RTSmoothReflectShader::OnCompile()
 void RTSmoothReflectShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
-	BindRWImage(GSmoothReflectVector, 1);
+	BindRWImage(GSmoothSceneNormal, 1);
 	BindImage(GSceneNormal, 2);
 	BindImage(GTranslucentBump, 3);
 	BindImage(GSceneTranslucentDepth, 4);

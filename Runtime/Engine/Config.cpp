@@ -65,7 +65,7 @@ void UHConfigManager::LoadConfig()
 		GET_UHE_SETTING(RenderingSettings, RTReflectionTMax);
 		GET_UHE_SETTING(RenderingSettings, RTReflectionSmoothCutoff);
 		GET_UHE_SETTING(RenderingSettings, FinalReflectionStrength);
-		GET_UHE_SETTING(RenderingSettings, bDenoiseRTReflection);
+		GET_UHE_SETTING(RenderingSettings, bDenoiseRayTracing);
 		GET_UHE_SETTING(RenderingSettings, bEnableAsyncCompute);
 		GET_UHE_SETTING(RenderingSettings, bEnableHDR);
 		GET_UHE_SETTING(RenderingSettings, OcclusionTriangleThreshold);
@@ -135,7 +135,7 @@ void UHConfigManager::ApplyConfig()
 		SET_UHE_SETTING(RenderingSettings, RTReflectionTMax);
 		SET_UHE_SETTING(RenderingSettings, RTReflectionSmoothCutoff);
 		SET_UHE_SETTING(RenderingSettings, FinalReflectionStrength);
-		SET_UHE_SETTING(RenderingSettings, bDenoiseRTReflection);
+		SET_UHE_SETTING(RenderingSettings, bDenoiseRayTracing);
 		SET_UHE_SETTING(RenderingSettings, bEnableAsyncCompute);
 		SET_UHE_SETTING(RenderingSettings, bEnableHDR);
 		SET_UHE_SETTING(RenderingSettings, OcclusionTriangleThreshold);

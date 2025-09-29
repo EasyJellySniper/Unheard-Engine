@@ -76,6 +76,7 @@ public:
 	static std::string FindTexturePathName(std::string InName);
 
 	void AddCubemap(UHTextureCube* InCube);
+	UHShaderImporter* GetShaderImporter() const;
 #endif
 
 private:

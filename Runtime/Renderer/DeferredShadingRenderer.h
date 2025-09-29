@@ -203,11 +203,11 @@ private:
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
-	void DispatchSmoothReflectVectorPass(UHRenderBuilder& RenderBuilder);
+	void DispatchSmoothSceneNormalPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder);
 	void RenderLightPass(UHRenderBuilder& RenderBuilder);
 	void PreReflectionPass(UHRenderBuilder& RenderBuilder);
-	void DrawReflectionPass(UHRenderBuilder& RenderBuilder);
+	void RenderReflectionPass(UHRenderBuilder& RenderBuilder);
 	void GenerateSH9Pass(UHRenderBuilder& RenderBuilder);
 	void RenderSkyPass(UHRenderBuilder& RenderBuilder);
 	void RenderMotionPass(UHRenderBuilder& RenderBuilder);

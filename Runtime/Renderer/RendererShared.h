@@ -40,7 +40,7 @@ extern UHRenderTexture* GTranslucentSmoothness;
 extern UHRenderTexture* GRTShadowResult;
 extern UHRenderTexture* GRTSharedTextureRG;
 extern UHRenderTexture* GRTReflectionResult;
-extern UHRenderTexture* GSmoothReflectVector;
+extern UHRenderTexture* GSmoothSceneNormal;
 extern UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
 // cubemaps

@@ -23,7 +23,7 @@ float4 SelectCandidateReflect(float3 EyeVector, int2 PixelCoord)
     float4 TranslucentN = TranslucentNormalTexture.SampleLevel(LinearSampler, UV, 0);
     float4 CandidateN = TranslucentN.a > 0 ? TranslucentN : OpaqueN;
     
-    return float4(reflect(EyeVector, DecodeNormal(CandidateN.xyz)), CandidateN.a > 0 ? 1 : 0);
+    return float4(DecodeNormal(CandidateN.xyz), CandidateN.a > 0 ? 1 : 0);
 }
 
 [numthreads(UHTHREAD_GROUP1D, 1, 1)]

@@ -772,7 +772,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	const UHTextureFormat SpecularFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 	const UHTextureFormat SceneResultFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
 	const UHTextureFormat HistoryResultFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
-	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_R16F;
+	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_RG16F;
 	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UHTextureFormat::UH_FORMAT_X8_D24 : UHTextureFormat::UH_FORMAT_D32F;
 	const UHTextureFormat MotionFormat = UHTextureFormat::UH_FORMAT_RG16F;
 	const UHTextureFormat MaskFormat = UHTextureFormat::UH_FORMAT_R8_UNORM;

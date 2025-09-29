@@ -32,7 +32,7 @@ UHRenderTexture* GRTShadowResult;
 UHRenderTexture* GRTSharedTextureRG;
 // GRTReflectionResult can be reused after translucent pass is done
 UHRenderTexture* GRTReflectionResult;
-UHRenderTexture* GSmoothReflectVector;
+UHRenderTexture* GSmoothSceneNormal;
 UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
 // for refraction use

@@ -94,7 +94,7 @@ void UHRTReflectionShader::BindParameters()
 	BindImage(GSceneVertexNormal, 10);
 	BindImage(GTranslucentBump, 11);
 	BindImage(GTranslucentSmoothness, 12);
-	BindImage(GSmoothReflectVector, 13);
+	BindImage(GSmoothSceneNormal, 13);
 
 	// shadow mask and lighting list
 	BindStorage(GInstanceLightsBuffer, 14, 0, true);

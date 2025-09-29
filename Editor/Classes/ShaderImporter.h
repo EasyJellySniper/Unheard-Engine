@@ -54,6 +54,7 @@ class UHShaderImporter
 {
 public:
 	UHShaderImporter();
+	~UHShaderImporter();
 
 	void LoadShaderCache();
 	void WriteShaderIncludeCache();
@@ -66,6 +67,10 @@ public:
 private:
 	std::vector<UHRawShaderAssetCache> UHRawShadersCache;
 	std::vector<std::string> ShaderIncludes;
+
+	// also keep map containers for faster lookup
+	std::unordered_map<size_t, UHRawShaderAssetCache> UHRawShadersCacheMap;
+	std::unordered_map<size_t, bool> UHShaderTemplateCacheMap;
 };
 
 #endif

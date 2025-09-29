@@ -65,3 +65,7 @@ Next I will try to refactor config load/save structures.
 28-08-2025:
 Implemented a simple IniManager.
 Refactor constness of string paramaters in UHUtilities functions.
+
+29-09-2025:
+Minor optimizations and code refactor.
+Shader cache bugfix and improvement.

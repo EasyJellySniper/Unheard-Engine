@@ -96,7 +96,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	OcclusionThresholdRT = RenderingSettings.OcclusionTriangleThreshold;
 	bEnableDepthPrepassRT = GraphicInterface->IsDepthPrePassEnabled();
 	bTemporalAART = RenderingSettings.bTemporalAA;
-	bDenoiseReflectionRT = RenderingSettings.bDenoiseRTReflection;
+	bDenoiseReflectionRT = RenderingSettings.bDenoiseRayTracing;
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -250,7 +250,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	uint32_t FeatureData = 0;
 	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
-	FeatureData |= RenderingSettings.bDenoiseRTReflection ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTReflectionDenoise) : 0;
+	FeatureData |= RenderingSettings.bDenoiseRayTracing ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureUseSmoothNormalForRaytracing) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.GDirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
@@ -798,14 +798,14 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 				DispatchLightCulling(SceneRenderBuilder);
 				DispatchRayShadowPass(SceneRenderBuilder);
+				DispatchSmoothSceneNormalPass(SceneRenderBuilder);
+				DispatchRayReflectionPass(SceneRenderBuilder);
 
 				RenderLightPass(SceneRenderBuilder);
 				RenderSkyPass(SceneRenderBuilder);
 
 				PreReflectionPass(SceneRenderBuilder);
-				DispatchSmoothReflectVectorPass(SceneRenderBuilder);
-				DispatchRayReflectionPass(SceneRenderBuilder);
-				DrawReflectionPass(SceneRenderBuilder);
+				RenderReflectionPass(SceneRenderBuilder);
 
 				RenderTranslucentPass(SceneRenderBuilder);
 				RenderPostProcessing(SceneRenderBuilder);

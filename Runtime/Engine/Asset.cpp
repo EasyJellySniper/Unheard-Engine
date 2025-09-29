@@ -639,4 +639,9 @@ void UHAssetManager::AddCubemap(UHTextureCube* InCube)
 {
 	UHCubemaps.push_back(InCube);
 }
+
+UHShaderImporter* UHAssetManager::GetShaderImporter() const
+{
+	return UHShaderImporterInterface.get();
+}
 #endif

@@ -23,6 +23,7 @@ UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std
 
 	// Generate shader hash by string, format in shader name + entry name + macro name
 	// Or an extra material name if it's a material shader
+	// @TODO: If different profile meant to be supported, might also need to add that as the key
 	std::string Key = InShaderName + InEntryName;
 	for (const std::string& Str : InMacro)
 	{
@@ -89,6 +90,11 @@ std::filesystem::path UHShader::GetSourcePath() const
 
 std::filesystem::path UHShader::GetOutputPath() const
 {
+	if (EntryName == "" || ProfileName == "")
+	{
+		return "";
+	}
+
 	const std::string OriginSubpath = UHAssetPath::GetShaderOriginSubpath(SourcePath);
 	const std::string ShaderHashName = std::to_string(ShaderHash);
 	std::filesystem::path OutputPath = GShaderAssetFolder + OriginSubpath + ShaderHashName + GShaderAssetExtension;

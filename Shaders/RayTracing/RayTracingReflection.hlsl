@@ -22,7 +22,7 @@ Texture2D MixedDepthTexture : register(t9);
 Texture2D MixedVertexNormalTexture : register(t10);
 Texture2D TranslucentBumpTexture : register(t11);
 Texture2D TranslucentSmoothTexture : register(t12);
-Texture2D SmoothReflectVecTexture : register(t13);
+Texture2D SmoothSceneNormalTexture : register(t13);
 
 // lighting parameters
 StructuredBuffer<UHInstanceLights> InstanceLights : register(t14);
@@ -419,13 +419,13 @@ void RTReflectionRayGen()
     
     // fetch refined eye vector for reflection to reduce noise for bump normal
     // or reflect vertex normal ray
-    float3 ReflectedRay = bUseVertexNormal || !(GSystemRenderFeature & UH_RTREFLECTION_DENOISE) ? reflect(EyeVector, SceneNormal)
-        : SmoothReflectVecTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
+    SceneNormal = bUseVertexNormal || !(GSystemRenderFeature & UH_USE_SMOOTH_NORMAL_RAYTRACING) ? SceneNormal
+        : SmoothSceneNormalTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
     
     RayDesc ReflectRay = (RayDesc) 0;
     ReflectRay.Origin = SceneWorldPos + VertexNormal * RayGap;
-    ReflectRay.Direction = ReflectedRay;
+    ReflectRay.Direction = reflect(EyeVector, SceneNormal);
     
     ReflectRay.TMin = RayGap;
     ReflectRay.TMax = GRTReflectionRayTMax;

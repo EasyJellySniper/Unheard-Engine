@@ -9,6 +9,7 @@
 
 UHShaderImporter::UHShaderImporter()
 {
+	// hard-coded shader include file names, can also be moved to config settings in the future
 	ShaderIncludes.push_back("UHInputs.hlsli");
 	ShaderIncludes.push_back("UHCommon.hlsli");
 	ShaderIncludes.push_back("UHLightCommon.hlsli");
@@ -16,6 +17,12 @@ UHShaderImporter::UHShaderImporter()
 	ShaderIncludes.push_back("UHSphericalHamonricCommon.hlsli");
 	ShaderIncludes.push_back("RayTracing/UHRTCommon.hlsli");
 	ShaderIncludes.push_back("UHMeshShaderCommon.hlsli");
+}
+
+UHShaderImporter::~UHShaderImporter()
+{
+	// invalidate shader include at the end, WriteShaderIncludeCache() can be called somewhere else too when necessary
+	WriteShaderIncludeCache();
 }
 
 void UHShaderImporter::LoadShaderCache()
@@ -67,6 +74,10 @@ void UHShaderImporter::LoadShaderCache()
 		FileIn.close();
 
 		UHRawShadersCache.push_back(Cache);
+		if (Cache.ShaderHash != 0)
+		{
+			UHRawShadersCacheMap[Cache.ShaderHash] = Cache;
+		}
 	}
 }
 
@@ -114,14 +125,23 @@ void UHShaderImporter::WriteShaderIncludeCache()
 	for (const std::string& Include : ShaderIncludes)
 	{
 		std::filesystem::path Path = GRawShaderPath + Include;
-		UHShader Dummy("", Path, "", "", std::vector<std::string>());
+		UHShader Dummy(Include, Path, "", "", std::vector<std::string>());
 		WriteShaderCache(&Dummy);
 	}
 }
 
 bool UHShaderImporter::IsShaderIncludeCached()
 {
-	bool bIsCached = true;
+	// shader includes can only be checked once as they won't change in the runtime
+	static bool bIsShaderIncludeChecked = false;
+	static bool bIsCached = true;
+
+	if (bIsShaderIncludeChecked)
+	{
+		// early return if shader include has been checked
+		return bIsCached;
+	}
+
 	for(const std::string& Include : ShaderIncludes)
 	{
 		// mark if shader includes are changed
@@ -133,6 +153,7 @@ bool UHShaderImporter::IsShaderIncludeCached()
 		bIsCached &= UHUtilities::FindByElement(UHRawShadersCache, InCache);
 	}
 
+	bIsShaderIncludeChecked = true;
 	return bIsCached;
 }
 
@@ -143,17 +164,19 @@ bool UHShaderImporter::IsShaderCached(UHShader* InShader)
 		return false;
 	}
 
-	UHRawShaderAssetCache InCache;
-	InCache.SourcePath = InShader->GetSourcePath();
-	InCache.UHShaderPath = InShader->GetOutputPath();
-	InCache.SourcLastModifiedTime = std::filesystem::last_write_time(InCache.SourcePath).time_since_epoch().count();
-	InCache.EntryName = InShader->GetEntryName();
-	InCache.ProfileName = InShader->GetProfileName();
-	InCache.Defines = InShader->GetShaderDefines();
-	InCache.ShaderHash = InShader->GetShaderHash();
+	const int64_t SourcLastModifiedTime = std::filesystem::last_write_time(InShader->GetSourcePath()).time_since_epoch().count();
+	const size_t ShaderHash = InShader->GetShaderHash();
 
-	// the cache will also check the include files
-	return UHUtilities::FindByElement(UHRawShadersCache, InCache) && std::filesystem::exists(InCache.UHShaderPath) && IsShaderIncludeCached();
+	bool bCacheFound = false;
+	auto CacheIter = UHRawShadersCacheMap.find(ShaderHash);
+	if (CacheIter != UHRawShadersCacheMap.end())
+	{
+		bCacheFound = CacheIter->second.SourcLastModifiedTime == SourcLastModifiedTime;
+	}
+
+	return bCacheFound
+		&& std::filesystem::exists(InShader->GetOutputPath())
+		&& IsShaderIncludeCached();
 }
 
 bool UHShaderImporter::IsShaderTemplateCached(std::filesystem::path SourcePath, std::string EntryName, std::string ProfileName)
@@ -170,7 +193,18 @@ bool UHShaderImporter::IsShaderTemplateCached(std::filesystem::path SourcePath, 
 	InCache.EntryName = EntryName;
 	InCache.ProfileName = ProfileName;
 
-	return UHUtilities::FindByElement(UHRawShadersCache, InCache) && IsShaderIncludeCached();
+	// shader template check receives path+entry+profile only, so I need to evaluate shader hash manually
+	UHShader Dummy("", SourcePath, EntryName, ProfileName, "", std::vector<std::string>());
+	auto ShaderTemplateCacheIter = UHShaderTemplateCacheMap.find(Dummy.GetShaderHash());
+	if (ShaderTemplateCacheIter != UHShaderTemplateCacheMap.end())
+	{
+		return ShaderTemplateCacheIter->second;
+	}
+
+	const bool bCacheFound = UHUtilities::FindByElement(UHRawShadersCache, InCache);
+	UHShaderTemplateCacheMap[Dummy.GetShaderHash()] = bCacheFound;
+
+	return bCacheFound && IsShaderIncludeCached();
 }
 
 bool CompileShader(std::string CommandLine)
@@ -306,7 +340,6 @@ void UHShaderImporter::CompileHLSL(UHShader* InShader)
 
 	// write shader cache
 	WriteShaderCache(InShader);
-	WriteShaderIncludeCache();
 }
 
 std::filesystem::path UHShaderImporter::TranslateHLSL(UHShader* InShader, UHMaterialCompileData InData)
