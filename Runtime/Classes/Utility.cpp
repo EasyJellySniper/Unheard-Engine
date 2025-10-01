@@ -71,7 +71,11 @@ namespace UHUtilities
 
 	std::wstring ToStringW(const std::string& InStringA)
 	{
-		return std::filesystem::path(InStringA).wstring();
+		const int32_t WStringSize = MultiByteToWideChar(CP_UTF8, 0, &InStringA[0], (int32_t)InStringA.size(), NULL, 0);
+		std::wstring WString(WStringSize, 0);
+		MultiByteToWideChar(CP_UTF8, 0, &InStringA[0], (int32_t)InStringA.size(), &WString[0], WStringSize);
+
+		return WString;
 	}
 
 	std::string RemoveChars(std::string InString, const std::string& InChars)

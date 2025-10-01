@@ -350,13 +350,12 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshInstanceTable.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothReflectShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMaterialDataTable.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTTextureTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.h" />
@@ -494,7 +493,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp" />
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothReflectShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.cpp" />
@@ -730,7 +729,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\RayTracing\RTSmoothReflectVector.hlsl">
+    <None Include="Shaders\RayTracing\RTSmoothSceneNormal.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

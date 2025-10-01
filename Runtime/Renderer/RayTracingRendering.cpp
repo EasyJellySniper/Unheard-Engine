@@ -16,7 +16,7 @@ void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
 
 void UHDeferredShadingRenderer::InitRTGaussianConstants()
 {
-	UHTextureFormat TempRTFormat = bHDREnabledRT ? UHTextureFormat::UH_FORMAT_RGBA16F : UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
+	UHTextureFormat TempRTFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 
 	// initialize gaussian consts
 	RayTracingGaussianConsts.GBlurRadius = 2;
@@ -64,7 +64,7 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bInitOnly)
 		VkExtent2D HalfRes = RenderResolution;
 		HalfRes.width >>= 1;
 		HalfRes.height >>= 1;
-		GSmoothSceneNormal = GraphicInterface->RequestRenderTexture("SmoothSceneNormal", HalfRes, UHTextureFormat::UH_FORMAT_A2B10G10R10, true);
+		GSmoothSceneNormal = GraphicInterface->RequestRenderTexture("SmoothSceneNormal", HalfRes, UHTextureFormat::UH_FORMAT_RGBA16F, true);
 
 		InitRTGaussianConstants();
 		if (!bInitOnly)
@@ -79,7 +79,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("BuildTopLevelAS", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::UpdateTopLevelAS)], "UpdateTopLevelAS");
-	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
+	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0)
 	{
 		return;
 	}
@@ -89,7 +89,7 @@ void UHDeferredShadingRenderer::BuildTopLevelAS(UHRenderBuilder& RenderBuilder)
 	// https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html#general-tips-for-building-acceleration-structures
 	// From Microsoft tips: Rebuild top-level acceleration structure every frame
 	// but I still choose to update AS instead of rebuilding, FPS is higher with updating
-	GTopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT, RTCullingDistanceRT);
+	GTopLevelAS[CurrentFrameRT]->UpdateTopAS(RenderBuilder.GetCmdList(), CurrentFrameRT, RTParams.RTCullingDistance);
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
@@ -98,7 +98,7 @@ void UHDeferredShadingRenderer::CollectLightPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("CollectLightPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::CollectLightPass)], "CollectLightPass");
-	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
+	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0)
 	{
 		return;
 	}
@@ -147,7 +147,7 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 {
 	UHGameTimerScope Scope("DispatchRayShadowPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingShadow)], "RayTracingShadow");
-	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
+	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0 || !RTParams.bEnableRTShadow)
 	{
 		if (GRTShadowResult != nullptr)
 		{
@@ -209,7 +209,7 @@ void UHDeferredShadingRenderer::DispatchSmoothSceneNormalPass(UHRenderBuilder& R
 	UHGameTimerScope Scope("SmoothSceneNormalPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SmoothSceneNormalPass)], "SmoothSceneNormalPass");
 
-	if (!bIsRaytracingEnableRT || !bDenoiseReflectionRT)
+	if (!RTParams.bEnableRayTracing || !RTParams.bEnableRTDenoise)
 	{
 		return;
 	}
@@ -222,14 +222,14 @@ void UHDeferredShadingRenderer::DispatchSmoothSceneNormalPass(UHRenderBuilder& R
 	HalfRes.width >>= 1;
 	HalfRes.height >>= 1;
 
-	UHComputeState* State = RTSmoothReflectHShader->GetComputeState();
+	UHComputeState* State = RTSmoothSceneNormalHShader->GetComputeState();
 	RenderBuilder.BindComputeState(State);
-	RenderBuilder.BindDescriptorSetCompute(RTSmoothReflectHShader->GetPipelineLayout(), RTSmoothReflectHShader->GetDescriptorSet(CurrentFrameRT));
+	RenderBuilder.BindDescriptorSetCompute(RTSmoothSceneNormalHShader->GetPipelineLayout(), RTSmoothSceneNormalHShader->GetDescriptorSet(CurrentFrameRT));
 	RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(HalfRes.width, GThreadGroup1D), HalfRes.height, 1);
 
-	State = RTSmoothReflectVShader->GetComputeState();
+	State = RTSmoothSceneNormalVShader->GetComputeState();
 	RenderBuilder.BindComputeState(State);
-	RenderBuilder.BindDescriptorSetCompute(RTSmoothReflectVShader->GetPipelineLayout(), RTSmoothReflectVShader->GetDescriptorSet(CurrentFrameRT));
+	RenderBuilder.BindDescriptorSetCompute(RTSmoothSceneNormalVShader->GetPipelineLayout(), RTSmoothSceneNormalVShader->GetDescriptorSet(CurrentFrameRT));
 	RenderBuilder.Dispatch(HalfRes.width, MathHelpers::RoundUpDivide(HalfRes.height, GThreadGroup1D), 1);
 
 	RenderBuilder.ResourceBarrier(GSmoothSceneNormal, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -241,7 +241,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	UHGameTimerScope Scope("DispatchRayReflectionPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingReflection)], "RayTracingReflection");
 
-	if (!bIsRaytracingEnableRT || RTInstanceCount == 0)
+	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0 || !RTParams.bEnableRTReflection)
 	{
 		if (GRTReflectionResult != nullptr)
 		{
@@ -273,7 +273,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	Consts.OutputResolutionX = RenderResolution.width;
 	Consts.OutputResolutionY = RenderResolution.height;
 
-	if (RTReflectionQualityRT == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_Half))
+	if (RTParams.RTReflectionQuality == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_Half))
 	{
 		VkExtent2D HalfRes = RenderResolution;
 		HalfRes.width >>= 1;
@@ -293,7 +293,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	{
 		RenderBuilder.TraceRay(RenderResolution, RTReflectionShader->GetRayGenTable(), RTReflectionShader->GetMissTable(), RTReflectionShader->GetHitGroupTable());
 
-		if (RTReflectionQualityRT == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
+		if (RTParams.RTReflectionQuality == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
 		{
 			// Upsample after the half pixel tracing
 			RenderBuilder.BindComputeState(UpsampleNearestHShader->GetComputeState());

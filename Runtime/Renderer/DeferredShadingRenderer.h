@@ -37,13 +37,12 @@
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
 #include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 #include "ShaderClass/SphericalHarmonicShader.h"
-#include "ShaderClass/RayTracing/RTTextureTable.h"
 #include "ShaderClass/ReflectionPassShader.h"
 #include "ShaderClass/RayTracing/RTReflectionMipmap.h"
 #include "ShaderClass/RayTracing/RTMeshInstanceTable.h"
 #include "ShaderClass/OcclusionPassShader.h"
 #include "ShaderClass/RayTracing/CollectLightShader.h"
-#include "ShaderClass/RayTracing/RTSmoothReflectShader.h"
+#include "ShaderClass/RayTracing/RTSmoothNormalShader.h"
 #include "ShaderClass/PostProcessing/UpsampleShader.h"
 
 #if WITH_EDITOR
@@ -51,6 +50,52 @@
 #include "ShaderClass/PostProcessing/DebugBoundShader.h"
 #endif
 #include "../../Editor/Editor/Profiler.h"
+
+// wrapper structure for render thread parameters
+struct UHRenderThreadParameters
+{
+	UHRenderThreadParameters()
+		: bEnableAsyncCompute(false)
+		, bIsSwapChainReset(false)
+		, bEnableRendering(false)
+		, bEnableSkyLight(false)
+		, bNeedGenerateSH9(false)
+		, bNeedRefraction(false)
+		, bEnableHDR(false)
+		, bEnableOcclusionQuery(false)
+		, bEnableDepthPrepass(false)
+		, OcclusionThreshold(0)
+		, RTCullingDistance(0)
+		, RTReflectionQuality(0)
+		, bEnableTAA(false)
+		, bEnableRTDenoise(false)
+		, bEnableRayTracing(false)
+		, bEnableRTShadow(false)
+		, bEnableRTReflection(false)
+		, bEnableRTIndirectLighting(false)
+	{
+
+	}
+
+	bool bEnableAsyncCompute;
+	bool bIsSwapChainReset;
+	bool bEnableRendering;
+	bool bEnableSkyLight;
+	bool bNeedGenerateSH9;
+	bool bNeedRefraction;
+	bool bEnableHDR;
+	bool bEnableOcclusionQuery;
+	bool bEnableDepthPrepass;
+	int32_t OcclusionThreshold;
+	float RTCullingDistance;
+	int32_t RTReflectionQuality;
+	bool bEnableTAA;
+	bool bEnableRTDenoise;
+	bool bEnableRayTracing;
+	bool bEnableRTShadow;
+	bool bEnableRTReflection;
+	bool bEnableRTIndirectLighting;
+};
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
 class UHDeferredShadingRenderer
@@ -79,6 +124,7 @@ public:
 	void UpdateDescriptors();
 	void RebuildTextureTable();
 	void RebuildSamplerTable();
+	void RefreshSkyLight(bool bNeedRecompile);
 
 #if WITH_EDITOR
 	void SetDebugViewIndex(int32_t Idx);
@@ -89,7 +135,6 @@ public:
 	int32_t GetOccludedCallCount() const;
 
 	static UHDeferredShadingRenderer* GetRendererEditorOnly();
-	void RefreshSkyLight(bool bNeedRecompile);
 	void RefreshMaterialShaders(UHMaterial* InMat, bool bNeedReassignRendererGroup, bool bDelayRTShaderCreation);
 	void OnRendererMaterialChanged(UHMeshRendererComponent* InRenderer, UHMaterial* OldMat, UHMaterial* NewMat);
 
@@ -233,7 +278,6 @@ private:
 	VkExtent2D RTShadowExtent;
 
 	// queue submitter
-	bool bEnableAsyncComputeRT;
 	UHQueueSubmitter AsyncComputeQueue;
 	UHQueueSubmitter SceneRenderQueue;
 
@@ -248,29 +292,17 @@ private:
 	// current frame count
 	uint32_t CurrentFrameGT;
 	uint32_t CurrentFrameRT;
-	uint32_t FrameNumberRT;
 
 	// Render thread defines, UH engine will always use a thread for rendering, and doing parallel submission with worker threads
 	UniquePtr<UHThread> RenderThread;
 	int32_t NumWorkerThreads;
 	std::vector<UniquePtr<UHThread>> WorkerThreads;
 	bool bIsResetNeededShared;
-	bool bVsyncRT;
 	bool bIsSwapChainResetGT;
-	bool bIsSwapChainResetRT;
-	bool bIsRenderingEnabledRT;
-	bool bIsSkyLightEnabledRT;
-	bool bNeedGenerateSH9RT;
 	bool bHasRefractionMaterialGT;
-	bool bHasRefractionMaterialRT;
-	bool bHDREnabledRT;
-	bool bEnableHWOcclusionRT;
-	bool bEnableDepthPrepassRT;
-	int32_t OcclusionThresholdRT;
-	float RTCullingDistanceRT;
-	int32_t RTReflectionQualityRT;
-	bool bTemporalAART;
-	bool bDenoiseReflectionRT;
+
+	// wrapper for render thread parameters
+	UHRenderThreadParameters RTParams;
 
 	// current scene
 	UHScene* CurrentScene;
@@ -395,15 +427,13 @@ private:
 
 	UniquePtr<UHRTMeshInstanceTable> RTMeshInstanceTable;
 	UniquePtr<UHRTMaterialDataTable> RTMaterialDataTable;
-	UniquePtr<UHRTTextureTable> RTTextureTable;
 
 	UniquePtr<UHCollectLightShader> CollectPointLightShader;
 	UniquePtr<UHCollectLightShader> CollectSpotLightShader;
-	UniquePtr<RTSmoothReflectShader> RTSmoothReflectHShader;
-	UniquePtr<RTSmoothReflectShader> RTSmoothReflectVShader;
+	UniquePtr<RTSmoothSceneNormalShader> RTSmoothSceneNormalHShader;
+	UniquePtr<RTSmoothSceneNormalShader> RTSmoothSceneNormalVShader;
 
 	uint32_t RTInstanceCount;
-	bool bIsRaytracingEnableRT;
 
 	// -------------------------------------------- Culling & sorting related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;

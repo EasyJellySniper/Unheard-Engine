@@ -12,7 +12,7 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Pre reflection Pass");
 
 	// opaque scene capture before applying reflection
-	if (bHasRefractionMaterialRT)
+	if (RTParams.bNeedRefraction)
 	{
 		// Blur the opaque scene
 		ScreenshotForRefraction("Opaque Scene Blur", RenderBuilder);

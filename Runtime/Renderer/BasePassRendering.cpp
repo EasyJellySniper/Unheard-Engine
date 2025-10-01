@@ -39,7 +39,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 	}
 
 	// clear depth with 0 since reversed-z is used
-	if (!bEnableDepthPrepassRT)
+	if (!RTParams.bEnableDepthPrepass)
 	{
 		VkClearValue DepthClear{};
 		DepthClear.depthStencil = { 0.0f,0 };
@@ -134,7 +134,7 @@ void UHDeferredShadingRenderer::RenderBasePass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.EndRenderPass();
 
 		// transition states of Gbuffer after base pass, they will be used in the shader
-		std::vector<UHTexture*> GBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneMip, GSceneVertexNormal };
+		std::vector<UHTexture*> GBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneMip };
 		RenderBuilder.ResourceBarrier(GBuffers, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 		// doesn't need to transition depth as the following motion pass will do it
@@ -155,7 +155,7 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	InheritanceInfo.renderPass = BasePassObj.RenderPass;
 	InheritanceInfo.framebuffer = BasePassObj.FrameBuffer;
-	InheritanceInfo.occlusionQueryEnable = bEnableHWOcclusionRT;
+	InheritanceInfo.occlusionQueryEnable = RTParams.bEnableOcclusionQuery;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, BaseParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	if (StartIdx >= EndIdx)
@@ -190,7 +190,8 @@ void UHDeferredShadingRenderer::BasePassTask(int32_t ThreadIdx)
 			std::to_string(TriCount) + ")");
 
 		// occlusion test for big meshes
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
+		const bool bOcclusionTest = RTParams.bEnableOcclusionQuery 
+			&& TriCount >= RTParams.OcclusionThreshold && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());

@@ -27,12 +27,13 @@ extern UHRenderTexture* GSceneMaterial;
 extern UHRenderTexture* GSceneResult;
 extern UHRenderTexture* GSceneMip;
 extern UHRenderTexture* GSceneDepth;
-extern UHRenderTexture* GSceneTranslucentDepth;
-extern UHRenderTexture* GSceneVertexNormal;
+// mixed depth, which means translucent depth is rendered on the top of opaque depth
+extern UHRenderTexture* GSceneMixedDepth;
 extern UHRenderTexture* GMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
 extern UHRenderTexture* GOpaqueSceneResult;
+// translucent bump and smoothness, at this point they still need to be separated unless RT passes are designed for opaque only
 extern UHRenderTexture* GTranslucentBump;
 extern UHRenderTexture* GTranslucentSmoothness;
 

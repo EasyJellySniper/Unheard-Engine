@@ -46,7 +46,7 @@ void UHDeferredShadingRenderer::RenderOcclusionPass(UHRenderBuilder& RenderBuild
 {
 	UHGameTimerScope Scope("RenderOcclusionPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::OcclusionPass)], "OcclusionPass");
-	if (CurrentScene == nullptr || !bEnableHWOcclusionRT)
+	if (CurrentScene == nullptr || !RTParams.bEnableOcclusionQuery)
 	{
 		return;
 	}
@@ -104,7 +104,7 @@ void UHDeferredShadingRenderer::OcclusionPassTask(int32_t ThreadIdx)
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	InheritanceInfo.renderPass = OcclusionPassObj.RenderPass;
 	InheritanceInfo.framebuffer = OcclusionPassObj.FrameBuffer;
-	InheritanceInfo.occlusionQueryEnable = bEnableHWOcclusionRT;
+	InheritanceInfo.occlusionQueryEnable = RTParams.bEnableOcclusionQuery;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, OcclusionParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	if (StartIdx >= EndIdx)

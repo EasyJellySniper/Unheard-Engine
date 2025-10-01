@@ -4,6 +4,7 @@
 #include "../UHInputs.hlsli"
 #include "UHRTCommon.hlsli"
 #include "../UHLightCommon.hlsli"
+#include "../UHMaterialCommon.hlsli"
 
 RaytracingAccelerationStructure TLAS : register(t1);
 
@@ -18,9 +19,10 @@ ByteAddressBuffer SpotLightListTrans : register(t9);
 
 Texture2D MixedMipTexture : register(t10);
 Texture2D MixedDepthTexture : register(t11);
-Texture2D MixedVertexNormalTexture : register(t12);
-SamplerState PointSampler : register(s13);
-SamplerState LinearSampler : register(s14);
+Texture2D OpaqueNormal : register(t12);
+Texture2D TranslucentNormal : register(t13);
+SamplerState PointSampler : register(s14);
+SamplerState LinearSampler : register(s15);
 
 // both opaque and translucent shadow are traced in this function
 void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLevel)
@@ -40,8 +42,9 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
 
 	// reconstruct normal, simply sample from the texture
     // likewise,  The MixedVertexNormalTexture contains both opaque/translucent's vertex normal
-    float4 VertexNormalData = MixedVertexNormalTexture.SampleLevel(PointSampler, ScreenUV, 0);
-    float3 WorldNormal = DecodeNormal(VertexNormalData.xyz);
+    float4 OpaqueNormalData = OpaqueNormal.SampleLevel(PointSampler, ScreenUV, 0);
+    float4 TranslucentNormalData = TranslucentNormal.SampleLevel(PointSampler, ScreenUV, 0);
+    float3 WorldNormal = DecodeNormal(TranslucentNormalData.w > 0 ? TranslucentNormalData.xyz : OpaqueNormalData.xyz);
 	
 	// ------------------------------------------------------------------------------------------ Directional Light Tracing
 	// give a little gap for preventing self-shadowing, along the vertex normal direction
@@ -60,7 +63,7 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
     }
     
     // evaluate if it's translucent or not from VertexNormalData.w
-    bool bIsTranslucent = VertexNormalData.w > 0;
+    bool bIsTranslucent = TranslucentNormalData.w == UH_TRANSLUCENT_MASK;
     
 	// ------------------------------------------------------------------------------------------ Point Light Tracing
     uint2 TileCoordinate = PixelCoord.xy;

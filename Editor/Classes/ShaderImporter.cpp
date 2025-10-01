@@ -201,7 +201,20 @@ bool UHShaderImporter::IsShaderTemplateCached(std::filesystem::path SourcePath, 
 		return ShaderTemplateCacheIter->second;
 	}
 
-	const bool bCacheFound = UHUtilities::FindByElement(UHRawShadersCache, InCache);
+	bool bCacheFound = false;
+	for (const UHRawShaderAssetCache& Cache : UHRawShadersCache)
+	{
+		// template only cares source path/entry/profile name
+		if (Cache.SourcePath == InCache.SourcePath
+			&& Cache.SourcLastModifiedTime == InCache.SourcLastModifiedTime
+			&& Cache.EntryName == InCache.EntryName
+			&& Cache.ProfileName == ProfileName)
+		{
+			bCacheFound = true;
+			break;
+		}
+	}
+
 	UHShaderTemplateCacheMap[Dummy.GetShaderHash()] = bCacheFound;
 
 	return bCacheFound && IsShaderIncludeCached();

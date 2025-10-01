@@ -21,10 +21,9 @@ void MotionObjectPS(MotionVertexOutput Vin
 	, bool bIsFrontFace : SV_IsFrontFace
 	, out float4 OutVelocity : SV_Target0
 #if TRANSLUCENT
-	, out float4 OutNormal : SV_Target1
-	, out float4 OutBump : SV_Target2
-	, out float OutSmoothness : SV_Target3
-	, out float OutMipRate : SV_Target4
+	, out float4 OutBump : SV_Target1
+	, out float OutSmoothness : SV_Target2
+	, out float OutMipRate : SV_Target3
 #endif
 )
 {
@@ -68,7 +67,6 @@ void MotionObjectPS(MotionVertexOutput Vin
 	// shared with opaque vertex normal, mark alpha as UH_TRANSLUCENT_MASK or UH_REFRACTION_MASK here for differentiate
 	bool bRefraction = (GMaterialFeature & UH_REFRACTION);
 	float Mask = bRefraction ? UH_REFRACTION_MASK : UH_TRANSLUCENT_MASK;
-    OutNormal = float4(EncodeNormal(VertexNormal), bRefraction);
     OutBump = float4(EncodeNormal(BumpNormal), bRefraction);
 	
     OutSmoothness = 1.0f - MaterialInput.Roughness;

@@ -19,10 +19,7 @@ UHRenderTexture* GSceneMaterial;
 UHRenderTexture* GSceneResult;
 UHRenderTexture* GSceneMip;
 UHRenderTexture* GSceneDepth;
-UHRenderTexture* GSceneTranslucentDepth;
-// vertex normal info used in ray tracing, used for pushing ray origin point from surface for a bit to avoid self occluding
-UHRenderTexture* GSceneVertexNormal;
-
+UHRenderTexture* GSceneMixedDepth;
 UHRenderTexture* GMotionVectorRT;
 UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;

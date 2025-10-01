@@ -469,6 +469,7 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 		UHE_LOG(L"Can't initialize renderer class!\n");
 	}
 	UHERenderer->InitRenderingResources();
+	UHERenderer->RefreshSkyLight(false);
 
 #if WITH_EDITOR
 	UHEEditor->RefreshWorldDialog();

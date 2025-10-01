@@ -27,6 +27,7 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -79,8 +80,9 @@ void UHRTShadowShader::BindParameters()
 
 	// translucent buffers and samplers
 	BindImage(GSceneMip, 10);
-	BindImage(GSceneTranslucentDepth, 11);
-	BindImage(GSceneVertexNormal, 12);
-	BindSampler(GPointClampedSampler, 13);
-	BindSampler(GLinearClampedSampler, 14);
+	BindImage(GSceneMixedDepth, 11);
+	BindImage(GSceneNormal, 12);
+	BindImage(GTranslucentBump, 13);
+	BindSampler(GPointClampedSampler, 14);
+	BindSampler(GLinearClampedSampler, 15);
 }

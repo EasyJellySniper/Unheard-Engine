@@ -19,21 +19,20 @@ RWTexture2D<float4> OutResult : register(u2);
 // Buffers needed. The workflow will shoot ray from buffer instead of shooting a 'search ray' to reduce the number of rays per frame.
 Texture2D MixedMipTexture : register(t8);
 Texture2D MixedDepthTexture : register(t9);
-Texture2D MixedVertexNormalTexture : register(t10);
-Texture2D TranslucentBumpTexture : register(t11);
-Texture2D TranslucentSmoothTexture : register(t12);
-Texture2D SmoothSceneNormalTexture : register(t13);
+Texture2D TranslucentBumpTexture : register(t10);
+Texture2D TranslucentSmoothTexture : register(t11);
+Texture2D SmoothSceneNormalTexture : register(t12);
 
 // lighting parameters
-StructuredBuffer<UHInstanceLights> InstanceLights : register(t14);
-ByteAddressBuffer PointLightListTrans : register(t15);
-ByteAddressBuffer SpotLightListTrans : register(t16);
-TextureCube EnvCube : register(t17);
+StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
+ByteAddressBuffer PointLightListTrans : register(t14);
+ByteAddressBuffer SpotLightListTrans : register(t15);
+TextureCube EnvCube : register(t16);
 
 // samplers
-SamplerState PointClampSampler : register(s18);
-SamplerState LinearClampSampler : register(s19);
-SamplerState EnvSampler : register(s20);
+SamplerState PointClampSampler : register(s17);
+SamplerState LinearClampSampler : register(s18);
+SamplerState EnvSampler : register(s19);
 
 static const int GMaxDirLight = 2;
 
@@ -391,7 +390,6 @@ void RTReflectionRayGen()
     // simulate the mip level based on rendering resolution, carry mipmap count data in hit group if this is not enough
     float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
     
-    float3 VertexNormal = DecodeNormal(MixedVertexNormalTexture.SampleLevel(PointClampSampler, ScreenUV, 0).xyz);
     // Select from translucent or opaque bump
     float3 SceneNormal = bHasTranslucentInfo ? TranslucentBump.xyz : OpaqueBump.xyz;
     SceneNormal = DecodeNormal(SceneNormal);
@@ -400,12 +398,10 @@ void RTReflectionRayGen()
     float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
     
     // Calculate reflect ray
-    // in real world, there aren't actually a "perfect" surface on most objects except mirrors
-    // so giving it a small distortion if it's using vertex normal
-    bool bUseVertexNormal = length(VertexNormal - SceneNormal) < 0.0001f;
-    
+    // in real world, there aren't actually a "perfect" surface on most objects
+    // so giving it a small distortion
+
     float3 EyeVector = SceneWorldPos - GCameraPos;
-    if (bUseVertexNormal)
     {
         float EyeLength = length(EyeVector);
         float OffsetAlpha = saturate(EyeLength / 5.0f);
@@ -419,12 +415,12 @@ void RTReflectionRayGen()
     
     // fetch refined eye vector for reflection to reduce noise for bump normal
     // or reflect vertex normal ray
-    SceneNormal = bUseVertexNormal || !(GSystemRenderFeature & UH_USE_SMOOTH_NORMAL_RAYTRACING) ? SceneNormal
+    SceneNormal = !(GSystemRenderFeature & UH_USE_SMOOTH_NORMAL_RAYTRACING) ? SceneNormal
         : SmoothSceneNormalTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
     
     RayDesc ReflectRay = (RayDesc) 0;
-    ReflectRay.Origin = SceneWorldPos + VertexNormal * RayGap;
+    ReflectRay.Origin = SceneWorldPos + SceneNormal * RayGap;
     ReflectRay.Direction = reflect(EyeVector, SceneNormal);
     
     ReflectRay.TMin = RayGap;

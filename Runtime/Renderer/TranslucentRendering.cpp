@@ -104,7 +104,7 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	InheritanceInfo.renderPass = TranslucentPassObj.RenderPass;
 	InheritanceInfo.framebuffer = TranslucentPassObj.FrameBuffer;
-	InheritanceInfo.occlusionQueryEnable = bEnableHWOcclusionRT;
+	InheritanceInfo.occlusionQueryEnable = RTParams.bEnableOcclusionQuery;
 
 	UHRenderBuilder RenderBuilder(GraphicInterface, TranslucentParallelSubmitter.WorkerCommandBuffers[ThreadIdx * GMaxFrameInFlight + CurrentFrameRT]);
 	if (StartIdx >= EndIdx)
@@ -139,7 +139,8 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 			std::to_string(TriCount) + ")");
 
 		// occlusion test for big meshes
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
+		const bool bOcclusionTest = RTParams.bEnableOcclusionQuery 
+			&& TriCount >= RTParams.OcclusionThreshold && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());

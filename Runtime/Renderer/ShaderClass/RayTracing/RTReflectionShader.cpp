@@ -29,7 +29,6 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// light lists
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -90,24 +89,23 @@ void UHRTReflectionShader::BindParameters()
 
 	// textures and samplers
 	BindImage(GSceneMip, 8);
-	BindImage(GSceneTranslucentDepth, 9);
-	BindImage(GSceneVertexNormal, 10);
-	BindImage(GTranslucentBump, 11);
-	BindImage(GTranslucentSmoothness, 12);
-	BindImage(GSmoothSceneNormal, 13);
+	BindImage(GSceneMixedDepth, 9);
+	BindImage(GTranslucentBump, 10);
+	BindImage(GTranslucentSmoothness, 11);
+	BindImage(GSmoothSceneNormal, 12);
 
 	// shadow mask and lighting list
-	BindStorage(GInstanceLightsBuffer, 14, 0, true);
-	BindStorage(GPointLightListBuffer.get(), 15, 0, true);
-	BindStorage(GSpotLightListBuffer.get(), 16, 0, true);
+	BindStorage(GInstanceLightsBuffer, 13, 0, true);
+	BindStorage(GPointLightListBuffer.get(), 14, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 15, 0, true);
 	BindSkyCube();
 
-	BindSampler(GPointClampedSampler, 18);
-	BindSampler(GLinearClampedSampler, 19);
-	BindSampler(GSkyCubeSampler, 20);
+	BindSampler(GPointClampedSampler, 17);
+	BindSampler(GLinearClampedSampler, 18);
+	BindSampler(GSkyCubeSampler, 19);
 }
 
 void UHRTReflectionShader::BindSkyCube()
 {
-	BindImage(GSkyLightCube, 17);
+	BindImage(GSkyLightCube, 16);
 }

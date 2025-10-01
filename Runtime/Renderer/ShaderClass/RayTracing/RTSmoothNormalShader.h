@@ -1,10 +1,10 @@
 #pragma once
 #include "../ShaderClass.h"
 
-class RTSmoothReflectShader : public UHShaderClass
+class RTSmoothSceneNormalShader : public UHShaderClass
 {
 public:
-	RTSmoothReflectShader(UHGraphic* InGfx, std::string Name, bool bIsVertical);
+	RTSmoothSceneNormalShader(UHGraphic* InGfx, std::string Name, bool bIsVertical);
 
 	virtual void OnCompile() override;
 

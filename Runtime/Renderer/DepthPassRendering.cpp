@@ -21,7 +21,7 @@ void UHDeferredShadingRenderer::RenderDepthPrePass(UHRenderBuilder& RenderBuilde
 {
 	UHGameTimerScope Scope("RenderDepthPrePass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::DepthPrePass)], "DepthPass");
-	if (CurrentScene == nullptr || !bEnableDepthPrepassRT)
+	if (CurrentScene == nullptr || !RTParams.bEnableDepthPrepass)
 	{
 		return;
 	}

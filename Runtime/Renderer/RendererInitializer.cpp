@@ -17,9 +17,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, RTShadowExtent(VkExtent2D())
 	, CurrentFrameGT(0)
 	, CurrentFrameRT(0)
-	, FrameNumberRT(0)
 	, bIsResetNeededShared(false)
-	, bEnableAsyncComputeRT(false)
 	, CurrentScene(nullptr)
 	, SystemConstantsCPU(UHSystemConstants())
 	, CubeMesh(nullptr)
@@ -33,12 +31,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, RTInstanceCount(0)
 	, NumWorkerThreads(0)
 	, RenderThread(nullptr)
-	, bVsyncRT(false)
 	, bIsSwapChainResetGT(false)
-	, bIsSwapChainResetRT(false)
-	, bIsRenderingEnabledRT(true)
-	, bIsSkyLightEnabledRT(true)
-	, bNeedGenerateSH9RT(true)
 	, LightCullingTileSize(16)
 	, MaxPointLightPerTile(32)
 	, MaxSpotLightPerTile(32)
@@ -52,14 +45,6 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, bDrawDebugViewRT(true)
 #endif
 	, bHasRefractionMaterialGT(false)
-	, bHasRefractionMaterialRT(false)
-	, bHDREnabledRT(false)
-	, RTCullingDistanceRT(0.0f)
-	, RTReflectionQualityRT(0)
-	, bIsRaytracingEnableRT(false)
-	, bEnableHWOcclusionRT(false)
-	, bEnableDepthPrepassRT(false)
-	, OcclusionThresholdRT(0)
 	, MeshInstanceCount(0)
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
@@ -474,8 +459,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
 		CollectPointLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectPointLightShader", true);
 		CollectSpotLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectSpotLightShader", false);
-		RTSmoothReflectHShader = MakeUnique<RTSmoothReflectShader>(GraphicInterface, "RTSmoothReflectHShader", false);
-		RTSmoothReflectVShader = MakeUnique<RTSmoothReflectShader>(GraphicInterface, "RTSmoothReflectVShader", true);
+		RTSmoothSceneNormalHShader = MakeUnique<RTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalHShader", false);
+		RTSmoothSceneNormalVShader = MakeUnique<RTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalVShader", true);
 	}
 
 #if WITH_EDITOR
@@ -563,8 +548,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	LightCullingShader->BindParameters();
 
 	// ------------------------------------------------ Lighting pass descriptor update
-	LightPassShader->BindParameters(bEnableRayTracing);
-	ReflectionPassShader->BindParameters(bEnableRayTracing);
+	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTShadow);
+	ReflectionPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTReflection);
 
 	// ------------------------------------------------ sky pass descriptor update
 	SH9Shader->BindParameters();
@@ -627,22 +612,13 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			RTMaterialDataTable->BindStorage(RTMaterialData, 0, FrameIdx);
 		}
 
-		// bind textures used by RT
-		std::vector<UHTexture*> Textures;
-		Textures.push_back(GSceneDiffuse);
-		Textures.push_back(GSceneNormal);
-		Textures.push_back(GSceneMaterial);
-		Textures.push_back(GSceneDepth);
-		Textures.push_back(GSceneVertexNormal);
-		RTTextureTable->BindImage(Textures, 0);
-
 		SoftRTShadowShader->BindParameters();
 		RTShadowShader->BindParameters();
 		RTReflectionShader->BindParameters();
 		CollectPointLightShader->BindParameters();
 		CollectSpotLightShader->BindParameters();
-		RTSmoothReflectHShader->BindParameters();
-		RTSmoothReflectVShader->BindParameters();
+		RTSmoothSceneNormalHShader->BindParameters();
+		RTSmoothSceneNormalVShader->BindParameters();
 	}
 
 	// ------------------------------------------------ mesh table descriptor update
@@ -747,12 +723,11 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		UH_SAFE_RELEASE(RTReflectionShader);
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
 		UH_SAFE_RELEASE(RTMaterialDataTable);
-		UH_SAFE_RELEASE(RTTextureTable);
 		UH_SAFE_RELEASE(SoftRTShadowShader);
 		UH_SAFE_RELEASE(CollectPointLightShader);
 		UH_SAFE_RELEASE(CollectSpotLightShader);
-		UH_SAFE_RELEASE(RTSmoothReflectHShader);
-		UH_SAFE_RELEASE(RTSmoothReflectVShader);
+		UH_SAFE_RELEASE(RTSmoothSceneNormalHShader);
+		UH_SAFE_RELEASE(RTSmoothSceneNormalVShader);
 	}
 
 	UH_SAFE_RELEASE(TextureTable);
@@ -790,10 +765,9 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// depth buffer, also needs another depth buffer with translucent
 	GSceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat);
-	GSceneTranslucentDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat);
+	GSceneMixedDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat);
 
-	// buffers for saving the "search ray" in RT shadows
-	GSceneVertexNormal = GraphicInterface->RequestRenderTexture("SceneVertexNormal", RenderResolution, NormalFormat);
+	// translucent bump and smoothness used in ray tracing or somewhere else
 	GTranslucentBump = GraphicInterface->RequestRenderTexture("TranslucentBump", RenderResolution, NormalFormat);
 	GTranslucentSmoothness = GraphicInterface->RequestRenderTexture("TranslucentSmoothness", RenderResolution, MaskFormat);
 
@@ -833,8 +807,7 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GSceneResult);
 	GraphicInterface->RequestReleaseRT(GSceneMip);
 	GraphicInterface->RequestReleaseRT(GSceneDepth);
-	GraphicInterface->RequestReleaseRT(GSceneTranslucentDepth);
-	GraphicInterface->RequestReleaseRT(GSceneVertexNormal);
+	GraphicInterface->RequestReleaseRT(GSceneMixedDepth);
 	GraphicInterface->RequestReleaseRT(GPostProcessRT);
 	GraphicInterface->RequestReleaseRT(GPreviousSceneResult);
 	GraphicInterface->RequestReleaseRT(GOpaqueSceneResult);
@@ -857,7 +830,7 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 void UHDeferredShadingRenderer::CreateRenderPasses()
 {
 	// -------------------------------------------------------- Createing render pass after render pass is done -------------------------------------------------------- //
-	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse ,GSceneNormal ,GSceneMaterial ,GSceneResult ,GSceneMip,GSceneVertexNormal };
+	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse ,GSceneNormal ,GSceneMaterial ,GSceneResult ,GSceneMip };
 
 	// depth prepass
 	if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
@@ -894,7 +867,7 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
 
-	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT , GSceneVertexNormal, GTranslucentBump, GTranslucentSmoothness, GSceneMip };
+	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness, GSceneMip };
 	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(TranslucentMotionTextures
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
@@ -909,7 +882,6 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	GBuffers.push_back(GSceneMaterial);
 	GBuffers.push_back(GSceneResult);
 	GBuffers.push_back(GSceneMip);
-	GBuffers.push_back(GSceneVertexNormal);
 	GBuffers.push_back(GSceneDepth);
 
 	// depth frame buffer
@@ -941,11 +913,11 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	MotionCameraPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GMotionVectorRT, MotionCameraPassObj.RenderPass, RenderResolution);
 
 	// the opaque depth will be copied to translucent depth before motion opaque pass kicks off
-	GBuffers = { GMotionVectorRT, GSceneTranslucentDepth };
+	GBuffers = { GMotionVectorRT, GSceneMixedDepth };
 	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, MotionOpaquePassObj.RenderPass, RenderResolution);
 
-	GBuffers = { GMotionVectorRT, GSceneVertexNormal, GTranslucentBump, GTranslucentSmoothness
-		, GSceneMip, GSceneTranslucentDepth };
+	GBuffers = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness
+		, GSceneMip, GSceneMixedDepth };
 	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 
@@ -1519,7 +1491,7 @@ void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRend
 void UHDeferredShadingRenderer::ToggleDepthPrepass()
 {
 	// recreate pass obj/frame buffer
-	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse ,GSceneNormal ,GSceneMaterial ,GSceneResult ,GSceneMip,GSceneVertexNormal };
+	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneResult, GSceneMip };
 	BasePassObj.Release(GraphicInterface->GetLogicalDevice());
 	BasePassObj = GraphicInterface->CreateRenderPass(GBufferTextures, UHTransitionInfo(GraphicInterface->IsDepthPrePassEnabled() ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
 		, GSceneDepth);
@@ -1530,7 +1502,6 @@ void UHDeferredShadingRenderer::ToggleDepthPrepass()
 	GBuffers.push_back(GSceneMaterial);
 	GBuffers.push_back(GSceneResult);
 	GBuffers.push_back(GSceneMip);
-	GBuffers.push_back(GSceneVertexNormal);
 	GBuffers.push_back(GSceneDepth);
 	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, BasePassObj.RenderPass, RenderResolution);
 
@@ -1762,9 +1733,6 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 		UH_SAFE_RELEASE(RTMaterialDataTable);
 		RTMaterialDataTable = MakeUnique<UHRTMaterialDataTable>(GraphicInterface, "RTMaterialDataTable", static_cast<uint32_t>(CurrentScene->GetMaterialCount()));
 
-		UH_SAFE_RELEASE(RTTextureTable);
-		RTTextureTable = MakeUnique<UHRTTextureTable>(GraphicInterface, "RTTextureTable");
-
 		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
 		RTDefaultHitGroupShader = MakeUnique<UHRTDefaultHitGroupShader>(GraphicInterface, "RTDefaultHitGroupShader", CurrentScene->GetMaterials());
 	}
@@ -1784,8 +1752,7 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 		, NormalTable->GetDescriptorSetLayout()
 		, TangentTable->GetDescriptorSetLayout()
 		, IndicesTable->GetDescriptorSetLayout()
-		, RTMaterialDataTable->GetDescriptorSetLayout()
-		, RTTextureTable->GetDescriptorSetLayout() };
+		, RTMaterialDataTable->GetDescriptorSetLayout() };
 
 	UH_SAFE_RELEASE(RTShadowShader);
 	UH_SAFE_RELEASE(RTReflectionShader);
@@ -1808,7 +1775,6 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 			, NormalTable->GetDescriptorSet(Idx)
 			, TangentTable->GetDescriptorSet(Idx)
 			, IndicesTable->GetDescriptorSet(Idx)
-			, RTMaterialDataTable->GetDescriptorSet(Idx)
-			, RTTextureTable->GetDescriptorSet(Idx) };
+			, RTMaterialDataTable->GetDescriptorSet(Idx) };
 	}
 }

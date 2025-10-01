@@ -69,3 +69,14 @@ Refactor constness of string paramaters in UHUtilities functions.
 29-09-2025:
 Minor optimizations and code refactor.
 Shader cache bugfix and improvement.
+
+30-09-2025:
+Minor fix for adding renderers after FBX import.
+Minor fix for sky lighting update after loading a scene.
+Allow HDR texture to be used as normal map.
+
+01-10-2025:
+More code refactor and bugfixes.. Such as allowing EXR normal map, sky light refresh..etc.
+Add a new test scene for indirect lighting study.
+Redundant rendering table and buffer are removed.
+Add VRAM usage profiling.

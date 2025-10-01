@@ -39,12 +39,12 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 	{
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GMotionVectorRT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMixedDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 		RenderBuilder.FlushResourceBarrier();
 
 		// copy opaque depth to translucent depth
-		RenderBuilder.CopyTexture(GSceneDepth, GSceneTranslucentDepth);
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
+		RenderBuilder.CopyTexture(GSceneDepth, GSceneMixedDepth);
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMixedDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 		RenderBuilder.FlushResourceBarrier();
 
@@ -157,8 +157,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 		// translucent motion, however, needs to render all regardless if it's static or dynamic
 		{
-			// set vertex normal/mip as color output, translucent vertex normal/mip will be output to it too
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneVertexNormal, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+			// set scene mip as output
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMip, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 
 			// clear translucent bump & roughness buffer and transition to color output
@@ -257,8 +256,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			RenderBuilder.EndRenderPass();
 
 			// done rendering, transition depth to shader read
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneTranslucentDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneVertexNormal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMixedDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMip, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
@@ -319,7 +317,8 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(TriCount) + ")");
 
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
+		const bool bOcclusionTest = RTParams.bEnableOcclusionQuery 
+			&& TriCount >= RTParams.OcclusionThreshold && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());
@@ -401,7 +400,8 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 		GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing " + Mesh->GetName() + " (Tris: " +
 			std::to_string(TriCount) + ")");
 
-		const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT && !Renderer->IsCameraInsideThisRenderer();
+		const bool bOcclusionTest = RTParams.bEnableOcclusionQuery 
+			&& TriCount >= RTParams.OcclusionThreshold && !Renderer->IsCameraInsideThisRenderer();
 		if (bOcclusionTest)
 		{
 			RenderBuilder.BeginPredication(RendererIdx, GOcclusionResult[PrevFrame]->GetBuffer());

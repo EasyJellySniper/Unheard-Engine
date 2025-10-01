@@ -3,6 +3,7 @@
 #if WITH_EDITOR
 #include "../Editor/Profiler.h"
 #include "Runtime/Engine/Config.h"
+#include "Runtime/Engine/Graphic.h"
 #include "Runtime/Classes/GPUQuery.h"
 
 UHProfileDialog::UHProfileDialog()
@@ -11,7 +12,8 @@ UHProfileDialog::UHProfileDialog()
 
 }
 
-void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer* InGameTimer, UHConfigManager* InConfig)
+void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer* InGameTimer, UHConfigManager* InConfig
+    , UHGraphic* InGfx)
 {
     if (!bIsOpened)
     {
@@ -74,6 +76,7 @@ void UHProfileDialog::SyncProfileStatistics(UHProfiler* InProfiler, UHGameTimer*
         }
 
         GPUStatTex << "Total GPU Time: " << TotalGPUTime << " ms\n";
+        GPUStatTex << "Total Dedicated VRAM Usage: " << InGfx->GetUsedDedicatedVramMB() << " mb\n";
         GPUStatTex << "Render Resolution: " << InConfig->RenderingSetting().RenderWidth << "x" << InConfig->RenderingSetting().RenderHeight;
 
         InGameTimer->Reset();

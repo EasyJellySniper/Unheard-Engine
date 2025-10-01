@@ -34,7 +34,7 @@ void UHSoftRTShadowShader::BindParameters()
 	BindImage(GRTSharedTextureRG, 2);
 
 	// translucent depth contains opaque as well
-	BindImage(GSceneTranslucentDepth, 3);
+	BindImage(GSceneMixedDepth, 3);
 
 	BindImage(GSceneMip, 4);
 	BindSampler(GPointClampedSampler, 5);

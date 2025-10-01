@@ -76,7 +76,7 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 	// -------------------------- Temporal AA --------------------------//
 	{
 		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::TemporalAAPass)], "TemporalAAPass");
-		if (bTemporalAART)
+		if (RTParams.bEnableTAA)
 		{
 			RenderBuilder.ResourceBarrier(GPreviousSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			if (!bIsTemporalReset)
@@ -147,7 +147,7 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& Rend
 		RenderBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		RenderBuilder.ClearRenderTexture(SwapChainRT);
 
-		if (bIsRenderingEnabledRT)
+		if (RTParams.bEnableRendering)
 		{
 			// transfer scene result and blit it, the scene result comes after post processing, it will be SceneResult or PostProcessRT
 			RenderBuilder.ResourceBarrier(PostProcessResults[PostProcessResultIdx], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);

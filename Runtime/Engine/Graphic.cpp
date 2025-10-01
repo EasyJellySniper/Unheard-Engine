@@ -40,11 +40,6 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_get_physical_device_properties2"
 		, "VK_EXT_swapchain_colorspace" };
 
-	if (GIsEditor)
-	{
-		InstanceExtensions.push_back("VK_EXT_debug_utils");
-	}
-
 	DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		, "VK_EXT_full_screen_exclusive"
 		, "VK_KHR_spirv_1_4"
@@ -63,6 +58,12 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_ray_tracing_pipeline"
 		, "VK_KHR_ray_query"
 		, "VK_KHR_pipeline_library" };
+
+	if (GIsEditor)
+	{
+		InstanceExtensions.push_back("VK_EXT_debug_utils");
+		DeviceExtensions.push_back("VK_EXT_memory_budget");
+	}
 
 	// push ray tracing extension
 	DeviceExtensions.insert(DeviceExtensions.end(), RayTracingExtensions.begin(), RayTracingExtensions.end());
@@ -1722,6 +1723,32 @@ uint32_t UHGraphic::GetHostMemoryTypeIndex() const
 std::vector<std::string> UHGraphic::GetAvailableGpuNames() const
 {
 	return AvailableGpuNames;
+}
+
+float UHGraphic::GetUsedDedicatedVramMB() const
+{
+	// query currently used VRAM in MB
+	float UsedVramMB = 0.0f;
+
+	VkPhysicalDeviceMemoryBudgetPropertiesEXT MemoryBudgetProp{};
+	MemoryBudgetProp.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+
+	VkPhysicalDeviceMemoryProperties2 PhysicalDeviceProp{};
+	PhysicalDeviceProp.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+	PhysicalDeviceProp.pNext = &MemoryBudgetProp;
+
+	vkGetPhysicalDeviceMemoryProperties2(PhysicalDevice, &PhysicalDeviceProp);
+
+	for (uint32_t HeapIdx = 0; HeapIdx < PhysicalDeviceProp.memoryProperties.memoryHeapCount; HeapIdx++)
+	{
+		// for now this only reports dedicated VRAM, which is the device local heap from Vulkan
+		if (PhysicalDeviceProp.memoryProperties.memoryHeaps[HeapIdx].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+		{
+			UsedVramMB += MemoryBudgetProp.heapUsage[HeapIdx] / (1024.0f * 1024.0f);
+		}
+	}
+
+	return UsedVramMB;
 }
 
 #if WITH_EDITOR

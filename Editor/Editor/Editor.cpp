@@ -46,7 +46,7 @@ void UHEditor::OnEditorUpdate()
     Input->SetInputEnabled(true);
     ProfileTimer.Tick();
     SettingDialog->Update(bIsDialogActive);
-    ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config);
+    ProfileDialog->SyncProfileStatistics(Profile, &ProfileTimer, Config, Gfx);
     TextureDialog->Update(bIsDialogActive);
     MaterialDialog->Update(bIsDialogActive);
     CubemapDialog->Update(bIsDialogActive);

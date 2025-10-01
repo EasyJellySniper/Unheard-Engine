@@ -102,6 +102,9 @@ public:
 		, PCSSBlockerDistScale(0.02f)
 		, bDenoiseRayTracing(true)
 		, SelectedGpuName("")
+		, bEnableRTShadow(true)
+		, bEnableRTReflection(true)
+		, bEnableRTIndirectLighting(false)
 	{
 
 	}
@@ -121,17 +124,22 @@ public:
 
 	// RT common
 	float RTCullingRadius;
+	bool bDenoiseRayTracing;
 
 	// RT shadows
 	int32_t RTShadowQuality;
 	float RTShadowTMax;
+	bool bEnableRTShadow;
 
 	// RT reflections
 	int32_t RTReflectionQuality;
 	float RTReflectionTMax;
 	float RTReflectionSmoothCutoff;
 	float FinalReflectionStrength;
-	bool bDenoiseRayTracing;
+	bool bEnableRTReflection;
+
+	// RT indirect lighting
+	bool bEnableRTIndirectLighting;
 
 	bool bEnableAsyncCompute;
 	bool bEnableHardwareOcclusion;

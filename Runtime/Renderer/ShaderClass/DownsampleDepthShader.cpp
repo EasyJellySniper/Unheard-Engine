@@ -32,5 +32,5 @@ void UHDownsampleDepthShader::BindParameters()
 	//BindRWImage(GHalfDepth, 1);
 	//BindRWImage(GHalfTranslucentDepth, 2);
 	BindImage(GSceneDepth, 3);
-	BindImage(GSceneTranslucentDepth, 4);
+	BindImage(GSceneMixedDepth, 4);
 }

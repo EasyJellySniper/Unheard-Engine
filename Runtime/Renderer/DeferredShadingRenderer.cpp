@@ -78,25 +78,26 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 
 	// sync value before wake up RT thread
 	CurrentFrameRT = CurrentFrameGT;
-	FrameNumberRT = GFrameNumber;
-	bVsyncRT = ConfigInterface->PresentationSetting().bVsync;
-	bIsSwapChainResetRT = bIsSwapChainResetGT;
-	bEnableAsyncComputeRT = RenderingSettings.bEnableAsyncCompute;
-	bIsRenderingEnabledRT = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
-	bIsSkyLightEnabledRT = GetCurrentSkyCube() != nullptr;
-	bHasRefractionMaterialRT = bHasRefractionMaterialGT;
-	bHDREnabledRT = GraphicInterface->IsHDRAvailable();
-	RTCullingDistanceRT = RenderingSettings.RTCullingRadius;
-	RTReflectionQualityRT = RenderingSettings.RTReflectionQuality;
+	RTParams.bIsSwapChainReset = bIsSwapChainResetGT;
+	RTParams.bEnableAsyncCompute = RenderingSettings.bEnableAsyncCompute;
+	RTParams.bEnableRendering = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
+	RTParams.bEnableSkyLight = GetCurrentSkyCube() != nullptr;
+	RTParams.bNeedRefraction = bHasRefractionMaterialGT;
+	RTParams.bEnableHDR = GraphicInterface->IsHDRAvailable();
+	RTParams.RTCullingDistance = RenderingSettings.RTCullingRadius;
+	RTParams.RTReflectionQuality = RenderingSettings.RTReflectionQuality;
 
 	// at least make it 'toggleable' partially
-	bIsRaytracingEnableRT = RenderingSettings.bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
+	RTParams.bEnableRayTracing = RenderingSettings.bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
+	RTParams.bEnableRTShadow = RenderingSettings.bEnableRTShadow;
+	RTParams.bEnableRTReflection = RenderingSettings.bEnableRTReflection;
+	RTParams.bEnableRTIndirectLighting = RenderingSettings.bEnableRTIndirectLighting;
 
-	bEnableHWOcclusionRT = RenderingSettings.bEnableHardwareOcclusion;
-	OcclusionThresholdRT = RenderingSettings.OcclusionTriangleThreshold;
-	bEnableDepthPrepassRT = GraphicInterface->IsDepthPrePassEnabled();
-	bTemporalAART = RenderingSettings.bTemporalAA;
-	bDenoiseReflectionRT = RenderingSettings.bDenoiseRayTracing;
+	RTParams.bEnableOcclusionQuery = RenderingSettings.bEnableHardwareOcclusion;
+	RTParams.OcclusionThreshold = RenderingSettings.OcclusionTriangleThreshold;
+	RTParams.bEnableDepthPrepass = GraphicInterface->IsDepthPrePassEnabled();
+	RTParams.bEnableTAA = RenderingSettings.bTemporalAA;
+	RTParams.bEnableRTDenoise = RenderingSettings.bDenoiseRayTracing;
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -515,7 +516,8 @@ void UHDeferredShadingRenderer::CollectVisibleRenderer()
 			const UHMaterial* Mat = CountingRenderers[CountIdx][Idx]->GetMaterial();
 			const UHMesh* Mesh = Renderer->GetMesh();
 			const int32_t TriCount = Mesh->GetIndicesCount() / 3;
-			const bool bOcclusionTest = bEnableHWOcclusionRT && TriCount >= OcclusionThresholdRT;
+			const bool bOcclusionTest = RTParams.bEnableOcclusionQuery 
+				&& TriCount >= RTParams.OcclusionThreshold;
 
 			if (Mat->IsOpaque())
 			{
@@ -582,7 +584,8 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	for (UHMeshRendererComponent* Renderer : OpaquesToRender)
 	{
 		const UHMesh* Mesh = Renderer->GetMesh();
-		const bool bOcclusionTest = bEnableHWOcclusionRT && ((int32_t)Mesh->GetIndicesCount() / 3) >= OcclusionThresholdRT;
+		const bool bOcclusionTest = RTParams.bEnableOcclusionQuery 
+			&& ((int32_t)Mesh->GetIndicesCount() / 3) >= RTParams.OcclusionThreshold;
 
 		// set the instance to the corresponding material and it's current rendering index
 		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
@@ -624,7 +627,8 @@ void UHDeferredShadingRenderer::CollectMeshShaderInstance()
 	{
 		UHMeshRendererComponent* Renderer = TranslucentsToRender[Idx];
 		const UHMesh* Mesh = Renderer->GetMesh();
-		const bool bOcclusionTest = bEnableHWOcclusionRT && ((int32_t)Mesh->GetIndicesCount() / 3) >= OcclusionThresholdRT;
+		const bool bOcclusionTest = RTParams.bEnableOcclusionQuery 
+			&& ((int32_t)Mesh->GetIndicesCount() / 3) >= RTParams.OcclusionThreshold;
 
 		const uint32_t MatDataIndex = Renderer->GetMaterial()->GetBufferDataIndex();
 		const int32_t NewIndex = MeshShaderInstancesCounter[MatDataIndex]++;
@@ -727,7 +731,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			UHProfilerScope Profiler(&RenderThreadProfile);
 
 			// collect worker bundle for this frame
-			if (bIsRenderingEnabledRT)
+			if (RTParams.bEnableRendering)
 			{
 				DepthParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 				OcclusionParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
@@ -737,7 +741,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				TranslucentParallelSubmitter.CollectCurrentFrameRTBundle(CurrentFrameRT);
 			}
 
-			if (bEnableAsyncComputeRT)
+			if (RTParams.bEnableAsyncCompute)
 			{
 				// ****************************** start async compute queue
 				// kick off the tasks that be executed on compute queue, note that not every tasks are suitable for async
@@ -750,7 +754,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				AsyncComputeBuilder.BeginCommandBuffer();
 				GraphicInterface->BeginCmdDebug(AsyncComputeBuilder.GetCmdList(), "Executing Async Compute");
 
-				if (bIsRenderingEnabledRT)
+				if (RTParams.bEnableRendering)
 				{
 					BuildTopLevelAS(AsyncComputeBuilder);
 					CollectLightPass(AsyncComputeBuilder);
@@ -772,10 +776,10 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			SceneRenderBuilder.BeginCommandBuffer();
 			GraphicInterface->BeginCmdDebug(SceneRenderBuilder.GetCmdList(), "Drawing UHDeferredShadingRenderer");
 
-			if (bIsRenderingEnabledRT)
+			if (RTParams.bEnableRendering)
 			{
 				// first-chance resource barriers and resets
-				if (!bIsPresentedPreviously || bIsSwapChainResetRT)
+				if (!bIsPresentedPreviously || RTParams.bIsSwapChainReset)
 				{
 					SceneRenderBuilder.ResourceBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				}
@@ -789,7 +793,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				RenderOcclusionPass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
 
-				if (!bEnableAsyncComputeRT)
+				if (!RTParams.bEnableAsyncCompute)
 				{
 					BuildTopLevelAS(SceneRenderBuilder);
 					CollectLightPass(SceneRenderBuilder);
@@ -830,7 +834,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 			std::vector<VkSemaphore> WaitSemaphore;
 			std::vector<VkPipelineStageFlags> WaitStages;
 
-			if (bEnableAsyncComputeRT)
+			if (RTParams.bEnableAsyncCompute)
 			{
 				WaitSemaphore.push_back(AsyncComputeQueue.FinishedSemaphores[CurrentFrameRT]);
 				WaitStages.push_back(VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
@@ -850,7 +854,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	#endif
 
 		// wait until the previous presentation is done, to prevent glitches on some hardwares
-		if (bIsPresentedPreviously && !bIsSwapChainResetRT)
+		if (bIsPresentedPreviously && !RTParams.bIsSwapChainReset)
 		{
 			SceneRenderBuilder.WaitFence(SceneRenderQueue.Fences[(CurrentFrameRT - 1) % GMaxFrameInFlight]);
 		}

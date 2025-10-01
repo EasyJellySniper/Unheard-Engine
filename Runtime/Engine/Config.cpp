@@ -78,6 +78,9 @@ void UHConfigManager::LoadConfig()
 		GET_UHE_SETTING(RenderingSettings, PCSSBlockerDistScale);
 		GET_UHE_SETTING(RenderingSettings, bEnableHardwareOcclusion);
 		GET_UHE_SETTING(RenderingSettings, SelectedGpuName);
+		GET_UHE_SETTING(RenderingSettings, bEnableRTShadow);
+		GET_UHE_SETTING(RenderingSettings, bEnableRTReflection);
+		GET_UHE_SETTING(RenderingSettings, bEnableRTIndirectLighting);
 
 		// clamp a few parameters
 		RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
@@ -148,6 +151,9 @@ void UHConfigManager::ApplyConfig()
 		SET_UHE_SETTING(RenderingSettings, PCSSBlockerDistScale);
 		SET_UHE_SETTING(RenderingSettings, bEnableHardwareOcclusion);
 		SET_UHE_SETTING(RenderingSettings, SelectedGpuName);
+		SET_UHE_SETTING(RenderingSettings, bEnableRTShadow);
+		SET_UHE_SETTING(RenderingSettings, bEnableRTReflection);
+		SET_UHE_SETTING(RenderingSettings, bEnableRTIndirectLighting);
 	}
 }
 

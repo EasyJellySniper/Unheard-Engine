@@ -24,8 +24,7 @@ void BasePS(VertexOutput Vin
 	, out float4 OutNormal : SV_Target1
 	, out float4 OutMaterial : SV_Target2
 	, out float4 OutEmissive : SV_Target3
-	, out float OutMipRate : SV_Target4
-	, out float4 OutVertexNormal : SV_Target5)
+	, out float OutMipRate : SV_Target4)
 {
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
@@ -74,5 +73,4 @@ void BasePS(VertexOutput Vin
 
 	// store normal and setup the flag, 2-bit alpha channel can store 0.0f 1/3 2/3 1.0f
     OutNormal = float4(EncodeNormal(BumpNormal), UH_OPAQUE_MASK);
-    OutVertexNormal = float4(EncodeNormal(VertexNormal), UH_OPAQUE_MASK);
 }

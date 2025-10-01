@@ -1,6 +1,6 @@
 #include "DeferredShadingRenderer.h"
 
-#if WITH_EDITOR
+
 void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 {
 	GSkyLightCube = GetCurrentSkyCube();
@@ -17,6 +17,7 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 	SkyPassShader->BindSkyCube();
 	ReflectionPassShader->BindSkyCube();
 
+#if WITH_EDITOR
 	if (bNeedRecompile)
 	{
 		// recompiling all base and translucent shaders
@@ -30,6 +31,7 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 			TransShader.second->OnCompile();
 		}
 	}
+#endif
 
 	for (auto& TransShader : TranslucentPassShaders)
 	{
@@ -38,22 +40,21 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 
 	{
 		std::unique_lock<std::mutex> Lock(RenderThread->GetThreadMutex());
-		bNeedGenerateSH9RT = true;
+		RTParams.bNeedGenerateSH9 = true;
 	}
 
-	if (bIsRaytracingEnableRT)
+	if (RTParams.bEnableRayTracing)
 	{
 		RTReflectionShader->BindSkyCube();
 	}
 }
-#endif
 
 void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("GenerateSH9Pass", false);
 	// generate SH9, this doesn't need to be called every frame
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::GenerateSH9)], "GenerateSH9");
-	if (!bIsSkyLightEnabledRT || !bNeedGenerateSH9RT)
+	if (!RTParams.bEnableSkyLight || !RTParams.bNeedGenerateSH9)
 	{
 		return;
 	}
@@ -65,14 +66,14 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.Dispatch(1, 1, 1);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
-	bNeedGenerateSH9RT = false;
+	RTParams.bNeedGenerateSH9 = false;
 }
 
 void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderSkyPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SkyPass)], "SkyPass");
-	if (!bIsSkyLightEnabledRT)
+	if (!RTParams.bEnableSkyLight)
 	{
 		return;
 	}

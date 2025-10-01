@@ -345,6 +345,15 @@ void UHFbxImportDialog::OnImport()
 		Renderer->Initialize(Scene);
 		Renderer->InitRenderingResources();
 		Editor->RefreshWorldDialog();
+
+		// rendering resources have been recreated, so I need to mark renderer dirty
+		for (auto& Comp : Scene->GetAllCompoments())
+		{
+			if (UHRenderState* State = dynamic_cast<UHRenderState*>(Comp.get()))
+			{
+				State->SetRenderDirties(true);
+			}
+		}
 	}
 
 	MessageBoxA(nullptr, "Import finished!", "Fbx Import", MB_OK);

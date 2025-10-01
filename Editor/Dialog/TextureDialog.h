@@ -56,9 +56,6 @@ inline void ValidateTextureSetting(UHTextureSettings& InSetting)
 {
 	if (InSetting.bIsHDR)
 	{
-		// hdr texture can never be normal mapping for now
-		InSetting.bIsNormal = false;
-
 		// force BC6H compression if it's not uncompressed
 		InSetting.CompressionSetting = (InSetting.CompressionSetting != UHTextureCompressionSettings::CompressionNone) ? UHTextureCompressionSettings::BC6H : InSetting.CompressionSetting;
 	}

@@ -27,7 +27,7 @@ float4 SelectCandidateReflect(float3 EyeVector, int2 PixelCoord)
 }
 
 [numthreads(UHTHREAD_GROUP1D, 1, 1)]
-void RTSmoothReflectHorizontalCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
+void RTSmoothNormalHorizontalCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
     uint2 PixelCoord = min(DTid.xy, GResolution.xy / REFINE_DOWNSIZE_FACTOR - 1);
     OutNormal[PixelCoord] = 0;
@@ -76,7 +76,7 @@ void RTSmoothReflectHorizontalCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : 
 
 // vertical run is treated as the second run so it does not have to call SelectCandidateReflect()
 [numthreads(1, UHTHREAD_GROUP1D, 1)]
-void RTSmoothReflectVerticalCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
+void RTSmoothNormalVerticalCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
 {
     uint2 PixelCoord = min(DTid.xy, GResolution.xy / REFINE_DOWNSIZE_FACTOR - 1);
 

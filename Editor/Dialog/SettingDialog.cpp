@@ -112,12 +112,6 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     }
 
     ImGui::Checkbox("Enable TAA", &RenderingSettings.bTemporalAA);
-    if (ImGui::Checkbox("Enable RayTracing*", &RenderingSettings.bEnableRayTracing))
-    {
-        Engine->GetGfx()->WaitGPU();
-        DeferredRenderer->UpdateDescriptors();
-    }
-
     ImGui::Checkbox("Enable GPU Labeling (For RenderDoc debugging)", &RenderingSettings.bEnableGPULabeling);
     ImGui::Checkbox("Enable Layer Validation*", &RenderingSettings.bEnableLayerValidation);
     if (ImGui::Checkbox("Enable GPU Timing", &RenderingSettings.bEnableGPUTiming))
@@ -191,47 +185,77 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     // raytracing settings
     ImGui::NewLine();
     ImGui::Text("---Raytracing Settings---");
+    if (ImGui::Checkbox("Enable RayTracing*", &RenderingSettings.bEnableRayTracing))
+    {
+        Engine->GetGfx()->WaitGPU();
+        DeferredRenderer->UpdateDescriptors();
+    }
+
     ImGui::InputFloat("RT Culling Distance", &RenderingSettings.RTCullingRadius);
+    ImGui::Checkbox("Ray Tracing Denoise", &RenderingSettings.bDenoiseRayTracing);
+    ImGui::NewLine();
 
     // RT Shadows
-    std::vector<std::string> RTShadowQualities = { "Full", "Half" };
-    if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", RTShadowQualities[RenderingSettings.RTShadowQuality].c_str()))
+    if (ImGui::Checkbox("Enable RT Shadow", &RenderingSettings.bEnableRTShadow))
     {
-        for (size_t Idx = 0; Idx < RTShadowQualities.size(); Idx++)
-        {
-            const bool bIsSelected = (RenderingSettings.RTShadowQuality == Idx);
-            if (ImGui::Selectable(RTShadowQualities[Idx].c_str(), bIsSelected))
-            {
-                RenderingSettings.RTShadowQuality = static_cast<int32_t>(Idx);
-                DeferredRenderer->ResizeRayTracingBuffers(false);
-                break;
-            }
-        }
-        ImGui::EndCombo();
+        Engine->GetGfx()->WaitGPU();
+        DeferredRenderer->UpdateDescriptors();
     }
 
-    ImGui::InputFloat("RT Shadow TMax", &RenderingSettings.RTShadowTMax);
+    if (RenderingSettings.bEnableRTShadow)
+    {
+        std::vector<std::string> RTShadowQualities = { "Full", "Half" };
+        if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", RTShadowQualities[RenderingSettings.RTShadowQuality].c_str()))
+        {
+            for (size_t Idx = 0; Idx < RTShadowQualities.size(); Idx++)
+            {
+                const bool bIsSelected = (RenderingSettings.RTShadowQuality == Idx);
+                if (ImGui::Selectable(RTShadowQualities[Idx].c_str(), bIsSelected))
+                {
+                    RenderingSettings.RTShadowQuality = static_cast<int32_t>(Idx);
+                    DeferredRenderer->ResizeRayTracingBuffers(false);
+                    break;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::InputFloat("RT Shadow TMax", &RenderingSettings.RTShadowTMax);
+    }
+    ImGui::NewLine();
 
     // RT Reflections
-    std::vector<std::string> RTReflectionQualities = { "Full", "Half Pixel", "Quarter Pixel" };
-    if (ImGui::BeginCombo("Ray Tracing Reflection Quaility", RTReflectionQualities[RenderingSettings.RTReflectionQuality].c_str()))
+    if (ImGui::Checkbox("Enable RT Reflection", &RenderingSettings.bEnableRTReflection))
     {
-        for (size_t Idx = 0; Idx < RTReflectionQualities.size(); Idx++)
-        {
-            const bool bIsSelected = (RenderingSettings.RTReflectionQuality == Idx);
-            if (ImGui::Selectable(RTReflectionQualities[Idx].c_str(), bIsSelected))
-            {
-                RenderingSettings.RTReflectionQuality = static_cast<int32_t>(Idx);
-                DeferredRenderer->ResizeRayTracingBuffers(false);
-                break;
-            }
-        }
-        ImGui::EndCombo();
+        Engine->GetGfx()->WaitGPU();
+        DeferredRenderer->UpdateDescriptors();
     }
 
-    ImGui::InputFloat("RT Reflection TMax", &RenderingSettings.RTReflectionTMax);
-    ImGui::InputFloat("RT Reflection Smooth Cutoff", &RenderingSettings.RTReflectionSmoothCutoff);
-    ImGui::Checkbox("Ray Tracing Denoise", &RenderingSettings.bDenoiseRayTracing);
+    if (RenderingSettings.bEnableRTReflection)
+    {
+        std::vector<std::string> RTReflectionQualities = { "Full", "Half Pixel", "Quarter Pixel" };
+        if (ImGui::BeginCombo("Ray Tracing Reflection Quaility", RTReflectionQualities[RenderingSettings.RTReflectionQuality].c_str()))
+        {
+            for (size_t Idx = 0; Idx < RTReflectionQualities.size(); Idx++)
+            {
+                const bool bIsSelected = (RenderingSettings.RTReflectionQuality == Idx);
+                if (ImGui::Selectable(RTReflectionQualities[Idx].c_str(), bIsSelected))
+                {
+                    RenderingSettings.RTReflectionQuality = static_cast<int32_t>(Idx);
+                    DeferredRenderer->ResizeRayTracingBuffers(false);
+                    break;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::InputFloat("RT Reflection TMax", &RenderingSettings.RTReflectionTMax);
+        ImGui::InputFloat("RT Reflection Smooth Cutoff", &RenderingSettings.RTReflectionSmoothCutoff);
+    }
+    ImGui::NewLine();
+
+    // RT Indirect lighting
+    ImGui::Checkbox("Enable RT Indirect Lighting", &RenderingSettings.bEnableRTIndirectLighting);
 
     ImGui::PopItemWidth();
     bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

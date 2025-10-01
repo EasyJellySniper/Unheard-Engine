@@ -396,9 +396,6 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTTextureTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -420,7 +417,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothReflectShader.h">
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.h">
@@ -818,7 +815,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothReflectShader.cpp">
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.cpp">
@@ -892,7 +889,7 @@
     <None Include="Shaders\MotionMeshShader.hlsl" />
     <None Include="Shaders\BaseAmplificationShader.hlsl" />
     <None Include="Shaders\RayTracing\CollectLightComputeShader.hlsl" />
-    <None Include="Shaders\RayTracing\RTSmoothReflectVector.hlsl" />
+    <None Include="Shaders\RayTracing\RTSmoothSceneNormal.hlsl" />
     <None Include="Shaders\PostProcessing\UpsampleComputeShader.hlsl" />
   </ItemGroup>
 </Project>

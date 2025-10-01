@@ -29,9 +29,6 @@ struct MaterialData
 };
 StructuredBuffer<MaterialData> UHMaterialDataTable[] : register(t0, space8);
 
-// opaque buffers to lookup, so it might be able to reduce a few instructions in reflection calculation.
-Texture2D OpaqueBuffers[4] : register(t0, space9);
-
 // hit group shader, shared used for all RT shaders
 // attribute structure for feteching mesh data
 struct Attribute
@@ -231,10 +228,6 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     VertexNormal = normalize(mul(VertexNormal, (float3x3)WorldToObject3x4()));
     float3 FlippedVertexNormal = VertexNormal * ((bIsFrontFace) ? 1 : -1);
     
-    // fetch vertex normal stored in GBuffer
-    float4 GBufferVertexNormal = OpaqueBuffers[4].SampleLevel(PointClampSampler, ScreenUV, 0);
-    GBufferVertexNormal.xyz = DecodeNormal(GBufferVertexNormal.xyz);
-    
     float4 Diffuse = 0;
     float4 Specular = 0;
     float3 BumpNormal = 0;
@@ -242,25 +235,8 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     float2 RefractOffset = 0;
     Payload.PackedData0.a = 1;
     
-    // evaluate if it can reuse GBuffer info
-    bool bCanFetchScreenInfo = bIsOpaque && bInsideScreen && (length(GBufferVertexNormal.xyz - FlippedVertexNormal) < 0.01f);
-    
-    UHBRANCH
-    if (bCanFetchScreenInfo)
     {
-		// when the hit position is inside screen and the vertex normal are very close
-        // lookup material data from Opaque GBuffer instead, this is the opaque-only optimization for preventing the evaluation of a complex material again
-        Diffuse = OpaqueBuffers[0].SampleLevel(PointClampSampler, ScreenUV, 0);
-        BumpNormal = DecodeNormal(OpaqueBuffers[1].SampleLevel(PointClampSampler, ScreenUV, 0).xyz);
-        Specular = OpaqueBuffers[2].SampleLevel(PointClampSampler, ScreenUV, 0);
-        
-        // the emissive still needs to be calculated from material
-        UHMaterialInputs MaterialInput = GetMaterialEmissive(UV0, Payload.MipLevel);
-        Emissive = MaterialInput.Emissive;
-    }
-    else
-    {
-		// otherwise, fully get material data as like in BasePixelShader
+		// get material data as like in BasePixelShader
         MaterialUsage Usage;
         UHMaterialInputs MaterialInput = GetMaterialInput(UV0, Payload.MipLevel, Usage);
         

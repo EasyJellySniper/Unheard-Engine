@@ -271,6 +271,7 @@ public:
 	uint32_t GetHostMemoryTypeIndex() const;
 
 	std::vector<std::string> GetAvailableGpuNames() const;
+	float GetUsedDedicatedVramMB() const;
 
 #if WITH_EDITOR
 	uint32_t GetMinImageCount() const;
