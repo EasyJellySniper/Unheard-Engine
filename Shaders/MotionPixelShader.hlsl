@@ -23,7 +23,7 @@ void MotionObjectPS(MotionVertexOutput Vin
 #if TRANSLUCENT
 	, out float4 OutBump : SV_Target1
 	, out float OutSmoothness : SV_Target2
-	, out float OutMipRate : SV_Target3
+	, out float2 OutData : SV_Target3
 #endif
 )
 {
@@ -52,6 +52,7 @@ void MotionObjectPS(MotionVertexOutput Vin
     
 	// output a few buffer for special purposes (mainly used in ray tracing)
 #if TRANSLUCENT
+	uint PackedData = 0;
     float3 VertexNormal = normalize(Vin.Normal);
     VertexNormal *= (bIsFrontFace) ? 1 : -1;
 		
@@ -62,6 +63,7 @@ void MotionObjectPS(MotionVertexOutput Vin
 	// tangent to world space
     BumpNormal = mul(BumpNormal, Vin.WorldTBN);
     BumpNormal *= (bIsFrontFace) ? 1 : -1;
+	PackedData |= UH_HAS_BUMP;
 #endif
 		
 	// shared with opaque vertex normal, mark alpha as UH_TRANSLUCENT_MASK or UH_REFRACTION_MASK here for differentiate
@@ -74,6 +76,7 @@ void MotionObjectPS(MotionVertexOutput Vin
     float2 Dx = ddx_fine(Vin.UV0);
     float2 Dy = ddy_fine(Vin.UV0);
     float DeltaMax = max(length(Dx), length(Dy));
-    OutMipRate = DeltaMax;
+    OutData.r = DeltaMax;
+	OutData.g = (float)PackedData;
 #endif
 }

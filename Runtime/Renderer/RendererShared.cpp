@@ -17,7 +17,7 @@ UHRenderTexture* GSceneDiffuse;
 UHRenderTexture* GSceneNormal;
 UHRenderTexture* GSceneMaterial;
 UHRenderTexture* GSceneResult;
-UHRenderTexture* GSceneMip;
+UHRenderTexture* GSceneExtraData;
 UHRenderTexture* GSceneDepth;
 UHRenderTexture* GSceneMixedDepth;
 UHRenderTexture* GMotionVectorRT;

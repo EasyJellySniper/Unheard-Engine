@@ -25,7 +25,8 @@ extern UHRenderTexture* GSceneDiffuse;
 extern UHRenderTexture* GSceneNormal;
 extern UHRenderTexture* GSceneMaterial;
 extern UHRenderTexture* GSceneResult;
-extern UHRenderTexture* GSceneMip;
+// extra scene data - R for mip rate and G for others
+extern UHRenderTexture* GSceneExtraData;
 extern UHRenderTexture* GSceneDepth;
 // mixed depth, which means translucent depth is rendered on the top of opaque depth
 extern UHRenderTexture* GSceneMixedDepth;

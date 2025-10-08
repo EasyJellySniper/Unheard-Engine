@@ -6,8 +6,7 @@
 RWTexture2D<float4> OutNormal : register(u1);
 Texture2D OpaqueNormalTexture : register(t2);
 Texture2D TranslucentNormalTexture : register(t3);
-Texture2D MixedDepthTexture : register(t4);
-SamplerState LinearSampler : register(s5);
+SamplerState LinearSampler : register(s4);
 
 // 2x downsized refine
 #define REFINE_DOWNSIZE_FACTOR 2
@@ -16,7 +15,7 @@ SamplerState LinearSampler : register(s5);
 #define MAX_REFINE_RADIUS 2
 groupshared float4 GNormalCache[UHTHREAD_GROUP1D + 2 * MAX_REFINE_RADIUS];
 
-float4 SelectCandidateReflect(float3 EyeVector, int2 PixelCoord)
+float4 SelectCandidateNormal(int2 PixelCoord)
 {
     float2 UV = float2(PixelCoord) * GResolution.zw * REFINE_DOWNSIZE_FACTOR;
     float4 OpaqueN = OpaqueNormalTexture.SampleLevel(LinearSampler, UV, 0);
@@ -33,25 +32,22 @@ void RTSmoothNormalHorizontalCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : S
     OutNormal[PixelCoord] = 0;
     
     float2 UV = float2(PixelCoord) * GResolution.zw * REFINE_DOWNSIZE_FACTOR;
-    float SceneDepth = MixedDepthTexture.SampleLevel(LinearSampler, UV, 0).r;
-    float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(UV, SceneDepth);
-    float3 EyeVector = normalize(SceneWorldPos - GCameraPos);
 
     // left edge case
     if (GTid.x < MAX_REFINE_RADIUS)
     {
         int x = max(PixelCoord.x - MAX_REFINE_RADIUS, 0);
-        GNormalCache[GTid.x] = SelectCandidateReflect(EyeVector, int2(x, PixelCoord.y));
+        GNormalCache[GTid.x] = SelectCandidateNormal(int2(x, PixelCoord.y));
     }
     
     // right edge case
     if (GTid.x >= UHTHREAD_GROUP1D - MAX_REFINE_RADIUS)
     {
         int x = min(PixelCoord.x + MAX_REFINE_RADIUS, GResolution.x - 1);
-        GNormalCache[GTid.x + 2 * MAX_REFINE_RADIUS] = SelectCandidateReflect(EyeVector, int2(x, PixelCoord.y));
+        GNormalCache[GTid.x + 2 * MAX_REFINE_RADIUS] = SelectCandidateNormal(int2(x, PixelCoord.y));
     }
     
-    float4 CenterN = SelectCandidateReflect(EyeVector, PixelCoord.xy);
+    float4 CenterN = SelectCandidateNormal(PixelCoord.xy);
     GNormalCache[GTid.x + MAX_REFINE_RADIUS] = CenterN;
     GroupMemoryBarrierWithGroupSync();
     

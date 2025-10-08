@@ -80,3 +80,8 @@ More code refactor and bugfixes.. Such as allowing EXR normal map, sky light ref
 Add a new test scene for indirect lighting study.
 Redundant rendering table and buffer are removed.
 Add VRAM usage profiling.
+
+08-10-2025:
+Minor fix and refactor for smooth scene normal pass.
+For now it prevents smooth normal on pixels without bump.
+Rename GSceneMip as GSceneExtraData for it's purpose.

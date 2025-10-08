@@ -88,7 +88,7 @@ void UHRTReflectionShader::BindParameters()
 	BindStorage(GSH9Data.get(), 7, 0, true);
 
 	// textures and samplers
-	BindImage(GSceneMip, 8);
+	BindImage(GSceneExtraData, 8);
 	BindImage(GSceneMixedDepth, 9);
 	BindImage(GTranslucentBump, 10);
 	BindImage(GTranslucentSmoothness, 11);

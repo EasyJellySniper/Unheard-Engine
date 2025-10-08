@@ -79,7 +79,7 @@ void UHRTShadowShader::BindParameters()
 	BindStorage(GSpotLightListTransBuffer.get(), 9, 0, true);
 
 	// translucent buffers and samplers
-	BindImage(GSceneMip, 10);
+	BindImage(GSceneExtraData, 10);
 	BindImage(GSceneMixedDepth, 11);
 	BindImage(GSceneNormal, 12);
 	BindImage(GTranslucentBump, 13);

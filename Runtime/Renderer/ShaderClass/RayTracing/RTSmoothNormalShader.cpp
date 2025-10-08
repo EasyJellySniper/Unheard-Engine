@@ -9,7 +9,6 @@ RTSmoothSceneNormalShader::RTSmoothSceneNormalShader(UHGraphic* InGfx, std::stri
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateLayoutAndDescriptor();
@@ -34,6 +33,5 @@ void RTSmoothSceneNormalShader::BindParameters()
 	BindRWImage(GSmoothSceneNormal, 1);
 	BindImage(GSceneNormal, 2);
 	BindImage(GTranslucentBump, 3);
-	BindImage(GSceneMixedDepth, 4);
-	BindSampler(GLinearClampedSampler, 5);
+	BindSampler(GLinearClampedSampler, 4);
 }

@@ -17,7 +17,7 @@ RaytracingAccelerationStructure TLAS : register(t1);
 RWTexture2D<float4> OutResult : register(u2);
 
 // Buffers needed. The workflow will shoot ray from buffer instead of shooting a 'search ray' to reduce the number of rays per frame.
-Texture2D MixedMipTexture : register(t8);
+Texture2D SceneDataTexture : register(t8);
 Texture2D MixedDepthTexture : register(t9);
 Texture2D TranslucentBumpTexture : register(t10);
 Texture2D TranslucentSmoothTexture : register(t11);
@@ -386,8 +386,11 @@ void RTReflectionRayGen()
     }
     
     // Now fetch the data used for RT
-    float MipRate = MixedMipTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).r;
+    float2 SceneData = SceneDataTexture.SampleLevel(PointClampSampler, ScreenUV, 0).rg;
+    uint PackedSceneData = (uint)SceneData.g;
+    
     // simulate the mip level based on rendering resolution, carry mipmap count data in hit group if this is not enough
+    float MipRate = SceneData.r;
     float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
     
     // Select from translucent or opaque bump
@@ -415,8 +418,13 @@ void RTReflectionRayGen()
     
     // fetch refined eye vector for reflection to reduce noise for bump normal
     // or reflect vertex normal ray
-    SceneNormal = !(GSystemRenderFeature & UH_USE_SMOOTH_NORMAL_RAYTRACING) ? SceneNormal
-        : SmoothSceneNormalTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
+    bool bDenoise = (GSystemRenderFeature & UH_USE_SMOOTH_NORMAL_RAYTRACING);
+    bool bHasBumpThisPixel = (PackedSceneData & UH_HAS_BUMP);
+    if (bDenoise && bHasBumpThisPixel)
+    {
+        SceneNormal = SmoothSceneNormalTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
+    }
+    
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
     
     RayDesc ReflectRay = (RayDesc) 0;

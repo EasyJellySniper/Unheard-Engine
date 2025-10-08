@@ -15,6 +15,9 @@
 #define UH_TANGENT_SPACE 1 << 0
 #define UH_REFRACTION 1 << 1
 
+// scene data bits
+#define UH_HAS_BUMP 1 << 0
+
 // material inputs from graph system
 struct UHMaterialInputs
 {

@@ -24,7 +24,7 @@ void BasePS(VertexOutput Vin
 	, out float4 OutNormal : SV_Target1
 	, out float4 OutMaterial : SV_Target2
 	, out float4 OutEmissive : SV_Target3
-	, out float OutMipRate : SV_Target4)
+	, out float2 OutData : SV_Target4)
 {
 	// fetch material input
 	UHMaterialInputs MaterialInput = GetMaterialInput(Vin.UV0);
@@ -40,6 +40,7 @@ void BasePS(VertexOutput Vin
 	float Metallic = MaterialInput.Metallic;
 	float Roughness = MaterialInput.Roughness;
     float Smoothness = 1.0f - Roughness;
+    uint PackedData = 0;
 
 	BaseColor = BaseColor - BaseColor * Metallic;
 	OutColor = float4(saturate(BaseColor), Occlusion);
@@ -55,6 +56,7 @@ void BasePS(VertexOutput Vin
 	// tangent to world space
     BumpNormal = mul(BumpNormal, Vin.WorldTBN);
     BumpNormal *= (bIsFrontFace) ? 1 : -1;
+	PackedData |= UH_HAS_BUMP;
 #endif
 
 	// output specular color and smoothness
@@ -69,8 +71,9 @@ void BasePS(VertexOutput Vin
 	float2 Dx = ddx_fine(Vin.UV0);
 	float2 Dy = ddy_fine(Vin.UV0);
 	float DeltaMax = max(length(Dx), length(Dy));
-	OutMipRate = DeltaMax;
-
+    OutData.r = DeltaMax;
+    OutData.g = (float)PackedData;
+	
 	// store normal and setup the flag, 2-bit alpha channel can store 0.0f 1/3 2/3 1.0f
     OutNormal = float4(EncodeNormal(BumpNormal), UH_OPAQUE_MASK);
 }
