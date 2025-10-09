@@ -85,3 +85,7 @@ Add VRAM usage profiling.
 Minor fix and refactor for smooth scene normal pass.
 For now it prevents smooth normal on pixels without bump.
 Rename GSceneMip as GSceneExtraData for it's purpose.
+
+09-10-2025:
+Don't think a mixed usage is a good idea. So I revert the GSceneMip change and separate another data buffer.
+RT and GBuffer code refactoring. Make it possible to render to integer buffer.

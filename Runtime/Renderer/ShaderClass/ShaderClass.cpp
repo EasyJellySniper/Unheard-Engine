@@ -306,6 +306,7 @@ void UHShaderClass::RecreateMaterialState()
 		, PipelineLayout);
 	MaterialPassInfo.AS = ShaderAS;
 	MaterialPassInfo.MS = ShaderMS;
+	MaterialPassInfo.bIsIntegerBuffer = PrevPassInfo.bIsIntegerBuffer;
 
 	MaterialPassInfo.bForceBlendOff = PrevPassInfo.bForceBlendOff;
 

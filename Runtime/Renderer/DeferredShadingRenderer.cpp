@@ -142,7 +142,7 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			, GSceneMaterial // for alpha channel
 			, GSceneDepth
 			, GMotionVectorRT
-			, GSceneExtraData
+			, GSceneMip
 			, GRTShadowResult
 			, GRTReflectionResult };
 

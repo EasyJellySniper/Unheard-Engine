@@ -17,12 +17,19 @@ UHRenderTexture* GSceneDiffuse;
 UHRenderTexture* GSceneNormal;
 UHRenderTexture* GSceneMaterial;
 UHRenderTexture* GSceneResult;
-UHRenderTexture* GSceneExtraData;
+UHRenderTexture* GSceneMip;
+UHRenderTexture* GSceneData;
 UHRenderTexture* GSceneDepth;
 UHRenderTexture* GSceneMixedDepth;
 UHRenderTexture* GMotionVectorRT;
 UHRenderTexture* GPostProcessRT;
 UHRenderTexture* GPreviousSceneResult;
+
+// accessor for GBuffers
+std::vector<UHRenderTexture*> GSceneBuffers;
+std::vector<UHRenderTexture*> GSceneBuffersWithDepth;
+std::vector<UHRenderTexture*> GSceneBuffersTrans;
+std::vector<UHRenderTexture*> GSceneBuffersTransWithDepth;
 
 UHRenderTexture* GRTShadowResult;
 // GRTSharedTextureRG can be reused after soft shadow is done

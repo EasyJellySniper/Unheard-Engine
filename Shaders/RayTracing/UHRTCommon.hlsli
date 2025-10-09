@@ -5,6 +5,7 @@
 #include "../UHCommon.hlsli"
 #include "../UHLightCommon.hlsli"
 #define RT_MIPRATESCALE 100.0f
+#define RT_MATERIALDATA_SLOT 32
 
 // payload data bits
 #define PAYLOAD_ISREFLECTION 1 << 0

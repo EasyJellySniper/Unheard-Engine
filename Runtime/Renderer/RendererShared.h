@@ -25,8 +25,9 @@ extern UHRenderTexture* GSceneDiffuse;
 extern UHRenderTexture* GSceneNormal;
 extern UHRenderTexture* GSceneMaterial;
 extern UHRenderTexture* GSceneResult;
-// extra scene data - R for mip rate and G for others
-extern UHRenderTexture* GSceneExtraData;
+extern UHRenderTexture* GSceneMip;
+// extra scene data buffer, it is uint8 for now and can be changed in the future
+extern UHRenderTexture* GSceneData;
 extern UHRenderTexture* GSceneDepth;
 // mixed depth, which means translucent depth is rendered on the top of opaque depth
 extern UHRenderTexture* GSceneMixedDepth;
@@ -37,6 +38,11 @@ extern UHRenderTexture* GOpaqueSceneResult;
 // translucent bump and smoothness, at this point they still need to be separated unless RT passes are designed for opaque only
 extern UHRenderTexture* GTranslucentBump;
 extern UHRenderTexture* GTranslucentSmoothness;
+// accessor for GBuffers
+extern std::vector<UHRenderTexture*> GSceneBuffers;
+extern std::vector<UHRenderTexture*> GSceneBuffersWithDepth;
+extern std::vector<UHRenderTexture*> GSceneBuffersTrans;
+extern std::vector<UHRenderTexture*> GSceneBuffersTransWithDepth;
 
 // ray-tracing
 extern UHRenderTexture* GRTShadowResult;

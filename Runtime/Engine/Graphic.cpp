@@ -834,25 +834,25 @@ void UHGraphic::WaitGPU()
 // create render pass, imageless
 UHRenderPassObject UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo) const
 {
-	std::vector<UHTexture*> Texture{};
+	std::vector<UHRenderTexture*> Texture{};
 	return CreateRenderPass(Texture, InTransitionInfo);
 }
 
 // create render pass, single Texture
-UHRenderPassObject UHGraphic::CreateRenderPass(UHTexture* InTexture, UHTransitionInfo InTransitionInfo, UHTexture* InDepth) const
+UHRenderPassObject UHGraphic::CreateRenderPass(UHRenderTexture* InTexture, UHTransitionInfo InTransitionInfo, UHRenderTexture* InDepth) const
 {
-	std::vector<UHTexture*> Texture{ InTexture };
+	std::vector<UHRenderTexture*> Texture{ InTexture };
 	return CreateRenderPass(Texture, InTransitionInfo, InDepth);
 }
 
 // create render pass, depth only
-UHRenderPassObject UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTexture* InDepthTexture) const
+UHRenderPassObject UHGraphic::CreateRenderPass(UHTransitionInfo InTransitionInfo, UHRenderTexture* InDepthTexture) const
 {
-	return CreateRenderPass(std::vector<UHTexture*>(), InTransitionInfo, InDepthTexture);
+	return CreateRenderPass(std::vector<UHRenderTexture*>(), InTransitionInfo, InDepthTexture);
 }
 
 // create render pass, multiple formats are possible
-UHRenderPassObject UHGraphic::CreateRenderPass(std::vector<UHTexture*> InTextures, UHTransitionInfo InTransitionInfo, UHTexture* InDepth) const
+UHRenderPassObject UHGraphic::CreateRenderPass(std::vector<UHRenderTexture*> InTextures, UHTransitionInfo InTransitionInfo, UHRenderTexture* InDepth) const
 {
 	UHRenderPassObject ResultRenderPass{};
 	VkRenderPass NewRenderPass = nullptr;

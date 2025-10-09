@@ -21,14 +21,12 @@ Texture2D MixedMipTexture : register(t10);
 Texture2D MixedDepthTexture : register(t11);
 Texture2D OpaqueNormal : register(t12);
 Texture2D TranslucentNormal : register(t13);
-SamplerState PointSampler : register(s14);
-SamplerState LinearSampler : register(s15);
 
 // both opaque and translucent shadow are traced in this function
 void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLevel)
 {
     // The MixedDepthTexture contains both opaque/translucent depth
-    float SceneDepth = MixedDepthTexture.SampleLevel(PointSampler, ScreenUV, 0).r;
+    float SceneDepth = MixedDepthTexture[PixelCoord].r;
 
 	UHBRANCH
     if (SceneDepth == 0.0f)
@@ -42,8 +40,8 @@ void TraceShadow(uint2 PixelCoord, float2 ScreenUV, float MipRate, float MipLeve
 
 	// reconstruct normal, simply sample from the texture
     // likewise,  The MixedVertexNormalTexture contains both opaque/translucent's vertex normal
-    float4 OpaqueNormalData = OpaqueNormal.SampleLevel(PointSampler, ScreenUV, 0);
-    float4 TranslucentNormalData = TranslucentNormal.SampleLevel(PointSampler, ScreenUV, 0);
+    float4 OpaqueNormalData = OpaqueNormal[PixelCoord];
+    float4 TranslucentNormalData = TranslucentNormal[PixelCoord];
     float3 WorldNormal = DecodeNormal(TranslucentNormalData.w > 0 ? TranslucentNormalData.xyz : OpaqueNormalData.xyz);
 	
 	// ------------------------------------------------------------------------------------------ Directional Light Tracing
@@ -123,7 +121,7 @@ void RTShadowRayGen()
 	float2 ScreenUV = (PixelCoord + 0.5f) * GResolution.zw;
 
 	// calculate mip level before ray tracing kicks off
-    float MipRate = MixedMipTexture.SampleLevel(LinearSampler, ScreenUV, 0).r;
+    float MipRate = MixedMipTexture[PixelCoord].r;
     // simulate the mip level based on rendering resolution, carry mipmap count data in hit group if this is not enough
     float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
 

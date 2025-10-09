@@ -70,7 +70,7 @@ VkPipelineVertexInputStateCreateInfo GetVertexInputInfo(VkVertexInputBindingDesc
 
 // get blend state info based on input blend mode
 VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, int32_t RTCount, std::vector<VkPipelineColorBlendAttachmentState>& OutColorBlendAttachments
-	, bool bForceBlendOff, bool bEnableColorWrite)
+	, bool bForceBlendOff, bool bEnableColorWrite, const std::vector<bool>& bIsIntegerBuffer)
 {
 	for (int32_t Idx = 0; Idx < RTCount; Idx++)
 	{
@@ -84,7 +84,13 @@ VkPipelineColorBlendStateCreateInfo GetBlendStateInfo(UHBlendMode InBlendMode, i
 		ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
 		ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
 
-		if (!bForceBlendOff)
+		bool bHasIntegerBuffer = false;
+		if (Idx < static_cast<int32_t>(bIsIntegerBuffer.size()))
+		{
+			bHasIntegerBuffer |= bIsIntegerBuffer[Idx];
+		}
+
+		if (!bForceBlendOff && !bHasIntegerBuffer)
 		{
 			ColorBlendAttachment.blendEnable = VK_TRUE;
 
@@ -306,7 +312,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	/*** Color blending, default to opaque ***/
 	std::vector<VkPipelineColorBlendAttachmentState> ColorBlendAttachments;
 	VkPipelineColorBlendStateCreateInfo ColorBlending = GetBlendStateInfo(RenderPassInfo.BlendMode, RenderPassInfo.RTCount, ColorBlendAttachments
-		, RenderPassInfo.bForceBlendOff, RenderPassInfo.bEnableColorWrite);
+		, RenderPassInfo.bForceBlendOff, RenderPassInfo.bEnableColorWrite, RenderPassInfo.bIsIntegerBuffer);
 
 
 	/*** finally, create pipeline info ***/

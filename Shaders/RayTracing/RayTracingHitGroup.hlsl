@@ -22,10 +22,9 @@ ByteAddressBuffer UHIndicesTable[] : register(t0, space7);
 
 // another descriptor array for matching, since Vulkan doesn't implement local descriptor yet, I need this to fetch data
 // access via InstanceID()[0] first, the data will be filled by the systtem on C++ side
-// max number of data member: 128 scalars for now
 struct MaterialData
 {
-    uint Data[128];
+    uint Data[RT_MATERIALDATA_SLOT];
 };
 StructuredBuffer<MaterialData> UHMaterialDataTable[] : register(t0, space8);
 

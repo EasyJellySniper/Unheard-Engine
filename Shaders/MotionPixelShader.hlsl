@@ -23,7 +23,8 @@ void MotionObjectPS(MotionVertexOutput Vin
 #if TRANSLUCENT
 	, out float4 OutBump : SV_Target1
 	, out float OutSmoothness : SV_Target2
-	, out float2 OutData : SV_Target3
+	, out float OutMip : SV_Target3
+	, out uint OutData : SV_Target4
 #endif
 )
 {
@@ -76,7 +77,7 @@ void MotionObjectPS(MotionVertexOutput Vin
     float2 Dx = ddx_fine(Vin.UV0);
     float2 Dy = ddy_fine(Vin.UV0);
     float DeltaMax = max(length(Dx), length(Dy));
-    OutData.r = DeltaMax;
-	OutData.g = (float)PackedData;
+    OutMip = DeltaMax;
+	OutData = PackedData;
 #endif
 }

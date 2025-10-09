@@ -57,6 +57,8 @@ void UHBasePassShader::OnCompile()
 		, GNumOfGBuffers
 		, PipelineLayout);
 
+	MaterialPassInfo.bIsIntegerBuffer = { false,false,false,false,false,true };
+
 	RecreateMaterialState();
 }
 
@@ -123,6 +125,7 @@ void UHBaseMeshShader::OnCompile()
 		, GNumOfGBuffers
 		, PipelineLayout);
 	MaterialPassInfo.MS = ShaderMS;
+	MaterialPassInfo.bIsIntegerBuffer = { false,false,false,false,false,true };
 
 	RecreateMaterialState();
 }

@@ -158,7 +158,8 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 		// translucent motion, however, needs to render all regardless if it's static or dynamic
 		{
 			// set scene mip as output
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneExtraData, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMip, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneData, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 
 			// clear translucent bump & roughness buffer and transition to color output
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
@@ -257,7 +258,8 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 			// done rendering, transition depth to shader read
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMixedDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneExtraData, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneMip, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneData, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 		}

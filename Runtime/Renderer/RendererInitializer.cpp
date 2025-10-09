@@ -747,7 +747,8 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	const UHTextureFormat SpecularFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 	const UHTextureFormat SceneResultFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
 	const UHTextureFormat HistoryResultFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
-	const UHTextureFormat SceneDataFormat = UHTextureFormat::UH_FORMAT_RG16F;
+	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_R16F;
+	const UHTextureFormat SceneDataFormat = UHTextureFormat::UH_FORMAT_R8_UINT;
 	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UHTextureFormat::UH_FORMAT_X8_D24 : UHTextureFormat::UH_FORMAT_D32F;
 	const UHTextureFormat MotionFormat = UHTextureFormat::UH_FORMAT_RG16F;
 	const UHTextureFormat MaskFormat = UHTextureFormat::UH_FORMAT_R8_UNORM;
@@ -761,7 +762,8 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GSceneNormal = GraphicInterface->RequestRenderTexture("GBufferB", RenderResolution, NormalFormat);
 	GSceneMaterial = GraphicInterface->RequestRenderTexture("GBufferC", RenderResolution, SpecularFormat);
 	GSceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, true);
-	GSceneExtraData = GraphicInterface->RequestRenderTexture("SceneMip", RenderResolution, SceneDataFormat);
+	GSceneMip = GraphicInterface->RequestRenderTexture("SceneMip", RenderResolution, SceneMipFormat);
+	GSceneData = GraphicInterface->RequestRenderTexture("SceneData", RenderResolution, SceneDataFormat);
 
 	// depth buffer, also needs another depth buffer with translucent
 	GSceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat);
@@ -797,6 +799,12 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 		, "SpotLightList");
 	GSpotLightListTransBuffer = GraphicInterface->RequestRenderBuffer<uint32_t>(TileCountX * TileCountY * (MaxSpotLightPerTile + 1), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 		, "SpotLightListTrans");
+
+	// setup accessors after initialization
+	GSceneBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneResult, GSceneMip, GSceneData };
+	GSceneBuffersWithDepth = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneResult, GSceneMip, GSceneData, GSceneDepth };
+	GSceneBuffersTrans = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness, GSceneMip, GSceneData };
+	GSceneBuffersTransWithDepth = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness, GSceneMip, GSceneData, GSceneMixedDepth };
 }
 
 void UHDeferredShadingRenderer::RelaseRenderingBuffers()
@@ -805,7 +813,8 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	GraphicInterface->RequestReleaseRT(GSceneNormal);
 	GraphicInterface->RequestReleaseRT(GSceneMaterial);
 	GraphicInterface->RequestReleaseRT(GSceneResult);
-	GraphicInterface->RequestReleaseRT(GSceneExtraData);
+	GraphicInterface->RequestReleaseRT(GSceneMip);
+	GraphicInterface->RequestReleaseRT(GSceneData);
 	GraphicInterface->RequestReleaseRT(GSceneDepth);
 	GraphicInterface->RequestReleaseRT(GSceneMixedDepth);
 	GraphicInterface->RequestReleaseRT(GPostProcessRT);
@@ -830,7 +839,6 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 void UHDeferredShadingRenderer::CreateRenderPasses()
 {
 	// -------------------------------------------------------- Createing render pass after render pass is done -------------------------------------------------------- //
-	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse ,GSceneNormal ,GSceneMaterial ,GSceneResult ,GSceneExtraData };
 
 	// depth prepass
 	if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
@@ -845,7 +853,7 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 	}
 
 	// create render pass based on output RT, render pass can be shared sometimes
-	BasePassObj = GraphicInterface->CreateRenderPass(GBufferTextures, UHTransitionInfo(GraphicInterface->IsDepthPrePassEnabled() ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
+	BasePassObj = GraphicInterface->CreateRenderPass(GSceneBuffers, UHTransitionInfo(GraphicInterface->IsDepthPrePassEnabled() ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
 		, GSceneDepth);
 
 	// sky need depth
@@ -867,23 +875,13 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
 
-	std::vector<UHTexture*> TranslucentMotionTextures = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness, GSceneExtraData };
-	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(TranslucentMotionTextures
+	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(GSceneBuffersTrans
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
 }
 
 void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 {
-	// collect image views for creaing one frame buffer
-	std::vector<UHRenderTexture*> GBuffers;
-	GBuffers.push_back(GSceneDiffuse);
-	GBuffers.push_back(GSceneNormal);
-	GBuffers.push_back(GSceneMaterial);
-	GBuffers.push_back(GSceneResult);
-	GBuffers.push_back(GSceneExtraData);
-	GBuffers.push_back(GSceneDepth);
-
 	// depth frame buffer
 	if (GIsEditor || GraphicInterface->IsDepthPrePassEnabled())
 	{
@@ -896,10 +894,10 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	}
 
 	// create frame buffer, some of them can be shared, especially when the output target is the same
-	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, BasePassObj.RenderPass, RenderResolution);
+	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneBuffersWithDepth, BasePassObj.RenderPass, RenderResolution);
 
 	// sky pass need depth
-	GBuffers = { GSceneResult , GSceneDepth };
+	std::vector<UHRenderTexture*> GBuffers = { GSceneResult , GSceneDepth };
 	SkyboxPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, SkyboxPassObj.RenderPass, RenderResolution);
 
 	// translucent pass can share the same frame buffer as skybox pass
@@ -915,10 +913,8 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	// the opaque depth will be copied to translucent depth before motion opaque pass kicks off
 	GBuffers = { GMotionVectorRT, GSceneMixedDepth };
 	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, MotionOpaquePassObj.RenderPass, RenderResolution);
-
-	GBuffers = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness
-		, GSceneExtraData, GSceneMixedDepth };
-	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, MotionTranslucentPassObj.RenderPass, RenderResolution);
+	
+	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneBuffersTransWithDepth, MotionTranslucentPassObj.RenderPass, RenderResolution);
 }
 
 void UHDeferredShadingRenderer::ReleaseRenderPassObjects()
@@ -1491,19 +1487,11 @@ void UHDeferredShadingRenderer::AppendMeshRenderers(const std::vector<UHMeshRend
 void UHDeferredShadingRenderer::ToggleDepthPrepass()
 {
 	// recreate pass obj/frame buffer
-	std::vector<UHTexture*> GBufferTextures = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneResult, GSceneExtraData };
 	BasePassObj.Release(GraphicInterface->GetLogicalDevice());
-	BasePassObj = GraphicInterface->CreateRenderPass(GBufferTextures, UHTransitionInfo(GraphicInterface->IsDepthPrePassEnabled() ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
+	BasePassObj = GraphicInterface->CreateRenderPass(GSceneBuffers, UHTransitionInfo(GraphicInterface->IsDepthPrePassEnabled() ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_CLEAR)
 		, GSceneDepth);
 
-	std::vector<UHRenderTexture*> GBuffers;
-	GBuffers.push_back(GSceneDiffuse);
-	GBuffers.push_back(GSceneNormal);
-	GBuffers.push_back(GSceneMaterial);
-	GBuffers.push_back(GSceneResult);
-	GBuffers.push_back(GSceneExtraData);
-	GBuffers.push_back(GSceneDepth);
-	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, BasePassObj.RenderPass, RenderResolution);
+	BasePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneBuffersWithDepth, BasePassObj.RenderPass, RenderResolution);
 
 	// recompile (trigger state recreation for shaders involved prepass flag)
 	if (GraphicInterface->IsMeshShaderSupported())

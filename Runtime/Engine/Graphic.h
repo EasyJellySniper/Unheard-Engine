@@ -123,9 +123,9 @@ public:
 
 	// create render pass object, allow imageless and both multiple and single creation
 	UHRenderPassObject CreateRenderPass(UHTransitionInfo InTransitionInfo) const;
-	UHRenderPassObject CreateRenderPass(UHTexture* InFormat, UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat = nullptr) const;
-	UHRenderPassObject CreateRenderPass(UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat) const;
-	UHRenderPassObject CreateRenderPass(std::vector<UHTexture*> InFormat, UHTransitionInfo InTransitionInfo, UHTexture* InDepthFormat = nullptr) const;
+	UHRenderPassObject CreateRenderPass(UHRenderTexture* InTex, UHTransitionInfo InTransitionInfo, UHRenderTexture* InDepth = nullptr) const;
+	UHRenderPassObject CreateRenderPass(UHTransitionInfo InTransitionInfo, UHRenderTexture* InDepth) const;
+	UHRenderPassObject CreateRenderPass(std::vector<UHRenderTexture*> InTexes, UHTransitionInfo InTransitionInfo, UHRenderTexture* InDepth = nullptr) const;
 
 	// create frame buffer, single/multiple
 	VkFramebuffer CreateFrameBuffer(UHRenderTexture* InRT, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;

@@ -17,22 +17,21 @@ RaytracingAccelerationStructure TLAS : register(t1);
 RWTexture2D<float4> OutResult : register(u2);
 
 // Buffers needed. The workflow will shoot ray from buffer instead of shooting a 'search ray' to reduce the number of rays per frame.
-Texture2D SceneDataTexture : register(t8);
-Texture2D MixedDepthTexture : register(t9);
-Texture2D TranslucentBumpTexture : register(t10);
-Texture2D TranslucentSmoothTexture : register(t11);
-Texture2D SmoothSceneNormalTexture : register(t12);
+Texture2D MixedMipTexture : register(t8);
+Texture2D<uint> MixedDataTexture : register(t9);
+Texture2D MixedDepthTexture : register(t10);
+Texture2D TranslucentBumpTexture : register(t11);
+Texture2D TranslucentSmoothTexture : register(t12);
+Texture2D SmoothSceneNormalTexture : register(t13);
 
 // lighting parameters
-StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
-ByteAddressBuffer PointLightListTrans : register(t14);
-ByteAddressBuffer SpotLightListTrans : register(t15);
-TextureCube EnvCube : register(t16);
+StructuredBuffer<UHInstanceLights> InstanceLights : register(t14);
+ByteAddressBuffer PointLightListTrans : register(t15);
+ByteAddressBuffer SpotLightListTrans : register(t16);
+TextureCube EnvCube : register(t17);
 
 // samplers
-SamplerState PointClampSampler : register(s17);
-SamplerState LinearClampSampler : register(s18);
-SamplerState EnvSampler : register(s19);
+SamplerState EnvSampler : register(s18);
 
 static const int GMaxDirLight = 2;
 
@@ -385,25 +384,23 @@ void RTReflectionRayGen()
         return;
     }
     
-    // Now fetch the data used for RT
-    float2 SceneData = SceneDataTexture.SampleLevel(PointClampSampler, ScreenUV, 0).rg;
-    uint PackedSceneData = (uint)SceneData.g;
-    
+    // Now fetch the data used for RT    
     // simulate the mip level based on rendering resolution, carry mipmap count data in hit group if this is not enough
-    float MipRate = SceneData.r;
+    float MipRate = MixedMipTexture[PixelCoord].r;
     float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
     
     // Select from translucent or opaque bump
     float3 SceneNormal = bHasTranslucentInfo ? TranslucentBump.xyz : OpaqueBump.xyz;
     SceneNormal = DecodeNormal(SceneNormal);
 
-    float SceneDepth = MixedDepthTexture.SampleLevel(PointClampSampler, ScreenUV, 0).r;
+    float SceneDepth = MixedDepthTexture[PixelCoord].r;
     float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
+    
+    uint PackedSceneData = MixedDataTexture[PixelCoord].r;
     
     // Calculate reflect ray
     // in real world, there aren't actually a "perfect" surface on most objects
     // so giving it a small distortion
-
     float3 EyeVector = SceneWorldPos - GCameraPos;
     {
         float EyeLength = length(EyeVector);
@@ -422,7 +419,7 @@ void RTReflectionRayGen()
     bool bHasBumpThisPixel = (PackedSceneData & UH_HAS_BUMP);
     if (bDenoise && bHasBumpThisPixel)
     {
-        SceneNormal = SmoothSceneNormalTexture.SampleLevel(LinearClampSampler, ScreenUV, 0).xyz;
+        SceneNormal = SmoothSceneNormalTexture[PixelCoord / 2].xyz;
     }
     
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));

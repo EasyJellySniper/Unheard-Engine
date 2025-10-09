@@ -12,9 +12,9 @@ const uint32_t GMaxFrameInFlight = 2;
 const uint32_t GNumOfPostProcessRT = 2;
 
 // gbuffer counts
-const uint32_t GNumOfGBuffers = 5;
+const uint32_t GNumOfGBuffers = 6;
 const uint32_t GNumOfGBuffersSRV = 4;
-const uint32_t GNumOfGBuffersTrans = 4;
+const uint32_t GNumOfGBuffersTrans = 5;
 
 // thread group number
 const uint32_t GThreadGroup2D_X = 8;
@@ -222,6 +222,7 @@ struct UHRenderPassInfo
 	bool bDrawWireFrame;
 	bool bForceBlendOff;
 	bool bEnableColorWrite;
+	std::vector<bool> bIsIntegerBuffer;
 };
 
 // compute pass info for setup compute states
