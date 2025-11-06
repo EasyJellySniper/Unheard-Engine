@@ -95,6 +95,7 @@ void BaseMS(
         
         // transform normal by world IT
         Output.Normal = Normal;
+        Output.InstanceIndex = ShaderData.RendererIndex;
         
         OutVerts[GTid] = Output;
     }

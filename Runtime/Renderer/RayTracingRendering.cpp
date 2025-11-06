@@ -19,8 +19,8 @@ void UHDeferredShadingRenderer::InitRTGaussianConstants()
 	UHTextureFormat TempRTFormat = UHTextureFormat::UH_FORMAT_RGBA8_UNORM;
 
 	// initialize gaussian consts
-	RayTracingGaussianConsts.GBlurRadius = 2;
-	RayTracingGaussianConsts.IterationCount = 2;
+	RayTracingGaussianConsts.GBlurRadius = 1;
+	RayTracingGaussianConsts.IterationCount = 1;
 	CalculateBlurWeights(RayTracingGaussianConsts.GBlurRadius, RayTracingGaussianConsts.Weights);
 
 	RayTracingGaussianConsts.GaussianFilterTempRT0.resize(GRTReflectionResult->GetMipMapCount());

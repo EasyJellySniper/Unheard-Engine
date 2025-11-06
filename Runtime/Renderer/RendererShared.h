@@ -26,7 +26,8 @@ extern UHRenderTexture* GSceneNormal;
 extern UHRenderTexture* GSceneMaterial;
 extern UHRenderTexture* GSceneResult;
 extern UHRenderTexture* GSceneMip;
-// extra scene data buffer, it is uint8 for now and can be changed in the future
+// extra scene data buffer, it is uint16 for now and can be changed in the future
+// with the first bit to tell whether a pixel has bump normal, and remaining 15 bits for storing instance ID (up to ~32768)
 extern UHRenderTexture* GSceneData;
 extern UHRenderTexture* GSceneDepth;
 // mixed depth, which means translucent depth is rendered on the top of opaque depth

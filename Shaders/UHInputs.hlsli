@@ -56,6 +56,9 @@ struct VertexOutput
 #if TRANSLUCENT
 	float3 WorldPos : TEXCOORD5;
 #endif
+	
+	// custom instance index
+    nointerpolation uint InstanceIndex : UHINSTANCEINDEX;
 };
 
 struct DepthVertexOutput
@@ -80,6 +83,8 @@ struct MotionVertexOutput
 	
 #if TRANSLUCENT
 	float3 Normal : NORMAL;
+	// custom instance index
+    nointerpolation uint InstanceIndex : UHINSTANCEINDEX;
 #endif
 };
 

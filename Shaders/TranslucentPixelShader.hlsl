@@ -135,6 +135,8 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     float NdotV = abs(dot(BumpNormal, -EyeVector));
     float3 Fresnel = SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
     
+    // reflection from dynamic source (such as ray tracing), also make sure to follow screen mip count
+    SpecMip = (1.0f - SpecFade) * GScreenMipCount;
     float4 DynamicReflection = ScreenReflectionTexture.SampleLevel(UHSamplerTable[GLinearClampSamplerIndex], ScreenUV, SpecMip);
     IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);
     IndirectSpecular *= SpecFade * Fresnel * Occlusion * GFinalReflectionStrength;

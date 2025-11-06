@@ -78,6 +78,9 @@ void MotionObjectPS(MotionVertexOutput Vin
     float2 Dy = ddy_fine(Vin.UV0);
     float DeltaMax = max(length(Dx), length(Dy));
     OutMip = DeltaMax;
-	OutData = PackedData;
+	
+	// besides UH_HAS_BUMP bit, store instance index as well
+    uint InstanceIndex = Vin.InstanceIndex & 32767u;
+    OutData = PackedData | (InstanceIndex << 1);
 #endif
 }

@@ -26,6 +26,7 @@ VertexOutput BaseVS(float3 Position : POSITION, uint Vid : SV_VertexID)
 
 	// transform normal by world IT
     Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
+    Vout.InstanceIndex = GInstanceIndex;
 #if TRANSLUCENT
 	Vout.WorldPos = WorldPos;
 #endif

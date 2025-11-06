@@ -95,6 +95,7 @@ void MotionMS(
 #if TRANSLUCENT
         float3 Normal = LocalToWorldNormalMS(NormalBuffer[InInstance.MeshIndex][VertexIndex], (float3x3) Constant.GWorldIT);
         Output.Normal = Normal;
+        Output.InstanceIndex = ShaderData.RendererIndex;
 #endif
         
 #if TANGENT_SPACE && TRANSLUCENT

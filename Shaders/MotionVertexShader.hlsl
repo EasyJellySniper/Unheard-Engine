@@ -25,6 +25,7 @@ MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_Vert
 	
 #if TRANSLUCENT
 	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
+	Vout.InstanceIndex = GInstanceIndex;
 #endif
 	
 #if TANGENT_SPACE && TRANSLUCENT

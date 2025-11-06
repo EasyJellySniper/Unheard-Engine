@@ -89,3 +89,7 @@ Rename GSceneMip as GSceneExtraData for it's purpose.
 09-10-2025:
 Don't think a mixed usage is a good idea. So I revert the GSceneMip change and separate another data buffer.
 RT and GBuffer code refactoring. Make it possible to render to integer buffer.
+
+06-11-2025:
+Minor fix for RT reflection sampling, should consider screen mip instead env cube mip.
+Increase scene data buffer size to 16 bits and store instance ID in object passes.
