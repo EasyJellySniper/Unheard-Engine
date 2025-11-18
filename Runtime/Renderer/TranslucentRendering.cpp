@@ -54,7 +54,7 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 		{
 			RenderBuilder.BeginRenderPass(TranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 #if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 			{
 				ThreadDrawCalls[I] = 0;
 				ThreadOccludedCalls[I] = 0;
@@ -62,21 +62,21 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 #endif
 
 			// init and wake tasks
-			static UHTranslucentPassAsyncTask Tasks[GMaxWorkerThreads];
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			static std::vector<UHTranslucentPassAsyncTask> Tasks(NumParallelRenderSubmitters);
+			for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 			{
 				Tasks[I].Init(this);
 				WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 				WorkerThreads[I]->WakeThread();
 			}
 
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 			{
 				WorkerThreads[I]->WaitTask();
 			}
 
 #if WITH_EDITOR
-			for (int32_t I = 0; I < NumWorkerThreads; I++)
+			for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 			{
 				RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 				RenderBuilder.OccludedCalls += ThreadOccludedCalls[I];
@@ -96,9 +96,9 @@ void UHDeferredShadingRenderer::TranslucentPassTask(int32_t ThreadIdx)
 {
 	// simply separate buffer recording into N threads
 	const int32_t MaxCount = static_cast<int32_t>(TranslucentsToRender.size());
-	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
+	const int32_t RendererCount = (MaxCount + NumParallelRenderSubmitters) / NumParallelRenderSubmitters;
 	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
-	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
+	const int32_t EndIdx = (ThreadIdx == NumParallelRenderSubmitters - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	VkCommandBufferInheritanceInfo InheritanceInfo{};
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;

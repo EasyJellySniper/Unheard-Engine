@@ -203,7 +203,7 @@ UHRenderState::UHRenderState()
 
 void UHRenderState::SetRenderDirties(bool bIsDirty)
 {
-	assert(std::this_thread::get_id() == GMainThreadID);
+	assert(IsInGameThread() || IsInWorkerThread());
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		bIsRenderDirties[Idx] = bIsDirty;
@@ -212,13 +212,13 @@ void UHRenderState::SetRenderDirties(bool bIsDirty)
 
 void UHRenderState::SetRenderDirty(bool bIsDirty, int32_t FrameIdx)
 {
-	assert(std::this_thread::get_id() == GMainThreadID);
+	assert(IsInGameThread() || IsInWorkerThread());
 	bIsRenderDirties[FrameIdx] = bIsDirty;
 }
 
 void UHRenderState::SetMotionDirties(bool bIsDirty)
 {
-	assert(std::this_thread::get_id() == GMainThreadID);
+	assert(IsInGameThread() || IsInWorkerThread());
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
 		bIsMotionDirties[Idx] = bIsDirty;
@@ -227,19 +227,19 @@ void UHRenderState::SetMotionDirties(bool bIsDirty)
 
 void UHRenderState::SetMotionDirty(bool bIsDirty, int32_t FrameIdx)
 {
-	assert(std::this_thread::get_id() == GMainThreadID);
+	assert(IsInGameThread() || IsInWorkerThread());
 	bIsMotionDirties[FrameIdx] = bIsDirty;
 }
 
 bool UHRenderState::IsRenderDirty(int32_t FrameIdx) const
 {
-	assert(std::this_thread::get_id() == GMainThreadID);
+	assert(IsInGameThread() || IsInWorkerThread());
 	return bIsRenderDirties[FrameIdx];
 }
 
 bool UHRenderState::IsMotionDirty(int32_t FrameIdx) const
 {
-	assert(std::this_thread::get_id() == GMainThreadID);
+	assert(IsInGameThread() || IsInWorkerThread());
 	return bIsMotionDirties[FrameIdx];
 }
 

@@ -11,8 +11,8 @@ SamplerState LinearSampler : register(s4);
 // 2x downsized refine
 #define REFINE_DOWNSIZE_FACTOR 2
 
-// 5x5 filter
-#define MAX_REFINE_RADIUS 2
+// 3x3 filter, can consider higher settings if necessary
+#define MAX_REFINE_RADIUS 1
 groupshared float4 GNormalCache[UHTHREAD_GROUP1D + 2 * MAX_REFINE_RADIUS];
 
 float4 SelectCandidateNormal(int2 PixelCoord)

@@ -1,5 +1,24 @@
 #include "DeferredShadingRenderer.h"
 
+// async upload data buffer task, this one will be kicked off and waited until rendering starts
+class UHUploadDataAsyncTask : public UHAsyncTask
+{
+public:
+	void Init(UHDeferredShadingRenderer* InRenderer)
+	{
+		Renderer = InRenderer;
+	}
+
+	virtual void DoTask(const int32_t ThreadIdx) override
+	{
+		Renderer->UploadDataBuffers();
+	}
+
+private:
+	UHDeferredShadingRenderer* Renderer = nullptr;
+};
+UHUploadDataAsyncTask GUploadDataAsyncTask;
+
 UHScene* UHDeferredShadingRenderer::GetCurrentScene() const
 {
 	return CurrentScene;
@@ -59,8 +78,12 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
+	// kick off upload data worker asap
+	GUploadDataAsyncTask.Init(this);
+	WorkerThreads[0]->ScheduleTask(&GUploadDataAsyncTask);
+	WorkerThreads[0]->WakeThread();
+
 	FrustumCulling();
-	UploadDataBuffers();
 	CollectVisibleRenderer();
 	CollectMeshShaderInstance();
 }
@@ -98,6 +121,9 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RTParams.bEnableDepthPrepass = GraphicInterface->IsDepthPrePassEnabled();
 	RTParams.bEnableTAA = RenderingSettings.bTemporalAA;
 	RTParams.bEnableRTDenoise = RenderingSettings.bDenoiseRayTracing;
+
+	// make sure upload data worker is done before rendering
+	WorkerThreads[0]->WaitTask();
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -450,17 +476,17 @@ void UHDeferredShadingRenderer::FrustumCulling()
 		UHScene* CurrentScene = nullptr;
 		int32_t NumWorkerThreads = 0;
 	};
-	static UHFrustumCullingAsyncTask Tasks[GMaxWorkerThreads];
+	static std::vector<UHFrustumCullingAsyncTask> Tasks(NumParallelWorkers);
 
-	// init and wake frustum culling task
-	for (int32_t I = 0; I < NumWorkerThreads; I++)
+	// init and wake frustum culling task, 1 thread is preserved for the upload data buffer work.
+	for (int32_t I = 1; I < NumParallelWorkers; I++)
 	{
-		Tasks[I].Init(CurrentScene, NumWorkerThreads);
+		Tasks[I].Init(CurrentScene, NumParallelWorkers - 1);
 		WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 		WorkerThreads[I]->WakeThread();
 	}
 
-	for (int32_t I = 0; I < NumWorkerThreads; I++)
+	for (int32_t I = 1; I < NumParallelWorkers; I++)
 	{
 		WorkerThreads[I]->WaitTask();
 	}
@@ -713,6 +739,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 	UHGameTimer RTTimer;
 	UHProfiler RenderThreadProfile(&RTTimer);
 	bool bIsPresentedPreviously = false;
+	GCurrentThreadID = std::this_thread::get_id();
 
 	while (true)
 	{
@@ -874,6 +901,7 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 	// Specify the task id before wake it
 	// doing the task
 	// notify finished
+	GCurrentThreadID = std::this_thread::get_id();
 
 	while (true)
 	{

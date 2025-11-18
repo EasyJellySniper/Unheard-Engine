@@ -57,7 +57,7 @@ void UHConfigManager::LoadConfig()
 		GET_UHE_SETTING(RenderingSettings, bEnableLayerValidation);
 		GET_UHE_SETTING(RenderingSettings, bEnableGPUTiming);
 		GET_UHE_SETTING(RenderingSettings, bEnableDepthPrePass);
-		GET_UHE_SETTING(RenderingSettings, ParallelThreads);
+		GET_UHE_SETTING(RenderingSettings, ParallelSubmitters);
 		GET_UHE_SETTING(RenderingSettings, RTCullingRadius);
 		GET_UHE_SETTING(RenderingSettings, RTShadowQuality);
 		GET_UHE_SETTING(RenderingSettings, RTShadowTMax);
@@ -85,7 +85,7 @@ void UHConfigManager::LoadConfig()
 		// clamp a few parameters
 		RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
 		RenderingSettings.RenderHeight = std::clamp(RenderingSettings.RenderHeight, 480, 16384);
-		RenderingSettings.ParallelThreads = std::clamp(RenderingSettings.ParallelThreads, 0, (int32_t)GMaxWorkerThreads);
+		RenderingSettings.ParallelSubmitters = std::clamp(RenderingSettings.ParallelSubmitters, 0, (int32_t)GMaxParallelSubmitters);
 
 		RenderingSettings.PCSSKernal = std::clamp(RenderingSettings.PCSSKernal, 1, 3);
 		RenderingSettings.PCSSMinPenumbra = std::max(RenderingSettings.PCSSMinPenumbra, 0.0f);
@@ -130,7 +130,7 @@ void UHConfigManager::ApplyConfig()
 		SET_UHE_SETTING(RenderingSettings, bEnableLayerValidation);
 		SET_UHE_SETTING(RenderingSettings, bEnableGPUTiming);
 		SET_UHE_SETTING(RenderingSettings, bEnableDepthPrePass);
-		SET_UHE_SETTING(RenderingSettings, ParallelThreads);
+		SET_UHE_SETTING(RenderingSettings, ParallelSubmitters);
 		SET_UHE_SETTING(RenderingSettings, RTCullingRadius);
 		SET_UHE_SETTING(RenderingSettings, RTShadowQuality);
 		SET_UHE_SETTING(RenderingSettings, RTShadowTMax);

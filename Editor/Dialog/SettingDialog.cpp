@@ -135,7 +135,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::Checkbox("Enable Hardware Occlusion", &RenderingSettings.bEnableHardwareOcclusion);
     ImGui::InputInt("Occlusion triangle threshold", &RenderingSettings.OcclusionTriangleThreshold);
 
-    ImGui::InputInt("Parallel Threads (Up to 16)*", &RenderingSettings.ParallelThreads);
+    ImGui::InputInt("Parallel Render Submitters (Up to 8)*", &RenderingSettings.ParallelSubmitters);
     ImGui::InputFloat("Final Reflection Strength", &RenderingSettings.FinalReflectionStrength);
 
     // Common Gamma setting

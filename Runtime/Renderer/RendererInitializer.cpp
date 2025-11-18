@@ -29,7 +29,8 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, PostProcessResultIdx(0)
 	, bIsTemporalReset(true)
 	, RTInstanceCount(0)
-	, NumWorkerThreads(0)
+	, NumParallelWorkers(0)
+	, NumParallelRenderSubmitters(0)
 	, RenderThread(nullptr)
 	, bIsSwapChainResetGT(false)
 	, LightCullingTileSize(16)
@@ -72,8 +73,14 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	// scene setup
 	CurrentScene = InScene;
 
-	// config setup
-	NumWorkerThreads = ConfigInterface->RenderingSetting().ParallelThreads;
+	// number of worker threads setup, UHE uses ALL cores by default
+	SYSTEM_INFO Sysinfo;
+	GetSystemInfo(&Sysinfo);
+	NumParallelWorkers = Sysinfo.dwNumberOfProcessors;
+
+	// number of parallel submitters, this combines the user specified value from config and clamp with max worker threads
+	NumParallelRenderSubmitters = ConfigInterface->RenderingSetting().ParallelSubmitters;
+	NumParallelRenderSubmitters = std::clamp(NumParallelRenderSubmitters, 4, NumParallelWorkers);
 
 	const bool bIsRendererSuccess = InitQueueSubmitters();
 	if (bIsRendererSuccess)
@@ -1098,45 +1105,48 @@ void UHDeferredShadingRenderer::CreateThreadObjects()
 	{
 		GPUTimeQueries[Idx] = GraphicInterface->RequestGPUQuery(2, VK_QUERY_TYPE_TIMESTAMP);
 	}
-	ThreadDrawCalls.resize(NumWorkerThreads);
-	ThreadOccludedCalls.resize(NumWorkerThreads);
+	ThreadDrawCalls.resize(NumParallelRenderSubmitters);
+	ThreadOccludedCalls.resize(NumParallelRenderSubmitters);
 #endif
 
 	// create parallel submitter
 	if (GIsEditor || (ConfigInterface->RenderingSetting().bEnableDepthPrePass && !GraphicInterface->IsMeshShaderSupported()))
 	{
-		DepthParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+		DepthParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumParallelRenderSubmitters
 			, "DepthPass");
 	}
 
 	if (!GraphicInterface->IsMeshShaderSupported())
 	{
-		BaseParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+		BaseParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumParallelRenderSubmitters
 			, "BasePass");
-		MotionOpaqueParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+		MotionOpaqueParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumParallelRenderSubmitters
 			, "MotionOpaquePass");
-		MotionTranslucentParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+		MotionTranslucentParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumParallelRenderSubmitters
 			, "MotionTranslucentPass");
 	}
 
-	TranslucentParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+	TranslucentParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumParallelRenderSubmitters
 		, "TranslucentPass");
 
 	if (GIsEditor || ConfigInterface->RenderingSetting().bEnableHardwareOcclusion)
 	{
-		OcclusionParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumWorkerThreads
+		OcclusionParallelSubmitter.Initialize(GraphicInterface, GraphicInterface->GetQueueFamily(), NumParallelRenderSubmitters
 			, "OcclusionPass");
 	}
 
 	// init threads, it will wait at the beginning
 	RenderThread = MakeUnique<UHThread>();
 	RenderThread->BeginThread(std::thread(&UHDeferredShadingRenderer::RenderThreadLoop, this), GRenderThreadAffinity);
-	WorkerThreads.resize(NumWorkerThreads);
+	GRenderThreadID = RenderThread->GetThreadID();
 
-	for (int32_t Idx = 0; Idx < NumWorkerThreads; Idx++)
+	WorkerThreads.resize(NumParallelWorkers);
+	GWorkerThreadIDs.resize(NumParallelWorkers);
+	for (int32_t Idx = 0; Idx < NumParallelWorkers; Idx++)
 	{
 		WorkerThreads[Idx] = MakeUnique<UHThread>();
 		WorkerThreads[Idx]->BeginThread(std::thread(&UHDeferredShadingRenderer::WorkerThreadLoop, this, Idx), GWorkerThreadAffinity + Idx);
+		GWorkerThreadIDs[Idx] = WorkerThreads[Idx]->GetThreadID();
 	}
 }
 

@@ -81,7 +81,7 @@ public:
 		, bEnableLayerValidation(false)
 		, bEnableGPUTiming(false)
 		, bEnableDepthPrePass(true)
-		, ParallelThreads(8)
+		, ParallelSubmitters(8)
 		, RTCullingRadius(100.0f)
 		, RTShadowQuality(UH_ENUM_VALUE(UHRTShadowQuality::RTShadow_Half))
 		, RTShadowTMax(100.0f)
@@ -117,7 +117,7 @@ public:
 	bool bEnableLayerValidation;
 	bool bEnableGPUTiming;
 	bool bEnableDepthPrePass;
-	int32_t ParallelThreads;
+	int32_t ParallelSubmitters;
 
 	// common gamma settings
 	float GammaCorrection;

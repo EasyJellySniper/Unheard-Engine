@@ -69,7 +69,7 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 
 		// -------------------- after motion camera pass is done, draw per-object motions, opaque first then the translucent -------------------- //
 		// opaque motion will only render the dynamic objects (motion is dirty), static objects are already calculated in camera motion
-		static UHMotionPassAsyncTask Tasks[GMaxWorkerThreads];
+		static std::vector<UHMotionPassAsyncTask> Tasks(NumParallelRenderSubmitters);
 		{
 			if (GraphicInterface->IsMeshShaderSupported())
 			{
@@ -123,27 +123,27 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 				RenderBuilder.BeginRenderPass(MotionOpaquePassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					ThreadDrawCalls[I] = 0;
 				}
 #endif
 
 				// init and wake all tasks
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					Tasks[I].Init(this, true);
 					WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 					WorkerThreads[I]->WakeThread();
 				}
 
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					WorkerThreads[I]->WaitTask();
 				}
 
 #if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 				}
@@ -224,27 +224,27 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 				RenderBuilder.BeginRenderPass(MotionTranslucentPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					ThreadDrawCalls[I] = 0;
 				}
 #endif
 
 				// wake all worker threads
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					Tasks[I].Init(this, false);
 					WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 					WorkerThreads[I]->WakeThread();
 				}
 
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					WorkerThreads[I]->WaitTask();
 				}
 
 #if WITH_EDITOR
-				for (int32_t I = 0; I < NumWorkerThreads; I++)
+				for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 				{
 					RenderBuilder.DrawCalls += ThreadDrawCalls[I];
 				}
@@ -275,9 +275,9 @@ void UHDeferredShadingRenderer::MotionOpaqueTask(int32_t ThreadIdx)
 {
 	// simply separate buffer recording into N threads
 	const int32_t MaxCount = static_cast<int32_t>(MotionOpaquesToRender.size());
-	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
+	const int32_t RendererCount = (MaxCount + NumParallelRenderSubmitters) / NumParallelRenderSubmitters;
 	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
-	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
+	const int32_t EndIdx = (ThreadIdx == NumParallelRenderSubmitters - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	VkCommandBufferInheritanceInfo InheritanceInfo{};
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -353,12 +353,12 @@ void UHDeferredShadingRenderer::MotionTranslucentTask(int32_t ThreadIdx)
 {
 	// simply separate buffer recording into N threads
 	const int32_t MaxCount = static_cast<int32_t>(TranslucentsToRender.size());
-	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
+	const int32_t RendererCount = (MaxCount + NumParallelRenderSubmitters) / NumParallelRenderSubmitters;
 
 	// to collect batch reversely
-	const int32_t ReversedThreadIdx = NumWorkerThreads - ThreadIdx - 1;
+	const int32_t ReversedThreadIdx = NumParallelRenderSubmitters - ThreadIdx - 1;
 	const int32_t StartIdx = std::min(RendererCount * ReversedThreadIdx, MaxCount);
-	const int32_t EndIdx = (ReversedThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
+	const int32_t EndIdx = (ReversedThreadIdx == NumParallelRenderSubmitters - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	VkCommandBufferInheritanceInfo InheritanceInfo{};
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;

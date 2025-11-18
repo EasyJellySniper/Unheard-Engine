@@ -102,6 +102,8 @@ std::mutex& UHThread::GetThreadMutex()
 // schedule a task
 void UHThread::ScheduleTask(UHAsyncTask* InTask)
 {
+	// Shouldn't schedule a new task before the previous one is done
+	assert(CurrentScheduledTask == nullptr);
 	CurrentScheduledTask = InTask;
 }
 
@@ -114,4 +116,9 @@ void UHThread::DoTask(const int32_t ThreadIdx)
 	{
 		CurrentScheduledTask->DoTask(ThreadIdx);
 	}
+}
+
+std::thread::id UHThread::GetThreadID() const
+{
+	return ThreadId;
 }

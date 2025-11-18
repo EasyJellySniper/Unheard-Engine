@@ -38,6 +38,8 @@ public:
 	void ScheduleTask(UHAsyncTask* InTask);
 	void DoTask(const int32_t ThreadIdx);
 
+	std::thread::id GetThreadID() const;
+
 private:
 	std::thread ThreadObj;
 	std::thread::id ThreadId;

@@ -63,6 +63,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	// so I disable it for main thread too. uncomment this for testing
 	//SetThreadAffinityMask(GetCurrentThread(), DWORD_PTR(1) << GMainThreadAffinity);
 	GMainThreadID = std::this_thread::get_id();
+	GCurrentThreadID = GMainThreadID;
 
 	// cache current monitor refresh rate, also consider the NTSC frequencies
 	DEVMODE DevMode;

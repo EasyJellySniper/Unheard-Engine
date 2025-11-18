@@ -93,3 +93,7 @@ RT and GBuffer code refactoring. Make it possible to render to integer buffer.
 06-11-2025:
 Minor fix for RT reflection sampling, should consider screen mip instead env cube mip.
 Increase scene data buffer size to 16 bits and store instance ID in object passes.
+
+18-11-2025:
+Refactor parallel threads implementation. Now the system will always allocate threads at max cpu logical cores number.
+But for rendering submitters, it's still capped at user setting and an internal value.

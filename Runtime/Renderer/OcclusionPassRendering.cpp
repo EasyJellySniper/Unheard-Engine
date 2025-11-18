@@ -58,28 +58,28 @@ void UHDeferredShadingRenderer::RenderOcclusionPass(UHRenderBuilder& RenderBuild
 		RenderBuilder.BeginRenderPass(OcclusionPassObj, RenderResolution, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if WITH_EDITOR
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 		{
 			ThreadOccludedCalls[I] = 0;
 		}
 #endif
 
 		// init and wake all tasks
-		static UHOcclusionPassAsyncTask Tasks[GMaxWorkerThreads];
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		static std::vector<UHOcclusionPassAsyncTask> Tasks(NumParallelRenderSubmitters);
+		for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 		{
 			Tasks[I].Init(this);
 			WorkerThreads[I]->ScheduleTask(&Tasks[I]);
 			WorkerThreads[I]->WakeThread();
 		}
 
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 		{
 			WorkerThreads[I]->WaitTask();
 		}
 
 #if WITH_EDITOR
-		for (int32_t I = 0; I < NumWorkerThreads; I++)
+		for (int32_t I = 0; I < NumParallelRenderSubmitters; I++)
 		{
 			RenderBuilder.OccludedCalls += ThreadOccludedCalls[I];
 		}
@@ -96,9 +96,9 @@ void UHDeferredShadingRenderer::OcclusionPassTask(int32_t ThreadIdx)
 {
 	// simply separate buffer recording into N threads
 	const int32_t MaxCount = static_cast<int32_t>(OcclusionRenderers.size());
-	const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
+	const int32_t RendererCount = (MaxCount + NumParallelRenderSubmitters) / NumParallelRenderSubmitters;
 	const int32_t StartIdx = std::min(RendererCount * ThreadIdx, MaxCount);
-	const int32_t EndIdx = (ThreadIdx == NumWorkerThreads - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
+	const int32_t EndIdx = (ThreadIdx == NumParallelRenderSubmitters - 1) ? MaxCount : std::min(StartIdx + RendererCount, MaxCount);
 
 	VkCommandBufferInheritanceInfo InheritanceInfo{};
 	InheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;

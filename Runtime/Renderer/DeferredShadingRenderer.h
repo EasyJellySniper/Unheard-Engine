@@ -172,6 +172,9 @@ public:
 	void MotionTranslucentTask(int32_t ThreadIdx);
 	void TranslucentPassTask(int32_t ThreadIdx);
 
+	// upload data buffers
+	void UploadDataBuffers();
+
 private:
 	/************************************************ functions ************************************************/
 	void RenderThreadLoop();
@@ -217,9 +220,6 @@ private:
 
 	// release constant buffers
 	void ReleaseDataBuffers();
-
-	// upload data buffers
-	void UploadDataBuffers();
 
 	// frustum culling
 	void FrustumCulling();
@@ -295,8 +295,12 @@ private:
 
 	// Render thread defines, UH engine will always use a thread for rendering, and doing parallel submission with worker threads
 	UniquePtr<UHThread> RenderThread;
-	int32_t NumWorkerThreads;
+	int32_t NumParallelWorkers;
 	std::vector<UniquePtr<UHThread>> WorkerThreads;
+
+	// Number of parallel render submitters, this is usually lower than NumWorkerThreads
+	int32_t NumParallelRenderSubmitters;
+
 	bool bIsResetNeededShared;
 	bool bIsSwapChainResetGT;
 	bool bHasRefractionMaterialGT;
