@@ -97,3 +97,6 @@ Increase scene data buffer size to 16 bits and store instance ID in object passe
 18-11-2025:
 Refactor parallel threads implementation. Now the system will always allocate threads at max cpu logical cores number.
 But for rendering submitters, it's still capped at user setting and an internal value.
+
+19-11-2025:
+Added texture array support for render textures. Ready for creating RT indirect lighting resources.

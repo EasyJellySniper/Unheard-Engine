@@ -25,6 +25,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, MipMapCount(1)
 	, TextureType(UHTextureType::Texture2D)
 	, bCreatePerMipImageView(false)
+	, NumSlices(1)
 {
 #if WITH_EDITOR
 	for (int32_t Idx = 0; Idx < CubemapImageViewCount; Idx++)
@@ -128,10 +129,15 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 		CreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		CreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 
+		// cubemap or texture array setup
 		if (InInfo.ViewType == VK_IMAGE_VIEW_TYPE_CUBE)
 		{
 			CreateInfo.arrayLayers = 6;
 			CreateInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		}
+		else if (InInfo.ViewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+		{
+			CreateInfo.arrayLayers = TextureInfo.NumSlices;
 		}
 
 		// setup necessary bits
@@ -272,9 +278,14 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 	CreateInfo.subresourceRange.baseArrayLayer = 0;
 	CreateInfo.subresourceRange.layerCount = 1;
 
+	// cubemap or texture array setup
 	if (InViewType == VK_IMAGE_VIEW_TYPE_CUBE)
 	{
 		CreateInfo.subresourceRange.layerCount = 6;
+	}
+	else if (InViewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+	{
+		CreateInfo.subresourceRange.layerCount = TextureInfo.NumSlices;
 	}
 
 	if (IsDepthFormat())
@@ -436,6 +447,7 @@ bool UHTexture::operator==(const UHTexture& InTexture)
 		&& InTexture.ImageFormat == ImageFormat
 		&& InTexture.ImageExtent.width == ImageExtent.width
 		&& InTexture.ImageExtent.height == ImageExtent.height
+		&& InTexture.NumSlices == NumSlices
 		&& TextureSettings.bIsLinear == InTexture.TextureSettings.bIsLinear
 		&& TextureSettings.bIsNormal == InTexture.TextureSettings.bIsNormal;
 }

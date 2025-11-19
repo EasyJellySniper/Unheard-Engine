@@ -136,9 +136,10 @@ public:
 	void RequestReleaseGPUQuery(UHGPUQuery* InQuery);
 
 	// request a managed render texture
-	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite = false, bool bUseMipmap = false);
+	UHRenderTexture* RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat
+		, bool bIsReadWrite = false, bool bUseMipmap = false, uint32_t NumSlices = 1);
 	UHRenderTexture* RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent, UHTextureFormat InFormat
-		, bool bIsReadWrite = false, bool bUseMipmap = false);
+		, bool bIsReadWrite = false, bool bUseMipmap = false, uint32_t NumSlices = 1);
 	void RequestReleaseRT(UHRenderTexture* InRT);
 
 	// request a managed texture 2d/cube

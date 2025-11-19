@@ -7,7 +7,8 @@ class UHGraphic;
 class UHRenderTexture : public UHTexture
 {
 public:
-	UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bReadWrite = false, bool bUseMipmap = false);
+	UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bReadWrite = false, bool bUseMipmap = false
+		, uint32_t NumSlices = 1);
 
 	// generate mip maps
 	virtual void GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) override;
@@ -22,5 +23,6 @@ private:
 
 	bool bIsReadWrite;
 	bool bUseMipmap;
+
 	friend UHGraphic;
 };

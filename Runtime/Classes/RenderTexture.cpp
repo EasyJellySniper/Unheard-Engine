@@ -4,12 +4,15 @@
 #include "../Engine/Graphic.h"
 #include "../Renderer/RenderBuilder.h"
 
-UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bReadWrite, bool bInUseMipmap)
+UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bReadWrite, bool bInUseMipmap
+	, uint32_t InNumSlices)
 	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
 	, bIsReadWrite(bReadWrite)
 	, bUseMipmap(bInUseMipmap)
 {
-	bCreatePerMipImageView = true;
+	// not supporting per-mip image view for texture array now, can change this in the future
+	NumSlices = InNumSlices;
+	bCreatePerMipImageView = (NumSlices == 1);
 }
 
 // Similar as the implementation of UHTexture2D
@@ -118,6 +121,13 @@ bool UHRenderTexture::CreateRT()
 
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, ImageFormat, ImageExtent, Usage, true);
 	TextureSettings.bUseMipmap = bUseMipmap;
+
+	// texture array setup
+	if (NumSlices > 1)
+	{
+		Info.ViewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+		Info.NumSlices = NumSlices;
+	}
 
 	// UHE doesn't use shared memory for RTs at the momment, since they could resize
 	return Create(Info, nullptr);

@@ -45,6 +45,7 @@ struct UHTextureInfo
 		, bIsRT(bInIsRT)
 		, bIsShadowRT(false)
 		, ReboundOffset(~0)
+		, NumSlices(1)
 	{
 
 	}
@@ -57,6 +58,7 @@ struct UHTextureInfo
 	bool bIsRT;
 	bool bIsShadowRT;
 	uint64_t ReboundOffset;
+	uint32_t NumSlices;
 };
 
 struct UHTextureSettings
@@ -158,6 +160,7 @@ protected:
 	VkExtent2D ImageExtent;
 	VkDeviceMemory ImageMemory;
 	VkImage ImageSource;
+	uint32_t NumSlices;
 
 	bool bHasUploadedToGPU;
 	bool bIsMipMapGenerated;
