@@ -106,6 +106,7 @@ void UHScene::Initialize(UHEngine* InEngine)
 	}
 
 	RefreshRendererBufferDataIndex();
+	CalculateSceneBound();
 }
 
 void UHScene::Release()
@@ -465,4 +466,15 @@ void UHScene::UpdateCamera()
 	}
 
 	MainCamera->Update();
+}
+
+void UHScene::CalculateSceneBound()
+{
+	// calculate scene bound based on renderer bounds
+	SceneBound = BoundingBox(XMFLOAT3(0, 0, 0), XMFLOAT3(0, 0, 0));
+	for (const UHMeshRendererComponent* Renderer : Renderers)
+	{
+		const BoundingBox& RendererBound = Renderer->GetRendererBound();
+		BoundingBox::CreateMerged(SceneBound, SceneBound, RendererBound);
+	}
 }

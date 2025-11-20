@@ -67,6 +67,10 @@ std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionOpaqueShaderData
 std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTranslucentShaderData[GMaxFrameInFlight];
 UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
+// indirect lighting
+UHRenderTexture* GRTIndirectLighting;
+std::vector<UHRenderTexture*> GIndirectLightingCaches;
+
 inline std::vector<UHTexture*> GetGBuffersSRV()
 {
 	// get the GBuffer used in SRV

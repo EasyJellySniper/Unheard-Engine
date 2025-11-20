@@ -63,6 +63,7 @@ private:
 	void AddPointLight(UHPointLightComponent* InLight);
 	void AddSpotLight(UHSpotLightComponent* InLight);
 	void UpdateCamera();
+	void CalculateSceneBound();
 
 	UHConfigManager* ConfigCache;
 	UHRawInput* Input;
@@ -79,6 +80,7 @@ private:
 	std::vector<UHSpotLightComponent*> SpotLights;
 
 	std::vector<UniquePtr<UHComponent>> ComponentPools;
+	BoundingBox SceneBound;
 
 #if WITH_EDITOR
 	UHComponent* CurrentSelectedComp;

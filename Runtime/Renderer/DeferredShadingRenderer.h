@@ -44,6 +44,7 @@
 #include "ShaderClass/RayTracing/CollectLightShader.h"
 #include "ShaderClass/RayTracing/RTSmoothNormalShader.h"
 #include "ShaderClass/PostProcessing/UpsampleShader.h"
+#include "ShaderClass/IndirectLightPassShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -236,6 +237,9 @@ private:
 	// get current skycube
 	UHTextureCube* GetCurrentSkyCube() const;
 
+	// indirect lighting
+	void CreateIndirectLightingResources();
+
 	void InitRTGaussianConstants();
 
 
@@ -250,9 +254,10 @@ private:
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
 	void DispatchSmoothSceneNormalPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder);
-	void RenderLightPass(UHRenderBuilder& RenderBuilder);
+	void DispatchLightPass(UHRenderBuilder& RenderBuilder);
+	void DispatchIndirectLightPass(UHRenderBuilder& RenderBuilder);
 	void PreReflectionPass(UHRenderBuilder& RenderBuilder);
-	void RenderReflectionPass(UHRenderBuilder& RenderBuilder);
+	void DispatchReflectionPass(UHRenderBuilder& RenderBuilder);
 	void GenerateSH9Pass(UHRenderBuilder& RenderBuilder);
 	void RenderSkyPass(UHRenderBuilder& RenderBuilder);
 	void RenderMotionPass(UHRenderBuilder& RenderBuilder);
@@ -354,6 +359,7 @@ private:
 	UniquePtr<UHLightPassShader> LightPassShader;
 	UniquePtr<UHReflectionPassShader> ReflectionPassShader;
 	UniquePtr<UHRTReflectionMipmap> RTReflectionMipmapShader;
+	UniquePtr<UHIndirectLightPassShader> IndirectLightPassShader;
 
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
 	UniquePtr<UHSkyPassShader> SkyPassShader;
@@ -477,4 +483,9 @@ private:
 	std::vector<UniquePtr<UHDepthMeshShader>> DepthMeshShaders;
 	std::vector<UniquePtr<UHBaseMeshShader>> BaseMeshShaders;
 	std::vector<UniquePtr<UHMotionMeshShader>> MotionMeshShaders;
+
+	// -------------------------------------------- Indirect lighting related -------------------------------------------- //
+	// IL limitations, can be changed in the future
+	const int32_t MaxNumOfIndirectLightRays = 4;
+	const uint32_t MaxIndirectLightCacheSize = 128;
 };

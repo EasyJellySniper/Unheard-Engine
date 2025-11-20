@@ -429,6 +429,12 @@
     <ClInclude Include="Runtime\Classes\IniManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\IndirectLightPassShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\ClearUAVShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -827,6 +833,12 @@
     <ClCompile Include="Runtime\Classes\IniManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\IndirectLightPassShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\ClearUAVShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -891,5 +903,7 @@
     <None Include="Shaders\RayTracing\CollectLightComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RTSmoothSceneNormal.hlsl" />
     <None Include="Shaders\PostProcessing\UpsampleComputeShader.hlsl" />
+    <None Include="Shaders\IndirectLightComputeShader.hlsl" />
+    <None Include="Shaders\ClearUAVComputeShader.hlsl" />
   </ItemGroup>
 </Project>

@@ -20,6 +20,7 @@ private:
 void UHDeferredShadingRenderer::ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder)
 {
 	// blit the scene result to opaque scene result
+	const VkImageLayout PrevSceneResultLayout = GSceneResult->GetImageLayout();
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
 	RenderBuilder.FlushResourceBarrier();
@@ -28,7 +29,7 @@ void UHDeferredShadingRenderer::ScreenshotForRefraction(std::string PassName, UH
 
 	// final transition
 	RenderBuilder.PushResourceBarrier(UHImageBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneResult, PrevSceneResultLayout));
 	RenderBuilder.FlushResourceBarrier();
 }
 
@@ -47,8 +48,6 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 		// setup viewport and scissor
 		RenderBuilder.SetViewport(RenderResolution);
 		RenderBuilder.SetScissor(RenderResolution);
-		// bind depth
-		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 		// Draw the translucent background
 		{
@@ -86,8 +85,6 @@ void UHDeferredShadingRenderer::RenderTranslucentPass(UHRenderBuilder& RenderBui
 			RenderBuilder.ExecuteBundles(TranslucentParallelSubmitter);
 			RenderBuilder.EndRenderPass();
 		}
-
-		RenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

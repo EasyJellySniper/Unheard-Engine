@@ -832,13 +832,19 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				DispatchSmoothSceneNormalPass(SceneRenderBuilder);
 				DispatchRayReflectionPass(SceneRenderBuilder);
 
-				RenderLightPass(SceneRenderBuilder);
-				RenderSkyPass(SceneRenderBuilder);
-
+				SceneRenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+				DispatchLightPass(SceneRenderBuilder);
+				DispatchIndirectLightPass(SceneRenderBuilder);
+				
 				PreReflectionPass(SceneRenderBuilder);
-				RenderReflectionPass(SceneRenderBuilder);
+				DispatchReflectionPass(SceneRenderBuilder);
 
+				SceneRenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+				SceneRenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+				RenderSkyPass(SceneRenderBuilder);
 				RenderTranslucentPass(SceneRenderBuilder);
+
+				SceneRenderBuilder.ResourceBarrier(GSceneDepth, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				RenderPostProcessing(SceneRenderBuilder);
 			}
 

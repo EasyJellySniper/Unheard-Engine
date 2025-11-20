@@ -1072,6 +1072,11 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 // request release RT, this could be used during resizing
 void UHGraphic::RequestReleaseRT(UHRenderTexture* InRT)
 {
+	if (InRT == nullptr)
+	{
+		return;
+	}
+
 	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, *InRT);
 	if (Idx == UHINDEXNONE)
 	{

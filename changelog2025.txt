@@ -100,3 +100,7 @@ But for rendering submitters, it's still capped at user setting and an internal 
 
 19-11-2025:
 Added texture array support for render textures. Ready for creating RT indirect lighting resources.
+
+20-11-2025:
+Separated indirect lighting from light pass to another new pass.
+Refactor some resource barriers for performance.

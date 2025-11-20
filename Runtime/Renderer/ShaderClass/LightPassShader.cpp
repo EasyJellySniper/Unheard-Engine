@@ -19,7 +19,6 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name)
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -59,7 +58,6 @@ void UHLightPassShader::BindParameters(const bool bIsRaytracingEnableRT)
 
 	BindStorage(GPointLightListBuffer.get(), 7, 0, true);
 	BindStorage(GSpotLightListBuffer.get(), 8, 0, true);
-	BindStorage(GSH9Data.get(), 9, 0, true);
-	BindSampler(GPointClampedSampler, 10);
-	BindSampler(GLinearClampedSampler, 11);
+	BindSampler(GPointClampedSampler, 9);
+	BindSampler(GLinearClampedSampler, 10);
 }

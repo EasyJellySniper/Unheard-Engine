@@ -21,9 +21,9 @@ void UHDeferredShadingRenderer::PreReflectionPass(UHRenderBuilder& RenderBuilder
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
-void UHDeferredShadingRenderer::RenderReflectionPass(UHRenderBuilder& RenderBuilder)
+void UHDeferredShadingRenderer::DispatchReflectionPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGameTimerScope Scope("RenderReflectionPass", false);
+	UHGameTimerScope Scope("DispatchReflectionPass", false);
 	// pass to draw reflection, this pass will mainly apply reflection to opaque scene
 	if (CurrentScene == nullptr)
 	{
@@ -33,8 +33,6 @@ void UHDeferredShadingRenderer::RenderReflectionPass(UHRenderBuilder& RenderBuil
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ReflectionPass)], "ReflectionPass");
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Render Reflection Pass");
 	{
-		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-
 		UHComputeState* State = ReflectionPassShader->GetComputeState();
 		RenderBuilder.BindComputeState(State);
 		RenderBuilder.BindDescriptorSetCompute(ReflectionPassShader->GetPipelineLayout(), ReflectionPassShader->GetDescriptorSet(CurrentFrameRT));
@@ -42,8 +40,6 @@ void UHDeferredShadingRenderer::RenderReflectionPass(UHRenderBuilder& RenderBuil
 		// dispatch
 		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
-
-		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

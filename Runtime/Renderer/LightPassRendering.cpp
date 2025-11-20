@@ -32,9 +32,9 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuil
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
-void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
+void UHDeferredShadingRenderer::DispatchLightPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGameTimerScope Scope("RenderLightPass", false);
+	UHGameTimerScope Scope("DispatchLightPass", false);
 	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::LightPass)], "LightPass");
 	if (CurrentScene == nullptr || (CurrentScene->GetDirLightCount() == 0 && CurrentScene->GetPointLightCount() && CurrentScene->GetSpotLightCount()))
 	{
@@ -43,8 +43,6 @@ void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Light Pass");
 	{
-		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-
 		// bind state
 		UHComputeState* State = LightPassShader->GetComputeState();
 		RenderBuilder.BindComputeState(State);
@@ -55,8 +53,31 @@ void UHDeferredShadingRenderer::RenderLightPass(UHRenderBuilder& RenderBuilder)
 		// dispatch
 		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
+	}
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}
 
-		RenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+void UHDeferredShadingRenderer::DispatchIndirectLightPass(UHRenderBuilder& RenderBuilder)
+{
+	UHGameTimerScope Scope("DispatchIndirectLightPass", false);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::IndirectLightPass)], "IndirectLightPass");
+	if (CurrentScene == nullptr)
+	{
+		return;
+	}
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Indirect Light Pass");
+	{
+		// bind state
+		UHComputeState* State = IndirectLightPassShader->GetComputeState();
+		RenderBuilder.BindComputeState(State);
+
+		// bind sets
+		RenderBuilder.BindDescriptorSetCompute(IndirectLightPassShader->GetPipelineLayout(), IndirectLightPassShader->GetDescriptorSet(CurrentFrameRT));
+
+		// dispatch
+		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

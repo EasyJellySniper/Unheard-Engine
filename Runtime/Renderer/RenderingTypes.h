@@ -166,6 +166,7 @@ enum class UHRenderPassTypes
 	RayTracingReflection,
 	LightCulling,
 	LightPass,
+	IndirectLightPass,
 	SkyPass,
 	MotionPass,
 	PreReflectionPass,

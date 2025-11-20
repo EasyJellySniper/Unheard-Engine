@@ -7,15 +7,12 @@
 #include "RayTracing/UHRTCommon.hlsli"
 #include "UHLightCommon.hlsli"
 
-#define SH9_BIND t9
-#include "UHSphericalHamonricCommon.hlsli"
-
 RWTexture2D<float4> SceneResult : register(u5);
 Texture2D ScreenShadowTexture : register(t6);
 ByteAddressBuffer PointLightList : register(t7);
 ByteAddressBuffer SpotLightList : register(t8);
-SamplerState PointClampped : register(s10);
-SamplerState LinearClampped : register(s11);
+SamplerState PointClampped : register(s9);
+SamplerState LinearClampped : register(s10);
 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
@@ -106,9 +103,6 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
         Result += CalculateSpotLight(SpotLight, LightInfo);
     }
-
-	// indirect light accumulation
-    Result += ShadeSH9(Diffuse.rgb, float4(Normal, 1.0f), Diffuse.a);
 
     SceneResult[DTid.xy] = float4(CurrSceneData.rgb + Result, CurrSceneData.a);
 }

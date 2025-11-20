@@ -74,8 +74,6 @@ extern UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
 // instance lights buffer
 extern UniquePtr<UHRenderBuffer<UHInstanceLights>> GInstanceLightsBuffer[GMaxFrameInFlight];
 
-extern std::vector<UHTexture*> GetGBuffersSRV();
-
 // --------------------------- mesh shader data
 
 // mesh shader data for use
@@ -85,6 +83,12 @@ extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTransluce
 
 // this is also used for ray tracing
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
+
+// indirect lighting
+extern UHRenderTexture* GRTIndirectLighting;
+extern std::vector<UHRenderTexture*> GIndirectLightingCaches;
+
+extern std::vector<UHTexture*> GetGBuffersSRV();
 
 // wrapper function to create textures
 extern UHTexture2D* CreateTexture2D(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight, UHTextureFormat InFormat, std::string InName);
