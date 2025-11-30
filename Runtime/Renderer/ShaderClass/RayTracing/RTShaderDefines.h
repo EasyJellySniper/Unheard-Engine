@@ -12,7 +12,7 @@ struct UHDefaultPayload
 	// for opaque
 	XMFLOAT4 HitDiffuse;
 	XMFLOAT3 HitNormal;
-	XMFLOAT3 HitWorldNormal;
+	XMFLOAT3 HitVertexNormal;
 	XMFLOAT4 HitSpecular;
 	XMFLOAT3 HitEmissive;
 	XMFLOAT2 HitScreenUV;
@@ -20,7 +20,7 @@ struct UHDefaultPayload
 	// for translucent
 	XMFLOAT4 HitDiffuseTrans;
 	XMFLOAT3 HitNormalTrans;
-	XMFLOAT3 HitWorldNormalTrans;
+	XMFLOAT3 HitVertexNormalTrans;
 	XMFLOAT4 HitSpecularTrans;
 	XMFLOAT4 HitEmissiveTrans;
 	XMFLOAT2 HitScreenUVTrans;
@@ -30,9 +30,10 @@ struct UHDefaultPayload
 	uint32_t IsInsideScreen;
 	uint32_t HitInstanceIndex;
 	uint32_t CurrentRecursion;
-	// xyz = world pos, w = fresnel factor
-	XMFLOAT4 PackedData0;
+
+	XMFLOAT3 HitWorldPos;
 	XMFLOAT3 RayDir;
+	float FresnelFactor;
 };
 
 struct UHDefaultAttribute

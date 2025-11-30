@@ -34,6 +34,7 @@ TextureCube EnvCube : register(t17);
 SamplerState EnvSampler : register(s18);
 
 static const int GMaxDirLight = 2;
+static const int GSmoothNormalDownFactor = 2;
 
 void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload, UHLightInfo LightInfo, inout float3 Result)
 {
@@ -107,24 +108,10 @@ void ConditionalCalculateSpotLight(uint TileIndex, in UHDefaultPayload Payload, 
     }
 }
 
-float AccumulateShadowAtten(float InAtten, float NdotL, in UHDefaultPayload ReflectShadowPayload)
-{
-    if (ReflectShadowPayload.IsHit())
-    {
-        InAtten = lerp(InAtten + NdotL, InAtten, ReflectShadowPayload.HitAlpha);
-    }
-    else
-    {
-        InAtten += NdotL;
-    }
-    
-    return InAtten;
-}
-
-float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPayload Payload, float MipLevel)
+float TraceReflectionShadow(float3 HitWorldPos, uint TileIndex, in UHDefaultPayload Payload, float MipLevel)
 {
     float Atten = 0.0f;
-    float3 HitWorldNormal = Payload.HitWorldNormal;
+    float3 HitVertexNormal = Payload.HitVertexNormal;
     
     RayDesc ShadowRay = (RayDesc)0;
     ShadowRay.Origin = HitWorldPos;
@@ -139,7 +126,7 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
         for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
         {
             UHDirectionalLight DirLight = UHDirLights[Ldx];
-            if (TraceDiretionalShadow(TLAS, DirLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy))
+            if (TraceDiretionalShadow(TLAS, DirLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy))
             {
                 break;
             }
@@ -160,7 +147,7 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
             PointTileOffset += 4;
             
             UHPointLight PointLight = UHPointLights[PointLightIdx];
-            TracePointShadow(TLAS, PointLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+            TracePointShadow(TLAS, PointLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
         }
     }
     else if (GNumPointLights > 0)
@@ -174,7 +161,7 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
             }
             
             UHPointLight PointLight = UHPointLights[LightIndex];
-            TracePointShadow(TLAS, PointLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+            TracePointShadow(TLAS, PointLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
         }
     }
     
@@ -190,7 +177,7 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
             SpotTileOffset += 4;
             
             UHSpotLight SpotLight = UHSpotLights[LightIdx];
-            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
         }
     }
     else if (GNumSpotLights > 0)
@@ -204,7 +191,7 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
             }
             
             UHSpotLight SpotLight = UHSpotLights[LightIndex];
-            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitWorldNormal, Gap, MipLevel, Atten, Dummy);
+            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
         }
     }
     
@@ -212,12 +199,11 @@ float TraceShadowInReflection(float3 HitWorldPos, uint TileIndex, in UHDefaultPa
 }
 
 float4 CalculateReflectionLighting(in UHDefaultPayload Payload
-    , float3 HitWorldPos
     , float MipLevel
     , float3 ReflectRay)
 {
     // doing the same lighting as object pass except the indirect specular
-    precise float3 Result = 0;
+    float3 Result = 0;
     bool bHitTranslucent = (Payload.PayloadData & PAYLOAD_HITTRANSLUCENT) > 0;
     bool bHitRefraction = (Payload.PayloadData & PAYLOAD_HITREFRACTION) > 0;
     float2 ScreenUV = bHitTranslucent ? Payload.HitScreenUVTrans : Payload.HitScreenUV;
@@ -229,19 +215,19 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
         float TransOpacity = Payload.HitEmissiveTrans.a;
         Payload.HitDiffuse = lerp(Payload.HitDiffuse, Payload.HitDiffuseTrans, TransOpacity);
         Payload.HitSpecular = lerp(Payload.HitSpecular, Payload.HitSpecularTrans, TransOpacity);
-        Payload.HitNormal = lerp(Payload.HitNormal, Payload.HitNormalTrans, TransOpacity);
-        Payload.HitWorldNormal = lerp(Payload.HitWorldNormal, Payload.HitWorldNormalTrans, TransOpacity);
+        Payload.HitMaterialNormal = lerp(Payload.HitMaterialNormal, Payload.HitMaterialNormalTrans, TransOpacity);
+        Payload.HitVertexNormal = lerp(Payload.HitVertexNormal, Payload.HitVertexNormalTrans, TransOpacity);
         Payload.HitEmissive.rgb = lerp(Payload.HitEmissive.rgb, Payload.HitEmissiveTrans.rgb, TransOpacity);
     }
-    Payload.HitNormal = normalize(Payload.HitNormal);
-    Payload.HitWorldNormal = normalize(Payload.HitWorldNormal);
+    Payload.HitMaterialNormal = normalize(Payload.HitMaterialNormal);
+    Payload.HitVertexNormal = normalize(Payload.HitVertexNormal);
     
     // light calculation, be sure to normalize normal vector before using it
     UHLightInfo LightInfo;
     LightInfo.Diffuse = Payload.HitDiffuse.rgb;
     LightInfo.Specular = Payload.HitSpecular;
-    LightInfo.Normal = Payload.HitNormal;
-    LightInfo.WorldPos = bHitTranslucent ? Payload.HitWorldPosTrans : HitWorldPos;
+    LightInfo.Normal = Payload.HitMaterialNormal;
+    LightInfo.WorldPos = bHitTranslucent ? Payload.HitWorldPosTrans : Payload.HitWorldPos;
     
     // check whether it's a refraction material
     // if yes, shoot another ray for it
@@ -273,9 +259,9 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
             ScreenUV = Payload.HitScreenUV;
             LightInfo.Diffuse = Payload.HitDiffuse.rgb;
             LightInfo.Specular = Payload.HitSpecular;
-            LightInfo.Normal = Payload.HitNormal;
+            LightInfo.Normal = Payload.HitMaterialNormal;
             LightInfo.WorldPos = RefractRay.Origin + RefractRay.Direction * Payload.HitT;
-            LightInfo.WorldPos += Payload.HitWorldNormal * 0.1f;
+            LightInfo.WorldPos += Payload.HitVertexNormal * 0.1f;
         }
         else
         {
@@ -292,7 +278,7 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     uint TileIndex = TileX + TileY * GLightTileCountX;
     
     // trace shadow in reflection
-    LightInfo.ShadowMask = TraceShadowInReflection(LightInfo.WorldPos, TileIndex, Payload, MipLevel);
+    LightInfo.ShadowMask = TraceReflectionShadow(LightInfo.WorldPos, TileIndex, Payload, MipLevel);
     LightInfo.AttenNoise = GetAttenuationNoise(PixelCoord.xy) * 0.1f;
     LightInfo.SpecularNoise = LightInfo.AttenNoise * lerp(0.5f, 0.02f, LightInfo.Specular.a);
     
@@ -336,7 +322,7 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
         // fresnel calculation
         float NdotV = abs(dot(LightInfo.Normal, -EyeVector));
         // Payload.PackedData0.a for fresnel factor from material
-        float3 Fresnel = SchlickFresnel(LightInfo.Specular.rgb, lerp(0, NdotV, Payload.PackedData0.a));
+        float3 Fresnel = SchlickFresnel(LightInfo.Specular.rgb, lerp(0, NdotV, Payload.FresnelFactor));
      
         Result += EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * GAmbientSky * SpecFade * GFinalReflectionStrength
             // occlusion is stored in diffuse.a
@@ -388,15 +374,11 @@ void RTReflectionRayGen()
     // simulate the mip level based on rendering resolution, carry mipmap count data in hit group if this is not enough
     float MipRate = MixedMipTexture[PixelCoord].r;
     float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
-    
-    // Select from translucent or opaque bump
-    float3 SceneNormal = bHasTranslucentInfo ? TranslucentBump.xyz : OpaqueBump.xyz;
-    SceneNormal = DecodeNormal(SceneNormal);
 
     float SceneDepth = MixedDepthTexture[PixelCoord].r;
     float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
     
-    uint PackedSceneData = MixedDataTexture[PixelCoord].r;
+    uint PackedSceneData = MixedDataTexture[PixelCoord];
     
     // Calculate reflect ray
     // in real world, there aren't actually a "perfect" surface on most objects
@@ -416,10 +398,18 @@ void RTReflectionRayGen()
     // fetch refined eye vector for reflection to reduce noise for bump normal
     // or reflect vertex normal ray
     bool bDenoise = (GSystemRenderFeature & UH_USE_SMOOTH_NORMAL_RAYTRACING);
-    bool bHasBumpThisPixel = (PackedSceneData & UH_HAS_BUMP);
+    bool bHasBumpThisPixel = (PackedSceneData.r & UH_HAS_BUMP);
+    
+    float3 SceneNormal = 0;
+    UHBRANCH
     if (bDenoise && bHasBumpThisPixel)
     {
-        SceneNormal = SmoothSceneNormalTexture[PixelCoord / 2].xyz;
+        SceneNormal = SmoothSceneNormalTexture[PixelCoord / GSmoothNormalDownFactor].xyz;
+    }
+    else
+    {
+        SceneNormal = bHasTranslucentInfo ? TranslucentBump.xyz : OpaqueBump.xyz;
+        SceneNormal = DecodeNormal(SceneNormal);
     }
     
     float RayGap = lerp(0.01f, 0.05f, saturate(MipRate * RT_MIPRATESCALE));
@@ -441,8 +431,7 @@ void RTReflectionRayGen()
     
     if (Payload.IsHit())
     {
-        float3 HitWorldPos = Payload.PackedData0.xyz;
-        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, MipLevel, ReflectRay.Direction);
+        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, MipLevel, ReflectRay.Direction);
     }
 }
 

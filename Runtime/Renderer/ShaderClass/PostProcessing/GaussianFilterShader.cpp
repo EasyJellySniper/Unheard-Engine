@@ -1,18 +1,16 @@
 #include "GaussianFilterShader.h"
-#include "../../RendererShared.h"
 #include "../../RenderBuilder.h"
 
 UHGaussianFilterShader::UHGaussianFilterShader(UHGraphic* InGfx, std::string Name, const UHGaussianFilterType InType)
 	: UHShaderClass(InGfx, Name, typeid(UHGaussianFilterShader), nullptr)
 	, GaussianFilterType(InType)
 {
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// utilize push constants, so the shader could be reused
 	PushConstantRange.offset = 0;
-	PushConstantRange.size = sizeof(UHGaussianFilterConstants);
+	PushConstantRange.size = sizeof(float) * 16;
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	bPushDescriptor = true;
 
@@ -41,10 +39,9 @@ void UHGaussianFilterShader::OnCompile()
 	CreateComputeState(CInfo);
 }
 
-void UHGaussianFilterShader::BindParameters(UHRenderBuilder& RenderBuilder, const int32_t CurrentFrame, UHTexture* Input, UHTexture* Output)
+void UHGaussianFilterShader::BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output)
 {
-	PushConstantBuffer(GSystemConstantBuffer[CurrentFrame], 0, 0);
-	PushImage(Output, 1, true, 0);
-	PushImage(Input, 2, false, 0);
+	PushImage(Output, 0, true, 0);
+	PushImage(Input, 1, false, 0);
 	FlushPushDescriptor(RenderBuilder.GetCmdList());
 }

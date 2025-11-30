@@ -26,8 +26,7 @@ extern UHRenderTexture* GSceneNormal;
 extern UHRenderTexture* GSceneMaterial;
 extern UHRenderTexture* GSceneResult;
 extern UHRenderTexture* GSceneMip;
-// extra scene data buffer, it is uint16 for now and can be changed in the future
-// with the first bit to tell whether a pixel has bump normal, and remaining 15 bits for storing instance ID (up to ~32768)
+// extra scene data buffer
 extern UHRenderTexture* GSceneData;
 extern UHRenderTexture* GSceneDepth;
 // mixed depth, which means translucent depth is rendered on the top of opaque depth
@@ -67,6 +66,7 @@ extern UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 extern UHTexture2D* GBlackTexture;
 extern UHTexture2D* GWhiteTexture;
 extern UHTextureCube* GBlackCube;
+extern UHRenderTexture* GBlackTextureArray;
 
 // occlusion data
 extern UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
@@ -84,9 +84,13 @@ extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTransluce
 // this is also used for ray tracing
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
-// indirect lighting
+// indirect lighting, one for ray tracing another for result composite
 extern UHRenderTexture* GRTIndirectLighting;
-extern std::vector<UHRenderTexture*> GIndirectLightingCaches;
+extern UHRenderTexture* GIndirectLightResult;
+
+// common clear colors
+extern VkClearColorValue GBlackClearColor;
+extern VkClearColorValue GTransparentClearColor;
 
 extern std::vector<UHTexture*> GetGBuffersSRV();
 

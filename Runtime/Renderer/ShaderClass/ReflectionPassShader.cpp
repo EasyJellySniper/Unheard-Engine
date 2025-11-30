@@ -9,7 +9,8 @@ UHReflectionPassShader::UHReflectionPassShader(UHGraphic* InGfx, std::string Nam
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(GNumOfGBuffersSRV, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
-	// reflection textures
+	// textures
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
@@ -43,15 +44,17 @@ void UHReflectionPassShader::BindParameters(const bool bIsRaytracingEnableRT)
 	if (bIsRaytracingEnableRT)
 	{
 		BindImage(GRTReflectionResult, 4);
+		BindImage(GIndirectLightResult, 5);
 	}
 	else
 	{
 		BindImage(GBlackTexture, 4);
+		BindImage(GBlackTexture, 5);
 	}
 
-	BindSampler(GSkyCubeSampler,5);
-	BindSampler(GPointClampedSampler, 6);
-	BindSampler(GLinearClampedSampler, 7);
+	BindSampler(GSkyCubeSampler,6);
+	BindSampler(GPointClampedSampler, 7);
+	BindSampler(GLinearClampedSampler, 8);
 }
 
 void UHReflectionPassShader::BindSkyCube()

@@ -213,7 +213,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
                 if (ImGui::Selectable(RTShadowQualities[Idx].c_str(), bIsSelected))
                 {
                     RenderingSettings.RTShadowQuality = static_cast<int32_t>(Idx);
-                    DeferredRenderer->ResizeRayTracingBuffers(false);
+                    DeferredRenderer->ResizeRayTracingBuffers(true);
                     break;
                 }
             }
@@ -242,7 +242,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
                 if (ImGui::Selectable(RTReflectionQualities[Idx].c_str(), bIsSelected))
                 {
                     RenderingSettings.RTReflectionQuality = static_cast<int32_t>(Idx);
-                    DeferredRenderer->ResizeRayTracingBuffers(false);
+                    DeferredRenderer->ResizeRayTracingBuffers(true);
                     break;
                 }
             }
@@ -255,7 +255,19 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::NewLine();
 
     // RT Indirect lighting
-    ImGui::Checkbox("Enable RT Indirect Lighting", &RenderingSettings.bEnableRTIndirectLighting);
+    if (ImGui::Checkbox("Enable RT Indirect Lighting", &RenderingSettings.bEnableRTIndirectLighting))
+    {
+        Engine->GetGfx()->WaitGPU();
+        DeferredRenderer->UpdateDescriptors();
+    }
+
+    if (RenderingSettings.bEnableRTIndirectLighting)
+    {
+        ImGui::InputFloat("RT Indirect Light Scale", &RenderingSettings.RTIndirectLightScale);
+        ImGui::InputFloat("RT Indirect Light Fade Distance", &RenderingSettings.RTIndirectLightFadeDistance);
+        ImGui::InputFloat("RT Indirect TMax", &RenderingSettings.RTIndirectTMax);
+        ImGui::InputFloat("RT Indirect Occsluion Distance", &RenderingSettings.RTIndirectOcclusionDistance);
+    }
 
     ImGui::PopItemWidth();
     bIsDialogActive |= ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);

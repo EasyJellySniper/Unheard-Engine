@@ -6,11 +6,20 @@
 #include "UHRTCommon.hlsli"
 
 RWTexture2D<float> OutRTShadow : register(u1);
-Texture2D InputRTShadow : register(t2);
-Texture2D DepthTexture : register(t3);
-Texture2D MipRateTex : register(t4);
-SamplerState PointClampped : register(s5);
-SamplerState LinearClampped : register(s6);
+cbuffer SoftRTShadowConstants : register(b2)
+{
+    // 1 = 3x3, 2 = 5x5..etc, will be clamped between 1 to 3
+    int GPCSSKernal;
+    float GPCSSMinPenumbra;
+    float GPCSSMaxPenumbra;
+    float GPCSSBlockerDistScale;
+}
+
+Texture2D InputRTShadow : register(t3);
+Texture2D DepthTexture : register(t4);
+Texture2D MipRateTex : register(t5);
+SamplerState PointClampped : register(s6);
+SamplerState LinearClampped : register(s7);
 
 float Shadow3x3(float2 UV, float2 BaseShadowData, float BaseDepth, float Penumbra, float MipWeight)
 {

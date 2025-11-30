@@ -51,6 +51,13 @@
 #define ID_VIEWMODE_SMOOTHNESS          32794
 #define ID_VIEWMODE_SPECULAR            32795
 #define ID_WINDOW_FBXIMPORT             32796
+#define ID_VIEWMODE_RTINDIRECTLIGHT     32797
+#define ID_VIEWMODE_INDIRECTOCCLUSION   32798
+#define ID_VIEWMODE_RTINDIRECT          32799
+#define ID_RTINDIRECT_INDIRECT1         32800
+#define ID_RTINDIRECT_INDIRECT2         32801
+#define ID_RTINDIRECT_INDIRECT3         32802
+#define ID_RTINDIRECT_INDIRECT4         32803
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -59,7 +66,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        132
-#define _APS_NEXT_COMMAND_VALUE         32797
+#define _APS_NEXT_COMMAND_VALUE         32804
 #define _APS_NEXT_CONTROL_VALUE         1070
 #define _APS_NEXT_SYMED_VALUE           110
 #endif

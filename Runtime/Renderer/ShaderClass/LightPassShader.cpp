@@ -17,6 +17,7 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name)
 	// scene output + shadow result + point light list + sampler
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
@@ -56,8 +57,9 @@ void UHLightPassShader::BindParameters(const bool bIsRaytracingEnableRT)
 		BindImage(GWhiteTexture, 6);
 	}
 
-	BindStorage(GPointLightListBuffer.get(), 7, 0, true);
-	BindStorage(GSpotLightListBuffer.get(), 8, 0, true);
-	BindSampler(GPointClampedSampler, 9);
-	BindSampler(GLinearClampedSampler, 10);
+	BindImage(GIndirectLightResult, 7);
+	BindStorage(GPointLightListBuffer.get(), 8, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 9, 0, true);
+	BindSampler(GPointClampedSampler, 10);
+	BindSampler(GLinearClampedSampler, 11);
 }

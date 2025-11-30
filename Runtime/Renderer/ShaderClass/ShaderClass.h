@@ -160,18 +160,20 @@ public:
 		}
 	}
 
-	void BindImage(const UHTexture* InImage, int32_t DstBinding);
-	void BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite, int32_t MipIdx);
-	void BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding);
-	void PushImage(const UHTexture* InImage, int32_t DstBinding, bool bIsReadWrite, int32_t MipIdx);
+	void BindImage(const UHTexture* InImage, const int32_t DstBinding);
+	void BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t LayerIdx);
+	void BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t CurrentFrameRT, const bool bIsReadWrite, const int32_t MipIdx);
+	void BindImage(const std::vector<UHTexture*> InImages, const int32_t DstBinding);
+	void PushImage(const UHTexture* InImage, const int32_t DstBinding, const bool bIsReadWrite, const int32_t MipIdx);
+	void PushSampler(const UHSampler* InSampler, const int32_t DstBinding);
 	void FlushPushDescriptor(VkCommandBuffer InCmdList);
 
-	void BindRWImage(const UHTexture* InImage, int32_t DstBinding);
-	void BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx);
+	void BindRWImage(const UHTexture* InImage, const int32_t DstBinding);
+	void BindRWImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t MipIdx);
 
-	void BindSampler(const UHSampler* InSampler, int32_t DstBinding);
-	void BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding);
-	void BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrameRT);
+	void BindSampler(const UHSampler* InSampler, const int32_t DstBinding);
+	void BindSampler(const std::vector<UHSampler*>& InSamplers, const int32_t DstBinding);
+	void BindTLAS(const UHAccelerationStructure* InTopAS, const int32_t DstBinding, const int32_t CurrentFrameRT);
 	void RecreateMaterialState();
 	void SetNewMaterialCache(UHMaterial* InMat);
 	void SetNewRenderPass(VkRenderPass InRenderPass);
@@ -191,6 +193,7 @@ public:
 	VkDescriptorSetLayout GetDescriptorSetLayout() const;
 	VkPipelineLayout GetPipelineLayout() const;
 	VkDescriptorSet GetDescriptorSet(int32_t FrameIdx) const;
+	const VkPushConstantRange& GetPushConstantRange() const;
 
 protected:
 	// add layout binding

@@ -74,9 +74,8 @@ void BasePS(VertexOutput Vin
 	float DeltaMax = max(length(Dx), length(Dy));
     OutMip = DeltaMax;
 	
-	// besides UH_HAS_BUMP bit, store instance index as well
-    uint InstanceIndex = Vin.InstanceIndex & 32767u;
-    OutData = PackedData | (InstanceIndex << 1);
+	// data output
+    OutData = PackedData;
 	
 	// store normal and setup the flag, 2-bit alpha channel can store 0.0f 1/3 2/3 1.0f
     OutNormal = float4(EncodeNormal(BumpNormal), UH_OPAQUE_MASK);

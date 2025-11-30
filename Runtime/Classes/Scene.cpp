@@ -409,6 +409,11 @@ UHSkyLightComponent* UHScene::GetSkyLight() const
 	return CurrentSkyLight;
 }
 
+const BoundingBox& UHScene::GetSceneBound() const
+{
+	return SceneBound;
+}
+
 void UHScene::UpdateCamera()
 {
 	if (MainCamera == nullptr)

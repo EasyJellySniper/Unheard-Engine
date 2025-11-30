@@ -37,7 +37,6 @@ protected:
 	int32_t Version;
 	uint32_t ObjectClassIdInternal;
 
-private:
 	// runtime id used for general purpose
 	uint32_t RuntimeId;
 };

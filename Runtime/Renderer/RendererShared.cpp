@@ -56,6 +56,7 @@ UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 UHTexture2D* GBlackTexture;
 UHTexture2D* GWhiteTexture;
 UHTextureCube* GBlackCube;
+UHRenderTexture* GBlackTextureArray;
 
 // occlusion data
 UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
@@ -69,7 +70,10 @@ UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 // indirect lighting
 UHRenderTexture* GRTIndirectLighting;
-std::vector<UHRenderTexture*> GIndirectLightingCaches;
+UHRenderTexture* GIndirectLightResult;
+
+VkClearColorValue GBlackClearColor = { 0.0f,0.0f,0.0f,1.0f };
+VkClearColorValue GTransparentClearColor = { 0.0f,0.0f,0.0f,0.0f };
 
 inline std::vector<UHTexture*> GetGBuffersSRV()
 {

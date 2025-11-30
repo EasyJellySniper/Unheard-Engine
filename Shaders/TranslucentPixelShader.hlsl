@@ -6,13 +6,11 @@
 #include "../Shaders/UHLightCommon.hlsli"
 #include "../Shaders/UHMaterialCommon.hlsli"
 
-#define SH9_BIND t13
-#include "../Shaders/UHSphericalHamonricCommon.hlsli"
-
 Texture2D ScreenShadowTexture : register(t9);
 Texture2D ScreenReflectionTexture : register(t10);
-ByteAddressBuffer PointLightListTrans : register(t11);
-ByteAddressBuffer SpotLightListTrans : register(t12);
+Texture2D IndirectLightResult : register(t11);
+ByteAddressBuffer PointLightListTrans : register(t12);
+ByteAddressBuffer SpotLightListTrans : register(t13);
 TextureCube EnvCube : register(t14);
 
 // texture/sampler tables for bindless rendering
@@ -135,9 +133,13 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     float NdotV = abs(dot(BumpNormal, -EyeVector));
     float3 Fresnel = SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
     
+    // merge with realtime indirect occlusion
+    float4 ILResult = IndirectLightResult.SampleLevel(LinearClamppedSampler, ScreenUV, 0);
+    Occlusion = min(ILResult.a, Occlusion);
+    
     // reflection from dynamic source (such as ray tracing), also make sure to follow screen mip count
     SpecMip = (1.0f - SpecFade) * GScreenMipCount;
-    float4 DynamicReflection = ScreenReflectionTexture.SampleLevel(UHSamplerTable[GLinearClampSamplerIndex], ScreenUV, SpecMip);
+    float4 DynamicReflection = ScreenReflectionTexture.SampleLevel(LinearClamppedSampler, ScreenUV, SpecMip);
     IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);
     IndirectSpecular *= SpecFade * Fresnel * Occlusion * GFinalReflectionStrength;
 
@@ -200,7 +202,7 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     }
 
 	// indirect light accumulation
-	Result += ShadeSH9(BaseColor, float4(BumpNormal, 1.0f), Occlusion);
+    Result += ILResult.rgb;
 	Result += MaterialInput.Emissive.rgb + IndirectSpecular;
 
 	// output result with opacity

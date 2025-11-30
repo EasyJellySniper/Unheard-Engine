@@ -1,11 +1,16 @@
 #define UHGBUFFER_BIND t2
 #include "UHInputs.hlsli"
 #include "UHCommon.hlsli"
-#define SH9_BIND t3
+
+#define SH9_BIND t5
 #include "UHSphericalHamonricCommon.hlsli"
 
-RWTexture2D<float4> SceneResult : register(u1);
-SamplerState PointClampped : register(s4);
+// output indirect light result
+RWTexture2D<float4> IndirectLightResult : register(u1);
+
+Texture2DArray<float4> RTIndirectLight : register(t3);
+Texture2D SceneMixedDepth : register(t4);
+SamplerState LinearClampped : register(s6);
 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void IndirectLightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
@@ -15,23 +20,37 @@ void IndirectLightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThre
         return;
     }
     
-    float2 UV = (DTid.xy + 0.5f) * GResolution.zw;
-    float Depth = SceneBuffers[3].SampleLevel(PointClampped, UV, 0).r;
-    float4 CurrSceneData = SceneResult[DTid.xy];
+    uint2 PixelCoord = DTid.xy;
+    IndirectLightResult[PixelCoord] = 0;
     
-    // don't apply lighting to empty pixels
-	UHBRANCH
+    float Depth = SceneMixedDepth[PixelCoord].r;
+    UHBRANCH
     if (Depth == 0.0f)
     {
         return;
     }
     
-    // fetch diffuse and unpack normal
-    float4 Diffuse = SceneBuffers[0].SampleLevel(PointClampped, UV, 0);
-    float3 Normal = DecodeNormal(SceneBuffers[1].SampleLevel(PointClampped, UV, 0).xyz);
+    // reconstruct world position
+    float3 WorldPos = ComputeWorldPositionFromDeviceZ(float2(DTid.xy + 0.5f), Depth, true);
+    float2 IndirectLightUV = float2(PixelCoord + 0.5f) * GResolution.zw;
+    
+    // SH9 for fallback
+    float4 Diffuse = SceneBuffers[0][PixelCoord];
+    float3 Normal = DecodeNormal(SceneBuffers[1][PixelCoord].xyz);
+    float3 SkyLight = ShadeSH9(Diffuse.rgb, float4(Normal, 1.0f), Diffuse.a);
     
     // sample indirect lighting
-    float3 Result = ShadeSH9(Diffuse.rgb, float4(Normal, 1.0f), Diffuse.a);
+    float3 Result = 0;
+    float Occlusion = 0;
+    for (uint Idx = 0; Idx < 4; Idx++)
+    {
+        float4 IL = RTIndirectLight.SampleLevel(LinearClampped, float3(IndirectLightUV, Idx), 0);
+        Result += SkyLight * IL.a + IL.rgb;
+        Occlusion += IL.a;
+    }
     
-    SceneResult[DTid.xy] = float4(CurrSceneData.rgb + Result, CurrSceneData.a);
+    Result *= 0.25f;
+    Occlusion *= 0.25f;
+    
+    IndirectLightResult[PixelCoord] = float4(Result, Occlusion);
 }

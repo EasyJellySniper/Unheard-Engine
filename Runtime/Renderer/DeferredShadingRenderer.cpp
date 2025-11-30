@@ -121,6 +121,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RTParams.bEnableDepthPrepass = GraphicInterface->IsDepthPrePassEnabled();
 	RTParams.bEnableTAA = RenderingSettings.bTemporalAA;
 	RTParams.bEnableRTDenoise = RenderingSettings.bDenoiseRayTracing;
+	RTParams.FrameNumber = GFrameNumber;
 
 	// make sure upload data worker is done before rendering
 	WorkerThreads[0]->WaitTask();
@@ -145,6 +146,25 @@ void UHDeferredShadingRenderer::WaitPreviousRenderTask()
 }
 
 #if WITH_EDITOR
+enum class UHDebugViewMode
+{
+	None,
+	Diffuse,
+	Normal,
+	Specular,
+	Smoothness,
+	Depth,
+	Motion,
+	Mip,
+	RTShadow,
+	RTReflection,
+	RTIndirectLight1,
+	RTIndirectLight2,
+	RTIndirectLight3,
+	RTIndirectLight4,
+	IndirectLight,
+	IndirectOcclusion
+};
 
 void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 {
@@ -156,7 +176,9 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 
 		UHDebugViewConstant DebugViewData;
 		DebugViewData.ViewMipLevel = 0;
-		DebugViewData.ViewAlpha = DebugViewIndex == 4;
+		
+		DebugViewData.ViewAlpha = DebugViewIndex == UH_ENUM_VALUE(UHDebugViewMode::Smoothness)
+			|| DebugViewIndex == UH_ENUM_VALUE(UHDebugViewMode::IndirectOcclusion);
 		DebugViewShader->GetDebugViewData()->UploadAllData(&DebugViewData);
 		DebugViewShader->BindParameters();
 
@@ -165,16 +187,32 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			, GSceneDiffuse
 			, GSceneNormal
 			, GSceneMaterial
-			, GSceneMaterial // for alpha channel
+			, GSceneMaterial // alpha
 			, GSceneDepth
 			, GMotionVectorRT
 			, GSceneMip
 			, GRTShadowResult
-			, GRTReflectionResult };
+			, GRTReflectionResult
+			, GRTIndirectLighting  // tex array with 4 layers
+			, GRTIndirectLighting
+			, GRTIndirectLighting
+			, GRTIndirectLighting
+			, GIndirectLightResult
+			, GIndirectLightResult // alpha
+		};
 
 		if (Buffers[DebugViewIndex] != nullptr)
 		{
-			DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
+			if (DebugViewIndex >= UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight1) 
+				&& DebugViewIndex <= UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight4))
+			{
+				const uint32_t Index = DebugViewIndex - UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight1);
+				DebugViewShader->BindImage(Buffers[DebugViewIndex], 1, Index);
+			}
+			else
+			{
+				DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
+			}
 		}
 		else
 		{
@@ -297,11 +335,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.GScreenMipCount = std::floorf(
 		std::log2f(std::max(SystemConstantsCPU.GResolution.x, SystemConstantsCPU.GResolution.y)));
 
-	// soft shadow settings
-	SystemConstantsCPU.GPCSSKernal = RenderingSettings.PCSSKernal;
-	SystemConstantsCPU.GPCSSMinPenumbra = RenderingSettings.PCSSMinPenumbra;
-	SystemConstantsCPU.GPCSSMaxPenumbra = RenderingSettings.PCSSMaxPenumbra;
-	SystemConstantsCPU.GPCSSBlockerDistScale = RenderingSettings.PCSSBlockerDistScale;
+	const BoundingBox& SceneBound = CurrentScene->GetSceneBound();
+	SystemConstantsCPU.SceneCenter = SceneBound.Center;
+	SystemConstantsCPU.SceneExtent = SceneBound.Extents;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -417,6 +453,33 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	// upload tonemap data
 	UHToneMapData ToneMapData(RenderingSettings.GammaCorrection, RenderingSettings.HDRWhitePaperNits, RenderingSettings.HDRContrast);
 	ToneMapShader->UploadToneMapData(ToneMapData, CurrentFrameGT);
+
+	// upload RT shader data
+	if (RenderingSettings.bEnableRayTracing)
+	{
+		if (RenderingSettings.bEnableRTIndirectLighting)
+		{
+			UHRTIndirectLightConstants ILConstant{};
+			ILConstant.IndirectLightScale = RenderingSettings.RTIndirectLightScale;
+			ILConstant.IndirectLightFadeDistance = RenderingSettings.RTIndirectLightFadeDistance;
+			ILConstant.IndirectLightMaxTraceDist = RenderingSettings.RTIndirectTMax;
+			ILConstant.IndirectOcclusionDistance = RenderingSettings.RTIndirectOcclusionDistance;
+			ILConstant.IndirectDownFactor = RenderResolution.width / RTIndirectLightingExtent.width;
+			ILConstant.IndirectRTSize = IndirectLightRTSize;
+			RTIndirectLightShader->GetConstants(CurrentFrameGT)->UploadData(&ILConstant, 0);
+		}
+
+		// soft shadow settings
+		if (RenderingSettings.bEnableRTIndirectLighting || RenderingSettings.bEnableRTShadow)
+		{
+			UHSoftRTShadowConstants SoftRTShadowConsts{};
+			SoftRTShadowConsts.PCSSKernal = RenderingSettings.PCSSKernal;
+			SoftRTShadowConsts.PCSSMinPenumbra = RenderingSettings.PCSSMinPenumbra;
+			SoftRTShadowConsts.PCSSMaxPenumbra = RenderingSettings.PCSSMaxPenumbra;
+			SoftRTShadowConsts.PCSSBlockerDistScale = RenderingSettings.PCSSBlockerDistScale;
+			SoftRTShadowShader->GetConstants(CurrentFrameGT)->UploadData(&SoftRTShadowConsts, 0);
+		}
+	}
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()
@@ -830,11 +893,12 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				DispatchLightCulling(SceneRenderBuilder);
 				DispatchRayShadowPass(SceneRenderBuilder);
 				DispatchSmoothSceneNormalPass(SceneRenderBuilder);
+				DispatchRayIndirectLightPass(SceneRenderBuilder);
 				DispatchRayReflectionPass(SceneRenderBuilder);
 
 				SceneRenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-				DispatchLightPass(SceneRenderBuilder);
 				DispatchIndirectLightPass(SceneRenderBuilder);
+				DispatchLightPass(SceneRenderBuilder);
 				
 				PreReflectionPass(SceneRenderBuilder);
 				DispatchReflectionPass(SceneRenderBuilder);

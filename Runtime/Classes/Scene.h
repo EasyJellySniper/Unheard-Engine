@@ -56,6 +56,7 @@ public:
 	const std::vector<UHMaterial*>& GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight() const;
+	const BoundingBox& GetSceneBound() const;
 
 	void AddMeshRenderer(UHMeshRendererComponent* InRenderer);
 private:

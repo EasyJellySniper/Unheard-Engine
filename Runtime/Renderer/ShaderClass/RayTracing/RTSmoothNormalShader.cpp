@@ -1,8 +1,8 @@
 #include "RTSmoothNormalShader.h"
 #include "../../RendererShared.h"
 
-RTSmoothSceneNormalShader::RTSmoothSceneNormalShader(UHGraphic* InGfx, std::string Name, bool bInIsVertical)
-	: UHShaderClass(InGfx, Name, typeid(RTSmoothSceneNormalShader))
+UHRTSmoothSceneNormalShader::UHRTSmoothSceneNormalShader(UHGraphic* InGfx, std::string Name, bool bInIsVertical)
+	: UHShaderClass(InGfx, Name, typeid(UHRTSmoothSceneNormalShader))
 	, bIsVertical(bInIsVertical)
 {
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -15,7 +15,7 @@ RTSmoothSceneNormalShader::RTSmoothSceneNormalShader(UHGraphic* InGfx, std::stri
 	OnCompile();
 }
 
-void RTSmoothSceneNormalShader::OnCompile()
+void UHRTSmoothSceneNormalShader::OnCompile()
 {
 	const std::string EntryName = bIsVertical ? "RTSmoothNormalVerticalCS" : "RTSmoothNormalHorizontalCS";
 	ShaderCS = Gfx->RequestShader(Name, "Shaders/RayTracing/RTSmoothSceneNormal.hlsl", EntryName, "cs_6_0");
@@ -27,7 +27,7 @@ void RTSmoothSceneNormalShader::OnCompile()
 	CreateComputeState(Info);
 }
 
-void RTSmoothSceneNormalShader::BindParameters()
+void UHRTSmoothSceneNormalShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindRWImage(GSmoothSceneNormal, 1);

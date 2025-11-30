@@ -35,6 +35,7 @@ Assets/*
 RawAssets/*
 AssetCaches/*
 x64/*
+UnheardEngine/x64*
 dxc_2022_07_18/*
 packages/*
 Temp/*

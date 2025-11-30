@@ -68,6 +68,8 @@ void UHDeferredShadingRenderer::DispatchIndirectLightPass(UHRenderBuilder& Rende
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Indirect Light Pass");
 	{
+		RenderBuilder.ResourceBarrier(GIndirectLightResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
 		// bind state
 		UHComputeState* State = IndirectLightPassShader->GetComputeState();
 		RenderBuilder.BindComputeState(State);
@@ -75,9 +77,11 @@ void UHDeferredShadingRenderer::DispatchIndirectLightPass(UHRenderBuilder& Rende
 		// bind sets
 		RenderBuilder.BindDescriptorSetCompute(IndirectLightPassShader->GetPipelineLayout(), IndirectLightPassShader->GetDescriptorSet(CurrentFrameRT));
 
-		// dispatch
+		// dispatch the indirect light pass
 		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
+
+		RenderBuilder.ResourceBarrier(GIndirectLightResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

@@ -81,6 +81,10 @@ void UHConfigManager::LoadConfig()
 		GET_UHE_SETTING(RenderingSettings, bEnableRTShadow);
 		GET_UHE_SETTING(RenderingSettings, bEnableRTReflection);
 		GET_UHE_SETTING(RenderingSettings, bEnableRTIndirectLighting);
+		GET_UHE_SETTING(RenderingSettings, RTIndirectLightScale);
+		GET_UHE_SETTING(RenderingSettings, RTIndirectLightFadeDistance);
+		GET_UHE_SETTING(RenderingSettings, RTIndirectTMax);
+		GET_UHE_SETTING(RenderingSettings, RTIndirectOcclusionDistance);
 
 		// clamp a few parameters
 		RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
@@ -154,6 +158,10 @@ void UHConfigManager::ApplyConfig()
 		SET_UHE_SETTING(RenderingSettings, bEnableRTShadow);
 		SET_UHE_SETTING(RenderingSettings, bEnableRTReflection);
 		SET_UHE_SETTING(RenderingSettings, bEnableRTIndirectLighting);
+		SET_UHE_SETTING(RenderingSettings, RTIndirectLightScale);
+		SET_UHE_SETTING(RenderingSettings, RTIndirectLightFadeDistance);
+		SET_UHE_SETTING(RenderingSettings, RTIndirectTMax);
+		SET_UHE_SETTING(RenderingSettings, RTIndirectOcclusionDistance);
 	}
 }
 

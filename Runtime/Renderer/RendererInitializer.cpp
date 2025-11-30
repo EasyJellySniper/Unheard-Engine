@@ -15,6 +15,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, TimerInterface(InEngine->GetGameTimer())
 	, RenderResolution(VkExtent2D())
 	, RTShadowExtent(VkExtent2D())
+	, RTIndirectLightingExtent(VkExtent2D())
 	, CurrentFrameGT(0)
 	, CurrentFrameRT(0)
 	, bIsResetNeededShared(false)
@@ -143,6 +144,7 @@ void UHDeferredShadingRenderer::Release()
 	RenderThread->EndThread();
 	for (auto& WorkerThread : WorkerThreads)
 	{
+		WorkerThread->WaitTask();
 		WorkerThread->EndThread();
 	}
 	WorkerThreads.clear();
@@ -324,6 +326,16 @@ void UHDeferredShadingRenderer::PrepareTextures()
 
 		GBlackCube = AssetManagerInterface->GetCubemapByName("UHBlackCube");
 		GBlackCube->Build(GraphicInterface, RenderBuilder);
+
+		VkExtent2D FallbackSize;
+		FallbackSize.width = 2;
+		FallbackSize.height = 2;
+		GBlackTextureArray = GraphicInterface->RequestRenderTexture("UHBlackTexArray", FallbackSize, UHTextureFormat::UH_FORMAT_BGRA8_UNORM
+			, false, false, MaxNumOfIndirectLightRays);
+
+		RenderBuilder.ResourceBarrier(GBlackTextureArray, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		RenderBuilder.ClearRenderTexture(GBlackTextureArray, GBlackClearColor);
+		RenderBuilder.ResourceBarrier(GBlackTextureArray, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
@@ -464,6 +476,9 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	UpsampleNearest2x2Shader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmm2x2Shader", UHUpsampleMethod::Nearest2x2);
 	UpsampleNearestHShader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmmHShader", UHUpsampleMethod::NearestHorizontal);
 
+	KawaseDownsampleShader = MakeUnique<UHKawaseBlurShader>(GraphicInterface, "KawaseDownsampleShader", UHKawaseBlurType::Downsample);
+	KawaseUpsampleShader = MakeUnique<UHKawaseBlurShader>(GraphicInterface, "KawaseUpsampleShader", UHKawaseBlurType::Upsample);
+
 	// RT shaders
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
@@ -471,8 +486,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
 		CollectPointLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectPointLightShader", true);
 		CollectSpotLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectSpotLightShader", false);
-		RTSmoothSceneNormalHShader = MakeUnique<RTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalHShader", false);
-		RTSmoothSceneNormalVShader = MakeUnique<RTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalVShader", true);
+		RTSmoothSceneNormalHShader = MakeUnique<UHRTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalHShader", false);
+		RTSmoothSceneNormalVShader = MakeUnique<UHRTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalVShader", true);
 	}
 
 #if WITH_EDITOR
@@ -561,7 +576,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 	// ------------------------------------------------ Lighting pass descriptor update
 	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTShadow);
-	IndirectLightPassShader->BindParameters();
+	IndirectLightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
 	ReflectionPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTReflection);
 
 	// ------------------------------------------------ sky pass descriptor update
@@ -628,6 +643,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		SoftRTShadowShader->BindParameters();
 		RTShadowShader->BindParameters();
 		RTReflectionShader->BindParameters();
+		RTIndirectLightShader->BindParameters();
 		CollectPointLightShader->BindParameters();
 		CollectSpotLightShader->BindParameters();
 		RTSmoothSceneNormalHShader->BindParameters();
@@ -719,6 +735,8 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	UH_SAFE_RELEASE(GaussianFilterVShader);
 	UH_SAFE_RELEASE(UpsampleNearest2x2Shader);
 	UH_SAFE_RELEASE(UpsampleNearestHShader);
+	UH_SAFE_RELEASE(KawaseDownsampleShader);
+	UH_SAFE_RELEASE(KawaseUpsampleShader)
 
 	if (GraphicInterface->IsMeshShaderSupported() || GraphicInterface->IsRayTracingEnabled())
 	{
@@ -735,6 +753,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
 		UH_SAFE_RELEASE(RTShadowShader);
 		UH_SAFE_RELEASE(RTReflectionShader);
+		UH_SAFE_RELEASE(RTIndirectLightShader);
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
 		UH_SAFE_RELEASE(RTMaterialDataTable);
 		UH_SAFE_RELEASE(SoftRTShadowShader);
@@ -762,7 +781,7 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	const UHTextureFormat SceneResultFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
 	const UHTextureFormat HistoryResultFormat = UHTextureFormat::UH_FORMAT_R11G11B10;
 	const UHTextureFormat SceneMipFormat = UHTextureFormat::UH_FORMAT_R16F;
-	const UHTextureFormat SceneDataFormat = UHTextureFormat::UH_FORMAT_R16_UINT;
+	const UHTextureFormat SceneDataFormat = UHTextureFormat::UH_FORMAT_R8_UINT;
 	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UHTextureFormat::UH_FORMAT_X8_D24 : UHTextureFormat::UH_FORMAT_D32F;
 	const UHTextureFormat MotionFormat = UHTextureFormat::UH_FORMAT_RG16F;
 	const UHTextureFormat MaskFormat = UHTextureFormat::UH_FORMAT_R8_UNORM;
@@ -791,8 +810,12 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
 
-	// rt shadows buffer
-	ResizeRayTracingBuffers(true);
+	// indirect light result
+	GIndirectLightResult = GraphicInterface->RequestRenderTexture("IndirectLightResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM
+		, true);
+
+	// rt buffers
+	ResizeRayTracingBuffers(false);
 
 	// create light culling tile buffer
 	uint32_t TileCountX, TileCountY;
@@ -819,26 +842,21 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 {
-	GraphicInterface->RequestReleaseRT(GSceneDiffuse);
-	GraphicInterface->RequestReleaseRT(GSceneNormal);
-	GraphicInterface->RequestReleaseRT(GSceneMaterial);
-	GraphicInterface->RequestReleaseRT(GSceneResult);
-	GraphicInterface->RequestReleaseRT(GSceneMip);
-	GraphicInterface->RequestReleaseRT(GSceneData);
-	GraphicInterface->RequestReleaseRT(GSceneDepth);
-	GraphicInterface->RequestReleaseRT(GSceneMixedDepth);
-	GraphicInterface->RequestReleaseRT(GPostProcessRT);
-	GraphicInterface->RequestReleaseRT(GPreviousSceneResult);
-	GraphicInterface->RequestReleaseRT(GOpaqueSceneResult);
-	GraphicInterface->RequestReleaseRT(GMotionVectorRT);
-	GraphicInterface->RequestReleaseRT(GTranslucentBump);
-	GraphicInterface->RequestReleaseRT(GTranslucentSmoothness);
-	GraphicInterface->RequestReleaseRT(GRTIndirectLighting);
-
-	for (UHRenderTexture* ILCache : GIndirectLightingCaches)
-	{
-		GraphicInterface->RequestReleaseRT(ILCache);
-	}
+	UH_SAFE_RELEASE_TEX(GSceneDiffuse);
+	UH_SAFE_RELEASE_TEX(GSceneNormal);
+	UH_SAFE_RELEASE_TEX(GSceneMaterial);
+	UH_SAFE_RELEASE_TEX(GSceneResult);
+	UH_SAFE_RELEASE_TEX(GSceneMip);
+	UH_SAFE_RELEASE_TEX(GSceneData);
+	UH_SAFE_RELEASE_TEX(GSceneDepth);
+	UH_SAFE_RELEASE_TEX(GSceneMixedDepth);
+	UH_SAFE_RELEASE_TEX(GPostProcessRT);
+	UH_SAFE_RELEASE_TEX(GPreviousSceneResult);
+	UH_SAFE_RELEASE_TEX(GOpaqueSceneResult);
+	UH_SAFE_RELEASE_TEX(GMotionVectorRT);
+	UH_SAFE_RELEASE_TEX(GTranslucentBump);
+	UH_SAFE_RELEASE_TEX(GTranslucentSmoothness);
+	UH_SAFE_RELEASE_TEX(GIndirectLightResult);
 
 	ReleaseRayTracingBuffers();
 
@@ -847,9 +865,6 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	UH_SAFE_RELEASE(GPointLightListTransBuffer);
 	UH_SAFE_RELEASE(GSpotLightListBuffer);
 	UH_SAFE_RELEASE(GSpotLightListTransBuffer);
-
-	// cleanup gaussian constant
-	RayTracingGaussianConsts.Release(GraphicInterface);
 }
 
 void UHDeferredShadingRenderer::CreateRenderPasses()
@@ -1042,12 +1057,6 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 	{
 		CreateOcclusionQuery();
 	}
-
-	if (GIsEditor || 
-		(ConfigInterface->RenderingSetting().bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTIndirectLighting))
-	{
-		CreateIndirectLightingResources();
-	}
 }
 
 void UHDeferredShadingRenderer::CreateOcclusionQuery()
@@ -1111,35 +1120,6 @@ bool UHDeferredShadingRenderer::CreateAsyncComputeQueue()
 void UHDeferredShadingRenderer::ReleaseAsyncComputeQueue()
 {
 	AsyncComputeQueue.Release();
-}
-
-void UHDeferredShadingRenderer::CreateIndirectLightingResources()
-{
-	// IL rendering is done at half res now
-	VkExtent2D HalfResolution = RenderResolution;
-	HalfResolution.width >>= 1;
-	HalfResolution.height >>= 1;
-	GRTIndirectLighting = GraphicInterface->RequestRenderTexture("IndirectLighting", HalfResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM
-		, true);
-
-	// create caches for ALL rendering instances
-	// resolution is calculated as: closest power of two from (max render bound extent)
-	GIndirectLightingCaches.clear();
-	GIndirectLightingCaches.resize(CurrentScene->GetAllRendererCount());
-
-	const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-	for (size_t Idx = 0; Idx < GIndirectLightingCaches.size(); Idx++)
-	{
-		const XMFLOAT3 Extent = Renderers[Idx]->GetRendererBound().Extents;
-		const float Res = MathHelpers::RoundUpToClosestPowerOfTwo(std::max(std::max(Extent.x, Extent.y), Extent.z));
-		const int32_t DataIndex = Renderers[Idx]->GetBufferDataIndex();
-
-		VkExtent2D CacheSize;
-		CacheSize.width = std::clamp(static_cast<uint32_t>(Res), 2u, MaxIndirectLightCacheSize);
-		CacheSize.height = CacheSize.width;
-		GIndirectLightingCaches[DataIndex] = GraphicInterface->RequestRenderTexture("ILCache_"+ Renderers[Idx]->GetName(), CacheSize
-			, UHTextureFormat::UH_FORMAT_RGBA16F, true, false, MaxNumOfIndirectLightRays);
-	}
 }
 
 void UHDeferredShadingRenderer::CreateThreadObjects()
@@ -1798,11 +1778,15 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 
 	UH_SAFE_RELEASE(RTShadowShader);
 	UH_SAFE_RELEASE(RTReflectionShader);
+	UH_SAFE_RELEASE(RTIndirectLightShader);
 
 	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
 		, Layouts);
 
 	RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+		, Layouts);
+
+	RTIndirectLightShader = MakeUnique<UHRTIndirectLightShader>(GraphicInterface, "RTIndirectLightShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
 		, Layouts);
 
 	// setup RT descriptor sets that will be used in rendering

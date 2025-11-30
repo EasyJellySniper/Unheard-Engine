@@ -25,6 +25,7 @@ UHTexture::UHTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat In
 	, MipMapCount(1)
 	, TextureType(UHTextureType::Texture2D)
 	, bCreatePerMipImageView(false)
+	, bCreatePerLayerImageView(false)
 	, NumSlices(1)
 {
 #if WITH_EDITOR
@@ -71,6 +72,12 @@ void UHTexture::Release()
 		vkDestroyImageView(LogicalDevice, ImageViewPerMip[Idx], nullptr);
 	}
 	ImageViewPerMip.clear();
+
+	for (size_t Idx = 0; Idx < ImageViewPerLayer.size(); Idx++)
+	{
+		vkDestroyImageView(LogicalDevice, ImageViewPerLayer[Idx], nullptr);
+	}
+	ImageViewPerLayer.clear();
 
 #if WITH_EDITOR
 	for (int32_t Idx = 0; Idx < CubemapImageViewCount; Idx++)
@@ -326,6 +333,30 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 		}
 	}
 
+	// create individual layer view if requested
+	if (bCreatePerLayerImageView)
+	{
+		for (uint32_t Idx = 0; Idx < NumSlices; Idx++)
+		{
+			VkImageView NewView;
+			CreateInfo.subresourceRange.baseArrayLayer = Idx;
+			CreateInfo.subresourceRange.layerCount = 1;
+			// per layer is to view individual 2D image slice
+			CreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &NewView) != VK_SUCCESS)
+			{
+				UHE_LOG(L"Failed to create image views!\n");
+				return false;
+			}
+			ImageViewPerLayer.push_back(NewView);
+
+#if WITH_EDITOR
+			GfxCache->SetDebugUtilsObjectName(VK_OBJECT_TYPE_IMAGE_VIEW, (uint64_t)NewView
+				, Name + "_ImageViewLayer" + std::to_string(Idx));
+#endif
+		}
+	}
+
 #if WITH_EDITOR
 	if (InViewType == VK_IMAGE_VIEW_TYPE_CUBE)
 	{
@@ -395,13 +426,22 @@ VkImageView UHTexture::GetImageView() const
 	return ImageView;
 }
 
-VkImageView UHTexture::GetImageView(int32_t MipIndex) const
+VkImageView UHTexture::GetImageViewPerMip(int32_t MipIndex) const
 {
 	if (MipIndex == UHINDEXNONE)
 	{
 		return ImageView;
 	}
 	return ImageViewPerMip[MipIndex];
+}
+
+VkImageView UHTexture::GetImageViewPerLayer(const int32_t LayerIndex) const
+{
+	if (LayerIndex == UHINDEXNONE)
+	{
+		return ImageView;
+	}
+	return ImageViewPerLayer[LayerIndex];
 }
 
 #if WITH_EDITOR
@@ -419,6 +459,11 @@ VkImageViewCreateInfo UHTexture::GetImageViewInfo() const
 uint32_t UHTexture::GetMipMapCount() const
 {
 	return MipMapCount;
+}
+
+uint32_t UHTexture::GetImageSlices() const
+{
+	return NumSlices;
 }
 
 UHTextureSettings UHTexture::GetTextureSettings() const

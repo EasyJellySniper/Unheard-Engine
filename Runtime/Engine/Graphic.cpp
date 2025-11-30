@@ -28,9 +28,13 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bSupportMeshShader(false)
 	, MeshBufferSharedMemory(nullptr)
 	, ImageSharedMemory(nullptr)
+	, GPUTimeStampPeriod(0.0f)
+	, HostMemoryTypeIndex(0)
+	, ShaderRecordSize(0)
 #if WITH_EDITOR
 	, ImGuiDescriptorPool(nullptr)
 	, ImGuiPipeline(nullptr)
+	, MinImageCount(0)
 #endif
 {
 	// extension defines, hard code for now
@@ -641,6 +645,12 @@ bool UHGraphic::CreateLogicalDevice()
 
 	// finally, get both graphics and computes queue
 	vkGetDeviceQueue(LogicalDevice, QueueFamily.GraphicsFamily.value(), 0, &GraphicsQueue);
+
+	if (!bSupportMeshShader)
+	{
+		UHE_LOG(L"App needs a GPU that supports mesh shaders!\n");
+		return false;
+	}
 
 	return true;
 }

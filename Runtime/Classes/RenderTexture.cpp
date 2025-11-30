@@ -13,6 +13,7 @@ UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHText
 	// not supporting per-mip image view for texture array now, can change this in the future
 	NumSlices = InNumSlices;
 	bCreatePerMipImageView = (NumSlices == 1);
+	bCreatePerLayerImageView = (NumSlices > 1);
 }
 
 // Similar as the implementation of UHTexture2D

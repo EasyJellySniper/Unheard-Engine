@@ -1,7 +1,7 @@
 <<Direct Dependencies>>
 IDE: Visual Studio 2022, version 17.7.1
 C++ version: C++17
-Windows SDK Version: 10.0.20348.0
+Windows SDK Version: 10.0.26100.0
 Platform Toolset: v143
 NVIDIA Driver: 566.36
 

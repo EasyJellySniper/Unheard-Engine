@@ -13,12 +13,24 @@ UHDescriptorHelper::~UHDescriptorHelper()
 	DescriptorSetToWrite = nullptr;
 }
 
-void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite, int32_t MipIdx)
+void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, const uint32_t InDstBinding
+	, const bool bIsReadWrite, const int32_t MipIdx, const int32_t LayerIdx)
 {
 	VkDescriptorImageInfo NewInfo{};
 	NewInfo.imageLayout = (bIsReadWrite) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	// support mip map binding for RW textures
-	NewInfo.imageView = (MipIdx == UHINDEXNONE) ? InTexture->GetImageView() : InTexture->GetImageView(MipIdx);
+	// fetch the proper image view
+	if (MipIdx != UHINDEXNONE)
+	{
+		NewInfo.imageView = InTexture->GetImageViewPerMip(MipIdx);
+	}
+	else if (LayerIdx != UHINDEXNONE)
+	{
+		NewInfo.imageView = InTexture->GetImageViewPerLayer(LayerIdx);
+	}
+	else
+	{
+		NewInfo.imageView = InTexture->GetImageView();
+	}
 
 	VkWriteDescriptorSet DescriptorWrite{};
 	DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -32,7 +44,7 @@ void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, uint32_t InDstBi
 }
 
 // write multiple image at once for descriptor array
-void UHDescriptorHelper::WriteImage(const std::vector<UHTexture*>& InTextures, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteImage(const std::vector<UHTexture*>& InTextures, const uint32_t InDstBinding)
 {
 	std::vector<VkDescriptorImageInfo> NewInfos(InTextures.size());
 	for (size_t Idx = 0; Idx < InTextures.size(); Idx++)
@@ -55,7 +67,7 @@ void UHDescriptorHelper::WriteImage(const std::vector<UHTexture*>& InTextures, u
 	vkUpdateDescriptorSets(LogicalDevice, 1, &DescriptorWrite, 0, nullptr);
 }
 
-void UHDescriptorHelper::WriteSampler(const UHSampler* InSampler, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteSampler(const UHSampler* InSampler, const uint32_t InDstBinding)
 {
 	VkDescriptorImageInfo NewInfo{};
 	NewInfo.sampler = InSampler->GetSampler();
@@ -72,7 +84,7 @@ void UHDescriptorHelper::WriteSampler(const UHSampler* InSampler, uint32_t InDst
 }
 
 // multiple sampler write
-void UHDescriptorHelper::WriteSampler(const std::vector<UHSampler*>& InSamplers, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteSampler(const std::vector<UHSampler*>& InSamplers, const uint32_t InDstBinding)
 {
 	std::vector<VkDescriptorImageInfo> NewInfos(InSamplers.size());
 
@@ -94,7 +106,7 @@ void UHDescriptorHelper::WriteSampler(const std::vector<UHSampler*>& InSamplers,
 	vkUpdateDescriptorSets(LogicalDevice, 1, &DescriptorWrite, 0, nullptr);
 }
 
-void UHDescriptorHelper::WriteTLAS(const UHAccelerationStructure* InAS, uint32_t InDstBinding)
+void UHDescriptorHelper::WriteTLAS(const UHAccelerationStructure* InAS, const uint32_t InDstBinding)
 {
 	VkWriteDescriptorSet DescriptorWrite{};
 	DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

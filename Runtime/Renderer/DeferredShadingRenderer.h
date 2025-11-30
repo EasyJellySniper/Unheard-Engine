@@ -45,12 +45,16 @@
 #include "ShaderClass/RayTracing/RTSmoothNormalShader.h"
 #include "ShaderClass/PostProcessing/UpsampleShader.h"
 #include "ShaderClass/IndirectLightPassShader.h"
+#include "ShaderClass/RayTracing/RTIndirectLightShader.h"
+#include "ShaderClass/PostProcessing/KawaseBlurShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
 #include "ShaderClass/PostProcessing/DebugBoundShader.h"
 #endif
 #include "../../Editor/Editor/Profiler.h"
+
+#define UH_SAFE_RELEASE_TEX(x) GraphicInterface->RequestReleaseRT(x); x = nullptr;
 
 // wrapper structure for render thread parameters
 struct UHRenderThreadParameters
@@ -74,6 +78,7 @@ struct UHRenderThreadParameters
 		, bEnableRTShadow(false)
 		, bEnableRTReflection(false)
 		, bEnableRTIndirectLighting(false)
+		, FrameNumber(0)
 	{
 
 	}
@@ -96,6 +101,7 @@ struct UHRenderThreadParameters
 	bool bEnableRTShadow;
 	bool bEnableRTReflection;
 	bool bEnableRTIndirectLighting;
+	uint32_t FrameNumber;
 };
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
@@ -119,7 +125,7 @@ public:
 
 	// only resize RT buffers
 	void ReleaseRayTracingBuffers();
-	void ResizeRayTracingBuffers(bool bInitOnly);
+	void ResizeRayTracingBuffers(bool bUpdateDescriptor);
 
 	// update descriptors
 	void UpdateDescriptors();
@@ -152,9 +158,13 @@ public:
 	void RecreateRTShaders(std::vector<UHMaterial*> InMats, bool bRecreateTable);
 
 	void CalculateBlurWeights(const int32_t InRadius, float* OutWeights);
-	bool DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, const std::string& InName
-		, UHTexture* Input, UHRenderTexture* Output
+	void DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, const std::string& InName
+		, UHRenderTexture* Input, UHRenderTexture* Output
 		, const UHGaussianFilterConstants& Constants);
+
+	void DispatchKawaseBlur(UHRenderBuilder& RenderBuilder, const std::string& InName
+		, UHRenderTexture* Input, UHRenderTexture* Output
+		, const UHKawaseBlurConstants& Constants);
 
 	// occlusion query
 	void CreateOcclusionQuery();
@@ -237,10 +247,7 @@ private:
 	// get current skycube
 	UHTextureCube* GetCurrentSkyCube() const;
 
-	// indirect lighting
-	void CreateIndirectLightingResources();
-
-	void InitRTGaussianConstants();
+	void InitRTFilterConstants();
 
 
 	/************************************************ rendering functions ************************************************/
@@ -253,6 +260,7 @@ private:
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
 	void DispatchSmoothSceneNormalPass(UHRenderBuilder& RenderBuilder);
+	void DispatchRayIndirectLightPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightPass(UHRenderBuilder& RenderBuilder);
 	void DispatchIndirectLightPass(UHRenderBuilder& RenderBuilder);
@@ -280,7 +288,6 @@ private:
 	UHConfigManager* ConfigInterface;
 	UHGameTimer* TimerInterface;
 	VkExtent2D RenderResolution;
-	VkExtent2D RTShadowExtent;
 
 	// queue submitter
 	UHQueueSubmitter AsyncComputeQueue;
@@ -396,10 +403,12 @@ private:
 	UniquePtr<UHGaussianFilterShader> GaussianFilterVShader;
 	UniquePtr<UHUpsampleShader> UpsampleNearest2x2Shader;
 	UniquePtr<UHUpsampleShader> UpsampleNearestHShader;
+	UniquePtr<UHKawaseBlurShader> KawaseDownsampleShader;
+	UniquePtr<UHKawaseBlurShader> KawaseUpsampleShader;
 	bool bIsTemporalReset;
 
-	// gaussian constants
-	UHGaussianFilterConstants RayTracingGaussianConsts;
+	// filter constants
+	UHGaussianFilterConstants RTGaussianConsts;
 
 	// renderer instances
 	std::vector<UHRendererInstance> RendererInstances;
@@ -440,10 +449,13 @@ private:
 
 	UniquePtr<UHCollectLightShader> CollectPointLightShader;
 	UniquePtr<UHCollectLightShader> CollectSpotLightShader;
-	UniquePtr<RTSmoothSceneNormalShader> RTSmoothSceneNormalHShader;
-	UniquePtr<RTSmoothSceneNormalShader> RTSmoothSceneNormalVShader;
+	UniquePtr<UHRTSmoothSceneNormalShader> RTSmoothSceneNormalHShader;
+	UniquePtr<UHRTSmoothSceneNormalShader> RTSmoothSceneNormalVShader;
+	UniquePtr<UHRTIndirectLightShader> RTIndirectLightShader;
 
 	uint32_t RTInstanceCount;
+	VkExtent2D RTShadowExtent;
+	VkExtent2D RTIndirectLightingExtent;
 
 	// -------------------------------------------- Culling & sorting related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
@@ -486,6 +498,6 @@ private:
 
 	// -------------------------------------------- Indirect lighting related -------------------------------------------- //
 	// IL limitations, can be changed in the future
-	const int32_t MaxNumOfIndirectLightRays = 4;
-	const uint32_t MaxIndirectLightCacheSize = 128;
+	static const int32_t MaxNumOfIndirectLightRays = 4;
+	static const uint32_t IndirectLightRTSize = 2048;
 };

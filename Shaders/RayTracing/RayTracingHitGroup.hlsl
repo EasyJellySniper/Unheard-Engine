@@ -156,7 +156,7 @@ float2 GetHitUV0(uint PrimIndex, Attribute Attr)
 	return OutUV;
 }
 
-float3 GetHitNormal(uint PrimIndex, Attribute Attr)
+float3 GetHitMaterialNormal(uint PrimIndex, Attribute Attr)
 {
     UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
     uint3 Index = GetIndex(PrimIndex);
@@ -202,7 +202,7 @@ float3 CalculateBumpNormal(float3 InBump, float3 VertexNormal, in Attribute Attr
     return InBump;
 }
 
-void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attribute Attr)
+void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attribute Attr)
 {
     MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
     bool bIsOpaque = MatData.Data[1] <= UH_ISMASKED;
@@ -220,7 +220,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
         
     // normal calculation, fetch the vertex normal
     bool bIsFrontFace = (HitKind() == HIT_KIND_TRIANGLE_FRONT_FACE);
-    float3 VertexNormal = GetHitNormal(PrimitiveIndex(), Attr);
+    float3 VertexNormal = GetHitMaterialNormal(PrimitiveIndex(), Attr);
         
     // for normal transform, inverse-transposed world matrix is needed to deal with non-uniform scaling
     // so use WorldToObject3x4 instead
@@ -232,7 +232,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     float3 BumpNormal = 0;
     float3 Emissive = 0;
     float2 RefractOffset = 0;
-    Payload.PackedData0.a = 1;
+    Payload.FresnelFactor = 1;
     
     {
 		// get material data as like in BasePixelShader
@@ -274,14 +274,14 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
         Specular.rgb = MaterialInput.Specular;
         Specular.rgb = ComputeSpecularColor(Specular.rgb, MaterialInput.Diffuse, Metallic);
         Specular.a = Smoothness;
-        Payload.PackedData0.a = MaterialInput.FresnelFactor;
+        Payload.FresnelFactor = MaterialInput.FresnelFactor;
         
         Emissive = MaterialInput.Emissive;
     }
     
     Payload.HitDiffuse = Diffuse;
-    Payload.HitNormal = BumpNormal;
-    Payload.HitWorldNormal = FlippedVertexNormal;
+    Payload.HitMaterialNormal = BumpNormal;
+    Payload.HitVertexNormal = FlippedVertexNormal;
     Payload.HitSpecular = Specular;
     Payload.HitEmissive = Emissive;
     Payload.HitScreenUV = ScreenUV;
@@ -291,7 +291,7 @@ void CalculateReflectionMaterial(inout UHDefaultPayload Payload, float3 WorldPos
     }
     
     Payload.IsInsideScreen = bInsideScreen;
-    Payload.PackedData0.xyz = WorldPos;
+    Payload.HitWorldPos = WorldPos;
     
     // ray dir
     Payload.RayDir = WorldRayDirection();
@@ -312,57 +312,63 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
         Payload.PayloadData &= ~uint(PAYLOAD_HITTRANSLUCENT);
     }
 
-    if ((Payload.PayloadData & PAYLOAD_ISREFLECTION) == 0)
+    bool bIsReflection = (Payload.PayloadData & PAYLOAD_ISREFLECTION) > 0;
+    bool bIsIndirectLight = (Payload.PayloadData & PAYLOAD_ISINDIRECTLIGHT) > 0;
+    if (!bIsReflection && !bIsIndirectLight)
 	{
 		return;
 	}
     
-    // check whether to shoot the multiple bounce ray
-    // shoot only when the CurrentRecursion < MaxReflectionRecursion and smoothnes is > GRTReflectionSmoothCutoff
     float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
-    MaterialUsage MatUsage;
-    UHMaterialInputs MaterialInput = GetMaterialSmoothness(UV0, Payload.MipLevel, MatUsage);
-    float Smoothness = 1.0f - MaterialInput.Roughness;
     
-    UHDefaultPayload BouncePayload = (UHDefaultPayload) 0;
-    UHBRANCH
-    if (Payload.CurrentRecursion < min(GMaxReflectionRecursion, MatUsage.MaxReflectionBounce))
+    if (bIsReflection)
     {
-        // setup the new payload, be sure to acculumate the CurrentRecursion!
-        BouncePayload.MipLevel = Payload.MipLevel;
-        BouncePayload.PayloadData |= PAYLOAD_ISREFLECTION;
-        BouncePayload.CurrentRecursion = Payload.CurrentRecursion + 1;
+        // check whether to shoot the multiple bounce reflection ray
+        // shoot only when the CurrentRecursion < MaxReflectionRecursion and smoothnes is > GRTReflectionSmoothCutoff
+        MaterialUsage MatUsage;
+        UHMaterialInputs MaterialInput = GetMaterialSmoothness(UV0, Payload.MipLevel, MatUsage);
+        float Smoothness = 1.0f - MaterialInput.Roughness;
+    
+        UHDefaultPayload BouncePayload = (UHDefaultPayload)0;
+        UHBRANCH
+        if (Payload.CurrentRecursion < min(GMaxReflectionRecursion, MatUsage.MaxReflectionBounce))
+        {
+            // setup the new payload, be sure to acculumate the CurrentRecursion!
+            BouncePayload.MipLevel = Payload.MipLevel;
+            BouncePayload.PayloadData |= PAYLOAD_ISREFLECTION;
+            BouncePayload.CurrentRecursion = Payload.CurrentRecursion + 1;
         
-        // fetch world normal to calculate the new reflect ray
-        MaterialUsage Usages;
-        MaterialInput = GetMaterialBumpNormal(UV0, Payload.MipLevel, Usages);
-        bool bIsTangent = (Usages.MaterialFeature & UH_TANGENT_SPACE);
+            // fetch world normal to calculate the new reflect ray
+            MaterialUsage Usages;
+            MaterialInput = GetMaterialBumpNormal(UV0, Payload.MipLevel, Usages);
+            bool bIsTangent = (Usages.MaterialFeature & UH_TANGENT_SPACE);
         
-        float3 WorldNormal = GetHitNormal(PrimitiveIndex(), Attr);
-        WorldNormal = normalize(mul(WorldNormal, (float3x3) WorldToObject3x4()));
-        float3 Normal = bIsTangent ? CalculateBumpNormal(MaterialInput.Normal, WorldNormal, Attr) : WorldNormal;
+            float3 WorldNormal = GetHitMaterialNormal(PrimitiveIndex(), Attr);
+            WorldNormal = normalize(mul(WorldNormal, (float3x3) WorldToObject3x4()));
+            float3 Normal = bIsTangent ? CalculateBumpNormal(MaterialInput.Normal, WorldNormal, Attr) : WorldNormal;
         
-        RayDesc BounceRay = (RayDesc)0;
-        BounceRay.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-        BounceRay.Direction = reflect(WorldRayDirection(), Normal);
+            RayDesc BounceRay = (RayDesc) 0;
+            BounceRay.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+            BounceRay.Direction = reflect(WorldRayDirection(), Normal);
 
-        BounceRay.TMin = 0.1f;
-        // lerp the TMax by the smoothness, can't just use smoothness as condition as it might be divergent 
-        BounceRay.TMax = lerp(0, GRTReflectionRayTMax, Smoothness > GRTReflectionSmoothCutoff);
+            BounceRay.TMin = 0.1f;
+            // lerp the TMax by the smoothness, can't just use smoothness as condition as it might be divergent 
+            BounceRay.TMax = lerp(0, GRTReflectionRayTMax, Smoothness > GRTReflectionSmoothCutoff);
         
-        TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, 0, BounceRay, BouncePayload);
-    }
+            TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, 0, BounceRay, BouncePayload);
+        }
     
-    // copy from BouncePayload if it hit something, only missed bounce ray or the first ray will proceed to material fetching
-    if (BouncePayload.IsHit())
-    {
-        Payload.CopyFrom(BouncePayload);
-        return;
+        // copy from BouncePayload if it hit something, only missed bounce ray or the first ray will proceed to material fetching
+        if (BouncePayload.IsHit())
+        {
+            Payload.CopyFrom(BouncePayload);
+            return;
+        }
     }
 	
 	// world pos to screen uv conversion
     float3 WorldPos = WorldRayOrigin() + WorldRayDirection() * Payload.HitT;
-    CalculateReflectionMaterial(Payload, WorldPos, Attr);
+    CalculateMaterial(Payload, WorldPos, Attr);
 }
 
 [shader("anyhit")]
@@ -415,16 +421,19 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
         
         if (bUpdateClosestTranslucent)
         {
-            // calc translucent material for reflection
-            if ((Payload.PayloadData & PAYLOAD_ISREFLECTION))
+            // calc translucent material for reflection or indirect lighting
+            bool bIsReflection = (Payload.PayloadData & PAYLOAD_ISREFLECTION) > 0;
+            bool bIsIndirectLight = (Payload.PayloadData & PAYLOAD_ISINDIRECTLIGHT) > 0;
+            
+            if (bIsReflection || bIsIndirectLight)
             {
                 UHDefaultPayload TransPayload = Payload;
                 float3 WorldPos = WorldRayOrigin() + WorldRayDirection() * Payload.HitT;
-                CalculateReflectionMaterial(TransPayload, WorldPos, Attr);
+                CalculateMaterial(TransPayload, WorldPos, Attr);
                     
                 Payload.HitDiffuseTrans = TransPayload.HitDiffuse;
-                Payload.HitNormalTrans = TransPayload.HitNormal;
-                Payload.HitWorldNormalTrans = TransPayload.HitWorldNormal;
+                Payload.HitMaterialNormalTrans = TransPayload.HitMaterialNormal;
+                Payload.HitVertexNormalTrans = TransPayload.HitVertexNormal;
                 Payload.HitSpecularTrans = TransPayload.HitSpecular;
                 Payload.HitEmissiveTrans = float4(TransPayload.HitEmissive, MaterialInput.Opacity);
                 Payload.HitScreenUVTrans = TransPayload.HitScreenUV;
@@ -432,8 +441,9 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
                 Payload.HitRefractOffset = TransPayload.HitRefractOffset;
                 Payload.IsInsideScreen = TransPayload.IsInsideScreen;
                 Payload.HitInstanceIndex = InstanceIndex();
-                Payload.PackedData0 = TransPayload.PackedData0;
+                Payload.HitWorldPos = TransPayload.HitWorldPos;
                 Payload.RayDir = TransPayload.RayDir;
+                Payload.FresnelFactor = TransPayload.FresnelFactor;
                 
                 // set refraction flag
                 if (Usages.MaterialFeature & UH_REFRACTION)

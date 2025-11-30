@@ -435,6 +435,12 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\ClearUAVShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\KawaseBlurShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -839,6 +845,12 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\ClearUAVShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\KawaseBlurShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -905,5 +917,7 @@
     <None Include="Shaders\PostProcessing\UpsampleComputeShader.hlsl" />
     <None Include="Shaders\IndirectLightComputeShader.hlsl" />
     <None Include="Shaders\ClearUAVComputeShader.hlsl" />
+    <None Include="Shaders\RayTracing\RayTracingIndirectLight.hlsl" />
+    <None Include="Shaders\PostProcessing\KawaseBlurComputeShader.hlsl" />
   </ItemGroup>
 </Project>

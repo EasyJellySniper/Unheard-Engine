@@ -1,18 +1,19 @@
-#include "RTReflectionShader.h"
+#include "RTIndirectLightShader.h"
 #include "../../RendererShared.h"
 
-UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
+UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string Name
 	, const std::vector<uint32_t>& InClosestHits
 	, const std::vector<uint32_t>& InAnyHits
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHRTReflectionShader), nullptr)
+	: UHShaderClass(InGfx, Name, typeid(UHRTIndirectLightShader), nullptr)
 {
-	// system const
+	// system
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	// TLAS + RT reflection result
+	// TLAS + RT result + shader const
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 	// GBuffers
 	AddLayoutBinding(GNumOfGBuffersSRV, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
@@ -31,14 +32,10 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
-	// light lists + skycube
+	// light lists
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-
-	// samplers
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateLayoutAndDescriptor(ExtraLayouts);
 
@@ -49,12 +46,28 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	InitRayGenTable();
 	InitMissTable();
 	InitHitGroupTable(InAnyHits.size());
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		RTIndirectLightConstants[Idx] = 
+			Gfx->RequestRenderBuffer<UHRTIndirectLightConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "ILConstants");
+	}
 }
 
-void UHRTReflectionShader::OnCompile()
+void UHRTIndirectLightShader::Release()
 {
-	RayGenShader = Gfx->RequestShader("RTReflectionShader", "Shaders/RayTracing/RayTracingReflection.hlsl", "RTReflectionRayGen", "lib_6_3");
-	MissShader = Gfx->RequestShader("RTReflectionShader", "Shaders/RayTracing/RayTracingReflection.hlsl", "RTReflectionMiss", "lib_6_3");
+	UHShaderClass::Release();
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(RTIndirectLightConstants[Idx]);
+	}
+}
+
+void UHRTIndirectLightShader::OnCompile()
+{
+	RayGenShader = Gfx->RequestShader("RTIndirectLightShader", "Shaders/RayTracing/RayTracingIndirectLight.hlsl", "RTIndirectLightRayGen", "lib_6_3");
+	MissShader = Gfx->RequestShader("RTIndirectLightShader", "Shaders/RayTracing/RayTracingIndirectLight.hlsl", "RTIndirectLightMiss", "lib_6_3");
 
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
@@ -64,11 +77,11 @@ void UHRTReflectionShader::OnCompile()
 	RTInfo.MissShader = MissShader;
 	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
-	RTInfo.MaxRecursionDepth = MaxReflectionRecursion;
+	RTInfo.MaxRecursionDepth = MaxIndirectLightRecursion;
 	RTState = Gfx->RequestRTState(RTInfo);
 }
 
-void UHRTReflectionShader::BindParameters()
+void UHRTIndirectLightShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
 
@@ -77,32 +90,31 @@ void UHRTReflectionShader::BindParameters()
 		BindTLAS(GTopLevelAS[Idx].get(), 1, Idx);
 	}
 
-	BindRWImage(GRTReflectionResult, 2, 0);
-	BindImage(GetGBuffersSRV(), 3);
+	BindRWImage(GRTIndirectLighting, 2);
+	BindConstant(RTIndirectLightConstants, 3, 0);
+	BindImage(GetGBuffersSRV(), 4);
 
 	// lights
-	BindStorage(GDirectionalLightBuffer, 4, 0, true);
-	BindStorage(GPointLightBuffer, 5, 0, true);
-	BindStorage(GSpotLightBuffer, 6, 0, true);
-	BindStorage(GSH9Data.get(), 7, 0, true);
+	BindStorage(GDirectionalLightBuffer, 5, 0, true);
+	BindStorage(GPointLightBuffer, 6, 0, true);
+	BindStorage(GSpotLightBuffer, 7, 0, true);
+	BindStorage(GSH9Data.get(), 8, 0, true);
 
-	// textures and samplers
-	BindImage(GSceneMip, 8);
-	BindImage(GSceneData, 9);
+	// textures
+	BindImage(GSceneMip, 9);
 	BindImage(GSceneMixedDepth, 10);
-	BindImage(GTranslucentBump, 11);
-	BindImage(GTranslucentSmoothness, 12);
-	BindImage(GSmoothSceneNormal, 13);
+	BindImage(GSceneData, 11);
+	BindImage(GSmoothSceneNormal, 12);
+	BindImage(GTranslucentBump, 13);
+	BindImage(GTranslucentSmoothness, 14);
 
 	// light lists (indices)
-	BindStorage(GInstanceLightsBuffer, 14, 0, true);
-	BindStorage(GPointLightListTransBuffer.get(), 15, 0, true);
-	BindStorage(GSpotLightListTransBuffer.get(), 16, 0, true);
-	BindSkyCube();
+	BindStorage(GInstanceLightsBuffer, 15, 0, true);
+	BindStorage(GPointLightListTransBuffer.get(), 16, 0, true);
+	BindStorage(GSpotLightListTransBuffer.get(), 17, 0, true);
 }
 
-void UHRTReflectionShader::BindSkyCube()
+UHRenderBuffer<UHRTIndirectLightConstants>* UHRTIndirectLightShader::GetConstants(const int32_t FrameIdx) const
 {
-	BindImage(GSkyLightCube, 17);
-	BindSampler(GSkyCubeSampler, 18);
+	return RTIndirectLightConstants[FrameIdx].get();
 }

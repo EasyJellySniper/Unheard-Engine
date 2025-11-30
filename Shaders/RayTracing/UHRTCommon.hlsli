@@ -11,6 +11,7 @@
 #define PAYLOAD_ISREFLECTION 1 << 0
 #define PAYLOAD_HITTRANSLUCENT 1 << 1
 #define PAYLOAD_HITREFRACTION 1 << 2
+#define PAYLOAD_ISINDIRECTLIGHT 1 << 3
 
 // perf hack mip bias for RT, it also reduces the noise from sharp textures
 static const float GRTMipBias = 2.0f;
@@ -22,6 +23,7 @@ struct UHInstanceLights
     uint SpotLightIndices[GMaxPointSpotLightPerInstance];
 };
 
+// struct has to be the same as the c++ define in RTShaderDefines.h
 struct UHDefaultPayload
 {
 	bool IsHit() 
@@ -38,15 +40,15 @@ struct UHDefaultPayload
         PayloadData = SrcPayload.PayloadData;
         
         HitDiffuse = SrcPayload.HitDiffuse;
-        HitNormal = SrcPayload.HitNormal;
-        HitWorldNormal = SrcPayload.HitWorldNormal;
+        HitMaterialNormal = SrcPayload.HitMaterialNormal;
+        HitVertexNormal = SrcPayload.HitVertexNormal;
         HitSpecular = SrcPayload.HitSpecular;
         HitEmissive = SrcPayload.HitEmissive;
         HitScreenUV = SrcPayload.HitScreenUV;
         
         HitDiffuseTrans = SrcPayload.HitDiffuseTrans;
-        HitNormalTrans = SrcPayload.HitNormalTrans;
-        HitWorldNormalTrans = SrcPayload.HitWorldNormalTrans;
+        HitMaterialNormalTrans = SrcPayload.HitMaterialNormalTrans;
+        HitVertexNormalTrans = SrcPayload.HitVertexNormalTrans;
         HitSpecularTrans = SrcPayload.HitSpecularTrans;
         HitEmissiveTrans = SrcPayload.HitEmissiveTrans;
         HitScreenUVTrans = SrcPayload.HitScreenUVTrans;
@@ -55,8 +57,9 @@ struct UHDefaultPayload
         
         IsInsideScreen = SrcPayload.IsInsideScreen;
         HitInstanceIndex = SrcPayload.HitInstanceIndex;
-        PackedData0 = SrcPayload.PackedData0;
+        HitWorldPos = SrcPayload.HitWorldPos;
         RayDir = SrcPayload.RayDir;
+        FresnelFactor = SrcPayload.FresnelFactor;
     }
 
 	float HitT;
@@ -68,16 +71,16 @@ struct UHDefaultPayload
 	
 	// for opaque
     float4 HitDiffuse;
-    float3 HitNormal;
-    float3 HitWorldNormal;
+    float3 HitMaterialNormal;
+    float3 HitVertexNormal;
     float4 HitSpecular;
 	float3 HitEmissive;
     float2 HitScreenUV;
 	
 	// for translucent
     float4 HitDiffuseTrans;
-    float3 HitNormalTrans;
-    float3 HitWorldNormalTrans;
+    float3 HitMaterialNormalTrans;
+    float3 HitVertexNormalTrans;
     float4 HitSpecularTrans;
 	// .a will store the opacity, which used differently from the HitAlpha above!
     float4 HitEmissiveTrans;
@@ -88,9 +91,10 @@ struct UHDefaultPayload
     uint IsInsideScreen;
     uint HitInstanceIndex;
     uint CurrentRecursion;
-    // PackedData0, this stores hit world position and the fresnel factor now
-    float4 PackedData0;
+
+    float3 HitWorldPos;
     float3 RayDir;
+    float FresnelFactor;
 };
 
 RayDesc GenerateCameraRay(uint2 ScreenPos)
@@ -143,7 +147,8 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
         // no need to trace for backface
         return false;
     }
-    NdotL *= saturate(DirLight.Color.a);
+    
+    float LightIntensity = saturate(DirLight.Color.a);
 
     RayDesc ShadowRay = (RayDesc)0;
     ShadowRay.Origin = WorldPos + WorldNormal * Gap;
@@ -157,18 +162,19 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
     TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
 
 	// store the max hit T to the result, system will perform PCSS later
-	// also output shadow attenuation, hit alpha and ndotl are considered
+	// also output shadow attenuation, hit alpha and LightIntensity are considered
     if (Payload.IsHit())
     {
         MaxDist = max(MaxDist, Payload.HitT);
-        Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+        Atten = lerp(Atten + LightIntensity, Atten, Payload.HitAlpha);
     }
     else
     {
-		// add attenuation by ndotl
-        Atten += NdotL;
+		// add attenuation by LightIntensity
+        Atten += LightIntensity;
     }
     
+    Atten = saturate(Atten);
     return true;
 }
 
@@ -206,7 +212,8 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
         // no need to trace for backface
         return false;
     }
-    NdotL *= saturate(PointLight.Color.a);
+    
+    float LightIntensity = saturate(PointLight.Color.a);
         
     UHDefaultPayload Payload = (UHDefaultPayload) 0;
     Payload.MipLevel = MipLevel;
@@ -215,14 +222,15 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         MaxDist = max(MaxDist, Payload.HitT);
-        Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+        Atten = lerp(Atten + LightIntensity, Atten, Payload.HitAlpha);
     }
     else
     {
-		// add attenuation by ndotl
-        Atten += NdotL;
+		// add attenuation by LightIntensity
+        Atten += LightIntensity;
     }
     
+    Atten = saturate(Atten);
     return true;
 }
 
@@ -261,7 +269,8 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
         // no need to trace for backface
         return false;
     }
-    NdotL *= saturate(SpotLight.Color.a);
+    
+    float LightIntensity = saturate(SpotLight.Color.a);
 		
     UHDefaultPayload Payload = (UHDefaultPayload) 0;
     Payload.MipLevel = MipLevel;
@@ -270,14 +279,15 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         MaxDist = max(MaxDist, Payload.HitT);
-        Atten = lerp(Atten + NdotL, Atten, Payload.HitAlpha);
+        Atten = lerp(Atten + LightIntensity, Atten, Payload.HitAlpha);
     }
     else
     {
-		// add attenuation by ndotl
-        Atten += NdotL;
+		// add attenuation by LightIntensity
+        Atten += LightIntensity;
     }
     
+    Atten = saturate(Atten);
     return true;
 }
 

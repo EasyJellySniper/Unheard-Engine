@@ -45,7 +45,7 @@ public:
 	UHGaussianFilterShader(UHGraphic* InGfx, std::string Name, const UHGaussianFilterType InType);
 	virtual void OnCompile() override;
 
-	void BindParameters(UHRenderBuilder& RenderBuilder, const int32_t CurrentFrame, UHTexture* Input, UHTexture* Output);
+	void BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output);
 
 private:
 	UHGaussianFilterType GaussianFilterType;

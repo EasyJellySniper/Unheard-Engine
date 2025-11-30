@@ -135,7 +135,7 @@ void UHShaderClass::ReleaseDescriptor()
 	}
 }
 
-void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding)
+void UHShaderClass::BindImage(const UHTexture* InImage, const int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -147,7 +147,20 @@ void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding)
 	}
 }
 
-void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int32_t CurrentFrameRT, bool bIsReadWrite, int32_t MipIdx)
+void UHShaderClass::BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t LayerIdx)
+{
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+		if (InImage)
+		{
+			Helper.WriteImage(InImage, DstBinding, false, UHINDEXNONE, LayerIdx);
+		}
+	}
+}
+
+void UHShaderClass::BindImage(const UHTexture* InImage, const int32_t DstBinding
+	, const int32_t CurrentFrameRT, const bool bIsReadWrite, const int32_t MipIdx)
 {
 	if (CurrentFrameRT < 0)
 	{
@@ -170,7 +183,7 @@ void UHShaderClass::BindImage(const UHTexture* InImage, int32_t DstBinding, int3
 	}
 }
 
-void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, int32_t DstBinding)
+void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, const int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -182,16 +195,32 @@ void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, int32_t Ds
 	}
 }
 
-void UHShaderClass::PushImage(const UHTexture* InImage, int32_t DstBinding, bool bIsReadWrite, int32_t MipIdx)
+void UHShaderClass::PushImage(const UHTexture* InImage, const int32_t DstBinding
+	, const bool bIsReadWrite, const int32_t MipIdx)
 {
 	VkDescriptorImageInfo ImageInfo{};
 	ImageInfo.imageLayout = bIsReadWrite ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	ImageInfo.imageView = (MipIdx == UHINDEXNONE) ? InImage->GetImageView() : InImage->GetImageView(MipIdx);
+	ImageInfo.imageView = (MipIdx == UHINDEXNONE) ? InImage->GetImageView() : InImage->GetImageViewPerMip(MipIdx);
 	PushImageInfos.push_back(ImageInfo);
 
 	VkWriteDescriptorSet WriteSet{};
 	WriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	WriteSet.descriptorType = bIsReadWrite ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	WriteSet.dstBinding = DstBinding;
+	WriteSet.descriptorCount = 1;
+
+	PushDescriptorSets.push_back(WriteSet);
+}
+
+void UHShaderClass::PushSampler(const UHSampler* InSampler, const int32_t DstBinding)
+{
+	VkDescriptorImageInfo ImageInfo{};
+	ImageInfo.sampler = InSampler->GetSampler();
+	PushImageInfos.push_back(ImageInfo);
+
+	VkWriteDescriptorSet WriteSet{};
+	WriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	WriteSet.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	WriteSet.dstBinding = DstBinding;
 	WriteSet.descriptorCount = 1;
 
@@ -210,7 +239,9 @@ void UHShaderClass::FlushPushDescriptor(VkCommandBuffer InCmdList)
 		{
 			PushDescriptorSets[Idx].pBufferInfo = &PushBufferInfos[BufferInfoIdx++];
 		}
-		else if (PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+		else if (PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE 
+			|| PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+			|| PushDescriptorSets[Idx].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
 		{
 			PushDescriptorSets[Idx].pImageInfo = &PushImageInfos[ImageInfoIdx++];
 		}
@@ -224,7 +255,7 @@ void UHShaderClass::FlushPushDescriptor(VkCommandBuffer InCmdList)
 }
 
 // bind RW image
-void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding)
+void UHShaderClass::BindRWImage(const UHTexture* InImage, const int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -237,7 +268,7 @@ void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding)
 }
 
 // bind RW image with mip index
-void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding, int32_t MipIdx)
+void UHShaderClass::BindRWImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t MipIdx)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -249,7 +280,7 @@ void UHShaderClass::BindRWImage(const UHTexture* InImage, int32_t DstBinding, in
 	}
 }
 
-void UHShaderClass::BindSampler(const UHSampler* InSampler, int32_t DstBinding)
+void UHShaderClass::BindSampler(const UHSampler* InSampler, const int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -261,7 +292,7 @@ void UHShaderClass::BindSampler(const UHSampler* InSampler, int32_t DstBinding)
 	}
 }
 
-void UHShaderClass::BindSampler(const std::vector<UHSampler*>& InSamplers, int32_t DstBinding)
+void UHShaderClass::BindSampler(const std::vector<UHSampler*>& InSamplers, const int32_t DstBinding)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 	{
@@ -273,7 +304,7 @@ void UHShaderClass::BindSampler(const std::vector<UHSampler*>& InSamplers, int32
 	}
 }
 
-void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, int32_t DstBinding, int32_t CurrentFrameRT)
+void UHShaderClass::BindTLAS(const UHAccelerationStructure* InTopAS, const int32_t DstBinding, const int32_t CurrentFrameRT)
 {
 	UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[CurrentFrameRT]);
 	if (InTopAS)
@@ -405,6 +436,11 @@ VkPipelineLayout UHShaderClass::GetPipelineLayout() const
 VkDescriptorSet UHShaderClass::GetDescriptorSet(int32_t FrameIdx) const
 {
 	return DescriptorSets[FrameIdx];
+}
+
+const VkPushConstantRange& UHShaderClass::GetPushConstantRange() const
+{
+	return PushConstantRange;
 }
 
 // add layout binding

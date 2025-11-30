@@ -19,8 +19,8 @@ struct GaussianFilterConstants
 };
 [[vk::push_constant]] GaussianFilterConstants Constants;
 
-RWTexture2D<float4> OutResult : register(u1);
-Texture2D InputTexture : register(t2);
+RWTexture2D<float4> OutResult : register(u0);
+Texture2D InputTexture : register(t1);
 
 groupshared float4 GColorCache[FILTER_THREADS + 2 * MAX_FILTER_RADIUS];
 
@@ -40,7 +40,7 @@ void HorizontalFilterCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupT
     // clamping the right edge for color cache
     if (GTid.x >= FILTER_THREADS - Constants.BlurRadius)
     {
-        int x = min(PixelCoord.x + Constants.BlurRadius, GResolution.x - 1);
+        int x = min(PixelCoord.x + Constants.BlurRadius, Constants.BlurResolution.x - 1);
         GColorCache[GTid.x + 2 * Constants.BlurRadius] = InputTexture[int2(x, PixelCoord.y)];
     }
     
@@ -75,7 +75,7 @@ void VerticalFilterCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThr
     // clamping the right edge for color cache
     if (GTid.y >= FILTER_THREADS - Constants.BlurRadius)
     {
-        int y = min(PixelCoord.y + Constants.BlurRadius, GResolution.y - 1);
+        int y = min(PixelCoord.y + Constants.BlurRadius, Constants.BlurResolution.y - 1);
         GColorCache[GTid.y + 2 * Constants.BlurRadius] = InputTexture[int2(PixelCoord.x, y)];
     }
     

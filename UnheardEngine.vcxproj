@@ -31,7 +31,7 @@
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{9b07606d-c24f-4789-a089-2d0114bbf68d}</ProjectGuid>
     <RootNamespace>UnheardEngine</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.20348.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -345,12 +345,14 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\KawaseBlurShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshInstanceTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
@@ -491,11 +493,13 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\KawaseBlurShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\TemporalAAShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\UpsampleShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.cpp" />
@@ -749,6 +753,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\ClearUAVComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RayTracingIndirectLight.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\KawaseBlurComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

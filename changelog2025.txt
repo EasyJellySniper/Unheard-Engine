@@ -104,3 +104,31 @@ Added texture array support for render textures. Ready for creating RT indirect 
 20-11-2025:
 Separated indirect lighting from light pass to another new pass.
 Refactor some resource barriers for performance.
+
+24-11-2025:
+Carry on RT indirect light implementation.
+
+25-11-2025:
+Remove the instance id output in shaders for now.
+
+26-11-2025:
+Carry on RT indirect light implementation. Added shader pass and got some results!
+Next is to compose the multi-frame results in the indirect light pass.
+
+27-11-2025:
+Carry on RT indirect light implementation. Applied the result in the object passes.
+Next is to blur the result as it looks too similar as the reflection now.
+Also need to try storing tracing result in the world space instead of screen space..
+Fixed a hidden dangling pointer bug when releasing the render textures.
+
+28-11-2025:
+Carry on RT indirect light implementation. Still refining the formula.
+It's getting better! The most difficult part to figure out is the shadows for indirect lighting (not occlusion).
+If the light is bounce from shadowed position, it should have lower intensity.
+Okay~almost done the lighting calculation part. Attenuation should be considered properly now.
+Next is to try storing results in world space UV for cache/stabilization purpose.
+
+29-11-2025:
+Carry on RT indirect light implementation. Applied realtime indirect occlusion in reflection pass and transparent pass.
+Separated PCSS parameters from system constant to another standable constant.
+Next is to think about world space storage for IL lights..

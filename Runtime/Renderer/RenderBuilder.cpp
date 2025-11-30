@@ -398,6 +398,11 @@ void UHRenderBuilder::BindRTDescriptorSet(VkPipelineLayout InLayout, const std::
 // ResourceBarrier: Single transition version
 void UHRenderBuilder::ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
 {
+	if (InTexture == nullptr)
+	{
+		return;
+	}
+
 	std::vector<UHTexture*> Tex = { InTexture };
 	ResourceBarrier(Tex, OldLayout, NewLayout, BaseMipLevel, BaseArrayLayer);
 }
@@ -430,7 +435,8 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 		// this barrier will transition 1 mip slice only for now
 		Barrier.subresourceRange.baseMipLevel = BaseMipLevel;
 		Barrier.subresourceRange.levelCount = 1;
-		Barrier.subresourceRange.layerCount = 1;
+		// allow multiple slices transition
+		Barrier.subresourceRange.layerCount = InTextures[Idx]->GetImageSlices();
 		Barrier.subresourceRange.baseArrayLayer = BaseArrayLayer;
 		Barrier.srcAccessMask = LayoutToAccessFlags[OldLayout];
 		Barrier.dstAccessMask = LayoutToAccessFlags[NewLayout];
@@ -765,13 +771,20 @@ void UHRenderBuilder::ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue)
 	vkCmdFillBuffer(CmdList, InBuffer, 0, VK_WHOLE_SIZE, InValue);
 }
 
-void UHRenderBuilder::ClearRenderTexture(UHRenderTexture* InTexture)
+void UHRenderBuilder::ClearRenderTexture(UHRenderTexture* InTexture, VkClearColorValue InClearColor, const int32_t LayerIdx)
 {
-	VkClearColorValue ClearColor = { {0.0f,0.0f,0.0f,0.0f} };
 	VkImageSubresourceRange Range = InTexture->GetImageViewInfo().subresourceRange;
 	// always clears the first mip for now
 	Range.levelCount = 1;
-	vkCmdClearColorImage(CmdList, InTexture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &ClearColor, 1, &Range);
+	
+	// clear specified layer
+	if (LayerIdx != UHINDEXNONE)
+	{
+		Range.baseArrayLayer = LayerIdx;
+		Range.layerCount = 1;
+	}
+
+	vkCmdClearColorImage(CmdList, InTexture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &InClearColor, 1, &Range);
 }
 
 void UHRenderBuilder::Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz)

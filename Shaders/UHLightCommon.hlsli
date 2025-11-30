@@ -85,7 +85,7 @@ float BlinnPhong(float M, float NdotH)
     return (M4 + 4.0f) * pow(NdotH, M4) / 4.0f;
 }
 
-float3 LightBRDF(UHLightInfo LightInfo)
+float3 LightBRDF(UHLightInfo LightInfo, bool bDiffuseOnly = false)
 {
     float3 LightColor = LightInfo.LightColor * LightInfo.ShadowMask;
     float3 LightDir = -LightInfo.LightDir;
@@ -94,6 +94,12 @@ float3 LightBRDF(UHLightInfo LightInfo)
     // Diffuse = N dot L
     float NdotL = saturate(dot(LightInfo.Normal, LightDir));
     float3 LightDiffuse = LightColor * NdotL;
+    
+    UHBRANCH
+    if (bDiffuseOnly)
+    {
+        return LightInfo.Diffuse * LightDiffuse;
+    }
 
     // Specular = SchlickFresnel * BlinnPhong * NdotL
     // safe normalize half dir
@@ -145,7 +151,31 @@ float TileToCoordY(uint InY)
     return InY * UHLIGHTCULLING_TILEY;
 }
 
-float3 CalculateDirLight(UHDirectionalLight DirLight, UHLightInfo LightInfo)
+float CalculatePointLightAttenuation(float Radius, float AttenNoise, float3 LightToWorld)
+{
+    // square distance attenuation
+    float LightAtten = 1.0f - saturate(length(LightToWorld) / Radius + AttenNoise);
+    LightAtten *= LightAtten;
+    
+    return LightAtten;
+}
+
+float CalculateSpotLightAttenuation(float Radius, float AttenNoise, float3 LightToWorld, float3 SpotLightDir
+    , float SpotAngle, float SpotInnerAngle)
+{
+    float LightAtten = CalculatePointLightAttenuation(Radius, AttenNoise, LightToWorld);
+
+     // squared spot angle attenuation
+    float Rho = dot(SpotLightDir, normalize(LightToWorld));
+    float SpotFactor = (Rho - cos(SpotAngle)) / (cos(SpotInnerAngle) - cos(SpotAngle));
+    SpotFactor = saturate(SpotFactor);
+        
+    LightAtten *= SpotFactor * SpotFactor;
+    
+    return LightAtten;
+}
+
+float3 CalculateDirLight(UHDirectionalLight DirLight, UHLightInfo LightInfo, bool bDiffuseOnly = false)
 {
     UHBRANCH
     if (!DirLight.bIsEnabled)
@@ -155,10 +185,10 @@ float3 CalculateDirLight(UHDirectionalLight DirLight, UHLightInfo LightInfo)
         
     LightInfo.LightColor = DirLight.Color.rgb;
     LightInfo.LightDir = DirLight.Dir;
-    return LightBRDF(LightInfo);
+    return LightBRDF(LightInfo, bDiffuseOnly);
 }
 
-float3 CalculatePointLight(UHPointLight PointLight, UHLightInfo LightInfo)
+float3 CalculatePointLight(UHPointLight PointLight, UHLightInfo LightInfo, bool bDiffuseOnly = false)
 {
     UHBRANCH
     if (!PointLight.bIsEnabled)
@@ -170,15 +200,13 @@ float3 CalculatePointLight(UHPointLight PointLight, UHLightInfo LightInfo)
     float3 LightToWorld = LightInfo.WorldPos - PointLight.Position;
     LightInfo.LightDir = normalize(LightToWorld);
 		
-	// square distance attenuation
-    float LightAtten = 1.0f - saturate(length(LightToWorld) / PointLight.Radius + LightInfo.AttenNoise);
-    LightAtten *= LightAtten;
+    float LightAtten = CalculatePointLightAttenuation(PointLight.Radius, LightInfo.AttenNoise, LightToWorld);
     LightInfo.ShadowMask = LightAtten * LightInfo.ShadowMask;
 		
-    return LightBRDF(LightInfo);
+    return LightBRDF(LightInfo, bDiffuseOnly);
 }
 
-float3 CalculateSpotLight(UHSpotLight SpotLight, UHLightInfo LightInfo)
+float3 CalculateSpotLight(UHSpotLight SpotLight, UHLightInfo LightInfo, bool bDiffuseOnly = false)
 {
     UHBRANCH
     if (!SpotLight.bIsEnabled)
@@ -190,19 +218,12 @@ float3 CalculateSpotLight(UHSpotLight SpotLight, UHLightInfo LightInfo)
     LightInfo.LightDir = SpotLight.Dir;
     float3 LightToWorld = LightInfo.WorldPos - SpotLight.Position;
         
-    // squared distance attenuation
-    float LightAtten = 1.0f - saturate(length(LightToWorld) / SpotLight.Radius + LightInfo.AttenNoise);
-    LightAtten *= LightAtten;
-        
-    // squared spot angle attenuation
-    float Rho = dot(SpotLight.Dir, normalize(LightToWorld));
-    float SpotFactor = (Rho - cos(SpotLight.Angle)) / (cos(SpotLight.InnerAngle) - cos(SpotLight.Angle));
-    SpotFactor = saturate(SpotFactor);
-        
-    LightAtten *= SpotFactor * SpotFactor;
+    float LightAtten = CalculateSpotLightAttenuation(SpotLight.Radius, LightInfo.AttenNoise
+        , LightToWorld, SpotLight.Dir, SpotLight.Angle, SpotLight.InnerAngle);
+
     LightInfo.ShadowMask = LightAtten * LightInfo.ShadowMask;
 		
-    return LightBRDF(LightInfo);
+    return LightBRDF(LightInfo, bDiffuseOnly);
 }
 
 #endif

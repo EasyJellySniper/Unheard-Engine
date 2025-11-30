@@ -14,7 +14,9 @@ public:
 
 	// write constant buffer once
 	template<typename T>
-	void WriteConstantBuffer(const UHRenderBuffer<T>* InBuffer, uint32_t InDstBinding, uint64_t InOffset = 0)
+	void WriteConstantBuffer(const UHRenderBuffer<T>* InBuffer
+		, const uint32_t InDstBinding
+		, const uint64_t InOffset = 0)
 	{
 		VkDescriptorBufferInfo NewInfo{};
 		NewInfo.buffer = InBuffer->GetBuffer();
@@ -34,7 +36,10 @@ public:
 
 	// write storage buffer once
 	template<typename T>
-	void WriteStorageBuffer(const UHRenderBuffer<T>* InBuffer, uint32_t InDstBinding, uint64_t InOffset = 0, bool bFullRange = false)
+	void WriteStorageBuffer(const UHRenderBuffer<T>* InBuffer
+		, const uint32_t InDstBinding
+		, const uint64_t InOffset = 0
+		, const bool bFullRange = false)
 	{
 		VkDescriptorBufferInfo NewInfo{};
 		NewInfo.buffer = InBuffer->GetBuffer();
@@ -62,7 +67,7 @@ public:
 
 	// write multiple storage buffer, this will always bind full range and 0 offset for individual buffer
 	template<typename T>
-	void WriteStorageBuffer(const std::vector<UHRenderBuffer<T>*>& InBuffers, uint32_t InDstBinding)
+	void WriteStorageBuffer(const std::vector<UHRenderBuffer<T>*>& InBuffers, const uint32_t InDstBinding)
 	{
 		std::vector<VkDescriptorBufferInfo> NewInfos(InBuffers.size());
 
@@ -97,7 +102,7 @@ public:
 	}
 
 	// write multiple storage buffer, but this uses VkDescriptorBufferInfo as input directly
-	void WriteStorageBuffer(const std::vector<VkDescriptorBufferInfo>& InBufferInfos, uint32_t InDstBinding)
+	void WriteStorageBuffer(const std::vector<VkDescriptorBufferInfo>& InBufferInfos, const uint32_t InDstBinding)
 	{
 		VkWriteDescriptorSet DescriptorWrite{};
 		DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -111,11 +116,12 @@ public:
 	}
 
 	// write image/sampler once
-	void WriteImage(const UHTexture* InTexture, uint32_t InDstBinding, bool bIsReadWrite = false, int32_t MipIdx = UHINDEXNONE);
-	void WriteImage(const std::vector<UHTexture*>& InTextures, uint32_t InDstBinding);
-	void WriteSampler(const UHSampler* InSampler, uint32_t InDstBinding);
-	void WriteSampler(const std::vector<UHSampler*>& InSamplers, uint32_t InDstBinding);
-	void WriteTLAS(const UHAccelerationStructure* InAS, uint32_t InDstBinding);
+	void WriteImage(const UHTexture* InTexture, const uint32_t InDstBinding, const bool bIsReadWrite = false
+		, const int32_t MipIdx = UHINDEXNONE, const int32_t LayerIdx = UHINDEXNONE);
+	void WriteImage(const std::vector<UHTexture*>& InTextures, const uint32_t InDstBinding);
+	void WriteSampler(const UHSampler* InSampler, const uint32_t InDstBinding);
+	void WriteSampler(const std::vector<UHSampler*>& InSamplers, const uint32_t InDstBinding);
+	void WriteTLAS(const UHAccelerationStructure* InAS, const uint32_t InDstBinding);
 
 private:
 	VkDevice LogicalDevice;

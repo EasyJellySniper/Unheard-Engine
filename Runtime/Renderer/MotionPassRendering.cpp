@@ -165,8 +165,8 @@ void UHDeferredShadingRenderer::RenderMotionPass(UHRenderBuilder& RenderBuilder)
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 			RenderBuilder.FlushResourceBarrier();
-			RenderBuilder.ClearRenderTexture(GTranslucentBump);
-			RenderBuilder.ClearRenderTexture(GTranslucentSmoothness);
+			RenderBuilder.ClearRenderTexture(GTranslucentBump, GTransparentClearColor);
+			RenderBuilder.ClearRenderTexture(GTranslucentSmoothness, GTransparentClearColor);
 
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentBump, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 			RenderBuilder.PushResourceBarrier(UHImageBarrier(GTranslucentSmoothness, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));

@@ -140,16 +140,14 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     float GEnvCubeMipMapCount;
     uint GDefaultAnisoSamplerIndex;
     uint GOpaqueSceneTextureIndex;
-	// 1 = 3x3, 2 = 5x5..etc, will be clamped between 1 to 3
-    int GPCSSKernal;
-	
     float GFinalReflectionStrength;
-    float GNearPlane;
-    float GRTCullingDistance;
-    float GPCSSMinPenumbra;
 	
-    float GPCSSMaxPenumbra;
-    float GPCSSBlockerDistScale;
+    float3 GSceneCenter;
+    float GNearPlane;
+	
+    float3 GSceneExtent;
+    float GRTCullingDistance;
+	
     uint GMaxReflectionRecursion;
     float GScreenMipCount;
 }

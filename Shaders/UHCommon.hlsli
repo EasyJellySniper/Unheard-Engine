@@ -5,6 +5,8 @@
 #define UH_FLOAT_EPSILON 1.19209e-07
 #define UH_FLOAT_MAX 3.402823466e+38F
 #define UH_PI 3.141592653589793f
+// inverse PI = 1.0f / PI
+#define UH_INVERSE_PI 0.3183098861837f
 #define UH_RAD_TO_DEG 57.29577866f
 
 struct UHRendererInstance
@@ -383,6 +385,15 @@ float SineApprox(float Angle)
 {
     Angle *= UH_RAD_TO_DEG;
     return 4.0f * Angle * (180.0f - Angle) / (40500.0f - Angle * (180.0f - Angle));
+}
+
+float2 SphereDirToUV(float3 SphereDir)
+{
+    float2 OutputUV;
+    OutputUV.x = 0.5f + atan2(SphereDir.z, SphereDir.x) * 0.5f * UH_INVERSE_PI;
+    OutputUV.y = 0.5f + asin(SphereDir.y) * UH_INVERSE_PI;
+    
+    return OutputUV;
 }
 
 #endif

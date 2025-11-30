@@ -7,6 +7,8 @@ UHIndirectLightPassShader::UHIndirectLightPassShader(UHGraphic* InGfx, std::stri
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(GNumOfGBuffersSRV, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -25,11 +27,22 @@ void UHIndirectLightPassShader::OnCompile()
 	CreateComputeState(Info);
 }
 
-void UHIndirectLightPassShader::BindParameters()
+void UHIndirectLightPassShader::BindParameters(bool bUseRTIndirectLight)
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
-	BindRWImage(GSceneResult, 1);
+	BindRWImage(GIndirectLightResult, 1);
 	BindImage(GetGBuffersSRV(), 2);
-	BindStorage(GSH9Data.get(), 3, 0, true);
-	BindSampler(GPointClampedSampler, 4);
+
+	if (bUseRTIndirectLight)
+	{
+		BindImage(GRTIndirectLighting, 3);
+	}
+	else
+	{
+		BindImage(GBlackTextureArray, 3);
+	}
+
+	BindImage(GSceneMixedDepth, 4);
+	BindStorage(GSH9Data.get(), 5, 0, true);
+	BindSampler(GLinearClampedSampler, 6);
 }

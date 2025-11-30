@@ -134,7 +134,7 @@ public:
 	void ClearUAVBuffer(VkBuffer InBuffer, uint32_t InValue);
 
 	// clear image
-	void ClearRenderTexture(UHRenderTexture* InTexture);
+	void ClearRenderTexture(UHRenderTexture* InTexture, VkClearColorValue InClearColor, const int32_t LayerIdx = UHINDEXNONE);
 
 	// dispatch call
 	void Dispatch(uint32_t Gx, uint32_t Gy, uint32_t Gz);

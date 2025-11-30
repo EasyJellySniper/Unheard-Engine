@@ -59,7 +59,7 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Blur mips and generate SH9");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Generate SH9");
 	{
 		RenderBuilder.BindComputeState(SH9Shader->GetComputeState());
 		RenderBuilder.BindDescriptorSetCompute(SH9Shader->GetPipelineLayout(), SH9Shader->GetDescriptorSet(CurrentFrameRT));

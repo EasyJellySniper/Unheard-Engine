@@ -105,6 +105,10 @@ public:
 		, bEnableRTShadow(true)
 		, bEnableRTReflection(true)
 		, bEnableRTIndirectLighting(false)
+		, RTIndirectLightScale(0.75f)
+		, RTIndirectLightFadeDistance(20.0f)
+		, RTIndirectTMax(50.0f)
+		, RTIndirectOcclusionDistance(5.0f)
 	{
 
 	}
@@ -140,6 +144,10 @@ public:
 
 	// RT indirect lighting
 	bool bEnableRTIndirectLighting;
+	float RTIndirectLightScale;
+	float RTIndirectLightFadeDistance;
+	float RTIndirectTMax;
+	float RTIndirectOcclusionDistance;
 
 	bool bEnableAsyncCompute;
 	bool bEnableHardwareOcclusion;

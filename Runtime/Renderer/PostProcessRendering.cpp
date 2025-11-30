@@ -145,7 +145,7 @@ uint32_t UHDeferredShadingRenderer::RenderSceneToSwapChain(UHRenderBuilder& Rend
 
 		// manually clear swap chain
 		RenderBuilder.ResourceBarrier(SwapChainRT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		RenderBuilder.ClearRenderTexture(SwapChainRT);
+		RenderBuilder.ClearRenderTexture(SwapChainRT, GTransparentClearColor);
 
 		if (RTParams.bEnableRendering)
 		{

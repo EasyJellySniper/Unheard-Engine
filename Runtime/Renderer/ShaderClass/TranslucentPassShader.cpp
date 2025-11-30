@@ -32,7 +32,7 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	// RT shadow/reflection result, point & spot light culling buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -103,9 +103,9 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 		BindImage(GBlackTexture, 10);
 	}
 
-	BindStorage(GPointLightListTransBuffer.get(), 11, 0, true);
-	BindStorage(GSpotLightListTransBuffer.get(), 12, 0, true);
-	BindStorage(GSH9Data.get(), 13, 0, true);
+	BindImage(GIndirectLightResult, 11);
+	BindStorage(GPointLightListTransBuffer.get(), 12, 0, true);
+	BindStorage(GSpotLightListTransBuffer.get(), 13, 0, true);
 	BindSkyCube();
 }
 

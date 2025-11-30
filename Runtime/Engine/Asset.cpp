@@ -52,9 +52,13 @@ UHAssetManager::UHAssetManager()
 		SystemTex->SetTextureData(TexData);
 		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
 
-		// 2x2 black tex
+		// 2x2 black tex, with alpha channel = 1
 		SystemTex = MakeUnique<UHTexture2D>("UHBlackTex", "UHBlackTex", SystemTexSize, FallbackTexFormat, TexSettings);
 		memset(TexData.data(), 0, TexData.size());
+		for (size_t Idx = 0; Idx < TexData.size(); Idx += 4)
+		{
+			TexData[Idx + 3] = 255;
+		}
 		SystemTex->SetTextureData(TexData);
 		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
 
