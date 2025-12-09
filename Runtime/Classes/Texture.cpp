@@ -117,7 +117,6 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 	ImageFormat = InInfo.Format;
 	ImageExtent = InInfo.Extent;
 	MipMapCount = TextureSettings.bUseMipmap ? static_cast<uint32_t>(std::floor(std::log2((std::min)(ImageExtent.width, ImageExtent.height)))) + 1 : 1;
-	TextureInfo = InInfo;
 
 	// init image layout
 	ImageLayouts.resize(MipMapCount);
@@ -144,7 +143,11 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 		}
 		else if (InInfo.ViewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
 		{
-			CreateInfo.arrayLayers = TextureInfo.NumSlices;
+			CreateInfo.arrayLayers = NumSlices;
+		}
+		else if (InInfo.ViewType == VK_IMAGE_VIEW_TYPE_3D)
+		{
+			CreateInfo.extent.depth = NumSlices;
 		}
 
 		// setup necessary bits
@@ -292,7 +295,7 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 	}
 	else if (InViewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
 	{
-		CreateInfo.subresourceRange.layerCount = TextureInfo.NumSlices;
+		CreateInfo.subresourceRange.layerCount = NumSlices;
 	}
 
 	if (IsDepthFormat())

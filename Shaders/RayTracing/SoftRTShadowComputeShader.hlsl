@@ -158,7 +158,7 @@ void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
 	}
 	
     uint2 PixelCoord = DTid.xy;
-    OutRTShadow[PixelCoord] = 0;
+    OutRTShadow[PixelCoord] = 1;
 
 	// early leave if there is no lights
 	UHBRANCH

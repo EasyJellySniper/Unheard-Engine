@@ -108,7 +108,9 @@ public:
 		, RTIndirectLightScale(0.75f)
 		, RTIndirectLightFadeDistance(20.0f)
 		, RTIndirectTMax(50.0f)
-		, RTIndirectOcclusionDistance(5.0f)
+		, OcclusionStartDistance(0.0f)
+		, OcclusionEndDistance(15.0f)
+		, bEnableRTIndirectCache(false)
 	{
 
 	}
@@ -147,7 +149,9 @@ public:
 	float RTIndirectLightScale;
 	float RTIndirectLightFadeDistance;
 	float RTIndirectTMax;
-	float RTIndirectOcclusionDistance;
+	float OcclusionStartDistance;
+	float OcclusionEndDistance;
+	bool bEnableRTIndirectCache;
 
 	bool bEnableAsyncCompute;
 	bool bEnableHardwareOcclusion;

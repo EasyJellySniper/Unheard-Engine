@@ -2,13 +2,30 @@
 #include "Texture.h"
 #include "RenderBuffer.h"
 
-class UHGraphic;
+// render texture settings with various constructors for use
+struct UHRenderTextureSettings
+{
+	UHRenderTextureSettings()
+		: bIsReadWrite(false)
+		, bUseMipmap(false)
+		, NumSlices(1)
+		, bIsVolume(false)
+		, OverrideTexture(nullptr)
+	{
+	}
 
+	bool bIsReadWrite;
+	bool bUseMipmap;
+	uint32_t NumSlices;
+	bool bIsVolume;
+	VkImage OverrideTexture;
+};
+
+class UHGraphic;
 class UHRenderTexture : public UHTexture
 {
 public:
-	UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bReadWrite = false, bool bUseMipmap = false
-		, uint32_t NumSlices = 1);
+	UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHRenderTextureSettings InRTSettings);
 
 	// generate mip maps
 	virtual void GenerateMipMaps(UHGraphic* InGfx, UHRenderBuilder& InRenderBuilder) override;
@@ -21,8 +38,7 @@ private:
 	// create RT
 	bool CreateRT();
 
-	bool bIsReadWrite;
-	bool bUseMipmap;
+	UHRenderTextureSettings RenderTextureSettings;
 
 	friend UHGraphic;
 };

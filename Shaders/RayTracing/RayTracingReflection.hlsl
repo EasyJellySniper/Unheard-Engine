@@ -32,9 +32,7 @@ TextureCube EnvCube : register(t17);
 
 // samplers
 SamplerState EnvSampler : register(s18);
-
-static const int GMaxDirLight = 2;
-static const int GSmoothNormalDownFactor = 2;
+SamplerState LinearClampped : register(s19);
 
 void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload, UHLightInfo LightInfo, inout float3 Result)
 {
@@ -285,7 +283,7 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     // directional lights, with max number limitation
     if (GNumDirLights > 0)
     {
-        for (uint Ldx = 0; Ldx < min(GNumDirLights, GMaxDirLight); Ldx++)
+        for (uint Ldx = 0; Ldx < min(GNumDirLights, GRTMaxDirLight); Ldx++)
         {
             Result += CalculateDirLight(UHDirLights[Ldx], LightInfo);
         }
@@ -404,7 +402,7 @@ void RTReflectionRayGen()
     UHBRANCH
     if (bDenoise && bHasBumpThisPixel)
     {
-        SceneNormal = SmoothSceneNormalTexture[PixelCoord / GSmoothNormalDownFactor].xyz;
+        SceneNormal = SmoothSceneNormalTexture.SampleLevel(LinearClampped, ScreenUV, 0).xyz;
     }
     else
     {

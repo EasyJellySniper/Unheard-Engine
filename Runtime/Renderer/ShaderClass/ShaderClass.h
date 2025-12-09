@@ -164,11 +164,13 @@ public:
 	void BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t LayerIdx);
 	void BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t CurrentFrameRT, const bool bIsReadWrite, const int32_t MipIdx);
 	void BindImage(const std::vector<UHTexture*> InImages, const int32_t DstBinding);
-	void PushImage(const UHTexture* InImage, const int32_t DstBinding, const bool bIsReadWrite, const int32_t MipIdx);
+	void PushImage(const UHTexture* InImage, const int32_t DstBinding, const bool bIsReadWrite, const int32_t MipIdx
+		, const int32_t LayerIdx = UHINDEXNONE);
 	void PushSampler(const UHSampler* InSampler, const int32_t DstBinding);
 	void FlushPushDescriptor(VkCommandBuffer InCmdList);
 
 	void BindRWImage(const UHTexture* InImage, const int32_t DstBinding);
+	void BindRWImage(const std::vector<UHRenderTexture*> InImages, const int32_t DstBinding);
 	void BindRWImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t MipIdx);
 
 	void BindSampler(const UHSampler* InSampler, const int32_t DstBinding);

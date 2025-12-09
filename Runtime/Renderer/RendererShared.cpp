@@ -51,6 +51,7 @@ UHTextureCube* GSkyLightCube;
 UHSampler* GPointClampedSampler;
 UHSampler* GLinearClampedSampler;
 UHSampler* GSkyCubeSampler;
+UHSampler* GLinearClamped3DSampler;
 UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 
 UHTexture2D* GBlackTexture;

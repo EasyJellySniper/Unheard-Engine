@@ -39,6 +39,7 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 
 	// samplers
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateLayoutAndDescriptor(ExtraLayouts);
 
@@ -99,6 +100,7 @@ void UHRTReflectionShader::BindParameters()
 	BindStorage(GPointLightListTransBuffer.get(), 15, 0, true);
 	BindStorage(GSpotLightListTransBuffer.get(), 16, 0, true);
 	BindSkyCube();
+	BindSampler(GLinearClampedSampler, 19);
 }
 
 void UHRTReflectionShader::BindSkyCube()

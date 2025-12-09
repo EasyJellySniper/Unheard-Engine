@@ -1,5 +1,6 @@
 #include "IndirectLightPassShader.h"
 #include "../RendererShared.h"
+#include "RayTracing/RTIndirectLightShader.h"
 
 UHIndirectLightPassShader::UHIndirectLightPassShader(UHGraphic* InGfx, std::string Name)
 	: UHShaderClass(InGfx, Name, typeid(UHIndirectLightPassShader), nullptr)
@@ -7,8 +8,11 @@ UHIndirectLightPassShader::UHIndirectLightPassShader(UHGraphic* InGfx, std::stri
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(GNumOfGBuffersSRV, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -37,12 +41,9 @@ void UHIndirectLightPassShader::BindParameters(bool bUseRTIndirectLight)
 	{
 		BindImage(GRTIndirectLighting, 3);
 	}
-	else
-	{
-		BindImage(GBlackTextureArray, 3);
-	}
 
 	BindImage(GSceneMixedDepth, 4);
-	BindStorage(GSH9Data.get(), 5, 0, true);
-	BindSampler(GLinearClampedSampler, 6);
+	BindImage(GMotionVectorRT, 5);
+	BindStorage(GSH9Data.get(), 6, 0, true);
+	BindSampler(GLinearClampedSampler, 7);
 }

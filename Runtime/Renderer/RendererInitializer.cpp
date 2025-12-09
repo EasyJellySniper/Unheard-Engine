@@ -15,7 +15,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, TimerInterface(InEngine->GetGameTimer())
 	, RenderResolution(VkExtent2D())
 	, RTShadowExtent(VkExtent2D())
-	, RTIndirectLightingExtent(VkExtent2D())
+	, RTIndirectLightExtent(VkExtent2D())
 	, CurrentFrameGT(0)
 	, CurrentFrameRT(0)
 	, bIsResetNeededShared(false)
@@ -330,8 +330,11 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		VkExtent2D FallbackSize;
 		FallbackSize.width = 2;
 		FallbackSize.height = 2;
+
+		UHRenderTextureSettings RTSettings{};
+		RTSettings.NumSlices = 8;
 		GBlackTextureArray = GraphicInterface->RequestRenderTexture("UHBlackTexArray", FallbackSize, UHTextureFormat::UH_FORMAT_BGRA8_UNORM
-			, false, false, MaxNumOfIndirectLightRays);
+			, RTSettings);
 
 		RenderBuilder.ResourceBarrier(GBlackTextureArray, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		RenderBuilder.ClearRenderTexture(GBlackTextureArray, GBlackClearColor);
@@ -375,6 +378,13 @@ void UHDeferredShadingRenderer::PrepareSamplers()
 	GLinearClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
 	LinearClampSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), GLinearClampedSampler);
 
+	// linear clamp 3D sampler
+	UHSamplerInfo LinearClamp3DInfo = LinearClampedInfo;
+	LinearClamp3DInfo.AddressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	LinearClamp3DInfo.MipBias = 0;
+	GLinearClamped3DSampler = GraphicInterface->RequestTextureSampler(LinearClamp3DInfo);
+
+	// aniso clamped sampler
 	LinearClampedInfo.MaxAnisotropy = 16;
 	UHSampler* AnisoClampedSampler = GraphicInterface->RequestTextureSampler(LinearClampedInfo);
 	DefaultSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), AnisoClampedSampler);
@@ -474,6 +484,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	GaussianFilterVShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterVShader", UHGaussianFilterType::FilterVertical);
 
 	UpsampleNearest2x2Shader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmm2x2Shader", UHUpsampleMethod::Nearest2x2);
+	UpsampleNearest4x4Shader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmm4x4Shader", UHUpsampleMethod::Nearest4x4);
 	UpsampleNearestHShader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmmHShader", UHUpsampleMethod::NearestHorizontal);
 
 	KawaseDownsampleShader = MakeUnique<UHKawaseBlurShader>(GraphicInterface, "KawaseDownsampleShader", UHKawaseBlurType::Downsample);
@@ -734,6 +745,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	UH_SAFE_RELEASE(GaussianFilterHShader);
 	UH_SAFE_RELEASE(GaussianFilterVShader);
 	UH_SAFE_RELEASE(UpsampleNearest2x2Shader);
+	UH_SAFE_RELEASE(UpsampleNearest4x4Shader);
 	UH_SAFE_RELEASE(UpsampleNearestHShader);
 	UH_SAFE_RELEASE(KawaseDownsampleShader);
 	UH_SAFE_RELEASE(KawaseUpsampleShader)
@@ -785,12 +797,14 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	const UHTextureFormat DepthFormat = (GraphicInterface->Is24BitDepthSupported()) ? UHTextureFormat::UH_FORMAT_X8_D24 : UHTextureFormat::UH_FORMAT_D32F;
 	const UHTextureFormat MotionFormat = UHTextureFormat::UH_FORMAT_RG16F;
 	const UHTextureFormat MaskFormat = UHTextureFormat::UH_FORMAT_R8_UNORM;
+	UHRenderTextureSettings RenderTextureSettings{};
+	RenderTextureSettings.bIsReadWrite = true;
 
 	// create GBuffers, see shader usage for each of them
 	GSceneDiffuse = GraphicInterface->RequestRenderTexture("GBufferA", RenderResolution, DiffuseFormat);
 	GSceneNormal = GraphicInterface->RequestRenderTexture("GBufferB", RenderResolution, NormalFormat);
 	GSceneMaterial = GraphicInterface->RequestRenderTexture("GBufferC", RenderResolution, SpecularFormat);
-	GSceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, true);
+	GSceneResult = GraphicInterface->RequestRenderTexture("SceneResult", RenderResolution, SceneResultFormat, RenderTextureSettings);
 	GSceneMip = GraphicInterface->RequestRenderTexture("SceneMip", RenderResolution, SceneMipFormat);
 	GSceneData = GraphicInterface->RequestRenderTexture("SceneData", RenderResolution, SceneDataFormat);
 
@@ -803,16 +817,18 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GTranslucentSmoothness = GraphicInterface->RequestRenderTexture("TranslucentSmoothness", RenderResolution, MaskFormat);
 
 	// post process buffer, use the same format as scene result
-	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, true);
+	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, RenderTextureSettings);
 	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, HistoryResultFormat);
 	GOpaqueSceneResult = GraphicInterface->RequestRenderTexture("OpaqueSceneResult", RenderResolution, HistoryResultFormat);
 
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
 
-	// indirect light result
-	GIndirectLightResult = GraphicInterface->RequestRenderTexture("IndirectLightResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM
-		, true);
+	// indirect light result in half res
+	VkExtent2D HalfRes = RenderResolution;
+	HalfRes.width >>= 1;
+	HalfRes.height >>= 1;
+	GIndirectLightResult = GraphicInterface->RequestRenderTexture("IndirectLightResult", HalfRes, UHTextureFormat::UH_FORMAT_RGBA8_UNORM, RenderTextureSettings);
 
 	// rt buffers
 	ResizeRayTracingBuffers(false);

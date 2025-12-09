@@ -407,6 +407,61 @@ void UHRenderBuilder::ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLay
 	ResourceBarrier(Tex, OldLayout, NewLayout, BaseMipLevel, BaseArrayLayer);
 }
 
+VkImageMemoryBarrier UHRenderBuilder::SetupBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout
+	, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
+{
+	VkImageMemoryBarrier Barrier{};
+	Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	Barrier.oldLayout = OldLayout;
+	Barrier.newLayout = NewLayout;
+	Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+	// similar to the setting in UHRenderTexture::CreateImageView, so get the image view info for setting
+	VkImageViewCreateInfo ImageViewInfo = InTexture->GetImageViewInfo();
+
+	Barrier.image = InTexture->GetImage();
+	Barrier.subresourceRange = ImageViewInfo.subresourceRange;
+
+	// this barrier will transition 1 mip slice only for now
+	Barrier.subresourceRange.baseMipLevel = BaseMipLevel;
+	Barrier.subresourceRange.levelCount = 1;
+	// allow multiple slices transition for 2D arrays
+	Barrier.subresourceRange.layerCount = (ImageViewInfo.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+		? InTexture->GetImageSlices() : 1;
+	Barrier.subresourceRange.baseArrayLayer = BaseArrayLayer;
+	Barrier.srcAccessMask = LayoutToAccessFlags[OldLayout];
+	Barrier.dstAccessMask = LayoutToAccessFlags[NewLayout];
+
+	InTexture->SetImageLayout(NewLayout, BaseMipLevel);
+	return Barrier;
+}
+
+void UHRenderBuilder::ResourceBarrier(std::vector<UHRenderTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
+{
+	if (InTextures.size() == 0)
+	{
+		return;
+	}
+
+	std::vector<VkImageMemoryBarrier> Barriers(InTextures.size());
+	for (size_t Idx = 0; Idx < InTextures.size(); Idx++)
+	{
+		Barriers[Idx] = SetupBarrier(InTextures[Idx], OldLayout, NewLayout, BaseMipLevel, BaseArrayLayer);
+	}
+
+	VkPipelineStageFlags SourceStage = LayoutToStageFlags[OldLayout];
+	VkPipelineStageFlags DestStage = LayoutToStageFlags[NewLayout];
+
+	vkCmdPipelineBarrier(
+		CmdList,
+		SourceStage, DestStage,
+		0,
+		0, nullptr,
+		0, nullptr,
+		static_cast<uint32_t>(Barriers.size()), Barriers.data());
+}
+
 // ResourceBarrier: Multiple textures but the same layout transition
 void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel, uint32_t BaseArrayLayer)
 {
@@ -416,33 +471,9 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 	}
 
 	std::vector<VkImageMemoryBarrier> Barriers(InTextures.size());
-
 	for (size_t Idx = 0; Idx < InTextures.size(); Idx++)
 	{
-		VkImageMemoryBarrier Barrier{};
-		Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		Barrier.oldLayout = OldLayout;
-		Barrier.newLayout = NewLayout;
-		Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-		// similar to the setting in UHRenderTexture::CreateImageView, so get the image view info for setting
-		VkImageViewCreateInfo ImageViewInfo = InTextures[Idx]->GetImageViewInfo();
-
-		Barrier.image = InTextures[Idx]->GetImage();
-		Barrier.subresourceRange = ImageViewInfo.subresourceRange;
-
-		// this barrier will transition 1 mip slice only for now
-		Barrier.subresourceRange.baseMipLevel = BaseMipLevel;
-		Barrier.subresourceRange.levelCount = 1;
-		// allow multiple slices transition
-		Barrier.subresourceRange.layerCount = InTextures[Idx]->GetImageSlices();
-		Barrier.subresourceRange.baseArrayLayer = BaseArrayLayer;
-		Barrier.srcAccessMask = LayoutToAccessFlags[OldLayout];
-		Barrier.dstAccessMask = LayoutToAccessFlags[NewLayout];
-
-		Barriers[Idx] = Barrier;
-		InTextures[Idx]->SetImageLayout(NewLayout, BaseMipLevel);
+		Barriers[Idx] = SetupBarrier(InTextures[Idx], OldLayout, NewLayout, BaseMipLevel, BaseArrayLayer);
 	}
 
 	VkPipelineStageFlags SourceStage = LayoutToStageFlags[OldLayout];
@@ -513,11 +544,12 @@ void UHRenderBuilder::FlushResourceBarrier()
 	std::vector<VkImageMemoryBarrier2> Barriers(ImageBarriers.size());
 	for (size_t Idx = 0; Idx < ImageBarriers.size(); Idx++)
 	{
+		const UHTexture* InTexture = ImageBarriers[Idx].Texture;
 		VkImageMemoryBarrier2 TempBarrier{};
 		TempBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 
 		// old layout must be properly set.
-		VkImageLayout OldLayout = ImageBarriers[Idx].Texture->GetImageLayout(ImageBarriers[Idx].BaseMipLevel);
+		VkImageLayout OldLayout = InTexture->GetImageLayout(ImageBarriers[Idx].BaseMipLevel);
 		TempBarrier.oldLayout = OldLayout;
 		TempBarrier.newLayout = ImageBarriers[Idx].NewLayout;
 		TempBarrier.srcAccessMask = LayoutToAccessFlags[TempBarrier.oldLayout];
@@ -526,13 +558,16 @@ void UHRenderBuilder::FlushResourceBarrier()
 		TempBarrier.dstStageMask = LayoutToStageFlags[TempBarrier.newLayout];
 		TempBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		TempBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		TempBarrier.image = ImageBarriers[Idx].Texture->GetImage();
-		TempBarrier.subresourceRange = ImageBarriers[Idx].Texture->GetImageViewInfo().subresourceRange;
+		TempBarrier.image = InTexture->GetImage();
+		TempBarrier.subresourceRange = InTexture->GetImageViewInfo().subresourceRange;
 
 		// this barrier will transition 1 mip slice only for now
 		TempBarrier.subresourceRange.baseMipLevel = ImageBarriers[Idx].BaseMipLevel;
 		TempBarrier.subresourceRange.levelCount = 1;
-		TempBarrier.subresourceRange.layerCount = 1;
+		// allow multiple slices transition for 2D arrays
+		VkImageViewCreateInfo ImageViewInfo = InTexture->GetImageViewInfo();
+		TempBarrier.subresourceRange.layerCount = (ImageViewInfo.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+			? InTexture->GetImageSlices() : 1;
 
 		ImageBarriers[Idx].Texture->SetImageLayout(TempBarrier.newLayout, ImageBarriers[Idx].BaseMipLevel);
 		Barriers[Idx] = std::move(TempBarrier);
@@ -721,7 +756,7 @@ VkDeviceAddress GetDeviceAddress(VkDevice InDevice, VkBuffer InBuffer)
 }
 
 void UHRenderBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InMissTable
-	, UHRenderBuffer<UHShaderRecord>* InHitGroupTable)
+	, UHRenderBuffer<UHShaderRecord>* InHitGroupTable, const uint32_t InSlices)
 {
 	VkStridedDeviceAddressRegionKHR RayGenAddress{};
 	RayGenAddress.deviceAddress = GetDeviceAddress(LogicalDevice, InRayGenTable->GetBuffer());
@@ -739,7 +774,7 @@ void UHRenderBuilder::TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecor
 	HitGroupAddress.stride = InHitGroupTable->GetBufferStride();
 
 	VkStridedDeviceAddressRegionKHR NullAddress{};
-	GVkCmdTraceRaysKHR(CmdList, &RayGenAddress, &MissAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, 1);
+	GVkCmdTraceRaysKHR(CmdList, &RayGenAddress, &MissAddress, &HitGroupAddress, &NullAddress, InExtent.width, InExtent.height, InSlices);
 }
 
 void UHRenderBuilder::WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery)

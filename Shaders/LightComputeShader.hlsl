@@ -106,7 +106,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     }
     
     // ------------------------------------------------------------------------------------------ indirect light sampling
-    Result += IndirectLightResult[PixelCoord].rgb;
+    Result += IndirectLightResult.SampleLevel(LinearClampped, UV, 0).rgb;
 
     SceneResult[DTid.xy] = float4(CurrSceneData.rgb + Result, CurrSceneData.a);
 }

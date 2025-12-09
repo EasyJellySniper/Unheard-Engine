@@ -45,7 +45,6 @@ struct UHTextureInfo
 		, bIsRT(bInIsRT)
 		, bIsShadowRT(false)
 		, ReboundOffset(~0)
-		, NumSlices(1)
 	{
 
 	}
@@ -58,7 +57,6 @@ struct UHTextureInfo
 	bool bIsRT;
 	bool bIsShadowRT;
 	uint64_t ReboundOffset;
-	uint32_t NumSlices;
 };
 
 struct UHTextureSettings
@@ -184,7 +182,6 @@ private:
 	std::vector<VkImageView> ImageViewPerMip;
 	std::vector<VkImageView> ImageViewPerLayer;
 	VkImageViewCreateInfo ImageViewInfo;
-	UHTextureInfo TextureInfo;
 	std::vector<VkImageLayout> ImageLayouts;
 
 #if WITH_EDITOR

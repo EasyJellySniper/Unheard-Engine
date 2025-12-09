@@ -22,6 +22,10 @@ void UHUpsampleShader::OnCompile()
 	{
 		ShaderCS = Gfx->RequestShader("UpsampleShader", "Shaders/PostProcessing/UpsampleComputeShader.hlsl", "UpsampleNearest2x2CS", "cs_6_0");
 	}
+	else if (UpsampleMethod == UHUpsampleMethod::Nearest4x4)
+	{
+		ShaderCS = Gfx->RequestShader("UpsampleShader", "Shaders/PostProcessing/UpsampleComputeShader.hlsl", "UpsampleNearest4x4CS", "cs_6_0");
+	}
 	else if (UpsampleMethod == UHUpsampleMethod::NearestHorizontal)
 	{
 		ShaderCS = Gfx->RequestShader("UpsampleShader", "Shaders/PostProcessing/UpsampleComputeShader.hlsl", "UpsampleNearestHorizontalCS", "cs_6_0");
@@ -34,9 +38,10 @@ void UHUpsampleShader::OnCompile()
 	CreateComputeState(CInfo);
 }
 
-void UHUpsampleShader::BindParameters(UHRenderBuilder& RenderBuilder, const int32_t CurrentFrame, UHTexture* Target, UHUpsampleConstants Consts)
+void UHUpsampleShader::BindParameters(UHRenderBuilder& RenderBuilder, const int32_t CurrentFrame, UHTexture* Target
+	, UHUpsampleConstants Consts, const int32_t OutputSliceIdx)
 {
 	RenderBuilder.PushConstant(PipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(UHUpsampleConstants), &Consts);
-	PushImage(Target, 0, true, 0);
+	PushImage(Target, 0, true, 0, OutputSliceIdx);
 	FlushPushDescriptor(RenderBuilder.GetCmdList());
 }

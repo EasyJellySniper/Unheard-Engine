@@ -132,3 +132,29 @@ Next is to try storing results in world space UV for cache/stabilization purpose
 Carry on RT indirect light implementation. Applied realtime indirect occlusion in reflection pass and transparent pass.
 Separated PCSS parameters from system constant to another standable constant.
 Next is to think about world space storage for IL lights..
+
+01-12-2025:
+Carry on RT indirect light implementation. Was mostly doing code refactoring and aim for 3D volume render texture creation.
+Also corrected the RTAO calculation. Next is to try converting the implementation to voxel-based so I can store the results in a volume.
+
+02-12-2025:
+Carry on RT indirect light implementation. Converting to voxel-based tracing and see if there are any issues.
+Still need to sort out something!
+
+03-12-2025:
+Carry on RT indirect light implementation. Voxel-based tracing can look too low in quality due to the volume size.
+Maybe trying a quality multipler...No! Probably not a great idea to do voxel-based tracing, as the quality couldn't match what I need.
+There could also have potential memory cost with volume based method. Next is to do the softing.
+
+04-12-2025:
+Carry on RT indirect light implementation. Convert to a 2-frame method that shoots 2 rays per frame. (Still 4 samples overall)
+Though this increased the GPU time per frame, the ghosting can be fixed easily by sampling motion vector.
+Next I will try caching the hitT in the world space, at least improve the performance for a bit.
+
+08-12-2025:
+Turns out the hitT cache didn't help much. As the main perf issue is from the hit group material fetch.
+Let me rework the cache later and improve the quality first.
+
+09-12-2025:
+Quality improvements for ray tracing. But find a weird ghosting bug from RT shadows..need to check what's wrong.
+Fixed! After RT when it's going to do the upsample pass, a resource barrier is missed and caused ghosting.

@@ -316,6 +316,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
 	FeatureData |= RenderingSettings.bDenoiseRayTracing ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureUseSmoothNormalForRaytracing) : 0;
+	FeatureData |= (RenderingSettings.bEnableRayTracing && RenderingSettings.bEnableRTIndirectLighting)
+		? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTIndirectLight) : 0;
 	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.GDirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
@@ -463,9 +465,10 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			ILConstant.IndirectLightScale = RenderingSettings.RTIndirectLightScale;
 			ILConstant.IndirectLightFadeDistance = RenderingSettings.RTIndirectLightFadeDistance;
 			ILConstant.IndirectLightMaxTraceDist = RenderingSettings.RTIndirectTMax;
-			ILConstant.IndirectOcclusionDistance = RenderingSettings.RTIndirectOcclusionDistance;
-			ILConstant.IndirectDownFactor = RenderResolution.width / RTIndirectLightingExtent.width;
-			ILConstant.IndirectRTSize = IndirectLightRTSize;
+			ILConstant.OcclusionStartDistance = RenderingSettings.OcclusionStartDistance;
+			ILConstant.OcclusionEndDistance = RenderingSettings.OcclusionEndDistance;
+			ILConstant.IndirectDownsampleFactor = RenderResolution.width / RTIndirectLightExtent.width;
+			ILConstant.UseCache = RenderingSettings.bEnableRTIndirectCache ? 1 : 0;
 			RTIndirectLightShader->GetConstants(CurrentFrameGT)->UploadData(&ILConstant, 0);
 		}
 

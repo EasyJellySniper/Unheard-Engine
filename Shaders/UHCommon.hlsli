@@ -252,9 +252,10 @@ float3 ConvertUVToSpherePos(float2 UV)
 	return float3(Pos.y, Pos.z, -Pos.x);
 }
 
-bool IsUVInsideScreen(float2 UV)
+bool IsUVInsideScreen(float2 UV, float Tolerance = 0.0f)
 {
-    return UV.x >= 0.0f && UV.x <= 1.0f && UV.y >= 0.0f && UV.y <= 1.0f;
+    return UV.x >= -Tolerance && UV.x <= (1.0f + Tolerance)
+        && UV.y >= -Tolerance && UV.y <= (1.0f + Tolerance);
 }
 
 // https://en.wikipedia.org/wiki/Relative_luminance

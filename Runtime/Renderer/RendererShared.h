@@ -58,6 +58,7 @@ extern UHTextureCube* GSkyLightCube;
 extern UHSampler* GPointClampedSampler;
 extern UHSampler* GLinearClampedSampler;
 extern UHSampler* GSkyCubeSampler;
+extern UHSampler* GLinearClamped3DSampler;
 
 // SH9 data
 extern UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
@@ -84,7 +85,7 @@ extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTransluce
 // this is also used for ray tracing
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
-// indirect lighting, one for ray tracing another for result composite
+// indirect lighting, RT buffers + cache + result buffer
 extern UHRenderTexture* GRTIndirectLighting;
 extern UHRenderTexture* GIndirectLightResult;
 

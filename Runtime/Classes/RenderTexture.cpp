@@ -4,16 +4,14 @@
 #include "../Engine/Graphic.h"
 #include "../Renderer/RenderBuilder.h"
 
-UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bReadWrite, bool bInUseMipmap
-	, uint32_t InNumSlices)
+UHRenderTexture::UHRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, UHRenderTextureSettings InRTSettings)
 	: UHTexture(InName, InExtent, InFormat, UHTextureSettings())
-	, bIsReadWrite(bReadWrite)
-	, bUseMipmap(bInUseMipmap)
+	, RenderTextureSettings(InRTSettings)
 {
 	// not supporting per-mip image view for texture array now, can change this in the future
-	NumSlices = InNumSlices;
+	NumSlices = InRTSettings.NumSlices;
 	bCreatePerMipImageView = (NumSlices == 1);
-	bCreatePerLayerImageView = (NumSlices > 1);
+	bCreatePerLayerImageView = (NumSlices > 1 && !InRTSettings.bIsVolume);
 }
 
 // Similar as the implementation of UHTexture2D
@@ -114,20 +112,21 @@ std::vector<uint8_t> UHRenderTexture::ReadbackTextureData()
 // create image based on format and extent info
 bool UHRenderTexture::CreateRT()
 {
+	TextureSettings.bUseMipmap = RenderTextureSettings.bUseMipmap;
+
 	VkImageUsageFlags Usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	if (bIsReadWrite)
+	if (RenderTextureSettings.bIsReadWrite)
 	{
 		Usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 	}
 
 	UHTextureInfo Info(VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D, ImageFormat, ImageExtent, Usage, true);
-	TextureSettings.bUseMipmap = bUseMipmap;
+	Info.Type = RenderTextureSettings.bIsVolume ? VK_IMAGE_TYPE_3D : Info.Type;
 
 	// texture array setup
 	if (NumSlices > 1)
 	{
-		Info.ViewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-		Info.NumSlices = NumSlices;
+		Info.ViewType = RenderTextureSettings.bIsVolume ? VK_IMAGE_VIEW_TYPE_3D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 	}
 
 	// UHE doesn't use shared memory for RTs at the momment, since they could resize

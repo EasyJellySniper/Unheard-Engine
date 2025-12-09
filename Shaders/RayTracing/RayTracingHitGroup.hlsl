@@ -156,7 +156,7 @@ float2 GetHitUV0(uint PrimIndex, Attribute Attr)
 	return OutUV;
 }
 
-float3 GetHitMaterialNormal(uint PrimIndex, Attribute Attr)
+float3 GetHitVertexNormal(uint PrimIndex, Attribute Attr)
 {
     UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
     uint3 Index = GetIndex(PrimIndex);
@@ -211,7 +211,7 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
     ClipPos /= ClipPos.w;
 	
     float2 ScreenUV = ClipPos.xy * 0.5f + 0.5f;
-    bool bInsideScreen = IsUVInsideScreen(ScreenUV) && (ClipPos.z > GNearPlane);
+    bool bInsideScreen = IsUVInsideScreen(ScreenUV) && (ClipPos.z > 0.0f);
 	
 	// fetch material data
     float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
@@ -220,7 +220,7 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
         
     // normal calculation, fetch the vertex normal
     bool bIsFrontFace = (HitKind() == HIT_KIND_TRIANGLE_FRONT_FACE);
-    float3 VertexNormal = GetHitMaterialNormal(PrimitiveIndex(), Attr);
+    float3 VertexNormal = GetHitVertexNormal(PrimitiveIndex(), Attr);
         
     // for normal transform, inverse-transposed world matrix is needed to deal with non-uniform scaling
     // so use WorldToObject3x4 instead
@@ -343,7 +343,7 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
             MaterialInput = GetMaterialBumpNormal(UV0, Payload.MipLevel, Usages);
             bool bIsTangent = (Usages.MaterialFeature & UH_TANGENT_SPACE);
         
-            float3 WorldNormal = GetHitMaterialNormal(PrimitiveIndex(), Attr);
+            float3 WorldNormal = GetHitVertexNormal(PrimitiveIndex(), Attr);
             WorldNormal = normalize(mul(WorldNormal, (float3x3) WorldToObject3x4()));
             float3 Normal = bIsTangent ? CalculateBumpNormal(MaterialInput.Normal, WorldNormal, Attr) : WorldNormal;
         

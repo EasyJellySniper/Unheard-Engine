@@ -364,9 +364,12 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         }
 
         // Step 1 ------------------------------------------------- Convert panorama to individual cube slice RT
+        UHRenderTextureSettings RenderTextureSettings{};
+        RenderTextureSettings.bIsReadWrite = true;
+        RenderTextureSettings.bUseMipmap = true;
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
-            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat, true, true);
+            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), OutputExtent, UncompressedFormat, RenderTextureSettings);
         }
 
         // draw a pass that transfer sphere map to cube map, do this for all mipmaps
@@ -568,9 +571,12 @@ void UHTextureCreationDialog::ControlCubemapCreate()
             UncompressedFormat = UHTextureFormat::UH_FORMAT_RGBA16F;
         }
 
+        UHRenderTextureSettings RenderTextureSettings{};
+        RenderTextureSettings.bIsReadWrite = true;
+        RenderTextureSettings.bUseMipmap = true;
         for (int32_t Idx = 0; Idx < 6; Idx++)
         {
-            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), Slices[Idx]->GetExtent(), UncompressedFormat, true, true);
+            CubemapRT[Idx] = Gfx->RequestRenderTexture("CubeCreationRT" + std::to_string(Idx), Slices[Idx]->GetExtent(), UncompressedFormat, RenderTextureSettings);
             if (!Slices[Idx]->HasUploadedToGPU())
             {
                 Slices[Idx]->UploadToGPU(Gfx, RenderBuilder);

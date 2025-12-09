@@ -118,7 +118,7 @@ public:
 	// write image/sampler once
 	void WriteImage(const UHTexture* InTexture, const uint32_t InDstBinding, const bool bIsReadWrite = false
 		, const int32_t MipIdx = UHINDEXNONE, const int32_t LayerIdx = UHINDEXNONE);
-	void WriteImage(const std::vector<UHTexture*>& InTextures, const uint32_t InDstBinding);
+	void WriteImage(const std::vector<UHTexture*>& InTextures, const uint32_t InDstBinding, const bool bIsReadWrite = false);
 	void WriteSampler(const UHSampler* InSampler, const uint32_t InDstBinding);
 	void WriteSampler(const std::vector<UHSampler*>& InSamplers, const uint32_t InDstBinding);
 	void WriteTLAS(const UHAccelerationStructure* InAS, const uint32_t InDstBinding);

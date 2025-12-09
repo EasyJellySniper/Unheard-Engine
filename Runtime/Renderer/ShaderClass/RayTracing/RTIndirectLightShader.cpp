@@ -37,6 +37,9 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
+	// sampler
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
+
 	CreateLayoutAndDescriptor(ExtraLayouts);
 
 	ClosestHitIDs = InClosestHits;
@@ -77,7 +80,6 @@ void UHRTIndirectLightShader::OnCompile()
 	RTInfo.MissShader = MissShader;
 	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
-	RTInfo.MaxRecursionDepth = MaxIndirectLightRecursion;
 	RTState = Gfx->RequestRTState(RTInfo);
 }
 
@@ -112,6 +114,9 @@ void UHRTIndirectLightShader::BindParameters()
 	BindStorage(GInstanceLightsBuffer, 15, 0, true);
 	BindStorage(GPointLightListTransBuffer.get(), 16, 0, true);
 	BindStorage(GSpotLightListTransBuffer.get(), 17, 0, true);
+
+	// sampler
+	BindSampler(GLinearClampedSampler, 18);
 }
 
 UHRenderBuffer<UHRTIndirectLightConstants>* UHRTIndirectLightShader::GetConstants(const int32_t FrameIdx) const

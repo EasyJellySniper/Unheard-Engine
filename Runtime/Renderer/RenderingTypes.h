@@ -331,6 +331,7 @@ enum class UHSystemRenderFeatureBits
 	FeatureEnvCube = 1 << 0,
 	FeatureHDR = 1 << 1,
 	FeatureUseSmoothNormalForRaytracing = 1 << 2,
+	FeatureRTIndirectLight = 1 << 3,
 	FeatureDebug = 1 << 31,
 };
 

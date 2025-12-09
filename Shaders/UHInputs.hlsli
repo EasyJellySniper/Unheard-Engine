@@ -38,6 +38,7 @@
 #define UH_ENV_CUBE 1 << 0
 #define UH_HDR 1 << 1
 #define UH_USE_SMOOTH_NORMAL_RAYTRACING 1 << 2
+#define UH_RT_INDIRECTLIGHT 1 << 3
 #define UH_DEBUGING 1 << 31
 
 struct VertexOutput

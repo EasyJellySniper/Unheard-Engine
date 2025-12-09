@@ -78,8 +78,9 @@ void UHDeferredShadingRenderer::DispatchIndirectLightPass(UHRenderBuilder& Rende
 		RenderBuilder.BindDescriptorSetCompute(IndirectLightPassShader->GetPipelineLayout(), IndirectLightPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// dispatch the indirect light pass
-		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
-			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
+		const VkExtent2D ILResultSize = GIndirectLightResult->GetExtent();
+		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(ILResultSize.width, GThreadGroup2D_X)
+			, MathHelpers::RoundUpDivide(ILResultSize.height, GThreadGroup2D_Y), 1);
 
 		RenderBuilder.ResourceBarrier(GIndirectLightResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}

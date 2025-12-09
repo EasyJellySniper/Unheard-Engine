@@ -7,9 +7,10 @@ struct UHRTIndirectLightConstants
 	float IndirectLightScale;
 	float IndirectLightFadeDistance;
 	float IndirectLightMaxTraceDist;
-	float IndirectOcclusionDistance;
-	int32_t IndirectDownFactor;
-	uint32_t IndirectRTSize;
+	float OcclusionEndDistance;
+	float OcclusionStartDistance;
+	int32_t IndirectDownsampleFactor;
+	int32_t UseCache;
 };
 
 class UHRTIndirectLightShader : public UHShaderClass
@@ -27,9 +28,7 @@ public:
 	void BindParameters();
 
 	UHRenderBuffer<UHRTIndirectLightConstants>* GetConstants(const int32_t FrameIdx) const;
-
-	// set max recursion for the indirect light, real recursion is still decided by the settings.
-	static const uint32_t MaxIndirectLightRecursion = 8;
+	static const int32_t NumOfIndirectLightFrames = 2;
 
 private:
 	std::vector<uint32_t> ClosestHitIDs;

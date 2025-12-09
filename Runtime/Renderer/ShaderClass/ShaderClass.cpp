@@ -196,11 +196,25 @@ void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, const int3
 }
 
 void UHShaderClass::PushImage(const UHTexture* InImage, const int32_t DstBinding
-	, const bool bIsReadWrite, const int32_t MipIdx)
+	, const bool bIsReadWrite, const int32_t MipIdx, const int32_t LayerIdx)
 {
 	VkDescriptorImageInfo ImageInfo{};
 	ImageInfo.imageLayout = bIsReadWrite ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	ImageInfo.imageView = (MipIdx == UHINDEXNONE) ? InImage->GetImageView() : InImage->GetImageViewPerMip(MipIdx);
+
+	// fetch the proper image view
+	if (LayerIdx != UHINDEXNONE)
+	{
+		ImageInfo.imageView = InImage->GetImageViewPerLayer(LayerIdx);
+	}
+	else if (MipIdx != UHINDEXNONE)
+	{
+		ImageInfo.imageView = InImage->GetImageViewPerMip(MipIdx);
+	}
+	else
+	{
+		ImageInfo.imageView = InImage->GetImageView();
+	}
+
 	PushImageInfos.push_back(ImageInfo);
 
 	VkWriteDescriptorSet WriteSet{};
@@ -263,6 +277,20 @@ void UHShaderClass::BindRWImage(const UHTexture* InImage, const int32_t DstBindi
 		if (InImage)
 		{
 			Helper.WriteImage(InImage, DstBinding, true, UHINDEXNONE);
+		}
+	}
+}
+
+// bind RW image, accept array input
+void UHShaderClass::BindRWImage(const std::vector<UHRenderTexture*> InImages, const int32_t DstBinding)
+{
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+		if (InImages.size() > 0)
+		{
+			const std::vector<UHTexture*> Inputs(InImages.begin(), InImages.end());
+			Helper.WriteImage(Inputs, DstBinding, true);
 		}
 	}
 }

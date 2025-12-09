@@ -266,7 +266,9 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
         ImGui::InputFloat("RT Indirect Light Scale", &RenderingSettings.RTIndirectLightScale);
         ImGui::InputFloat("RT Indirect Light Fade Distance", &RenderingSettings.RTIndirectLightFadeDistance);
         ImGui::InputFloat("RT Indirect TMax", &RenderingSettings.RTIndirectTMax);
-        ImGui::InputFloat("RT Indirect Occsluion Distance", &RenderingSettings.RTIndirectOcclusionDistance);
+        ImGui::InputFloat("Occsluion Start Distance", &RenderingSettings.OcclusionStartDistance);
+        ImGui::InputFloat("Occsluion End Distance", &RenderingSettings.OcclusionEndDistance);
+        ImGui::Checkbox("Use RT Indirect Cache", &RenderingSettings.bEnableRTIndirectCache);
     }
 
     ImGui::PopItemWidth();

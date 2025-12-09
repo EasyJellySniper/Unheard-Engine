@@ -1047,19 +1047,12 @@ void UHGraphic::RequestReleaseGPUQuery(UHGPUQuery* InQuery)
 }
 
 // request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent, UHTextureFormat InFormat, bool bIsReadWrite, bool bUseMipmap
-	, uint32_t NumSlices)
-{
-	return RequestRenderTexture(InName, nullptr, InExtent, InFormat, bIsReadWrite, bUseMipmap, NumSlices);
-}
-
-// request render texture, this also sets device info to it
-UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InImage, VkExtent2D InExtent
-	, UHTextureFormat InFormat, bool bIsReadWrite, bool bUseMipmap, uint32_t NumSlices)
+UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D InExtent
+	, UHTextureFormat InFormat, UHRenderTextureSettings InRTSettings)
 {
 	// return cached if there is already one
-	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, bIsReadWrite, bUseMipmap, NumSlices);
-	NewRT->SetImage(InImage);
+	UniquePtr<UHRenderTexture> NewRT = MakeUnique<UHRenderTexture>(InName, InExtent, InFormat, InRTSettings);
+	NewRT->SetImage(InRTSettings.OverrideTexture);
 
 	int32_t Idx = UHUtilities::FindIndex<UHRenderTexture>(RTPools, *NewRT.get());
 	if (Idx != UHINDEXNONE)
@@ -1068,8 +1061,6 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkImage InI
 	}
 
 	NewRT->SetGfxCache(this);
-	NewRT->SetImage(InImage);
-
 	if (NewRT->CreateRT())
 	{
 		RTPools.push_back(std::move(NewRT));
@@ -1960,7 +1951,9 @@ bool UHGraphic::CreateSwapChain()
 	SwapChainFrameBuffer.resize(ImageCount);
 	for (size_t Idx = 0; Idx < ImageCount; Idx++)
 	{
-		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), SwapChainImages[Idx], Extent, TargetFormat);
+		UHRenderTextureSettings RTSettings{};
+		RTSettings.OverrideTexture = SwapChainImages[Idx];
+		SwapChainRT[Idx] = RequestRenderTexture("SwapChain" + std::to_string(Idx), Extent, TargetFormat, RTSettings);
 	}
 	SwapChainRenderPass = CreateRenderPass(SwapChainRT[0], SwapChainTransition).RenderPass;
 

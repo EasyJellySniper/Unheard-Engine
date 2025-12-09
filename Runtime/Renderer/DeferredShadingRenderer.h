@@ -402,6 +402,7 @@ private:
 	UniquePtr<UHGaussianFilterShader> GaussianFilterHShader;
 	UniquePtr<UHGaussianFilterShader> GaussianFilterVShader;
 	UniquePtr<UHUpsampleShader> UpsampleNearest2x2Shader;
+	UniquePtr<UHUpsampleShader> UpsampleNearest4x4Shader;
 	UniquePtr<UHUpsampleShader> UpsampleNearestHShader;
 	UniquePtr<UHKawaseBlurShader> KawaseDownsampleShader;
 	UniquePtr<UHKawaseBlurShader> KawaseUpsampleShader;
@@ -455,7 +456,7 @@ private:
 
 	uint32_t RTInstanceCount;
 	VkExtent2D RTShadowExtent;
-	VkExtent2D RTIndirectLightingExtent;
+	VkExtent2D RTIndirectLightExtent;
 
 	// -------------------------------------------- Culling & sorting related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;
@@ -495,9 +496,4 @@ private:
 	std::vector<UniquePtr<UHDepthMeshShader>> DepthMeshShaders;
 	std::vector<UniquePtr<UHBaseMeshShader>> BaseMeshShaders;
 	std::vector<UniquePtr<UHMotionMeshShader>> MotionMeshShaders;
-
-	// -------------------------------------------- Indirect lighting related -------------------------------------------- //
-	// IL limitations, can be changed in the future
-	static const int32_t MaxNumOfIndirectLightRays = 4;
-	static const uint32_t IndirectLightRTSize = 2048;
 };

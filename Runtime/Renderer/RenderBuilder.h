@@ -101,6 +101,7 @@ public:
 
 	// transition image
 	void ResourceBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
+	void ResourceBarrier(std::vector<UHRenderTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
 	void ResourceBarrier(std::vector<UHTexture*> InTextures, VkImageLayout OldLayout, VkImageLayout NewLayout, uint32_t BaseMipLevel = 0, uint32_t BaseArrayLayer = 0);
 
 	// transition buffer
@@ -121,8 +122,9 @@ public:
 	// draw full screen quad
 	void DrawFullScreenQuad();
 
-	// trace ray
-	void TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InMissTable, UHRenderBuffer<UHShaderRecord>* InHitGroupTable);
+	// trace ray, support volume tracing as well
+	void TraceRay(VkExtent2D InExtent, UHRenderBuffer<UHShaderRecord>* InRayGenTable, UHRenderBuffer<UHShaderRecord>* InMissTable, UHRenderBuffer<UHShaderRecord>* InHitGroupTable
+		, const uint32_t InSlices = 1);
 
 	// write time stamp
 	void WriteTimeStamp(VkQueryPool InPool, uint32_t InQuery);
@@ -160,6 +162,9 @@ public:
 #endif
 
 private:
+	VkImageMemoryBarrier SetupBarrier(UHTexture* InTexture, VkImageLayout OldLayout, VkImageLayout NewLayout
+		, uint32_t BaseMipLevel, uint32_t BaseArrayLayer);
+
 	UHGraphic* Gfx;
 	VkCommandBuffer CmdList;
 

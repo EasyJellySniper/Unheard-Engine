@@ -31,6 +31,8 @@ void UHDeferredShadingRenderer::InitRTFilterConstants()
 	RTGaussianConsts.GaussianFilterTempRT1.resize(GRTReflectionResult->GetMipMapCount());
 
 	VkExtent2D FilterResolution;
+	UHRenderTextureSettings RenderTextureSetting{};
+	RenderTextureSetting.bIsReadWrite = true;
 
 	// for RT use
 	for (uint32_t Idx = 2; Idx < GRTReflectionResult->GetMipMapCount(); Idx++)
@@ -39,10 +41,10 @@ void UHDeferredShadingRenderer::InitRTFilterConstants()
 		FilterResolution.height = RenderResolution.height >> Idx;
 
 		RTGaussianConsts.GaussianFilterTempRT0[Idx] =
-			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, true);
+			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, RenderTextureSetting);
 
 		RTGaussianConsts.GaussianFilterTempRT1[Idx] =
-			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, true);
+			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT1", FilterResolution, TempRTFormat, RenderTextureSetting);
 	}
 }
 
@@ -57,21 +59,31 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
 		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
 
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, UHTextureFormat::UH_FORMAT_R8_UNORM, true);
-		GRTSharedTextureRG = GraphicInterface->RequestRenderTexture("RTSharedTextureRG", RenderResolution, UHTextureFormat::UH_FORMAT_RG16F, true);
-		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTReflectionResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM, true, true);
+		UHRenderTextureSettings RenderTextureSetting{};
+		RenderTextureSetting.bIsReadWrite = true;
+
+		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, UHTextureFormat::UH_FORMAT_R8_UNORM, RenderTextureSetting);
+		GRTSharedTextureRG = GraphicInterface->RequestRenderTexture("RTSharedTextureRG", RenderResolution, UHTextureFormat::UH_FORMAT_RG16F, RenderTextureSetting);
+		RenderTextureSetting.bUseMipmap = true;
+		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTReflectionResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM, RenderTextureSetting);
+		RenderTextureSetting.bUseMipmap = false;
 
 		// refined normal at half size
 		VkExtent2D HalfRes = RenderResolution;
 		HalfRes.width >>= 1;
 		HalfRes.height >>= 1;
-		GSmoothSceneNormal = GraphicInterface->RequestRenderTexture("SmoothSceneNormal", HalfRes, UHTextureFormat::UH_FORMAT_RGBA16F, true);
+		GSmoothSceneNormal = GraphicInterface->RequestRenderTexture("SmoothSceneNormal", HalfRes, UHTextureFormat::UH_FORMAT_RGBA16F, RenderTextureSetting);
 
-		// IL rendering is done at quater res now
-		RTIndirectLightingExtent.width = RenderResolution.width >> 2;
-		RTIndirectLightingExtent.height = RenderResolution.height >> 2;
-		GRTIndirectLighting = GraphicInterface->RequestRenderTexture("RTIndirectLighting", RTIndirectLightingExtent, UHTextureFormat::UH_FORMAT_RGBA8_UNORM
-			, true, false, MaxNumOfIndirectLightRays);
+		RTIndirectLightExtent = RenderResolution;
+		RTIndirectLightExtent.width >>= 2;
+		RTIndirectLightExtent.height >>= 2;
+
+		// create RT indirect light textures at rendering size, but the ray will only be traced every 16 pixels (1/16)
+		RenderTextureSetting.NumSlices = UHRTIndirectLightShader::NumOfIndirectLightFrames;
+		GRTIndirectLighting = GraphicInterface->RequestRenderTexture("RTIndirectLighting"
+			, RTIndirectLightExtent
+			, UHTextureFormat::UH_FORMAT_RGBA8_UNORM
+			, RenderTextureSetting);
 
 		InitRTFilterConstants();
 
@@ -188,6 +200,7 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 		Consts.OutputResolutionY = RenderResolution.height;
 		UpsampleNearest2x2Shader->BindParameters(RenderBuilder, CurrentFrameRT, GRTSharedTextureRG, Consts);
 
+		RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
 			, 1);
@@ -252,9 +265,7 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Indirect Light");
 
 	// transition to UAV ready
-	RenderBuilder.ResourceBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	RenderBuilder.ClearRenderTexture(GRTIndirectLighting, GBlackClearColor, RTParams.FrameNumber & 3);
-	RenderBuilder.ResourceBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	RenderBuilder.ResourceBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 	if (RTParams.bEnableRayTracing && RTInstanceCount > 0 && RTParams.bEnableRTIndirectLighting)
 	{
@@ -264,7 +275,10 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 		RenderBuilder.BindRTState(RTIndirectLightShader->GetRTState());
 
 		// trace the ray!
-		RenderBuilder.TraceRay(RTIndirectLightingExtent, RTIndirectLightShader->GetRayGenTable(), RTIndirectLightShader->GetMissTable(), RTIndirectLightShader->GetHitGroupTable());
+		RenderBuilder.TraceRay(RTIndirectLightExtent
+			, RTIndirectLightShader->GetRayGenTable()
+			, RTIndirectLightShader->GetMissTable()
+			, RTIndirectLightShader->GetHitGroupTable());
 	}
 
 	RenderBuilder.ResourceBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
