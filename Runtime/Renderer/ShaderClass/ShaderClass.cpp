@@ -147,6 +147,18 @@ void UHShaderClass::BindImage(const UHTexture* InImage, const int32_t DstBinding
 	}
 }
 
+void UHShaderClass::BindUavAsSrv(const UHTexture* InImage, const int32_t DstBinding)
+{
+	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UHDescriptorHelper Helper(Gfx->GetLogicalDevice(), DescriptorSets[Idx]);
+		if (InImage)
+		{
+			Helper.WriteImage(InImage, DstBinding, false, UHINDEXNONE, UHINDEXNONE, true);
+		}
+	}
+}
+
 void UHShaderClass::BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t LayerIdx)
 {
 	for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)

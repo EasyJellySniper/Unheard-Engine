@@ -158,3 +158,16 @@ Let me rework the cache later and improve the quality first.
 09-12-2025:
 Quality improvements for ray tracing. But find a weird ghosting bug from RT shadows..need to check what's wrong.
 Fixed! After RT when it's going to do the upsample pass, a resource barrier is missed and caused ghosting.
+
+10-12-2025:
+Removing extra upsample pass for RT shadows. Not sure why they were needed before.
+Found a big flaw in the RT shadow implementation - the shadow attenuation are shared for ALL lights.
+That will cause shadowed pixel relative to certain light receives the light if 'any' light has no shadow.
+I will reimplement RT shadow and rename it as RT direct light..just do lighting calculation after tracing.
+
+11-12-2025:
+BIG rework on RT direct lighting. As well as other RT optimizations. A few notes
+- RTDL doesn't look good sometimes with half quality.
+- RTIL still needs some performance hack.
+- Translucent lighting issue.
+Forget it. At this point I am targeting opaque objects. Translucent shadow/IL needs to be redone afterward.

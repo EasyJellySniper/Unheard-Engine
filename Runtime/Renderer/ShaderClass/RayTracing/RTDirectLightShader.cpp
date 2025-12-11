@@ -1,22 +1,24 @@
-#include "RTShadowShader.h"
+#include "RTDirectLightShader.h"
 #include "../../RendererShared.h"
 
-UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
+UHRTDirectLightShader::UHRTDirectLightShader(UHGraphic* InGfx, std::string Name
 	, const std::vector<uint32_t>& InClosestHits
 	, const std::vector<uint32_t>& InAnyHits
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader), nullptr)
+	: UHShaderClass(InGfx, Name, typeid(UHRTDirectLightShader), nullptr)
 {
 	// system const
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	// TLAS + RT shadow result (float4, xy for dir light, zw for point light)
+	// TLAS + RT direct light result
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
-	// dir light/point light/spot light/point light culling list (opaque + translucent)/spot light culling list (O+T)
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	// GBuffers
+	AddLayoutBinding(GNumOfGBuffersSRV, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
+	// dir light/point light/spot light/point light culling list (opaque)/spot light culling list (opaque)
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -25,9 +27,10 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 
 	// related textures
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
+	// sampler
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateLayoutAndDescriptor(ExtraLayouts);
 
@@ -40,10 +43,10 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	InitHitGroupTable(InAnyHits.size());
 }
 
-void UHRTShadowShader::OnCompile()
+void UHRTDirectLightShader::OnCompile()
 {
-	RayGenShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowRayGen", "lib_6_3");
-	MissShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowMiss", "lib_6_3");
+	RayGenShader = Gfx->RequestShader("RTDirectLightShader", "Shaders/RayTracing/RayTracingDirectLight.hlsl", "RTDirectLightRayGen", "lib_6_3");
+	MissShader = Gfx->RequestShader("RTDirectLightShader", "Shaders/RayTracing/RayTracingDirectLight.hlsl", "RTDirectLightMiss", "lib_6_3");
 
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
@@ -56,7 +59,7 @@ void UHRTShadowShader::OnCompile()
 	RTState = Gfx->RequestRTState(RTInfo);
 }
 
-void UHRTShadowShader::BindParameters()
+void UHRTDirectLightShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
 
@@ -65,20 +68,19 @@ void UHRTShadowShader::BindParameters()
 		BindTLAS(GTopLevelAS[Idx].get(), 1, Idx);
 	}
 
-	BindRWImage(GRTSharedTextureRG, 2);
+	BindRWImage(GRTDirectLightResult, 2);
+	BindRWImage(GRTDirectHitDistance, 3);
+	BindImage(GetGBuffersSRV(), 4);
 
 	// light buffers
-	BindStorage(GDirectionalLightBuffer, 3, 0, true);
-	BindStorage(GPointLightBuffer, 4, 0, true);
-	BindStorage(GSpotLightBuffer, 5, 0, true);
-	BindStorage(GPointLightListBuffer.get(), 6, 0, true);
-	BindStorage(GPointLightListTransBuffer.get(), 7, 0, true);
-	BindStorage(GSpotLightListBuffer.get(), 8, 0, true);
-	BindStorage(GSpotLightListTransBuffer.get(), 9, 0, true);
+	BindStorage(GDirectionalLightBuffer, 5, 0, true);
+	BindStorage(GPointLightBuffer, 6, 0, true);
+	BindStorage(GSpotLightBuffer, 7, 0, true);
+	BindStorage(GPointLightListBuffer.get(), 8, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 9, 0, true);
 
 	// translucent buffers and samplers
 	BindImage(GSceneMip, 10);
-	BindImage(GSceneMixedDepth, 11);
-	BindImage(GSceneNormal, 12);
-	BindImage(GTranslucentBump, 13);
+	BindSampler(GPointClampedSampler, 11);
+	BindSampler(GLinearClampedSampler, 12);
 }

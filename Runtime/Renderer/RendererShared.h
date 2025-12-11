@@ -35,18 +35,14 @@ extern UHRenderTexture* GMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
 extern UHRenderTexture* GOpaqueSceneResult;
-// translucent bump and smoothness, at this point they still need to be separated unless RT passes are designed for opaque only
-extern UHRenderTexture* GTranslucentBump;
-extern UHRenderTexture* GTranslucentSmoothness;
+
 // accessor for GBuffers
 extern std::vector<UHRenderTexture*> GSceneBuffers;
 extern std::vector<UHRenderTexture*> GSceneBuffersWithDepth;
-extern std::vector<UHRenderTexture*> GSceneBuffersTrans;
-extern std::vector<UHRenderTexture*> GSceneBuffersTransWithDepth;
 
 // ray-tracing
-extern UHRenderTexture* GRTShadowResult;
-extern UHRenderTexture* GRTSharedTextureRG;
+extern UHRenderTexture* GRTDirectLightResult;
+extern UHRenderTexture* GRTDirectHitDistance;
 extern UHRenderTexture* GRTReflectionResult;
 extern UHRenderTexture* GSmoothSceneNormal;
 extern UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
@@ -66,6 +62,7 @@ extern UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 // fallback textures
 extern UHTexture2D* GBlackTexture;
 extern UHTexture2D* GWhiteTexture;
+extern UHTexture2D* GTransparentTexture;
 extern UHTextureCube* GBlackCube;
 extern UHRenderTexture* GBlackTextureArray;
 
@@ -87,7 +84,8 @@ extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 // indirect lighting, RT buffers + cache + result buffer
 extern UHRenderTexture* GRTIndirectLighting;
-extern UHRenderTexture* GIndirectLightResult;
+extern UHRenderTexture* GRTIndirectHitDistance;
+extern UHRenderTexture* GIndirectOcclusionResult;
 
 // common clear colors
 extern VkClearColorValue GBlackClearColor;

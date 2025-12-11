@@ -91,18 +91,6 @@ void MotionMS(
         
         Output.Position = mul(Output.Position, JitterMatrix);
         
-        // transform normal by world IT
-#if TRANSLUCENT
-        float3 Normal = LocalToWorldNormalMS(NormalBuffer[InInstance.MeshIndex][VertexIndex], (float3x3) Constant.GWorldIT);
-        Output.Normal = Normal;
-        Output.InstanceIndex = ShaderData.RendererIndex;
-#endif
-        
-#if TANGENT_SPACE && TRANSLUCENT
-	    // calculate world TBN if normal map is used
-        Output.WorldTBN = CreateTBNMS(Normal, TangentBuffer[InInstance.MeshIndex][VertexIndex], (float3x3)Constant.GWorld);
-#endif
-        
         OutVerts[GTid] = Output;
     }
 }

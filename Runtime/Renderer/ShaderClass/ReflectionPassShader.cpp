@@ -34,21 +34,29 @@ void UHReflectionPassShader::OnCompile()
 	CreateComputeState(Info);
 }
 
-void UHReflectionPassShader::BindParameters(const bool bIsRaytracingEnableRT)
+void UHReflectionPassShader::BindParameters(const bool bEnableRTReflection, const bool bEnableRTIndirectLight)
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindRWImage(GSceneResult, 1);
 	BindImage(GetGBuffersSRV(), 2);
 
 	BindSkyCube();
-	if (bIsRaytracingEnableRT)
+	if (bEnableRTReflection)
 	{
 		BindImage(GRTReflectionResult, 4);
-		BindImage(GIndirectLightResult, 5);
+		
 	}
 	else
 	{
-		BindImage(GBlackTexture, 4);
+		BindImage(GTransparentTexture, 4);
+	}
+
+	if (bEnableRTIndirectLight)
+	{
+		BindImage(GIndirectOcclusionResult, 5);
+	}
+	else
+	{
 		BindImage(GBlackTexture, 5);
 	}
 

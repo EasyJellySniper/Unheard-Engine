@@ -43,6 +43,8 @@ void UHDeferredShadingRenderer::DispatchLightPass(UHRenderBuilder& RenderBuilder
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Light Pass");
 	{
+		RenderBuilder.ResourceBarrier(GIndirectOcclusionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
 		// bind state
 		UHComputeState* State = LightPassShader->GetComputeState();
 		RenderBuilder.BindComputeState(State);
@@ -53,36 +55,10 @@ void UHDeferredShadingRenderer::DispatchLightPass(UHRenderBuilder& RenderBuilder
 		// dispatch
 		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
-	}
-	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
-}
 
-void UHDeferredShadingRenderer::DispatchIndirectLightPass(UHRenderBuilder& RenderBuilder)
-{
-	UHGameTimerScope Scope("DispatchIndirectLightPass", false);
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::IndirectLightPass)], "IndirectLightPass");
-	if (CurrentScene == nullptr)
-	{
-		return;
-	}
-
-	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Indirect Light Pass");
-	{
-		RenderBuilder.ResourceBarrier(GIndirectLightResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-
-		// bind state
-		UHComputeState* State = IndirectLightPassShader->GetComputeState();
-		RenderBuilder.BindComputeState(State);
-
-		// bind sets
-		RenderBuilder.BindDescriptorSetCompute(IndirectLightPassShader->GetPipelineLayout(), IndirectLightPassShader->GetDescriptorSet(CurrentFrameRT));
-
-		// dispatch the indirect light pass
-		const VkExtent2D ILResultSize = GIndirectLightResult->GetExtent();
-		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(ILResultSize.width, GThreadGroup2D_X)
-			, MathHelpers::RoundUpDivide(ILResultSize.height, GThreadGroup2D_Y), 1);
-
-		RenderBuilder.ResourceBarrier(GIndirectLightResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GIndirectOcclusionResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectLightResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

@@ -63,8 +63,7 @@ enum class UHRTShadowQuality
 
 enum class UHRTReflectionQuality
 {
-	RTReflection_FullNative,
-	RTReflection_FullTemporal,
+	RTReflection_Full,
 	RTReflection_Half
 };
 
@@ -83,9 +82,9 @@ public:
 		, bEnableDepthPrePass(true)
 		, ParallelSubmitters(8)
 		, RTCullingRadius(100.0f)
-		, RTShadowQuality(UH_ENUM_VALUE(UHRTShadowQuality::RTShadow_Half))
+		, RTDirectLightQuality(UH_ENUM_VALUE(UHRTShadowQuality::RTShadow_Half))
 		, RTShadowTMax(100.0f)
-		, RTReflectionQuality(UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
+		, RTReflectionQuality(UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_Half))
 		, RTReflectionTMax(100)
 		, RTReflectionSmoothCutoff(0.5f)
 		, FinalReflectionStrength(0.25f)
@@ -102,7 +101,7 @@ public:
 		, PCSSBlockerDistScale(0.02f)
 		, bDenoiseRayTracing(true)
 		, SelectedGpuName("")
-		, bEnableRTShadow(true)
+		, bEnableRTDirectLight(true)
 		, bEnableRTReflection(true)
 		, bEnableRTIndirectLighting(false)
 		, RTIndirectLightScale(0.75f)
@@ -110,7 +109,7 @@ public:
 		, RTIndirectTMax(50.0f)
 		, OcclusionStartDistance(0.0f)
 		, OcclusionEndDistance(15.0f)
-		, bEnableRTIndirectCache(false)
+		, IndirectRayOffsetScale(0.5f)
 	{
 
 	}
@@ -132,10 +131,10 @@ public:
 	float RTCullingRadius;
 	bool bDenoiseRayTracing;
 
-	// RT shadows
-	int32_t RTShadowQuality;
+	// RT direct light
+	int32_t RTDirectLightQuality;
 	float RTShadowTMax;
-	bool bEnableRTShadow;
+	bool bEnableRTDirectLight;
 
 	// RT reflections
 	int32_t RTReflectionQuality;
@@ -151,7 +150,7 @@ public:
 	float RTIndirectTMax;
 	float OcclusionStartDistance;
 	float OcclusionEndDistance;
-	bool bEnableRTIndirectCache;
+	float IndirectRayOffsetScale;
 
 	bool bEnableAsyncCompute;
 	bool bEnableHardwareOcclusion;

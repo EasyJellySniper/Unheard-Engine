@@ -336,7 +336,6 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\ClearUAVShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\DepthPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\IndirectLightPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightCullingShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\LightPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.h" />
@@ -358,9 +357,8 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMaterialDataTable.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.h" />
@@ -471,7 +469,6 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\BlockCompressionShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ClearUAVShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\DownsampleDepthShader.cpp" />
-    <ClCompile Include="Runtime\Renderer\ShaderClass\IndirectLightPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\LightCullingShader.cpp" />
     <ClCompile Include="Runtime\Renderer\LightPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\MotionPassRendering.cpp" />
@@ -503,10 +500,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.cpp" />
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SkyPassShader.cpp" />
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\TextureSamplerTable.cpp" />
@@ -589,7 +585,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\RayTracing\RayTracingShadow.hlsl">
+    <None Include="Shaders\RayTracing\RayTracingDirectLight.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -638,11 +634,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\TranslucentPixelShader.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\RayTracing\SoftRTShadowComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -743,11 +734,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\PostProcessing\UpsampleComputeShader.hlsl">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\IndirectLightComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

@@ -8,9 +8,10 @@ struct UHRTIndirectLightConstants
 	float IndirectLightFadeDistance;
 	float IndirectLightMaxTraceDist;
 	float OcclusionEndDistance;
+
 	float OcclusionStartDistance;
 	int32_t IndirectDownsampleFactor;
-	int32_t UseCache;
+	float IndirectRayOffsetScale;
 };
 
 class UHRTIndirectLightShader : public UHShaderClass

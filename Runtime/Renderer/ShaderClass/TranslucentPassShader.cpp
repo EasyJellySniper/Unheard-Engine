@@ -24,15 +24,13 @@ UHTranslucentPassShader::UHTranslucentPassShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_VERTEX_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// light consts (dir + point + spot)
+	// light consts (dir + point + spot + SH9)
+	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-	// RT shadow/reflection result, point & spot light culling buffer
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	// point & spot light culling buffer
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_FRAGMENT_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
@@ -91,25 +89,14 @@ void UHTranslucentPassShader::BindParameters(const UHMeshRendererComponent* InRe
 	BindStorage(GDirectionalLightBuffer, 6, 0, true);
 	BindStorage(GPointLightBuffer, 7, 0, true);
 	BindStorage(GSpotLightBuffer, 8, 0, true);
+	BindStorage(GSH9Data.get(), 9, 0, true);
 
-	if (bIsRaytracingEnableRT)
-	{
-		BindImage(GRTShadowResult, 9);
-		BindImage(GRTReflectionResult, 10);
-	}
-	else
-	{
-		BindImage(GWhiteTexture, 9);
-		BindImage(GBlackTexture, 10);
-	}
-
-	BindImage(GIndirectLightResult, 11);
-	BindStorage(GPointLightListTransBuffer.get(), 12, 0, true);
-	BindStorage(GSpotLightListTransBuffer.get(), 13, 0, true);
+	BindStorage(GPointLightListTransBuffer.get(), 10, 0, true);
+	BindStorage(GSpotLightListTransBuffer.get(), 11, 0, true);
 	BindSkyCube();
 }
 
 void UHTranslucentPassShader::BindSkyCube()
 {
-	BindImage(GSkyLightCube, 14);
+	BindImage(GSkyLightCube, 12);
 }

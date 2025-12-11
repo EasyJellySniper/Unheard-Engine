@@ -167,7 +167,7 @@ void UHMotionMeshShader::OnCompile()
 		, MaterialCache->GetBlendMode()
 		, UHINDEXNONE
 		, ShaderPS
-		, bIsTranslucent ? GNumOfGBuffersTrans : 1
+		, 1
 		, PipelineLayout);
 	MaterialPassInfo.MS = ShaderMS;
 

@@ -8,7 +8,7 @@ RWTexture2D<float4> SceneResult : register(u1);
 
 TextureCube EnvCube : register(t3);
 Texture2D RTReflection : register(t4);
-Texture2D RTIndirect : register(t5);
+Texture2D RTIndirectOcclusion : register(t5);
 SamplerState EnvSampler : register(s6);
 SamplerState PointClampped : register(s7);
 SamplerState LinearClampped : register(s8);
@@ -37,7 +37,7 @@ void ReflectionCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
     float4 Specular = SceneBuffers[2].SampleLevel(PointClampped, UV, 0);
     float Occlusion = SceneBuffers[0].SampleLevel(PointClampped, UV, 0).a;
     // merge from RT indirect occlusion as well
-    Occlusion = min(Occlusion, RTIndirect.SampleLevel(LinearClampped, UV, 0).a);
+    Occlusion = min(Occlusion, RTIndirectOcclusion.SampleLevel(LinearClampped, UV, 0).a);
     
     // use 1.0f - smooth * smooth as mip bias, so it will blurry with low smoothness
     float SpecFade = Specular.a * Specular.a;

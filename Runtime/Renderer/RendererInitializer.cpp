@@ -14,7 +14,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, ConfigInterface(InEngine->GetConfigManager())
 	, TimerInterface(InEngine->GetGameTimer())
 	, RenderResolution(VkExtent2D())
-	, RTShadowExtent(VkExtent2D())
+	, RTDirectLightExtent(VkExtent2D())
 	, RTIndirectLightExtent(VkExtent2D())
 	, CurrentFrameGT(0)
 	, CurrentFrameRT(0)
@@ -320,9 +320,11 @@ void UHDeferredShadingRenderer::PrepareTextures()
 	{
 		GWhiteTexture = AssetManagerInterface->GetTexture2D("UHWhiteTex");
 		GBlackTexture = AssetManagerInterface->GetTexture2D("UHBlackTex");
+		GTransparentTexture = AssetManagerInterface->GetTexture2D("UHTransparentTex");
 
 		GWhiteTexture->UploadToGPU(GraphicInterface, RenderBuilder);
 		GBlackTexture->UploadToGPU(GraphicInterface, RenderBuilder);
+		GTransparentTexture->UploadToGPU(GraphicInterface, RenderBuilder);
 
 		GBlackCube = AssetManagerInterface->GetCubemapByName("UHBlackCube");
 		GBlackCube->Build(GraphicInterface, RenderBuilder);
@@ -465,7 +467,6 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	// light culling and pass shaders
 	LightCullingShader = MakeUnique<UHLightCullingShader>(GraphicInterface, "LightCullingShader");
 	LightPassShader = MakeUnique<UHLightPassShader>(GraphicInterface, "LightPassShader");
-	IndirectLightPassShader = MakeUnique<UHIndirectLightPassShader>(GraphicInterface, "IndirectLightPassShader");
 	ReflectionPassShader = MakeUnique<UHReflectionPassShader>(GraphicInterface, "ReflectionPassShader");
 	RTReflectionMipmapShader = MakeUnique<UHRTReflectionMipmap>(GraphicInterface, "RTReflectionMipmapShader");
 
@@ -494,7 +495,6 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 	if (GraphicInterface->IsRayTracingEnabled() && RTInstanceCount > 0)
 	{
 		RecreateRTShaders(std::vector<UHMaterial*>(), true);
-		SoftRTShadowShader = MakeUnique<UHSoftRTShadowShader>(GraphicInterface, "SoftRTShadowShader");
 		CollectPointLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectPointLightShader", true);
 		CollectSpotLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectSpotLightShader", false);
 		RTSmoothSceneNormalHShader = MakeUnique<UHRTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalHShader", false);
@@ -586,9 +586,9 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	LightCullingShader->BindParameters();
 
 	// ------------------------------------------------ Lighting pass descriptor update
-	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTShadow);
-	IndirectLightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
-	ReflectionPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTReflection);
+	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTDirectLight);
+	ReflectionPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTReflection
+		, bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
 
 	// ------------------------------------------------ sky pass descriptor update
 	SH9Shader->BindParameters();
@@ -651,8 +651,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			RTMaterialDataTable->BindStorage(RTMaterialData, 0, FrameIdx);
 		}
 
-		SoftRTShadowShader->BindParameters();
-		RTShadowShader->BindParameters();
+		RTDirectLightShader->BindParameters();
 		RTReflectionShader->BindParameters();
 		RTIndirectLightShader->BindParameters();
 		CollectPointLightShader->BindParameters();
@@ -734,7 +733,6 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 
 	UH_SAFE_RELEASE(LightCullingShader);
 	UH_SAFE_RELEASE(LightPassShader);
-	UH_SAFE_RELEASE(IndirectLightPassShader);
 	UH_SAFE_RELEASE(ReflectionPassShader);
 	UH_SAFE_RELEASE(RTReflectionMipmapShader);
 	UH_SAFE_RELEASE(SkyPassShader);
@@ -763,12 +761,11 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
-		UH_SAFE_RELEASE(RTShadowShader);
+		UH_SAFE_RELEASE(RTDirectLightShader);
 		UH_SAFE_RELEASE(RTReflectionShader);
 		UH_SAFE_RELEASE(RTIndirectLightShader);
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
 		UH_SAFE_RELEASE(RTMaterialDataTable);
-		UH_SAFE_RELEASE(SoftRTShadowShader);
 		UH_SAFE_RELEASE(CollectPointLightShader);
 		UH_SAFE_RELEASE(CollectSpotLightShader);
 		UH_SAFE_RELEASE(RTSmoothSceneNormalHShader);
@@ -812,10 +809,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	GSceneDepth = GraphicInterface->RequestRenderTexture("SceneDepth", RenderResolution, DepthFormat);
 	GSceneMixedDepth = GraphicInterface->RequestRenderTexture("SceneTranslucentDepth", RenderResolution, DepthFormat);
 
-	// translucent bump and smoothness used in ray tracing or somewhere else
-	GTranslucentBump = GraphicInterface->RequestRenderTexture("TranslucentBump", RenderResolution, NormalFormat);
-	GTranslucentSmoothness = GraphicInterface->RequestRenderTexture("TranslucentSmoothness", RenderResolution, MaskFormat);
-
 	// post process buffer, use the same format as scene result
 	GPostProcessRT = GraphicInterface->RequestRenderTexture("PostProcessRT", RenderResolution, SceneResultFormat, RenderTextureSettings);
 	GPreviousSceneResult = GraphicInterface->RequestRenderTexture("PreviousResultRT", RenderResolution, HistoryResultFormat);
@@ -824,11 +817,8 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
 
-	// indirect light result in half res
-	VkExtent2D HalfRes = RenderResolution;
-	HalfRes.width >>= 1;
-	HalfRes.height >>= 1;
-	GIndirectLightResult = GraphicInterface->RequestRenderTexture("IndirectLightResult", HalfRes, UHTextureFormat::UH_FORMAT_RGBA8_UNORM, RenderTextureSettings);
+	// indirect occlusion result
+	GIndirectOcclusionResult = GraphicInterface->RequestRenderTexture("IndirectLightResult", RenderResolution, MaskFormat, RenderTextureSettings);
 
 	// rt buffers
 	ResizeRayTracingBuffers(false);
@@ -852,8 +842,6 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	// setup accessors after initialization
 	GSceneBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneResult, GSceneMip, GSceneData };
 	GSceneBuffersWithDepth = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneResult, GSceneMip, GSceneData, GSceneDepth };
-	GSceneBuffersTrans = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness, GSceneMip, GSceneData };
-	GSceneBuffersTransWithDepth = { GMotionVectorRT, GTranslucentBump, GTranslucentSmoothness, GSceneMip, GSceneData, GSceneMixedDepth };
 }
 
 void UHDeferredShadingRenderer::RelaseRenderingBuffers()
@@ -870,9 +858,7 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	UH_SAFE_RELEASE_TEX(GPreviousSceneResult);
 	UH_SAFE_RELEASE_TEX(GOpaqueSceneResult);
 	UH_SAFE_RELEASE_TEX(GMotionVectorRT);
-	UH_SAFE_RELEASE_TEX(GTranslucentBump);
-	UH_SAFE_RELEASE_TEX(GTranslucentSmoothness);
-	UH_SAFE_RELEASE_TEX(GIndirectLightResult);
+	UH_SAFE_RELEASE_TEX(GIndirectOcclusionResult);
 
 	ReleaseRayTracingBuffers();
 
@@ -922,9 +908,7 @@ void UHDeferredShadingRenderer::CreateRenderPasses()
 		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		, GSceneDepth);
 
-	MotionTranslucentPassObj = GraphicInterface->CreateRenderPass(GSceneBuffersTrans
-		, UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_LOAD, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		, GSceneDepth);
+	MotionTranslucentPassObj = MotionOpaquePassObj;
 }
 
 void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
@@ -961,7 +945,7 @@ void UHDeferredShadingRenderer::CreateRenderFrameBuffers()
 	GBuffers = { GMotionVectorRT, GSceneMixedDepth };
 	MotionOpaquePassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GBuffers, MotionOpaquePassObj.RenderPass, RenderResolution);
 	
-	MotionTranslucentPassObj.FrameBuffer = GraphicInterface->CreateFrameBuffer(GSceneBuffersTransWithDepth, MotionTranslucentPassObj.RenderPass, RenderResolution);
+	MotionTranslucentPassObj.FrameBuffer = MotionOpaquePassObj.FrameBuffer;
 }
 
 void UHDeferredShadingRenderer::ReleaseRenderPassObjects()
@@ -982,7 +966,6 @@ void UHDeferredShadingRenderer::ReleaseRenderPassObjects()
 	SkyboxPassObj.Release(LogicalDevice);
 	MotionCameraPassObj.Release(LogicalDevice);
 	MotionOpaquePassObj.Release(LogicalDevice);
-	MotionTranslucentPassObj.Release(LogicalDevice);
 	PostProcessPassObj[0].ReleaseRenderPass(LogicalDevice);
 
 	for (UHRenderPassObject& P : PostProcessPassObj)
@@ -1792,11 +1775,11 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 		, IndicesTable->GetDescriptorSetLayout()
 		, RTMaterialDataTable->GetDescriptorSetLayout() };
 
-	UH_SAFE_RELEASE(RTShadowShader);
+	UH_SAFE_RELEASE(RTDirectLightShader);
 	UH_SAFE_RELEASE(RTReflectionShader);
 	UH_SAFE_RELEASE(RTIndirectLightShader);
 
-	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+	RTDirectLightShader = MakeUnique<UHRTDirectLightShader>(GraphicInterface, "RTDirectLightShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
 		, Layouts);
 
 	RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()

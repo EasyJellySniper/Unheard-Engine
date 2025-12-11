@@ -18,6 +18,8 @@ static const float GRTMipBias = 2.0f;
 static const uint GMaxPointSpotLightPerInstance = 16;
 static const uint GNumOfIndirectFrames = 2;
 static const int GRTMaxDirLight = 2;
+static const float GRTGapMin = 0.005f;
+static const float GRTGapMax = 0.05f;
 
 struct UHInstanceLights
 {
@@ -135,7 +137,7 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
     , float3 WorldNormal
     , float Gap
     , float MipLevel
-    , inout float Atten, inout float MaxDist)
+    , inout float Atten, inout float HitDist)
 {
 	UHBRANCH
     if (!DirLight.bIsEnabled)
@@ -147,11 +149,10 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
     if (NdotL == 0.0f)
     {
         // no need to trace for backface
+        Atten = 0.0f;
         return false;
     }
     
-    float LightIntensity = saturate(DirLight.Color.a);
-
     RayDesc ShadowRay = (RayDesc)0;
     ShadowRay.Origin = WorldPos + WorldNormal * Gap;
     ShadowRay.Direction = -DirLight.Dir;
@@ -163,20 +164,18 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
     Payload.MipLevel = MipLevel;
     TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
 
-	// store the max hit T to the result, system will perform PCSS later
-	// also output shadow attenuation, hit alpha and LightIntensity are considered
+	// output both attenuation and hit distance
     if (Payload.IsHit())
     {
-        MaxDist = max(MaxDist, Payload.HitT);
-        Atten = lerp(Atten + LightIntensity, Atten, Payload.HitAlpha);
+        HitDist = Payload.HitT;
+        Atten = 1.0f - Payload.HitAlpha;
     }
     else
     {
-		// add attenuation by LightIntensity
-        Atten += LightIntensity;
+        HitDist = 0.0f;
+        Atten = 1.0f;
     }
     
-    Atten = saturate(Atten);
     return true;
 }
 
@@ -186,7 +185,7 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
     , float3 WorldNormal
     , float Gap
     , float MipLevel
-    , inout float Atten, inout float MaxDist)
+    , inout float Atten, inout float HitDist)
 {
     UHBRANCH
     if (!PointLight.bIsEnabled)
@@ -205,6 +204,7 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
 	// do not trace out-of-range pixel
     if (ShadowRay.TMax > PointLight.Radius)
     {
+        Atten = 0.0f;
         return false;
     }
         
@@ -212,10 +212,9 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
     if (NdotL == 0.0f)
     {
         // no need to trace for backface
+        Atten = 0.0f;
         return false;
     }
-    
-    float LightIntensity = saturate(PointLight.Color.a);
         
     UHDefaultPayload Payload = (UHDefaultPayload) 0;
     Payload.MipLevel = MipLevel;
@@ -223,16 +222,15 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
 		
     if (Payload.IsHit())
     {
-        MaxDist = max(MaxDist, Payload.HitT);
-        Atten = lerp(Atten + LightIntensity, Atten, Payload.HitAlpha);
+        HitDist = Payload.HitT;
+        Atten = 1.0f - Payload.HitAlpha;
     }
     else
     {
-		// add attenuation by LightIntensity
-        Atten += LightIntensity;
+        HitDist = 0.0f;
+        Atten = 1.0f;
     }
     
-    Atten = saturate(Atten);
     return true;
 }
 
@@ -242,7 +240,7 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
     , float3 WorldNormal
     , float Gap
     , float MipLevel
-    , inout float Atten, inout float MaxDist)
+    , inout float Atten, inout float HitDist)
 {
     UHBRANCH
     if (!SpotLight.bIsEnabled)
@@ -251,17 +249,18 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
     }
     float3 LightToWorld = WorldPos - SpotLight.Position;
 		
-		// point only needs to be traced by the length of LightToWorld
+	// point only needs to be traced by the length of LightToWorld
     RayDesc ShadowRay = (RayDesc)0;
     ShadowRay.Origin = WorldPos + WorldNormal * Gap;
     ShadowRay.Direction = -SpotLight.Dir;
     ShadowRay.TMin = Gap;
     ShadowRay.TMax = length(LightToWorld);
 		
-		// do not trace out-of-range pixel
+	// do not trace out-of-range pixel
     float Rho = acos(dot(normalize(LightToWorld), SpotLight.Dir));
     if (ShadowRay.TMax > SpotLight.Radius || Rho > SpotLight.Angle)
     {
+        Atten = 0.0f;
         return false;
     }
         
@@ -269,10 +268,9 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
     if (NdotL == 0.0f)
     {
         // no need to trace for backface
+        Atten = 0.0f;
         return false;
     }
-    
-    float LightIntensity = saturate(SpotLight.Color.a);
 		
     UHDefaultPayload Payload = (UHDefaultPayload) 0;
     Payload.MipLevel = MipLevel;
@@ -280,16 +278,15 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
 		
     if (Payload.IsHit())
     {
-        MaxDist = max(MaxDist, Payload.HitT);
-        Atten = lerp(Atten + LightIntensity, Atten, Payload.HitAlpha);
+        HitDist = Payload.HitT;
+        Atten = 1.0f - Payload.HitAlpha;
     }
     else
     {
-		// add attenuation by LightIntensity
-        Atten += LightIntensity;
+        HitDist = 0.0f;
+        Atten = 1.0f;
     }
     
-    Atten = saturate(Atten);
     return true;
 }
 

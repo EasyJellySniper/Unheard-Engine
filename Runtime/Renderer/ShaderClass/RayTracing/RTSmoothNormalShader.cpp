@@ -8,7 +8,6 @@ UHRTSmoothSceneNormalShader::UHRTSmoothSceneNormalShader(UHGraphic* InGfx, std::
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateLayoutAndDescriptor();
@@ -32,6 +31,5 @@ void UHRTSmoothSceneNormalShader::BindParameters()
 	BindConstant(GSystemConstantBuffer, 0, 0);
 	BindRWImage(GSmoothSceneNormal, 1);
 	BindImage(GSceneNormal, 2);
-	BindImage(GTranslucentBump, 3);
-	BindSampler(GLinearClampedSampler, 4);
+	BindSampler(GLinearClampedSampler, 3);
 }

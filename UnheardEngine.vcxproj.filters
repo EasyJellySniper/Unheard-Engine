@@ -171,7 +171,7 @@
     <ClInclude Include="Runtime\Classes\AccelerationStructure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h">
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h">
@@ -268,9 +268,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Renderer\QueueSubmitter.h">
@@ -427,9 +424,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Classes\IniManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\IndirectLightPassShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Renderer\ShaderClass\ClearUAVShader.h">
@@ -614,7 +608,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp">
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\BasePassShader.cpp">
@@ -684,9 +678,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\TranslucentRendering.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\SoftRTShadowShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Editor\Dialog\TextureDialog.cpp">
@@ -839,9 +830,6 @@
     <ClCompile Include="Runtime\Classes\IniManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\ShaderClass\IndirectLightPassShader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\ClearUAVShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -875,7 +863,7 @@
     <None Include="Shaders\SkyboxPixelShader.hlsl" />
     <None Include="Shaders\PostProcessing\ToneMapPixelShader.hlsl" />
     <None Include="Shaders\MotionCameraShader.hlsl" />
-    <None Include="Shaders\RayTracing\RayTracingShadow.hlsl" />
+    <None Include="Shaders\RayTracing\RayTracingDirectLight.hlsl" />
     <None Include="Shaders\RayTracing\UHRTCommon.hlsli" />
     <None Include="Shaders\RayTracing\RayTracingHitGroup.hlsl" />
     <None Include="Shaders\PostProcessing\DebugViewPixelShader.hlsl" />
@@ -887,7 +875,6 @@
     <None Include="Shaders\PostProcessing\TemporalAAComputeShader.hlsl" />
     <None Include="Shaders\LightComputeShader.hlsl" />
     <None Include="Shaders\TranslucentPixelShader.hlsl" />
-    <None Include="Shaders\RayTracing\SoftRTShadowComputeShader.hlsl" />
     <None Include="Shaders\LightCullingComputeShader.hlsl" />
     <None Include="Shaders\PostProcessing\DebugBoundShader.hlsl" />
     <None Include="ThirdParty\ImGui\backends\vulkan\generate_spv.sh" />
@@ -915,7 +902,6 @@
     <None Include="Shaders\RayTracing\CollectLightComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RTSmoothSceneNormal.hlsl" />
     <None Include="Shaders\PostProcessing\UpsampleComputeShader.hlsl" />
-    <None Include="Shaders\IndirectLightComputeShader.hlsl" />
     <None Include="Shaders\ClearUAVComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RayTracingIndirectLight.hlsl" />
     <None Include="Shaders\PostProcessing\KawaseBlurComputeShader.hlsl" />

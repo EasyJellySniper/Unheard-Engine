@@ -76,17 +76,6 @@ struct MotionVertexOutput
 	float2 UV0 : TEXCOORD0;
 	float4 CurrPos : TEXCOORD1;
 	float4 PrevPos : TEXCOORD2;
-	
-#if TANGENT_SPACE && TRANSLUCENT
-	// output TBN if normal mapping enabled
-    float3x3 WorldTBN : TEXCOORD3;
-#endif
-	
-#if TRANSLUCENT
-	float3 Normal : NORMAL;
-	// custom instance index
-    nointerpolation uint InstanceIndex : UHINSTANCEINDEX;
-#endif
 };
 
 struct PostProcessVertexOutput
@@ -106,7 +95,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     float4x4 GProjInv_NonJittered;
     float4x4 GView;
 	float4 GResolution;		// xy for resolution, zw for 1/resolution
-	float4 GShadowResolution; // xy for resolution, zw for 1/resolution
+	float4 GDirectLightResolution; // xy for resolution, zw for 1/resolution
 	float3 GCameraPos;
 	uint GNumDirLights;
 

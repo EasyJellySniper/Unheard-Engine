@@ -6,25 +6,41 @@ UHLightPassShader::UHLightPassShader(UHGraphic* InGfx, std::string Name)
 {
 	// Lighting pass: bind system, light buffer, GBuffers, and samplers, all fragment only since it's a full screen quad draw
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-
-	// if multiple descriptor count is used here, I can declare things like: Texture2D GBuffers[4]; in the shader
-	// which acts like a "descriptor array"
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(GNumOfGBuffersSRV, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
-	// scene output + shadow result + point light list + sampler
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	// other textures/buffers/samplers
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateLayoutAndDescriptor();
 	OnCompile();
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		SoftShadowConsts[Idx] =
+			Gfx->RequestRenderBuffer<UHSoftShadowConstants>(1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "SoftShadowConstants");
+	}
+}
+
+void UHLightPassShader::Release()
+{
+	UHShaderClass::Release();
+
+	for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+	{
+		UH_SAFE_RELEASE(SoftShadowConsts[Idx]);
+	}
 }
 
 void UHLightPassShader::OnCompile()
@@ -41,25 +57,33 @@ void UHLightPassShader::OnCompile()
 void UHLightPassShader::BindParameters(const bool bIsRaytracingEnableRT)
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
-	BindStorage(GDirectionalLightBuffer, 1, 0, true);
-	BindStorage(GPointLightBuffer, 2, 0, true);
-	BindStorage(GSpotLightBuffer, 3, 0, true);
-
+	BindConstant(SoftShadowConsts, 1, 0);
+	BindRWImage(GSceneResult, 2);
+	BindRWImage(GIndirectOcclusionResult, 3);
 	BindImage(GetGBuffersSRV(), 4);
-	BindRWImage(GSceneResult, 5);
 
 	if (bIsRaytracingEnableRT)
 	{
-		BindImage(GRTShadowResult, 6);
+		BindImage(GRTDirectLightResult, 5);
+		BindImage(GRTDirectHitDistance, 6);
 	}
 	else
 	{
-		BindImage(GWhiteTexture, 6);
+		BindImage(GBlackTexture, 5);
+		BindImage(GBlackTexture, 6);
 	}
 
-	BindImage(GIndirectLightResult, 7);
-	BindStorage(GPointLightListBuffer.get(), 8, 0, true);
-	BindStorage(GSpotLightListBuffer.get(), 9, 0, true);
-	BindSampler(GPointClampedSampler, 10);
-	BindSampler(GLinearClampedSampler, 11);
+	BindImage(GRTIndirectLighting, 7);
+	BindImage(GSceneMixedDepth, 8);
+	BindImage(GSceneMip, 9);
+	BindImage(GMotionVectorRT, 10);
+
+	BindStorage(GSH9Data.get(), 11, 0, true);
+	BindSampler(GPointClampedSampler, 12);
+	BindSampler(GLinearClampedSampler, 13);
+}
+
+UHRenderBuffer<UHSoftShadowConstants>* UHLightPassShader::GetConstants(const int32_t FrameIdx) const
+{
+	return SoftShadowConsts[FrameIdx].get();
 }

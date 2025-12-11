@@ -27,9 +27,6 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// light lists + skycube
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -38,6 +35,7 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// samplers
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -90,21 +88,19 @@ void UHRTReflectionShader::BindParameters()
 	// textures and samplers
 	BindImage(GSceneMip, 8);
 	BindImage(GSceneData, 9);
-	BindImage(GSceneMixedDepth, 10);
-	BindImage(GTranslucentBump, 11);
-	BindImage(GTranslucentSmoothness, 12);
-	BindImage(GSmoothSceneNormal, 13);
+	BindImage(GSmoothSceneNormal, 10);
 
 	// light lists (indices)
-	BindStorage(GInstanceLightsBuffer, 14, 0, true);
-	BindStorage(GPointLightListTransBuffer.get(), 15, 0, true);
-	BindStorage(GSpotLightListTransBuffer.get(), 16, 0, true);
+	BindStorage(GInstanceLightsBuffer, 11, 0, true);
+	BindStorage(GPointLightListBuffer.get(), 12, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 13, 0, true);
 	BindSkyCube();
-	BindSampler(GLinearClampedSampler, 19);
+	BindSampler(GPointClampedSampler, 16);
+	BindSampler(GLinearClampedSampler, 17);
 }
 
 void UHRTReflectionShader::BindSkyCube()
 {
-	BindImage(GSkyLightCube, 17);
-	BindSampler(GSkyCubeSampler, 18);
+	BindImage(GSkyLightCube, 14);
+	BindSampler(GSkyCubeSampler, 15);
 }

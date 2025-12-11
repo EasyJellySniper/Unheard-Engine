@@ -14,10 +14,10 @@ UHDescriptorHelper::~UHDescriptorHelper()
 }
 
 void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, const uint32_t InDstBinding
-	, const bool bIsReadWrite, const int32_t MipIdx, const int32_t LayerIdx)
+	, const bool bIsReadWrite, const int32_t MipIdx, const int32_t LayerIdx, const bool bUavAsSrv)
 {
 	VkDescriptorImageInfo NewInfo{};
-	NewInfo.imageLayout = (bIsReadWrite) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	NewInfo.imageLayout = (bIsReadWrite || bUavAsSrv) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	// fetch the proper image view
 	if (MipIdx != UHINDEXNONE)
 	{
@@ -35,7 +35,7 @@ void UHDescriptorHelper::WriteImage(const UHTexture* InTexture, const uint32_t I
 	VkWriteDescriptorSet DescriptorWrite{};
 	DescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	DescriptorWrite.dstSet = DescriptorSetToWrite;
-	DescriptorWrite.descriptorType = (bIsReadWrite) ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	DescriptorWrite.descriptorType = (bIsReadWrite && !bUavAsSrv) ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	DescriptorWrite.dstBinding = InDstBinding;
 	DescriptorWrite.descriptorCount = 1;
 	DescriptorWrite.pImageInfo = &NewInfo;

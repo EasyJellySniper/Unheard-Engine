@@ -161,6 +161,7 @@ public:
 	}
 
 	void BindImage(const UHTexture* InImage, const int32_t DstBinding);
+	void BindUavAsSrv(const UHTexture* InImage, const int32_t DstBinding);
 	void BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t LayerIdx);
 	void BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t CurrentFrameRT, const bool bIsReadWrite, const int32_t MipIdx);
 	void BindImage(const std::vector<UHTexture*> InImages, const int32_t DstBinding);

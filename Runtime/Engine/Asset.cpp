@@ -62,6 +62,12 @@ UHAssetManager::UHAssetManager()
 		SystemTex->SetTextureData(TexData);
 		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
 
+		// 2x2 transparent tex, with all channels = 0
+		memset(TexData.data(), 0, TexData.size());
+		SystemTex = MakeUnique<UHTexture2D>("UHTransparentTex", "UHTransparentTex", SystemTexSize, FallbackTexFormat, TexSettings);
+		SystemTex->SetTextureData(TexData);
+		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
+
 		// 2x2 black cube
 		std::unique_ptr<UHTextureCube> SystemCube = MakeUnique<UHTextureCube>("UHBlackCube", SystemTexSize, FallbackTexFormat, TexSettings);
 		SystemCube->SetSourcePath("UHBlackCube");

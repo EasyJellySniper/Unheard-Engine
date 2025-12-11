@@ -30,12 +30,11 @@
 #include "ShaderClass/PostProcessing/TemporalAAShader.h"
 #include "ShaderClass/PostProcessing/GaussianFilterShader.h"
 #include "ShaderClass/RayTracing/RTDefaultHitGroupShader.h"
-#include "ShaderClass/RayTracing/RTShadowShader.h"
+#include "ShaderClass/RayTracing/RTDirectLightShader.h"
 #include "ShaderClass/RayTracing/RTReflectionShader.h"
 #include "ShaderClass/TextureSamplerTable.h"
 #include "ShaderClass/MeshTable.h"
 #include "ShaderClass/RayTracing/RTMaterialDataTable.h"
-#include "ShaderClass/RayTracing/SoftRTShadowShader.h"
 #include "ShaderClass/SphericalHarmonicShader.h"
 #include "ShaderClass/ReflectionPassShader.h"
 #include "ShaderClass/RayTracing/RTReflectionMipmap.h"
@@ -44,7 +43,6 @@
 #include "ShaderClass/RayTracing/CollectLightShader.h"
 #include "ShaderClass/RayTracing/RTSmoothNormalShader.h"
 #include "ShaderClass/PostProcessing/UpsampleShader.h"
-#include "ShaderClass/IndirectLightPassShader.h"
 #include "ShaderClass/RayTracing/RTIndirectLightShader.h"
 #include "ShaderClass/PostProcessing/KawaseBlurShader.h"
 
@@ -75,7 +73,7 @@ struct UHRenderThreadParameters
 		, bEnableTAA(false)
 		, bEnableRTDenoise(false)
 		, bEnableRayTracing(false)
-		, bEnableRTShadow(false)
+		, bEnableRTDirectLight(false)
 		, bEnableRTReflection(false)
 		, bEnableRTIndirectLighting(false)
 		, FrameNumber(0)
@@ -98,7 +96,7 @@ struct UHRenderThreadParameters
 	bool bEnableTAA;
 	bool bEnableRTDenoise;
 	bool bEnableRayTracing;
-	bool bEnableRTShadow;
+	bool bEnableRTDirectLight;
 	bool bEnableRTReflection;
 	bool bEnableRTIndirectLighting;
 	uint32_t FrameNumber;
@@ -258,12 +256,11 @@ private:
 	void RenderOcclusionPass(UHRenderBuilder& RenderBuilder);
 	void RenderBasePass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
-	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
+	void DispatchRayDirectLightPass(UHRenderBuilder& RenderBuilder);
 	void DispatchSmoothSceneNormalPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayIndirectLightPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightPass(UHRenderBuilder& RenderBuilder);
-	void DispatchIndirectLightPass(UHRenderBuilder& RenderBuilder);
 	void PreReflectionPass(UHRenderBuilder& RenderBuilder);
 	void DispatchReflectionPass(UHRenderBuilder& RenderBuilder);
 	void GenerateSH9Pass(UHRenderBuilder& RenderBuilder);
@@ -366,7 +363,6 @@ private:
 	UniquePtr<UHLightPassShader> LightPassShader;
 	UniquePtr<UHReflectionPassShader> ReflectionPassShader;
 	UniquePtr<UHRTReflectionMipmap> RTReflectionMipmapShader;
-	UniquePtr<UHIndirectLightPassShader> IndirectLightPassShader;
 
 	// -------------------------------------------- Skybox Pass -------------------------------------------- //
 	UniquePtr<UHSkyPassShader> SkyPassShader;
@@ -440,8 +436,7 @@ private:
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
 	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;
-	UniquePtr<UHSoftRTShadowShader> SoftRTShadowShader;
-	UniquePtr<UHRTShadowShader> RTShadowShader;
+	UniquePtr<UHRTDirectLightShader> RTDirectLightShader;
 	UniquePtr<UHRTReflectionShader> RTReflectionShader;
 	std::vector<VkDescriptorSet> RTDescriptorSets[GMaxFrameInFlight];
 
@@ -455,7 +450,7 @@ private:
 	UniquePtr<UHRTIndirectLightShader> RTIndirectLightShader;
 
 	uint32_t RTInstanceCount;
-	VkExtent2D RTShadowExtent;
+	VkExtent2D RTDirectLightExtent;
 	VkExtent2D RTIndirectLightExtent;
 
 	// -------------------------------------------- Culling & sorting related -------------------------------------------- //

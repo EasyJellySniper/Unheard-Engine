@@ -1,17 +1,16 @@
 #define UHDIRLIGHT_BIND t6
 #define UHPOINTLIGHT_BIND t7
 #define UHSPOTLIGHT_BIND t8
+#define SH9_BIND t9
 #include "../Shaders/UHInputs.hlsli"
 #include "../Shaders/UHCommon.hlsli"
 #include "../Shaders/UHLightCommon.hlsli"
 #include "../Shaders/UHMaterialCommon.hlsli"
+#include "../Shaders/UHSphericalHamonricCommon.hlsli"
 
-Texture2D ScreenShadowTexture : register(t9);
-Texture2D ScreenReflectionTexture : register(t10);
-Texture2D IndirectLightResult : register(t11);
-ByteAddressBuffer PointLightListTrans : register(t12);
-ByteAddressBuffer SpotLightListTrans : register(t13);
-TextureCube EnvCube : register(t14);
+ByteAddressBuffer PointLightListTrans : register(t10);
+ByteAddressBuffer SpotLightListTrans : register(t11);
+TextureCube EnvCube : register(t12);
 
 // texture/sampler tables for bindless rendering
 Texture2D UHTextureTable[] : register(t0, space1);
@@ -133,37 +132,32 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     float NdotV = abs(dot(BumpNormal, -EyeVector));
     float3 Fresnel = SchlickFresnel(Specular, lerp(0, NdotV, MaterialInput.FresnelFactor));
     
-    // merge with realtime indirect occlusion
-    float4 ILResult = IndirectLightResult.SampleLevel(LinearClamppedSampler, ScreenUV, 0);
-    Occlusion = min(ILResult.a, Occlusion);
-    
-    // reflection from dynamic source (such as ray tracing), also make sure to follow screen mip count
+    // reflection 
+    // @TODO: add back realtime RT reflection result
     SpecMip = (1.0f - SpecFade) * GScreenMipCount;
-    float4 DynamicReflection = ScreenReflectionTexture.SampleLevel(LinearClamppedSampler, ScreenUV, SpecMip);
-    IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);
     IndirectSpecular *= SpecFade * Fresnel * Occlusion * GFinalReflectionStrength;
 
-	// ------------------------------------------------------------------------------------------ dir lights accumulation
-	// sample shadows
-    float ShadowMask = ScreenShadowTexture.Sample(LinearClamppedSampler, ScreenUV).r;
+    // ------------------------------------------------------------------------------------------ dir lights accumulation
+	// @TODO: trace shadows
+    float ShadowMask = 1.0f;
     // get noise
     float AttenNoise = GetAttenuationNoise(Vin.Position.xy);
     
-	float3 Result = 0;
+    float3 Result = 0;
     
 	// light calculation, be sure to normalize normal vector before using it	
     // light functions will also fill necessary data
     UHLightInfo LightInfo;
     LightInfo.Diffuse = BaseColor;
-    LightInfo.Specular = float4(Specular, Roughness);
+    LightInfo.Specular = float4(Specular, Smoothness);
     LightInfo.Normal = normalize(BumpNormal);
     LightInfo.WorldPos = WorldPos;
     LightInfo.ShadowMask = ShadowMask;
     LightInfo.AttenNoise = AttenNoise;
     LightInfo.SpecularNoise = AttenNoise * lerp(0.5f, 0.02f, Smoothness);
 	
-	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
-	{
+    for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
+    {
         Result += CalculateDirLight(UHDirLights[Ldx], LightInfo);
     }
 	
@@ -202,7 +196,8 @@ float4 TranslucentPS(VertexOutput Vin, bool bIsFrontFace : SV_IsFrontFace) : SV_
     }
 
 	// indirect light accumulation
-    Result += ILResult.rgb;
+    // @TODO: receive from realtime indirect light
+    Result += ShadeSH9(LightInfo.Diffuse.rgb, float4(LightInfo.Normal, 1.0f), Occlusion);
 	Result += MaterialInput.Emissive.rgb + IndirectSpecular;
 
 	// output result with opacity

@@ -5,8 +5,7 @@
 
 RWTexture2D<float4> OutNormal : register(u1);
 Texture2D OpaqueNormalTexture : register(t2);
-Texture2D TranslucentNormalTexture : register(t3);
-SamplerState LinearSampler : register(s4);
+SamplerState LinearSampler : register(s3);
 
 // 2x downsized refine
 #define REFINE_DOWNSIZE_FACTOR 2
@@ -19,10 +18,8 @@ float4 SelectCandidateNormal(int2 PixelCoord)
 {
     float2 UV = float2(PixelCoord) * GResolution.zw * REFINE_DOWNSIZE_FACTOR;
     float4 OpaqueN = OpaqueNormalTexture.SampleLevel(LinearSampler, UV, 0);
-    float4 TranslucentN = TranslucentNormalTexture.SampleLevel(LinearSampler, UV, 0);
-    float4 CandidateN = TranslucentN.a > 0 ? TranslucentN : OpaqueN;
     
-    return float4(DecodeNormal(CandidateN.xyz), CandidateN.a > 0 ? 1 : 0);
+    return float4(DecodeNormal(OpaqueN.xyz), OpaqueN.a > 0 ? 1 : 0);
 }
 
 [numthreads(UHTHREAD_GROUP1D, 1, 1)]

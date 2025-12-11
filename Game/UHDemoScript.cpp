@@ -51,7 +51,11 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 	float LightRotSpd = 5.0f * DeltaTime;
 	if (TestType == UHDemoType::DayTest)
 	{
-		//DefaultDirectionalLight.Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+		if (DefaultDirectionalLight == nullptr)
+		{
+			DefaultDirectionalLight = EngineCache->GetScene()->GetDirLights()[0];
+		}
+		DefaultDirectionalLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
 	}
 
 	// move geo364

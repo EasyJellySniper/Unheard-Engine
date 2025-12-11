@@ -195,24 +195,24 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::Checkbox("Ray Tracing Denoise", &RenderingSettings.bDenoiseRayTracing);
     ImGui::NewLine();
 
-    // RT Shadows
-    if (ImGui::Checkbox("Enable RT Shadow", &RenderingSettings.bEnableRTShadow))
+    // RT direct light
+    if (ImGui::Checkbox("Enable RT Direct Light", &RenderingSettings.bEnableRTDirectLight))
     {
         Engine->GetGfx()->WaitGPU();
         DeferredRenderer->UpdateDescriptors();
     }
 
-    if (RenderingSettings.bEnableRTShadow)
+    if (RenderingSettings.bEnableRTDirectLight)
     {
-        std::vector<std::string> RTShadowQualities = { "Full", "Half" };
-        if (ImGui::BeginCombo("Ray Tracing Shadow Quaility", RTShadowQualities[RenderingSettings.RTShadowQuality].c_str()))
+        std::vector<std::string> RTDLQualities = { "Full", "Half" };
+        if (ImGui::BeginCombo("Ray Tracing DL Quaility", RTDLQualities[RenderingSettings.RTDirectLightQuality].c_str()))
         {
-            for (size_t Idx = 0; Idx < RTShadowQualities.size(); Idx++)
+            for (size_t Idx = 0; Idx < RTDLQualities.size(); Idx++)
             {
-                const bool bIsSelected = (RenderingSettings.RTShadowQuality == Idx);
-                if (ImGui::Selectable(RTShadowQualities[Idx].c_str(), bIsSelected))
+                const bool bIsSelected = (RenderingSettings.RTDirectLightQuality == Idx);
+                if (ImGui::Selectable(RTDLQualities[Idx].c_str(), bIsSelected))
                 {
-                    RenderingSettings.RTShadowQuality = static_cast<int32_t>(Idx);
+                    RenderingSettings.RTDirectLightQuality = static_cast<int32_t>(Idx);
                     DeferredRenderer->ResizeRayTracingBuffers(true);
                     break;
                 }
@@ -233,7 +233,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
 
     if (RenderingSettings.bEnableRTReflection)
     {
-        std::vector<std::string> RTReflectionQualities = { "Full", "Half Pixel", "Quarter Pixel" };
+        std::vector<std::string> RTReflectionQualities = { "Full", "Half" };
         if (ImGui::BeginCombo("Ray Tracing Reflection Quaility", RTReflectionQualities[RenderingSettings.RTReflectionQuality].c_str()))
         {
             for (size_t Idx = 0; Idx < RTReflectionQualities.size(); Idx++)
@@ -266,9 +266,9 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
         ImGui::InputFloat("RT Indirect Light Scale", &RenderingSettings.RTIndirectLightScale);
         ImGui::InputFloat("RT Indirect Light Fade Distance", &RenderingSettings.RTIndirectLightFadeDistance);
         ImGui::InputFloat("RT Indirect TMax", &RenderingSettings.RTIndirectTMax);
+        ImGui::InputFloat("RT Indirect Ray Offset Scale", &RenderingSettings.IndirectRayOffsetScale);
         ImGui::InputFloat("Occsluion Start Distance", &RenderingSettings.OcclusionStartDistance);
         ImGui::InputFloat("Occsluion End Distance", &RenderingSettings.OcclusionEndDistance);
-        ImGui::Checkbox("Use RT Indirect Cache", &RenderingSettings.bEnableRTIndirectCache);
     }
 
     ImGui::PopItemWidth();

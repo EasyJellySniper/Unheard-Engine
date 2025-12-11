@@ -28,12 +28,10 @@ UHRenderTexture* GPreviousSceneResult;
 // accessor for GBuffers
 std::vector<UHRenderTexture*> GSceneBuffers;
 std::vector<UHRenderTexture*> GSceneBuffersWithDepth;
-std::vector<UHRenderTexture*> GSceneBuffersTrans;
-std::vector<UHRenderTexture*> GSceneBuffersTransWithDepth;
 
-UHRenderTexture* GRTShadowResult;
-// GRTSharedTextureRG can be reused after soft shadow is done
-UHRenderTexture* GRTSharedTextureRG;
+UHRenderTexture* GRTDirectLightResult;
+// GRTDirectHitDistance can be reused after soft shadow is done
+UHRenderTexture* GRTDirectHitDistance;
 // GRTReflectionResult can be reused after translucent pass is done
 UHRenderTexture* GRTReflectionResult;
 UHRenderTexture* GSmoothSceneNormal;
@@ -41,10 +39,6 @@ UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 
 // for refraction use
 UHRenderTexture* GOpaqueSceneResult;
-
-// these two are used for RT reflection, can be reused after RT reflection pass
-UHRenderTexture* GTranslucentBump;
-UHRenderTexture* GTranslucentSmoothness;
 
 UHTextureCube* GSkyLightCube;
 
@@ -56,6 +50,7 @@ UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 
 UHTexture2D* GBlackTexture;
 UHTexture2D* GWhiteTexture;
+UHTexture2D* GTransparentTexture;
 UHTextureCube* GBlackCube;
 UHRenderTexture* GBlackTextureArray;
 
@@ -71,7 +66,8 @@ UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 // indirect lighting
 UHRenderTexture* GRTIndirectLighting;
-UHRenderTexture* GIndirectLightResult;
+UHRenderTexture* GRTIndirectHitDistance;
+UHRenderTexture* GIndirectOcclusionResult;
 
 VkClearColorValue GBlackClearColor = { 0.0f,0.0f,0.0f,1.0f };
 VkClearColorValue GTransparentClearColor = { 0.0f,0.0f,0.0f,0.0f };

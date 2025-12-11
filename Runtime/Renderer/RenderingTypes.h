@@ -43,7 +43,7 @@ struct UHSystemConstants
 	XMFLOAT4X4 GProjInv_NonJittered;
 	XMFLOAT4X4 GView;
 	XMFLOAT4 GResolution;
-	XMFLOAT4 GShadowResolution;
+	XMFLOAT4 GDirectLightResolution;
 	XMFLOAT3 GCameraPos;
 	uint32_t GNumDirLights;
 
@@ -160,7 +160,7 @@ enum class UHRenderPassTypes
 	UpdateTopLevelAS,
 	CollectLightPass,
 	GenerateSH9,
-	RayTracingShadow,
+	RayTracingDirectLight,
 	SmoothSceneNormalPass,
 	RayTracingIndirectLight,
 	RayTracingReflection,

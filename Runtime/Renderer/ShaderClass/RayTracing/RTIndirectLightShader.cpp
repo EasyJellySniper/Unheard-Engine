@@ -13,6 +13,7 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 	// TLAS + RT result + shader const
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 	// GBuffers
@@ -28,9 +29,6 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// light lists
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -38,6 +36,7 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	// sampler
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	CreateLayoutAndDescriptor(ExtraLayouts);
@@ -93,30 +92,29 @@ void UHRTIndirectLightShader::BindParameters()
 	}
 
 	BindRWImage(GRTIndirectLighting, 2);
-	BindConstant(RTIndirectLightConstants, 3, 0);
-	BindImage(GetGBuffersSRV(), 4);
+	BindRWImage(GRTIndirectHitDistance, 3);
+	BindConstant(RTIndirectLightConstants, 4, 0);
+	BindImage(GetGBuffersSRV(), 5);
 
 	// lights
-	BindStorage(GDirectionalLightBuffer, 5, 0, true);
-	BindStorage(GPointLightBuffer, 6, 0, true);
-	BindStorage(GSpotLightBuffer, 7, 0, true);
-	BindStorage(GSH9Data.get(), 8, 0, true);
+	BindStorage(GDirectionalLightBuffer, 6, 0, true);
+	BindStorage(GPointLightBuffer, 7, 0, true);
+	BindStorage(GSpotLightBuffer, 8, 0, true);
+	BindStorage(GSH9Data.get(), 9, 0, true);
 
 	// textures
-	BindImage(GSceneMip, 9);
-	BindImage(GSceneMixedDepth, 10);
+	BindImage(GSceneMip, 10);
 	BindImage(GSceneData, 11);
 	BindImage(GSmoothSceneNormal, 12);
-	BindImage(GTranslucentBump, 13);
-	BindImage(GTranslucentSmoothness, 14);
 
 	// light lists (indices)
-	BindStorage(GInstanceLightsBuffer, 15, 0, true);
-	BindStorage(GPointLightListTransBuffer.get(), 16, 0, true);
-	BindStorage(GSpotLightListTransBuffer.get(), 17, 0, true);
+	BindStorage(GInstanceLightsBuffer, 13, 0, true);
+	BindStorage(GPointLightListBuffer.get(), 14, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 15, 0, true);
 
 	// sampler
-	BindSampler(GLinearClampedSampler, 18);
+	BindSampler(GPointClampedSampler, 16);
+	BindSampler(GLinearClampedSampler, 17);
 }
 
 UHRenderBuffer<UHRTIndirectLightConstants>* UHRTIndirectLightShader::GetConstants(const int32_t FrameIdx) const

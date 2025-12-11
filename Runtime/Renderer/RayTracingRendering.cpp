@@ -8,11 +8,12 @@ void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
 		return;
 	}
 
-	UH_SAFE_RELEASE_TEX(GRTShadowResult);
-	UH_SAFE_RELEASE_TEX(GRTSharedTextureRG);
+	UH_SAFE_RELEASE_TEX(GRTDirectLightResult);
+	UH_SAFE_RELEASE_TEX(GRTDirectHitDistance);
 	UH_SAFE_RELEASE_TEX(GRTReflectionResult);
 	UH_SAFE_RELEASE_TEX(GSmoothSceneNormal);
 	UH_SAFE_RELEASE_TEX(GRTIndirectLighting);
+	UH_SAFE_RELEASE_TEX(GRTIndirectHitDistance);
 
 	// cleanup gaussian constant
 	RTGaussianConsts.Release(GraphicInterface);
@@ -35,10 +36,11 @@ void UHDeferredShadingRenderer::InitRTFilterConstants()
 	RenderTextureSetting.bIsReadWrite = true;
 
 	// for RT use
+	const VkExtent2D ReflectionRes = GRTReflectionResult->GetExtent();
 	for (uint32_t Idx = 2; Idx < GRTReflectionResult->GetMipMapCount(); Idx++)
 	{
-		FilterResolution.width = RenderResolution.width >> Idx;
-		FilterResolution.height = RenderResolution.height >> Idx;
+		FilterResolution.width = ReflectionRes.width >> Idx;
+		FilterResolution.height = ReflectionRes.height >> Idx;
 
 		RTGaussianConsts.GaussianFilterTempRT0[Idx] =
 			GraphicInterface->RequestRenderTexture("GaussianFilterTempRT0", FilterResolution, TempRTFormat, RenderTextureSetting);
@@ -55,15 +57,19 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 		GraphicInterface->WaitGPU();
 		ReleaseRayTracingBuffers();
 
-		const int32_t ShadowQuality = ConfigInterface->RenderingSetting().RTShadowQuality;
-		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
-		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
+		const int32_t ShadowQuality = ConfigInterface->RenderingSetting().RTDirectLightQuality;
+		RTDirectLightExtent = RenderResolution;
+		RTDirectLightExtent.width = RenderResolution.width >> ShadowQuality;
+		RTDirectLightExtent.height = RenderResolution.height >> ShadowQuality;
 
 		UHRenderTextureSettings RenderTextureSetting{};
 		RenderTextureSetting.bIsReadWrite = true;
 
-		GRTShadowResult = GraphicInterface->RequestRenderTexture("RTShadowResult", RTShadowExtent, UHTextureFormat::UH_FORMAT_R8_UNORM, RenderTextureSetting);
-		GRTSharedTextureRG = GraphicInterface->RequestRenderTexture("RTSharedTextureRG", RenderResolution, UHTextureFormat::UH_FORMAT_RG16F, RenderTextureSetting);
+		GRTDirectLightResult = GraphicInterface->RequestRenderTexture("RTDirectLight", RTDirectLightExtent, UHTextureFormat::UH_FORMAT_R11G11B10, RenderTextureSetting);
+		GRTDirectHitDistance = GraphicInterface->RequestRenderTexture("RTDirectHitDistance", RTDirectLightExtent, UHTextureFormat::UH_FORMAT_R16F, RenderTextureSetting);
+
+		// reflection buffer setup, the size is the same as rendering resolution regardless the quality setting
+		// as there are some filter passes for reflections
 		RenderTextureSetting.bUseMipmap = true;
 		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTReflectionResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM, RenderTextureSetting);
 		RenderTextureSetting.bUseMipmap = false;
@@ -74,15 +80,19 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 		HalfRes.height >>= 1;
 		GSmoothSceneNormal = GraphicInterface->RequestRenderTexture("SmoothSceneNormal", HalfRes, UHTextureFormat::UH_FORMAT_RGBA16F, RenderTextureSetting);
 
-		RTIndirectLightExtent = RenderResolution;
-		RTIndirectLightExtent.width >>= 2;
-		RTIndirectLightExtent.height >>= 2;
+		// indirect light at half size
+		RTIndirectLightExtent = HalfRes;
 
-		// create RT indirect light textures at rendering size, but the ray will only be traced every 16 pixels (1/16)
 		RenderTextureSetting.NumSlices = UHRTIndirectLightShader::NumOfIndirectLightFrames;
 		GRTIndirectLighting = GraphicInterface->RequestRenderTexture("RTIndirectLighting"
 			, RTIndirectLightExtent
 			, UHTextureFormat::UH_FORMAT_RGBA8_UNORM
+			, RenderTextureSetting);
+
+		RenderTextureSetting.NumSlices = 1;
+		GRTIndirectHitDistance = GraphicInterface->RequestRenderTexture("RTIndirectHitDistance"
+			, RTIndirectLightExtent
+			, UHTextureFormat::UH_FORMAT_R16F
 			, RenderTextureSetting);
 
 		InitRTFilterConstants();
@@ -163,64 +173,39 @@ void UHDeferredShadingRenderer::CollectLightPass(UHRenderBuilder& RenderBuilder)
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
-void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
+void UHDeferredShadingRenderer::DispatchRayDirectLightPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGameTimerScope Scope("DispatchRayShadowPass", false);
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingShadow)], "RayTracingShadow");
-	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0 || !RTParams.bEnableRTShadow)
+	UHGameTimerScope Scope("DispatchRayDirectLightPass", false);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingDirectLight)], "RayTracingDirectLight");
+	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0 || !RTParams.bEnableRTDirectLight)
 	{
-		if (GRTShadowResult != nullptr)
+		if (GRTDirectLightResult != nullptr)
 		{
-			RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			RenderBuilder.ResourceBarrier(GRTDirectLightResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Shadow");
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Direct Light");
 
 	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
-	RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectLightResult,  VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectHitDistance,  VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.FlushResourceBarrier();
 
 	// bind descriptors and RT states
 	// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!
-	RTDescriptorSets[CurrentFrameRT][0] = RTShadowShader->GetDescriptorSet(CurrentFrameRT);
-	RenderBuilder.BindRTDescriptorSet(RTShadowShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);
-	RenderBuilder.BindRTState(RTShadowShader->GetRTState());
+	RTDescriptorSets[CurrentFrameRT][0] = RTDirectLightShader->GetDescriptorSet(CurrentFrameRT);
+	RenderBuilder.BindRTDescriptorSet(RTDirectLightShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);
+	RenderBuilder.BindRTState(RTDirectLightShader->GetRTState());
 
 	// trace!
-	RenderBuilder.TraceRay(RTShadowExtent, RTShadowShader->GetRayGenTable(), RTShadowShader->GetMissTable(), RTShadowShader->GetHitGroupTable());
-
-	// if it's half res tracing, upsample it before proceed to softing pass
-	if (RTShadowExtent.width != RenderResolution.width)
-	{
-		RenderBuilder.BindComputeState(UpsampleNearest2x2Shader->GetComputeState());
-
-		UHUpsampleConstants Consts;
-		Consts.OutputResolutionX = RenderResolution.width;
-		Consts.OutputResolutionY = RenderResolution.height;
-		UpsampleNearest2x2Shader->BindParameters(RenderBuilder, CurrentFrameRT, GRTSharedTextureRG, Consts);
-
-		RenderBuilder.ResourceBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
-			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
-			, 1);
-	}
-
-	// transition soften pass RTs
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSharedTextureRG, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.FlushResourceBarrier();
-
-	// dispatch softing pass
-	UHComputeState* State = SoftRTShadowShader->GetComputeState();
-	RenderBuilder.BindComputeState(State);
-	RenderBuilder.BindDescriptorSetCompute(SoftRTShadowShader->GetPipelineLayout(), SoftRTShadowShader->GetDescriptorSet(CurrentFrameRT));
-	RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RTShadowExtent.width, GThreadGroup2D_X)
-		, MathHelpers::RoundUpDivide(RTShadowExtent.height, GThreadGroup2D_Y)
-		, 1);
+	RenderBuilder.TraceRay(GRTDirectLightResult->GetExtent(), RTDirectLightShader->GetRayGenTable(), RTDirectLightShader->GetMissTable(), RTDirectLightShader->GetHitGroupTable());
 
 	// finally, transition to shader read only
-	RenderBuilder.ResourceBarrier(GRTShadowResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectLightResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectHitDistance, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
@@ -264,8 +249,10 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Indirect Light");
 
-	// transition to UAV ready
-	RenderBuilder.ResourceBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	// transition resource to UAV ready
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectHitDistance, VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.FlushResourceBarrier();
 
 	if (RTParams.bEnableRayTracing && RTInstanceCount > 0 && RTParams.bEnableRTIndirectLighting)
 	{
@@ -275,13 +262,16 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 		RenderBuilder.BindRTState(RTIndirectLightShader->GetRTState());
 
 		// trace the ray!
-		RenderBuilder.TraceRay(RTIndirectLightExtent
+		RenderBuilder.TraceRay(GRTIndirectLighting->GetExtent()
 			, RTIndirectLightShader->GetRayGenTable()
 			, RTIndirectLightShader->GetMissTable()
 			, RTIndirectLightShader->GetHitGroupTable());
 	}
 
-	RenderBuilder.ResourceBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectHitDistance, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
+
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
@@ -341,27 +331,16 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 	else
 	{
 		RenderBuilder.TraceRay(RenderResolution, RTReflectionShader->GetRayGenTable(), RTReflectionShader->GetMissTable(), RTReflectionShader->GetHitGroupTable());
-
-		if (RTParams.RTReflectionQuality == UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_FullTemporal))
-		{
-			// Upsample after the half pixel tracing
-			RenderBuilder.BindComputeState(UpsampleNearestHShader->GetComputeState());
-			UpsampleNearestHShader->BindParameters(RenderBuilder, CurrentFrameRT, GRTReflectionResult, Consts);
-
-			RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
-				, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
-				, 1);
-		}
 	}
 
 	// generate mips with custom shader and blur the mips [2, Max]
 	{
 		RenderBuilder.BindComputeState(RTReflectionMipmapShader->GetComputeState());
-		
+		const VkExtent2D ReflectionExtent = GRTReflectionResult->GetExtent();
+
 		for (uint32_t Mdx = 1; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)
 		{
-			VkExtent2D MipExtent = GRTReflectionResult->GetExtent();
+			VkExtent2D MipExtent = ReflectionExtent;
 			MipExtent.width >>= Mdx;
 			MipExtent.height >>= Mdx;
 
@@ -380,8 +359,8 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 
 		for (uint32_t Mdx = 2; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)
 		{
-			RTGaussianConsts.GBlurResolution[0] = RenderResolution.width >> Mdx;
-			RTGaussianConsts.GBlurResolution[1] = RenderResolution.height >> Mdx;
+			RTGaussianConsts.GBlurResolution[0] = ReflectionExtent.width >> Mdx;
+			RTGaussianConsts.GBlurResolution[1] = ReflectionExtent.height >> Mdx;
 			RTGaussianConsts.InputMip = Mdx;
 			DispatchGaussianFilter(RenderBuilder, "Blur Reflection Mip " + std::to_string(Mdx), GRTReflectionResult, GRTReflectionResult, RTGaussianConsts);
 		}

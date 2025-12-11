@@ -1,8 +1,9 @@
-#define UHGBUFFER_BIND t4
-#define UHDIRLIGHT_BIND t5
-#define UHPOINTLIGHT_BIND t6
-#define UHSPOTLIGHT_BIND t7
-#define SH9_BIND t8
+// RayTracingIndirectLight.hlsl - Shader for opaque indirect light tracing
+#define UHGBUFFER_BIND t5
+#define UHDIRLIGHT_BIND t6
+#define UHPOINTLIGHT_BIND t7
+#define UHSPOTLIGHT_BIND t8
+#define SH9_BIND t9
 #include "../UHInputs.hlsli"
 #include "UHRTCommon.hlsli"
 #include "../UHLightCommon.hlsli"
@@ -11,8 +12,9 @@
 
 RaytracingAccelerationStructure TLAS : register(t1);
 RWTexture2DArray<float4> OutResult : register(u2);
+RWTexture2D<float> OutHitDistance : register(u3);
 
-cbuffer RTIndirectConstants : register(b3)
+cbuffer RTIndirectConstants : register(b4)
 {
     float GIndirectLightScale;
     float GIndirectLightFadeDistance;
@@ -21,21 +23,20 @@ cbuffer RTIndirectConstants : register(b3)
     
     float GOcclusionStartDistance;
     int GIndirectDownsampleFactor;
-    bool GUseCache;
+    float GIndirectRayOffsetScale;
 }
 
-Texture2D MixedMipTexture : register(t9);
-Texture2D MixedDepthTexture : register(t10);
-Texture2D<uint> MixedDataTexture : register(t11);
+Texture2D SceneMipTexture : register(t10);
+Texture2D<uint> SceneDataTexture : register(t11);
 Texture2D SmoothSceneNormalTexture : register(t12);
-Texture2D TranslucentBumpTexture : register(t13);
-Texture2D TranslucentSmoothTexture : register(t14);
 
 // lighting parameters
-StructuredBuffer<UHInstanceLights> InstanceLights : register(t15);
-ByteAddressBuffer PointLightListTrans : register(t16);
-ByteAddressBuffer SpotLightListTrans : register(t17);
-SamplerState LinearClampped : register(s18);
+StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
+ByteAddressBuffer PointLightList : register(t14);
+ByteAddressBuffer SpotLightList : register(t15);
+
+SamplerState PointClampped : register(s16);
+SamplerState LinearClampped : register(s17);
 
 static const uint GMaxNumOfIndirectLightRays = 4;
 // cherry-picked halton sequence, can be changed in the future
@@ -47,7 +48,7 @@ static const float2 GRayOffset[GMaxNumOfIndirectLightRays] =
     float2(0.375f, 0.2222f) * 2.0f - 1.0f
 };
 
-static const float GIndirectLightMipBias = 10.5f;
+static const float GIndirectLightMipBias = 10.0f;
 
 int GetClosestAxis(float3 InVec)
 {
@@ -76,96 +77,6 @@ int GetClosestAxis(float3 InVec)
     }
     
     return ClosestAxis;
-}
-
-float TraceIndirectShadow(float3 HitWorldPos, uint TileIndex, in UHDefaultPayload Payload, float MipLevel)
-{
-    float Atten = 0.0f;
-    float3 HitVertexNormal = Payload.HitVertexNormal;
-    
-    RayDesc ShadowRay = (RayDesc) 0;
-    ShadowRay.Origin = HitWorldPos;
-    ShadowRay.TMin = 0.01f;
-    float Dummy = 0.0f;
-    float Gap = 0.01f;
-    
-    // directional light shadows
-    if (GNumDirLights > 0)
-    {
-        // trace directional light, 1 should be enough
-        for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
-        {
-            UHDirectionalLight DirLight = UHDirLights[Ldx];
-            if (TraceDiretionalShadow(TLAS, DirLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy))
-            {
-                break;
-            }
-        }
-    }
-    
-    // point light shadows, reuse tile light information if hit pos is inside screen, otherwise fetch from instance data
-    UHInstanceLights Lights = InstanceLights[Payload.HitInstanceIndex];
-    
-    uint PointTileOffset = GetPointLightOffset(TileIndex);
-    uint PointLightCount = PointLightListTrans.Load(PointTileOffset);
-    if (Payload.IsInsideScreen && PointLightCount > 0)
-    {
-        PointTileOffset += 4;
-        for (uint Ldx = 0; Ldx < PointLightCount; Ldx++)
-        {
-            uint PointLightIdx = PointLightListTrans.Load(PointTileOffset);
-            PointTileOffset += 4;
-            
-            UHPointLight PointLight = UHPointLights[PointLightIdx];
-            TracePointShadow(TLAS, PointLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
-        }
-    }
-    else if (GNumPointLights > 0)
-    {
-        for (uint Ldx = 0; Ldx < GMaxPointSpotLightPerInstance; Ldx++)
-        {
-            uint LightIndex = Lights.PointLightIndices[Ldx];
-            if (LightIndex == ~0)
-            {
-                break;
-            }
-            
-            UHPointLight PointLight = UHPointLights[LightIndex];
-            TracePointShadow(TLAS, PointLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
-        }
-    }
-    
-    // spot light shadow, reuse tile light information if hit pos is inside screen, otherwise fetch from instance data
-    uint SpotTileOffset = GetSpotLightOffset(TileIndex);
-    uint SpotLightCount = SpotLightListTrans.Load(SpotTileOffset);
-    if (Payload.IsInsideScreen && SpotLightCount > 0)
-    {
-        SpotTileOffset += 4;
-        for (uint Ldx = 0; Ldx < SpotLightCount; Ldx++)
-        {
-            uint LightIdx = SpotLightListTrans.Load(SpotTileOffset);
-            SpotTileOffset += 4;
-            
-            UHSpotLight SpotLight = UHSpotLights[LightIdx];
-            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
-        }
-    }
-    else if (GNumSpotLights > 0)
-    {
-        for (uint Ldx = 0; Ldx < GMaxPointSpotLightPerInstance; Ldx++)
-        {
-            uint LightIndex = Lights.SpotLightIndices[Ldx];
-            if (LightIndex == ~0)
-            {
-                break;
-            }
-            
-            UHSpotLight SpotLight = UHSpotLights[LightIndex];
-            TraceSpotShadow(TLAS, SpotLight, HitWorldPos, HitVertexNormal, Gap, MipLevel, Atten, Dummy);
-        }
-    }
-    
-    return saturate(Atten);
 }
 
 float4 CalculateIndirectLighting(in UHDefaultPayload Payload
@@ -204,28 +115,36 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
     IndirectLightInfo.Diffuse = Payload.HitDiffuse.rgb + Payload.HitEmissive.rgb;
     IndirectLightInfo.WorldPos = bHitTranslucent ? Payload.HitWorldPosTrans : Payload.HitWorldPos;
     IndirectLightInfo.AttenNoise = GetAttenuationNoise(HitPixelCoord.xy) * 0.1f;
-    IndirectLightInfo.ShadowMask = TraceIndirectShadow(IndirectLightInfo.WorldPos, TileIndex, Payload, MipLevel);
+    IndirectLightInfo.Normal = Payload.HitVertexNormal;
     
     // consider indirect occlusion for this pixel as well
-    float AOThisPixel = saturate((Payload.HitT - GOcclusionStartDistance) / GOcclusionEndDistance + IndirectLightInfo.AttenNoise);
-    // merge with the scene occlusion (output from object pass)
-    AOThisPixel = min(AOThisPixel, SceneBuffers[0].SampleLevel(LinearClampped, ScreenUV, 0).a);
+    float AOThisPixel = saturate((Payload.HitT - GOcclusionStartDistance) / GOcclusionEndDistance);
+    AOThisPixel = lerp(1.0f, AOThisPixel, Payload.HitAlpha);
     
-    // calc indirect atten = distance atten x (1 - smoothness) x final scale
+    // calc indirect atten = inverse square distance atten x (1 - smoothness) x final scale
     // as high smoothness surfaces will reflect more than indirect diffuse
-    float IndirectAtten = 1.0f - saturate(Payload.HitT / GIndirectLightFadeDistance + IndirectLightInfo.AttenNoise);
+    float IndirectAtten = saturate((GIndirectLightFadeDistance - Payload.HitT) / GIndirectLightFadeDistance);
     IndirectAtten *= (1.0f - Payload.HitSpecular.a) * (1.0f - SceneSmoothness);
     IndirectAtten *= GIndirectLightScale;
     IndirectAtten *= AOThisPixel;
     
-    float3 ObjColorTerm = IndirectLightInfo.Diffuse * IndirectLightInfo.ShadowMask * IndirectAtten;
+    float3 ObjColorTerm = IndirectLightInfo.Diffuse * IndirectAtten;
     
     // dir indirect diffuse
     if (GNumDirLights > 0)
     {
         for (uint Ldx = 0; Ldx < min(GNumDirLights, GRTMaxDirLight); Ldx++)
         {
-            Result += UHDirLights[Ldx].Color.rgb * ObjColorTerm;
+            UHDirectionalLight DirLight = UHDirLights[Ldx];
+            UHBRANCH
+            if (DirLight.bIsEnabled)
+            {
+                float HitDist = 0;
+                float Shadow = 1.0f;
+            
+                TraceDiretionalShadow(TLAS, DirLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel, Shadow, HitDist);
+                Result += DirLight.Color.rgb * ObjColorTerm * Shadow;
+            }
         }
     }
     
@@ -236,7 +155,7 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
     if (GNumPointLights > 0)
     {
         uint TileOffset = GetPointLightOffset(TileIndex);
-        uint PointLightCount = PointLightListTrans.Load(TileOffset);
+        uint PointLightCount = PointLightList.Load(TileOffset);
         TileOffset += 4;
         
         // fetch tiled point light if the hit point is inside screen, otherwise need to lookup from instance lights
@@ -245,13 +164,22 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
         {
             for (uint Ldx = 0; Ldx < PointLightCount; Ldx++)
             {
-                uint PointLightIdx = PointLightListTrans.Load(TileOffset);
+                uint PointLightIdx = PointLightList.Load(TileOffset);
                 TileOffset += 4;
        
                 UHPointLight PointLight = UHPointLights[PointLightIdx];
-                PositionalLightAtten = CalculatePointLightAttenuation(PointLight.Radius, IndirectLightInfo.AttenNoise
-                    , ScenePos - PointLight.Position);
-                Result += PointLight.Color.rgb * ObjColorTerm * PositionalLightAtten;
+                UHBRANCH
+                if (PointLight.bIsEnabled)
+                {
+                    PositionalLightAtten = CalculatePointLightAttenuation(PointLight.Radius, IndirectLightInfo.AttenNoise
+                        , ScenePos - PointLight.Position);
+                    
+                    float HitDist = 0;
+                    float Shadow = 1.0f;
+                    TracePointShadow(TLAS, PointLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
+                        , Shadow, HitDist);
+                    Result += PointLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                }
             }
         }
         else
@@ -266,9 +194,18 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
                 }
             
                 UHPointLight PointLight = UHPointLights[LightIndex];
-                PositionalLightAtten = CalculatePointLightAttenuation(PointLight.Radius, IndirectLightInfo.AttenNoise
-                    , ScenePos - PointLight.Position);
-                Result += PointLight.Color.rgb * ObjColorTerm * PositionalLightAtten;
+                UHBRANCH
+                if (PointLight.bIsEnabled)
+                {
+                    PositionalLightAtten = CalculatePointLightAttenuation(PointLight.Radius, IndirectLightInfo.AttenNoise
+                        , ScenePos - PointLight.Position);
+                    
+                    float HitDist = 0;
+                    float Shadow = 1.0f;
+                    TracePointShadow(TLAS, PointLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
+                        , Shadow, HitDist);
+                    Result += PointLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                }
             }
         }
     }
@@ -277,7 +214,7 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
     if (GNumSpotLights > 0)
     {
         uint TileOffset = GetSpotLightOffset(TileIndex);
-        uint SpotLightCount = SpotLightListTrans.Load(TileOffset);
+        uint SpotLightCount = SpotLightList.Load(TileOffset);
         TileOffset += 4;
         
         UHBRANCH
@@ -285,14 +222,23 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
         {
             for (uint Ldx = 0; Ldx < SpotLightCount; Ldx++)
             {
-                uint SpotLightIdx = SpotLightListTrans.Load(TileOffset);
+                uint SpotLightIdx = SpotLightList.Load(TileOffset);
                 TileOffset += 4;
         
                 UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
-                PositionalLightAtten = CalculateSpotLightAttenuation(SpotLight.Radius, IndirectLightInfo.AttenNoise
-                    , ScenePos - SpotLight.Position
-                    , SpotLight.Dir, SpotLight.Angle, SpotLight.InnerAngle);
-                Result += SpotLight.Color.rgb * ObjColorTerm * PositionalLightAtten;
+                UHBRANCH
+                if (SpotLight.bIsEnabled)
+                {
+                    PositionalLightAtten = CalculateSpotLightAttenuation(SpotLight.Radius, IndirectLightInfo.AttenNoise
+                        , ScenePos - SpotLight.Position
+                        , SpotLight.Dir, SpotLight.Angle, SpotLight.InnerAngle);
+                    
+                    float HitDist = 0;
+                    float Shadow = 1.0f;
+                    TraceSpotShadow(TLAS, SpotLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
+                        , Shadow, HitDist);
+                    Result += SpotLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                }
             }
         }
         else
@@ -307,10 +253,19 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
                 }
 
                 UHSpotLight SpotLight = UHSpotLights[LightIndex];
-                PositionalLightAtten = CalculateSpotLightAttenuation(SpotLight.Radius, IndirectLightInfo.AttenNoise
-                    , ScenePos - SpotLight.Position
-                    , SpotLight.Dir, SpotLight.Angle, SpotLight.InnerAngle);
-                Result += SpotLight.Color.rgb * ObjColorTerm * PositionalLightAtten;
+                UHBRANCH
+                if (SpotLight.bIsEnabled)
+                {
+                    PositionalLightAtten = CalculateSpotLightAttenuation(SpotLight.Radius, IndirectLightInfo.AttenNoise
+                        , ScenePos - SpotLight.Position
+                        , SpotLight.Dir, SpotLight.Angle, SpotLight.InnerAngle);
+                    
+                    float HitDist = 0;
+                    float Shadow = 1.0f;
+                    TraceSpotShadow(TLAS, SpotLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
+                        , Shadow, HitDist);
+                    Result += SpotLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                }
             }
         }
     }
@@ -330,46 +285,30 @@ void RTIndirectLightRayGen()
     uint OutputIndex = GFrameNumber % GNumOfIndirectFrames;
     uint3 OutputCoord = uint3(DispatchRaysIndex().xy, OutputIndex);
     OutResult[OutputCoord] = float4(0, 0, 0, 1);
-    
-    // at this point only pixel marked "o" will shoot the ray
-    // which is 1/16 of the render resolution
-    //   0 1 2 3 4 5 6 7
-    // 0 o x x x o x x x
-    // 1 x x x x x x x x
-    // 2 x x x x x x x x
-    // 3 x x x x x x x x
-    // 4 o x x x o x x x
-    // 5 x x x x x x x x
-    // 6 x x x x x x x x
-    // 7 x x x x x x x x
+    OutHitDistance[OutputCoord.xy] = 0;
     
     uint2 PixelCoord = OutputCoord.xy * GIndirectDownsampleFactor;
     float2 ScreenUV = float2(PixelCoord) * GResolution.zw;
     
-    float SceneDepth = MixedDepthTexture.SampleLevel(LinearClampped, ScreenUV, 0).r;
+    float SceneDepth = SceneBuffers[3].SampleLevel(PointClampped, ScreenUV, 0).r;
     float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
     
     float4 OpaqueBump = SceneBuffers[1].SampleLevel(LinearClampped, ScreenUV, 0);
-    float4 TranslucentBump = TranslucentBumpTexture.SampleLevel(LinearClampped, ScreenUV, 0);
-    
-    bool bHasOpaqueInfo = OpaqueBump.a > 0;
-    bool bHasTranslucentInfo = TranslucentBump.a > 0;
-    bool bTraceThisPixel = bHasOpaqueInfo || bHasTranslucentInfo;
-    
+
+    bool bTraceThisPixel = OpaqueBump.a > 0;
     if (!bTraceThisPixel)
     {
         return;
     }
     
-    float Smoothness = bHasTranslucentInfo ? TranslucentSmoothTexture[PixelCoord].r
-        : SceneBuffers[2][PixelCoord].a;
+    float Smoothness = SceneBuffers[2].SampleLevel(LinearClampped, ScreenUV, 0).a;
     
     // Mip Level
-    float MipRate = MixedMipTexture.SampleLevel(LinearClampped, ScreenUV, 0).r;
+    float MipRate = SceneMipTexture.SampleLevel(LinearClampped, ScreenUV, 0).r;
     float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GIndirectLightMipBias;
     
     // Scene normal
-    uint PackedSceneData = MixedDataTexture[PixelCoord];
+    uint PackedSceneData = SceneDataTexture[PixelCoord];
     bool bDenoise = (GSystemRenderFeature & UH_USE_SMOOTH_NORMAL_RAYTRACING);
     bool bHasBumpThisPixel = (PackedSceneData & UH_HAS_BUMP);
     
@@ -381,13 +320,14 @@ void RTIndirectLightRayGen()
     }
     else
     {
-        SceneNormal = bHasTranslucentInfo ? TranslucentBump.xyz : OpaqueBump.xyz;
+        SceneNormal = OpaqueBump.xyz;
         SceneNormal = DecodeNormal(SceneNormal);
     }
     
     // Small ray rap applied for avoiding self-occlusion
-    float RayGap = lerp(0.05f, 0.1f, saturate(MipRate * RT_MIPRATESCALE));
+    float RayGap = lerp(0.05f, GRTGapMax * 2, saturate(MipRate * RT_MIPRATESCALE));
     float4 Result = 0;
+    float HitT = 0.0f;
     
     UHUNROLL
     for (uint RayIdx = 0; RayIdx < GNumOfIndirectFrames; RayIdx++)
@@ -407,18 +347,18 @@ void RTIndirectLightRayGen()
         
             if (ClosestAxis < 2)
             {
-            // x is the forward axis, offset yz
-                RayDir += float3(0, GRayOffset[OffsetIndex]);
+                // x is the forward axis, offset yz
+                RayDir += GIndirectRayOffsetScale * float3(0, GRayOffset[OffsetIndex]);
             }
             else if (ClosestAxis < 4)
             {
-            // y is the forward axis, offset xz
-                RayDir += float3(GRayOffset[OffsetIndex].x, 0, GRayOffset[OffsetIndex].y);
+                // y is the forward axis, offset xz
+                RayDir += GIndirectRayOffsetScale * float3(GRayOffset[OffsetIndex].x, 0, GRayOffset[OffsetIndex].y);
             }
             else
             {
-            // z is the forward axis, offset xy
-                RayDir += float3(GRayOffset[OffsetIndex], 0);
+                // z is the forward axis, offset xy
+                RayDir += GIndirectRayOffsetScale * float3(GRayOffset[OffsetIndex], 0);
             }
         
             RayDir = normalize(RayDir);
@@ -450,10 +390,14 @@ void RTIndirectLightRayGen()
         {
             Result += float4(0, 0, 0, 1);
         }
+        
+        HitT = max(Payload.HitT, HitT);
     }
     
     // avg the result and output
     OutResult[OutputCoord] = Result * 0.5f;
+    // also store the hit distance
+    OutHitDistance[OutputCoord.xy] = HitT;
 }
 
 [shader("miss")]

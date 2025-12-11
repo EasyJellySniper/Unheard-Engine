@@ -8,6 +8,6 @@ public:
 
 	virtual void OnCompile() override;
 
-	void BindParameters(const bool bIsRaytracingEnableRT);
+	void BindParameters(const bool bEnableRTReflection, const bool bEnableRTIndirectLight);
 	void BindSkyCube();
 };
