@@ -95,7 +95,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     float4x4 GProjInv_NonJittered;
     float4x4 GView;
 	float4 GResolution;		// xy for resolution, zw for 1/resolution
-	float4 GDirectLightResolution; // xy for resolution, zw for 1/resolution
+	float4 GShadowResolution; // xy for resolution, zw for 1/resolution
 	float3 GCameraPos;
 	uint GNumDirLights;
 

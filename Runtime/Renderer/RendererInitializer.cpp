@@ -14,7 +14,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, ConfigInterface(InEngine->GetConfigManager())
 	, TimerInterface(InEngine->GetGameTimer())
 	, RenderResolution(VkExtent2D())
-	, RTDirectLightExtent(VkExtent2D())
+	, RTShadowExtent(VkExtent2D())
 	, RTIndirectLightExtent(VkExtent2D())
 	, CurrentFrameGT(0)
 	, CurrentFrameRT(0)
@@ -321,10 +321,12 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		GWhiteTexture = AssetManagerInterface->GetTexture2D("UHWhiteTex");
 		GBlackTexture = AssetManagerInterface->GetTexture2D("UHBlackTex");
 		GTransparentTexture = AssetManagerInterface->GetTexture2D("UHTransparentTex");
+		GMaxUIntTexture = AssetManagerInterface->GetTexture2D("UHMaxUIntTex");
 
 		GWhiteTexture->UploadToGPU(GraphicInterface, RenderBuilder);
 		GBlackTexture->UploadToGPU(GraphicInterface, RenderBuilder);
 		GTransparentTexture->UploadToGPU(GraphicInterface, RenderBuilder);
+		GMaxUIntTexture->UploadToGPU(GraphicInterface, RenderBuilder);
 
 		GBlackCube = AssetManagerInterface->GetCubemapByName("UHBlackCube");
 		GBlackCube->Build(GraphicInterface, RenderBuilder);
@@ -337,10 +339,15 @@ void UHDeferredShadingRenderer::PrepareTextures()
 		RTSettings.NumSlices = 8;
 		GBlackTextureArray = GraphicInterface->RequestRenderTexture("UHBlackTexArray", FallbackSize, UHTextureFormat::UH_FORMAT_BGRA8_UNORM
 			, RTSettings);
+		GWhiteTextureArray = GraphicInterface->RequestRenderTexture("UHWhiteTexArray", FallbackSize, UHTextureFormat::UH_FORMAT_BGRA8_UNORM
+			, RTSettings);
 
 		RenderBuilder.ResourceBarrier(GBlackTextureArray, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		RenderBuilder.ResourceBarrier(GWhiteTextureArray, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 		RenderBuilder.ClearRenderTexture(GBlackTextureArray, GBlackClearColor);
+		RenderBuilder.ClearRenderTexture(GWhiteTextureArray, GWhiteClearColor);
 		RenderBuilder.ResourceBarrier(GBlackTextureArray, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.ResourceBarrier(GWhiteTextureArray, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 
 	GraphicInterface->EndOneTimeCmd(CreationCmd);
@@ -499,6 +506,7 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		CollectSpotLightShader = MakeUnique<UHCollectLightShader>(GraphicInterface, "CollectSpotLightShader", false);
 		RTSmoothSceneNormalHShader = MakeUnique<UHRTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalHShader", false);
 		RTSmoothSceneNormalVShader = MakeUnique<UHRTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalVShader", true);
+		RTSoftShadowShader = MakeUnique<UHRTSoftShadowShader>(GraphicInterface, "RTSoftShadowShader");
 	}
 
 #if WITH_EDITOR
@@ -586,7 +594,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	LightCullingShader->BindParameters();
 
 	// ------------------------------------------------ Lighting pass descriptor update
-	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTDirectLight);
+	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTShadow);
 	ReflectionPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTReflection
 		, bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
 
@@ -651,13 +659,14 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 			RTMaterialDataTable->BindStorage(RTMaterialData, 0, FrameIdx);
 		}
 
-		RTDirectLightShader->BindParameters();
+		RTShadowShader->BindParameters();
 		RTReflectionShader->BindParameters();
 		RTIndirectLightShader->BindParameters();
 		CollectPointLightShader->BindParameters();
 		CollectSpotLightShader->BindParameters();
 		RTSmoothSceneNormalHShader->BindParameters();
 		RTSmoothSceneNormalVShader->BindParameters();
+		RTSoftShadowShader->BindParameters();
 	}
 
 	// ------------------------------------------------ mesh table descriptor update
@@ -761,7 +770,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
-		UH_SAFE_RELEASE(RTDirectLightShader);
+		UH_SAFE_RELEASE(RTShadowShader);
 		UH_SAFE_RELEASE(RTReflectionShader);
 		UH_SAFE_RELEASE(RTIndirectLightShader);
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
@@ -770,6 +779,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		UH_SAFE_RELEASE(CollectSpotLightShader);
 		UH_SAFE_RELEASE(RTSmoothSceneNormalHShader);
 		UH_SAFE_RELEASE(RTSmoothSceneNormalVShader);
+		UH_SAFE_RELEASE(RTSoftShadowShader);
 	}
 
 	UH_SAFE_RELEASE(TextureTable);
@@ -1775,11 +1785,11 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 		, IndicesTable->GetDescriptorSetLayout()
 		, RTMaterialDataTable->GetDescriptorSetLayout() };
 
-	UH_SAFE_RELEASE(RTDirectLightShader);
+	UH_SAFE_RELEASE(RTShadowShader);
 	UH_SAFE_RELEASE(RTReflectionShader);
 	UH_SAFE_RELEASE(RTIndirectLightShader);
 
-	RTDirectLightShader = MakeUnique<UHRTDirectLightShader>(GraphicInterface, "RTDirectLightShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
 		, Layouts);
 
 	RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()

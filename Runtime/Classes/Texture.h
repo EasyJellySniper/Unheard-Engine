@@ -9,6 +9,7 @@
 enum class UHTextureVersion
 {
 	InitialTexture = 0,
+	OutputImageFormat,
 	TextureVersionMax
 };
 

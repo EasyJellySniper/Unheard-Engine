@@ -55,7 +55,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		{
 			DefaultDirectionalLight = EngineCache->GetScene()->GetDirLights()[0];
 		}
-		DefaultDirectionalLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+		//DefaultDirectionalLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
 	}
 
 	// move geo364

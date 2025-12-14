@@ -24,7 +24,7 @@ void UHDeferredShadingRenderer::DispatchLightCulling(UHRenderBuilder& RenderBuil
 		// bind sets
 		RenderBuilder.BindDescriptorSetCompute(LightCullingShader->GetPipelineLayout(), LightCullingShader->GetDescriptorSet(CurrentFrameRT));
 
-		// dispatch light culliong
+		// dispatch light culling
 		uint32_t TileCountX, TileCountY;
 		GetLightCullingTileCount(TileCountX, TileCountY);
 		RenderBuilder.Dispatch(TileCountX, TileCountY, 1);
@@ -56,9 +56,7 @@ void UHDeferredShadingRenderer::DispatchLightPass(UHRenderBuilder& RenderBuilder
 		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
 
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GIndirectOcclusionResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectLightResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-		RenderBuilder.FlushResourceBarrier();
+		RenderBuilder.ResourceBarrier(GIndirectOcclusionResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

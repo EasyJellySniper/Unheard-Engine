@@ -357,9 +357,10 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShaderDefines.h" />
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMaterialDataTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSoftShadowShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SmoothCubemapShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\SphericalHarmonicShader.h" />
@@ -500,7 +501,8 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.cpp" />
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSoftShadowShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\ReflectionPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\SkyPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PanoramaToCubemapShader.cpp" />
@@ -585,7 +587,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\RayTracing\RayTracingDirectLight.hlsl">
+    <None Include="Shaders\RayTracing\RayTracingShadow.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
@@ -749,6 +751,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\PostProcessing\KawaseBlurComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RTSoftShadowComputeShader.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

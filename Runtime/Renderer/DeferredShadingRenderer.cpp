@@ -112,7 +112,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 
 	// at least make it 'toggleable' partially
 	RTParams.bEnableRayTracing = RenderingSettings.bEnableRayTracing && GraphicInterface->IsRayTracingEnabled();
-	RTParams.bEnableRTDirectLight = RenderingSettings.bEnableRTDirectLight;
+	RTParams.bEnableRTShadow = RenderingSettings.bEnableRTShadow;
 	RTParams.bEnableRTReflection = RenderingSettings.bEnableRTReflection;
 	RTParams.bEnableRTIndirectLighting = RenderingSettings.bEnableRTIndirectLighting;
 
@@ -156,7 +156,14 @@ enum class UHDebugViewMode
 	Depth,
 	Motion,
 	Mip,
-	RTShadow,
+	RTShadow0,
+	RTShadow1,
+	RTShadow2,
+	RTShadow3,
+	RTShadow4,
+	RTShadow5,
+	RTShadow6,
+	RTShadow7,
 	RTReflection,
 	RTIndirectLight1,
 	RTIndirectLight2,
@@ -187,7 +194,14 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			, GSceneMixedDepth
 			, GMotionVectorRT
 			, GSceneMip
-			, GRTDirectLightResult
+			, GRTSoftShadow	// tex array with 8 layers
+			, GRTSoftShadow
+			, GRTSoftShadow
+			, GRTSoftShadow
+			, GRTSoftShadow
+			, GRTSoftShadow
+			, GRTSoftShadow
+			, GRTSoftShadow
 			, GRTReflectionResult
 			, GRTIndirectLighting  // tex array with 2 layers
 			, GRTIndirectLighting
@@ -200,6 +214,12 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 				&& DebugViewIndex <= UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight2))
 			{
 				const uint32_t Index = DebugViewIndex - UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight1);
+				DebugViewShader->BindImage(Buffers[DebugViewIndex], 1, Index);
+			}
+			else if (DebugViewIndex >= UH_ENUM_VALUE(UHDebugViewMode::RTShadow0)
+				&& DebugViewIndex <= UH_ENUM_VALUE(UHDebugViewMode::RTShadow7))
+			{
+				const uint32_t Index = DebugViewIndex - UH_ENUM_VALUE(UHDebugViewMode::RTShadow0);
 				DebugViewShader->BindImage(Buffers[DebugViewIndex], 1, Index);
 			}
 			else
@@ -294,10 +314,10 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.GAmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
 	SystemConstantsCPU.GAmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
 
-	SystemConstantsCPU.GDirectLightResolution.x = static_cast<float>(RTDirectLightExtent.width);
-	SystemConstantsCPU.GDirectLightResolution.y = static_cast<float>(RTDirectLightExtent.height);
-	SystemConstantsCPU.GDirectLightResolution.z = 1.0f / SystemConstantsCPU.GDirectLightResolution.x;
-	SystemConstantsCPU.GDirectLightResolution.w = 1.0f / SystemConstantsCPU.GDirectLightResolution.y;
+	SystemConstantsCPU.GShadowResolution.x = static_cast<float>(RTShadowExtent.width);
+	SystemConstantsCPU.GShadowResolution.y = static_cast<float>(RTShadowExtent.height);
+	SystemConstantsCPU.GShadowResolution.z = 1.0f / SystemConstantsCPU.GShadowResolution.x;
+	SystemConstantsCPU.GShadowResolution.w = 1.0f / SystemConstantsCPU.GShadowResolution.y;
 
 	UHTextureCube* SkyCube = GetCurrentSkyCube();
 
@@ -452,6 +472,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	// upload RT shader data
 	if (RenderingSettings.bEnableRayTracing)
 	{
+		// RTIL settings
 		if (RenderingSettings.bEnableRTIndirectLighting)
 		{
 			UHRTIndirectLightConstants ILConstant{};
@@ -466,14 +487,19 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		}
 
 		// soft shadow settings
-		if (RenderingSettings.bEnableRTIndirectLighting || RenderingSettings.bEnableRTDirectLight)
+		if (RenderingSettings.bEnableRTShadow)
 		{
-			UHSoftShadowConstants SoftShadowConsts{};
+			UHRTSoftShadowConstants SoftShadowConsts{};
 			SoftShadowConsts.PCSSKernal = RenderingSettings.PCSSKernal;
 			SoftShadowConsts.PCSSMinPenumbra = RenderingSettings.PCSSMinPenumbra;
 			SoftShadowConsts.PCSSMaxPenumbra = RenderingSettings.PCSSMaxPenumbra;
 			SoftShadowConsts.PCSSBlockerDistScale = RenderingSettings.PCSSBlockerDistScale;
-			LightPassShader->GetConstants(CurrentFrameGT)->UploadData(&SoftShadowConsts, 0);
+
+			SoftShadowConsts.SoftShadowResolution.x = static_cast<float>(RenderResolution.width / 2);
+			SoftShadowConsts.SoftShadowResolution.y = static_cast<float>(RenderResolution.height / 2);
+			SoftShadowConsts.SoftShadowResolution.z = 1.0f / SoftShadowConsts.SoftShadowResolution.x;
+			SoftShadowConsts.SoftShadowResolution.w = 1.0f / SoftShadowConsts.SoftShadowResolution.y;
+			RTSoftShadowShader->GetConstants(CurrentFrameGT)->UploadData(&SoftShadowConsts, 0);
 		}
 	}
 }
@@ -887,7 +913,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				}
 
 				DispatchLightCulling(SceneRenderBuilder);
-				DispatchRayDirectLightPass(SceneRenderBuilder);
+				DispatchRayShadowPass(SceneRenderBuilder);
 				DispatchSmoothSceneNormalPass(SceneRenderBuilder);
 				DispatchRayIndirectLightPass(SceneRenderBuilder);
 				DispatchRayReflectionPass(SceneRenderBuilder);

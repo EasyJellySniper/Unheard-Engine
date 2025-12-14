@@ -186,17 +186,17 @@ public:
     void Release()
     {
         // an upload buffer will be mapped when initialization, unmap it before destroy
-        if (bIsUploadBuffer && BufferMemory)
+        if (bIsUploadBuffer && BufferMemory != nullptr)
         {
             vkUnmapMemory(LogicalDevice, BufferMemory);
         }
 
-        if (BufferSource)
+        if (BufferSource != nullptr)
         {
             vkDestroyBuffer(LogicalDevice, BufferSource, nullptr);
         }
 
-        if (BufferMemory)
+        if (BufferMemory != nullptr)
         {
             vkFreeMemory(LogicalDevice, BufferMemory, nullptr);
         }

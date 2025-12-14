@@ -29,9 +29,10 @@ UHRenderTexture* GPreviousSceneResult;
 std::vector<UHRenderTexture*> GSceneBuffers;
 std::vector<UHRenderTexture*> GSceneBuffersWithDepth;
 
-UHRenderTexture* GRTDirectLightResult;
-// GRTDirectHitDistance can be reused after soft shadow is done
-UHRenderTexture* GRTDirectHitDistance;
+// shadow buffers, can be reused after opaque lighting pass is done
+UHRenderTexture* GRTShadowData;
+UHRenderTexture* GRTSoftShadow;
+UHRenderTexture* GRTReceiveLightBits;
 // GRTReflectionResult can be reused after translucent pass is done
 UHRenderTexture* GRTReflectionResult;
 UHRenderTexture* GSmoothSceneNormal;
@@ -53,6 +54,8 @@ UHTexture2D* GWhiteTexture;
 UHTexture2D* GTransparentTexture;
 UHTextureCube* GBlackCube;
 UHRenderTexture* GBlackTextureArray;
+UHRenderTexture* GWhiteTextureArray;
+UHTexture2D* GMaxUIntTexture;
 
 // occlusion data
 UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
@@ -70,6 +73,7 @@ UHRenderTexture* GRTIndirectHitDistance;
 UHRenderTexture* GIndirectOcclusionResult;
 
 VkClearColorValue GBlackClearColor = { 0.0f,0.0f,0.0f,1.0f };
+VkClearColorValue GWhiteClearColor = { 1.0f,1.0f,1.0f,1.0f };
 VkClearColorValue GTransparentClearColor = { 0.0f,0.0f,0.0f,0.0f };
 
 inline std::vector<UHTexture*> GetGBuffersSRV()

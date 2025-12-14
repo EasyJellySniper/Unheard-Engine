@@ -1,16 +1,16 @@
-#include "RTDirectLightShader.h"
+#include "RTShadowShader.h"
 #include "../../RendererShared.h"
 
-UHRTDirectLightShader::UHRTDirectLightShader(UHGraphic* InGfx, std::string Name
+UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 	, const std::vector<uint32_t>& InClosestHits
 	, const std::vector<uint32_t>& InAnyHits
 	, const std::vector<VkDescriptorSetLayout>& ExtraLayouts)
-	: UHShaderClass(InGfx, Name, typeid(UHRTDirectLightShader), nullptr)
+	: UHShaderClass(InGfx, Name, typeid(UHRTShadowShader), nullptr)
 {
 	// system const
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-	// TLAS + RT direct light result
+	// TLAS + results
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
@@ -43,10 +43,10 @@ UHRTDirectLightShader::UHRTDirectLightShader(UHGraphic* InGfx, std::string Name
 	InitHitGroupTable(InAnyHits.size());
 }
 
-void UHRTDirectLightShader::OnCompile()
+void UHRTShadowShader::OnCompile()
 {
-	RayGenShader = Gfx->RequestShader("RTDirectLightShader", "Shaders/RayTracing/RayTracingDirectLight.hlsl", "RTDirectLightRayGen", "lib_6_3");
-	MissShader = Gfx->RequestShader("RTDirectLightShader", "Shaders/RayTracing/RayTracingDirectLight.hlsl", "RTDirectLightMiss", "lib_6_3");
+	RayGenShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowRayGen", "lib_6_3");
+	MissShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowMiss", "lib_6_3");
 
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
@@ -59,7 +59,7 @@ void UHRTDirectLightShader::OnCompile()
 	RTState = Gfx->RequestRTState(RTInfo);
 }
 
-void UHRTDirectLightShader::BindParameters()
+void UHRTShadowShader::BindParameters()
 {
 	BindConstant(GSystemConstantBuffer, 0, 0);
 
@@ -68,8 +68,8 @@ void UHRTDirectLightShader::BindParameters()
 		BindTLAS(GTopLevelAS[Idx].get(), 1, Idx);
 	}
 
-	BindRWImage(GRTDirectLightResult, 2);
-	BindRWImage(GRTDirectHitDistance, 3);
+	BindRWImage(GRTShadowData, 2);
+	BindRWImage(GRTReceiveLightBits, 3);
 	BindImage(GetGBuffersSRV(), 4);
 
 	// light buffers

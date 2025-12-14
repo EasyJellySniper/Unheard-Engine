@@ -82,7 +82,7 @@ public:
 		, bEnableDepthPrePass(true)
 		, ParallelSubmitters(8)
 		, RTCullingRadius(100.0f)
-		, RTDirectLightQuality(UH_ENUM_VALUE(UHRTShadowQuality::RTShadow_Half))
+		, RTShadowQuality(UH_ENUM_VALUE(UHRTShadowQuality::RTShadow_Half))
 		, RTShadowTMax(100.0f)
 		, RTReflectionQuality(UH_ENUM_VALUE(UHRTReflectionQuality::RTReflection_Half))
 		, RTReflectionTMax(100)
@@ -101,7 +101,7 @@ public:
 		, PCSSBlockerDistScale(0.02f)
 		, bDenoiseRayTracing(true)
 		, SelectedGpuName("")
-		, bEnableRTDirectLight(true)
+		, bEnableRTShadow(true)
 		, bEnableRTReflection(true)
 		, bEnableRTIndirectLighting(false)
 		, RTIndirectLightScale(0.75f)
@@ -132,9 +132,9 @@ public:
 	bool bDenoiseRayTracing;
 
 	// RT direct light
-	int32_t RTDirectLightQuality;
+	int32_t RTShadowQuality;
 	float RTShadowTMax;
-	bool bEnableRTDirectLight;
+	bool bEnableRTShadow;
 
 	// RT reflections
 	int32_t RTReflectionQuality;

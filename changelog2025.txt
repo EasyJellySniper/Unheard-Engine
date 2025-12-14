@@ -171,3 +171,12 @@ BIG rework on RT direct lighting. As well as other RT optimizations. A few notes
 - RTIL still needs some performance hack.
 - Translucent lighting issue.
 Forget it. At this point I am targeting opaque objects. Translucent shadow/IL needs to be redone afterward.
+
+13-12-2025:
+Fixed a precision bug about point light culling. Sphere-sphere intersection isn't good enough, has to be a strict sphere-frustum check.
+Carried on lighting rework..for the best of two worlds, I think I can only select the max influence light shadows at the moment.
+That is, only one light will be chosen for RT shadows per pixel. Or allow a few RT shadows per pixel. (E.g. 4~8)
+
+14-12-2025:
+Reconstructed correct RT shadow for directional lights! Next is to deal with positional lights.
+Finally done the rework for shadows.

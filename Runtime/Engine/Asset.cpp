@@ -52,6 +52,12 @@ UHAssetManager::UHAssetManager()
 		SystemTex->SetTextureData(TexData);
 		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
 
+		// 2x2 max uint tex
+		SystemTex = MakeUnique<UHTexture2D>("UHMaxUIntTex", "UHMaxUIntTex", SystemTexSize, UHTextureFormat::UH_FORMAT_R32_UINT, TexSettings);
+		memset(TexData.data(), ~0, TexData.size());
+		SystemTex->SetTextureData(TexData);
+		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
+
 		// 2x2 black tex, with alpha channel = 1
 		SystemTex = MakeUnique<UHTexture2D>("UHBlackTex", "UHBlackTex", SystemTexSize, FallbackTexFormat, TexSettings);
 		memset(TexData.data(), 0, TexData.size());

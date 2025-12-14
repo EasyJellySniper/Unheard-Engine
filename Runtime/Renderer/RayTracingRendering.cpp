@@ -8,13 +8,14 @@ void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
 		return;
 	}
 
-	UH_SAFE_RELEASE_TEX(GRTDirectLightResult);
-	UH_SAFE_RELEASE_TEX(GRTDirectHitDistance);
+	UH_SAFE_RELEASE_TEX(GRTSoftShadow);
+	UH_SAFE_RELEASE_TEX(GRTShadowData);
+	UH_SAFE_RELEASE_TEX(GRTReceiveLightBits);
 	UH_SAFE_RELEASE_TEX(GRTReflectionResult);
 	UH_SAFE_RELEASE_TEX(GSmoothSceneNormal);
 	UH_SAFE_RELEASE_TEX(GRTIndirectLighting);
 	UH_SAFE_RELEASE_TEX(GRTIndirectHitDistance);
-
+	
 	// cleanup gaussian constant
 	RTGaussianConsts.Release(GraphicInterface);
 }
@@ -57,16 +58,27 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 		GraphicInterface->WaitGPU();
 		ReleaseRayTracingBuffers();
 
-		const int32_t ShadowQuality = ConfigInterface->RenderingSetting().RTDirectLightQuality;
-		RTDirectLightExtent = RenderResolution;
-		RTDirectLightExtent.width = RenderResolution.width >> ShadowQuality;
-		RTDirectLightExtent.height = RenderResolution.height >> ShadowQuality;
+		const int32_t ShadowQuality = ConfigInterface->RenderingSetting().RTShadowQuality;
+		RTShadowExtent = RenderResolution;
+		RTShadowExtent.width = RenderResolution.width >> ShadowQuality;
+		RTShadowExtent.height = RenderResolution.height >> ShadowQuality;
+
+		VkExtent2D HalfRes = RenderResolution;
+		HalfRes.width >>= 1;
+		HalfRes.height >>= 1;
 
 		UHRenderTextureSettings RenderTextureSetting{};
 		RenderTextureSetting.bIsReadWrite = true;
 
-		GRTDirectLightResult = GraphicInterface->RequestRenderTexture("RTDirectLight", RTDirectLightExtent, UHTextureFormat::UH_FORMAT_R11G11B10, RenderTextureSetting);
-		GRTDirectHitDistance = GraphicInterface->RequestRenderTexture("RTDirectHitDistance", RTDirectLightExtent, UHTextureFormat::UH_FORMAT_R16F, RenderTextureSetting);
+		// RT shadow data and soft shadow, currently a number of softed RT shadows per pixel are supported
+		RenderTextureSetting.NumSlices = UHLightPassShader::MaxSoftShadowLightsPerPixel;
+		GRTShadowData = GraphicInterface->RequestRenderTexture("RTShadowData", RTShadowExtent, UHTextureFormat::UH_FORMAT_RG16F, RenderTextureSetting);
+
+		// soft shadow result, always half res
+		GRTSoftShadow = GraphicInterface->RequestRenderTexture("RTSoftShadow", HalfRes, UHTextureFormat::UH_FORMAT_R8_UNORM, RenderTextureSetting);
+
+		RenderTextureSetting.NumSlices = 1;
+		GRTReceiveLightBits = GraphicInterface->RequestRenderTexture("RTReceiveLightBits", RTShadowExtent, UHTextureFormat::UH_FORMAT_R32_UINT, RenderTextureSetting);
 
 		// reflection buffer setup, the size is the same as rendering resolution regardless the quality setting
 		// as there are some filter passes for reflections
@@ -75,9 +87,6 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 		RenderTextureSetting.bUseMipmap = false;
 
 		// refined normal at half size
-		VkExtent2D HalfRes = RenderResolution;
-		HalfRes.width >>= 1;
-		HalfRes.height >>= 1;
 		GSmoothSceneNormal = GraphicInterface->RequestRenderTexture("SmoothSceneNormal", HalfRes, UHTextureFormat::UH_FORMAT_RGBA16F, RenderTextureSetting);
 
 		// indirect light at half size
@@ -173,40 +182,62 @@ void UHDeferredShadingRenderer::CollectLightPass(UHRenderBuilder& RenderBuilder)
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
-void UHDeferredShadingRenderer::DispatchRayDirectLightPass(UHRenderBuilder& RenderBuilder)
+void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBuilder)
 {
-	UHGameTimerScope Scope("DispatchRayDirectLightPass", false);
-	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingDirectLight)], "RayTracingDirectLight");
-	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0 || !RTParams.bEnableRTDirectLight)
+	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0 || !RTParams.bEnableRTShadow)
 	{
-		if (GRTDirectLightResult != nullptr)
-		{
-			RenderBuilder.ResourceBarrier(GRTDirectLightResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		}
 		return;
 	}
 
-	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Direct Light");
+	const VkExtent2D ShadowResultExtent = GRTShadowData->GetExtent();
 
-	// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectLightResult,  VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectHitDistance,  VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.FlushResourceBarrier();
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Shadow");
+	{
+		UHGameTimerScope Scope("DispatchRayShadowPass", false);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingShadow)], "RayTracingShadow");
 
-	// bind descriptors and RT states
-	// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!
-	RTDescriptorSets[CurrentFrameRT][0] = RTDirectLightShader->GetDescriptorSet(CurrentFrameRT);
-	RenderBuilder.BindRTDescriptorSet(RTDirectLightShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);
-	RenderBuilder.BindRTState(RTDirectLightShader->GetRTState());
+		// transition output buffer to VK_IMAGE_LAYOUT_GENERAL
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTShadowData, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTReceiveLightBits, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.FlushResourceBarrier();
 
-	// trace!
-	RenderBuilder.TraceRay(GRTDirectLightResult->GetExtent(), RTDirectLightShader->GetRayGenTable(), RTDirectLightShader->GetMissTable(), RTDirectLightShader->GetHitGroupTable());
+		// bind descriptors and RT states
+		// [0] is to bind the shader descriptor, and prevent touching other elements. Not a typo!
+		RTDescriptorSets[CurrentFrameRT][0] = RTShadowShader->GetDescriptorSet(CurrentFrameRT);
+		RenderBuilder.BindRTDescriptorSet(RTShadowShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);
+		RenderBuilder.BindRTState(RTShadowShader->GetRTState());
 
-	// finally, transition to shader read only
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectLightResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTDirectHitDistance, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.FlushResourceBarrier();
+		// trace!
+		RenderBuilder.TraceRay(ShadowResultExtent, RTShadowShader->GetRayGenTable(), RTShadowShader->GetMissTable(), RTShadowShader->GetHitGroupTable());
+	}
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch RT Soft Shadow");
+	{
+		UHGameTimerScope Scope("DispatchRTSoftShadow", false);
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::SoftShadowPass)], "DispatchRTSoftShadow");
+
+		// soft shadow pass after ray tracing
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTShadowData, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSoftShadow, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.FlushResourceBarrier();
+
+		RenderBuilder.BindComputeState(RTSoftShadowShader->GetComputeState());
+		RenderBuilder.BindDescriptorSetCompute(RTSoftShadowShader->GetPipelineLayout(), RTSoftShadowShader->GetDescriptorSet(CurrentFrameRT));
+
+		// always do soft pass at half res for now
+		VkExtent2D HalfRes = RenderResolution;
+		HalfRes.width >>= 1;
+		HalfRes.height >>= 1;
+
+		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(HalfRes.width, GThreadGroup2D_X)
+			, MathHelpers::RoundUpDivide(HalfRes.height, GThreadGroup2D_Y)
+			, 1);
+
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSoftShadow, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTReceiveLightBits, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 

@@ -58,6 +58,24 @@
 #define ID_RTINDIRECT_INDIRECT2         32801
 #define ID_RTINDIRECT_INDIRECT3         32802
 #define ID_RTINDIRECT_INDIRECT4         32803
+#define ID_RTSHADOWS_SHADOW0            32804
+#define ID_RTSHADOWS_SHADOW1            32805
+#define ID_RTSHADOWS_SHADOW2            32806
+#define ID_RTSHADOWS_SHADOW3            32807
+#define ID_RTSHADOWS_SHADOW4            32808
+#define ID_RTSHADOWS_SHADOW5            32809
+#define ID_RTSHADOWS_SHADOW6            32810
+#define ID_RTSHADOWS_SHADOW7            32811
+#define ID_VIEWMODE_RTSHADOWS           32812
+#define ID_RTSHADOWS_SOFTSHADOW0        32813
+#define ID_RTSHADOWS_SOFTSHADOW1        32814
+#define ID_RTSHADOWS_SOFTSHADOW2        32815
+#define ID_RTSHADOWS_SOFTSHADOW3        32816
+#define ID_RTSHADOWS_SOFTSHADOW4        32817
+#define ID_RTSHADOWS_SOFTSHADOW5        32818
+#define ID_RTSHADOWS_SOFTSHADOW6        32819
+#define ID_RTSHADOWS_SOFTSHADOW7        32820
+#define ID_RTSHADOWS_SOFTSHADOW8        32821
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -66,7 +84,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        132
-#define _APS_NEXT_COMMAND_VALUE         32804
+#define _APS_NEXT_COMMAND_VALUE         32822
 #define _APS_NEXT_CONTROL_VALUE         1070
 #define _APS_NEXT_SYMED_VALUE           110
 #endif

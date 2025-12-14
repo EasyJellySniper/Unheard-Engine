@@ -23,6 +23,7 @@ VkFormat GetVulkanFormat(UHTextureFormat InUHFormat)
 		FormatCache[UHTextureFormat::UH_FORMAT_R8_UNORM] = VK_FORMAT_R8_UNORM;
 		FormatCache[UHTextureFormat::UH_FORMAT_R8_UINT] = VK_FORMAT_R8_UINT;
 		FormatCache[UHTextureFormat::UH_FORMAT_R16_UINT] = VK_FORMAT_R16_UINT;
+		FormatCache[UHTextureFormat::UH_FORMAT_R32_UINT] = VK_FORMAT_R32_UINT;
 		FormatCache[UHTextureFormat::UH_FORMAT_R16F] = VK_FORMAT_R16_SFLOAT;
 		FormatCache[UHTextureFormat::UH_FORMAT_R16_UNORM] = VK_FORMAT_R16_UNORM;
 		FormatCache[UHTextureFormat::UH_FORMAT_RG16_UNORM] = VK_FORMAT_R16G16_UNORM;

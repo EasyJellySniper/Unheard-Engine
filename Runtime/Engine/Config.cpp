@@ -59,7 +59,7 @@ void UHConfigManager::LoadConfig()
 		GET_UHE_SETTING(RenderingSettings, bEnableDepthPrePass);
 		GET_UHE_SETTING(RenderingSettings, ParallelSubmitters);
 		GET_UHE_SETTING(RenderingSettings, RTCullingRadius);
-		GET_UHE_SETTING(RenderingSettings, RTDirectLightQuality);
+		GET_UHE_SETTING(RenderingSettings, RTShadowQuality);
 		GET_UHE_SETTING(RenderingSettings, RTShadowTMax);
 		GET_UHE_SETTING(RenderingSettings, RTReflectionQuality);
 		GET_UHE_SETTING(RenderingSettings, RTReflectionTMax);
@@ -78,7 +78,7 @@ void UHConfigManager::LoadConfig()
 		GET_UHE_SETTING(RenderingSettings, PCSSBlockerDistScale);
 		GET_UHE_SETTING(RenderingSettings, bEnableHardwareOcclusion);
 		GET_UHE_SETTING(RenderingSettings, SelectedGpuName);
-		GET_UHE_SETTING(RenderingSettings, bEnableRTDirectLight);
+		GET_UHE_SETTING(RenderingSettings, bEnableRTShadow);
 		GET_UHE_SETTING(RenderingSettings, bEnableRTReflection);
 		GET_UHE_SETTING(RenderingSettings, bEnableRTIndirectLighting);
 		GET_UHE_SETTING(RenderingSettings, RTIndirectLightScale);
@@ -138,7 +138,7 @@ void UHConfigManager::ApplyConfig()
 		SET_UHE_SETTING(RenderingSettings, bEnableDepthPrePass);
 		SET_UHE_SETTING(RenderingSettings, ParallelSubmitters);
 		SET_UHE_SETTING(RenderingSettings, RTCullingRadius);
-		SET_UHE_SETTING(RenderingSettings, RTDirectLightQuality);
+		SET_UHE_SETTING(RenderingSettings, RTShadowQuality);
 		SET_UHE_SETTING(RenderingSettings, RTShadowTMax);
 		SET_UHE_SETTING(RenderingSettings, RTReflectionQuality);
 		SET_UHE_SETTING(RenderingSettings, RTReflectionTMax);
@@ -157,7 +157,7 @@ void UHConfigManager::ApplyConfig()
 		SET_UHE_SETTING(RenderingSettings, PCSSBlockerDistScale);
 		SET_UHE_SETTING(RenderingSettings, bEnableHardwareOcclusion);
 		SET_UHE_SETTING(RenderingSettings, SelectedGpuName);
-		SET_UHE_SETTING(RenderingSettings, bEnableRTDirectLight);
+		SET_UHE_SETTING(RenderingSettings, bEnableRTShadow);
 		SET_UHE_SETTING(RenderingSettings, bEnableRTReflection);
 		SET_UHE_SETTING(RenderingSettings, bEnableRTIndirectLighting);
 		SET_UHE_SETTING(RenderingSettings, RTIndirectLightScale);

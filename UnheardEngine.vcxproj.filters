@@ -171,7 +171,7 @@
     <ClInclude Include="Runtime\Classes\AccelerationStructure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.h">
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.h">
@@ -435,6 +435,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\KawaseBlurShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSoftShadowShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -608,7 +611,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\ToneMappingShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDirectLightShader.cpp">
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\BasePassShader.cpp">
@@ -839,6 +842,9 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\KawaseBlurShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSoftShadowShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -863,7 +869,7 @@
     <None Include="Shaders\SkyboxPixelShader.hlsl" />
     <None Include="Shaders\PostProcessing\ToneMapPixelShader.hlsl" />
     <None Include="Shaders\MotionCameraShader.hlsl" />
-    <None Include="Shaders\RayTracing\RayTracingDirectLight.hlsl" />
+    <None Include="Shaders\RayTracing\RayTracingShadow.hlsl" />
     <None Include="Shaders\RayTracing\UHRTCommon.hlsli" />
     <None Include="Shaders\RayTracing\RayTracingHitGroup.hlsl" />
     <None Include="Shaders\PostProcessing\DebugViewPixelShader.hlsl" />
@@ -905,5 +911,6 @@
     <None Include="Shaders\ClearUAVComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RayTracingIndirectLight.hlsl" />
     <None Include="Shaders\PostProcessing\KawaseBlurComputeShader.hlsl" />
+    <None Include="Shaders\RayTracing\RTSoftShadowComputeShader.hlsl" />
   </ItemGroup>
 </Project>

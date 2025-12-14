@@ -25,7 +25,7 @@
 #define ENGINE_NAME_NONE "UHE_None"
 
 // macro for safe release UH objects
-#define UH_SAFE_RELEASE(x) if (x) x->Release();
+#define UH_SAFE_RELEASE(x) if (x != nullptr) x->Release();
 
 #if WITH_EDITOR
 #define _CRTDBG_MAP_ALLOC

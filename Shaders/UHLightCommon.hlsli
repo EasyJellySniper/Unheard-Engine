@@ -6,6 +6,7 @@
 #define UHLIGHTCULLING_UPSCALE 2
 
 #include "UHInputs.hlsli"
+#include "UHCommon.hlsli"
 #ifndef UHDIRLIGHT_BIND
 #define UHDIRLIGHT_BIND t3
 #endif
@@ -64,6 +65,9 @@ struct UHLightInfo
     float AttenNoise;
     float SpecularNoise;
 };
+
+// this must sync with c++ side implementation
+static const uint GMaxSoftShadowLightsPerPixel = 8;
 
 float3 SchlickFresnel(float3 R0, float LdotH)
 {
@@ -224,6 +228,70 @@ float3 CalculateSpotLight(UHSpotLight SpotLight, UHLightInfo LightInfo, bool bDi
     LightInfo.ShadowMask = LightAtten * LightInfo.ShadowMask;
 		
     return LightBRDF(LightInfo, bDiffuseOnly);
+}
+
+// GetClosestPointLightIndex from a world pos
+uint GetClosestPointLightIndex(in ByteAddressBuffer PointLightList, uint TileIndex, float3 WorldPos)
+{
+    uint TileOffset = GetPointLightOffset(TileIndex);
+    uint LightCount = PointLightList.Load(TileOffset);
+    TileOffset += 4;
+	
+    uint ClosestIndex = ~0;
+    float LightToWorldDist = UH_FLOAT_MAX;
+    
+    for (uint Ldx = 0; Ldx < LightCount; Ldx++)
+    {
+        uint PointLightIdx = PointLightList.Load(TileOffset);
+        TileOffset += 4;
+		
+        UHPointLight PointLight = UHPointLights[PointLightIdx];
+        UHBRANCH
+        if (PointLight.bIsEnabled)
+        {
+            float3 LightToWorld = WorldPos - PointLight.Position;
+            float Dist = dot(LightToWorld, LightToWorld);
+            if (Dist < LightToWorldDist)
+            {
+                LightToWorldDist = Dist;
+                ClosestIndex = PointLightIdx;
+            }
+        }
+    }
+    
+    return ClosestIndex;
+}
+
+// GetClosestSpotLightIndex from a world pos
+uint GetClosestSpotLightIndex(in ByteAddressBuffer SpotLightList, uint TileIndex, float3 WorldPos)
+{
+    uint TileOffset = GetSpotLightOffset(TileIndex);
+    uint LightCount = SpotLightList.Load(TileOffset);
+    TileOffset += 4;
+	
+    uint ClosestIndex = ~0;
+    float LightToWorldDist = UH_FLOAT_MAX;
+    
+    for (uint Ldx = 0; Ldx < LightCount; Ldx++)
+    {
+        uint SpotLightIdx = SpotLightList.Load(TileOffset);
+        TileOffset += 4;
+		
+        UHSpotLight SpotLight = UHSpotLights[SpotLightIdx];
+        UHBRANCH
+        if (SpotLight.bIsEnabled)
+        {
+            float3 LightToWorld = WorldPos - SpotLight.Position;
+            float Dist = dot(LightToWorld, LightToWorld);
+            if (Dist < LightToWorldDist)
+            {
+                LightToWorldDist = Dist;
+                ClosestIndex = SpotLightIdx;
+            }
+        }
+    }
+    
+    return ClosestIndex;
 }
 
 #endif

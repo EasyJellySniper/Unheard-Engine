@@ -168,7 +168,7 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         HitDist = Payload.HitT;
-        Atten = 1.0f - Payload.HitAlpha;
+        Atten = 1 - Payload.HitAlpha;
     }
     else
     {
@@ -223,7 +223,7 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         HitDist = Payload.HitT;
-        Atten = 1.0f - Payload.HitAlpha;
+        Atten = 1 - Payload.HitAlpha;
     }
     else
     {
@@ -279,7 +279,7 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         HitDist = Payload.HitT;
-        Atten = 1.0f - Payload.HitAlpha;
+        Atten = 1 - Payload.HitAlpha;
     }
     else
     {

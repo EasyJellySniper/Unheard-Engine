@@ -154,8 +154,9 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     MaxDepth = lerp(MaxDepth, 0.0001f, MaxDepth == 0.0f);
     MaxDepth = lerp(MaxDepth, MinDepth + 0.0001f, (MaxDepth - MinDepth) < UH_FLOAT_EPSILON);
     
-    // build frustum sphere for this tile
-    float4 FrustumSphere = CalcFrustumSphere(Gid.x, Gid.y, MaxDepth, MinDepth);
+    // build frustum for this tile
+    float4 TileFrustum[6];
+    CalcFrustumPlanes(Gid.x, Gid.y, MaxDepth, MinDepth, TileFrustum);
     
     for (uint LightIdx = GIndex; LightIdx < GNumPointLights; LightIdx += UHLIGHTCULLING_TILEX * UHLIGHTCULLING_TILEY)
     {
@@ -166,8 +167,10 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
             continue;
         }
         
-        // simple sphere-sphere test
-        if (SphereIntersectsSphere(FrustumSphere, float4(PointLight.Position, PointLight.Radius)))
+        float3 PointLightViewPos = WorldToViewPos(PointLight.Position);
+        
+        // sphere-frustum test
+        if (SphereIntersectsFrustum(float4(PointLightViewPos, PointLight.Radius), TileFrustum))
         {
             uint StoreIdx = 0;
             InterlockedAdd(GTileLightCount, 1, StoreIdx);

@@ -38,6 +38,7 @@ enum class UHTextureFormat
 	UH_FORMAT_RG8_UNORM,
 	UH_FORMAT_R8_UINT,
 	UH_FORMAT_R16_UINT,
+	UH_FORMAT_R32_UINT,
 
 	// add the format above
 	UH_FORMAT_MAX
@@ -99,6 +100,7 @@ inline const UHTextureFormatData GTextureFormatData[UH_ENUM_VALUE(UHTextureForma
 	{2,1,2,true},
 	{1,1,1,true},
 	{2,1,1,true},
+	{4,1,1,true},
 };
 
 extern VkFormat GetVulkanFormat(UHTextureFormat InUHFormat);

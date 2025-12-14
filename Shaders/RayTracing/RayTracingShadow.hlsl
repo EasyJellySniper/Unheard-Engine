@@ -1,19 +1,17 @@
-// RayTracingDirectLight.hlsl - Shader for opaque direct light tracing
+// RayTracingShadow.hlsl - Shader for opaque shadow tracing
+RaytracingAccelerationStructure TLAS : register(t1);
+
+// out shadow data, r=hit distance, g=attenuation
+RWTexture2DArray<float2> OutShadowData : register(u2);
+
+// out shadow mask bits to tell whether to receive light
+// for now this is 32-bit, which can trace 32 lights per pixel at max
+RWTexture2D<uint> OutReceiveLightBits : register(u3);
+
 #define UHGBUFFER_BIND t4
 #define UHDIRLIGHT_BIND t5
 #define UHPOINTLIGHT_BIND t6
 #define UHSPOTLIGHT_BIND t7
-#include "../UHInputs.hlsli"
-#include "UHRTCommon.hlsli"
-#include "../UHLightCommon.hlsli"
-#include "../UHMaterialCommon.hlsli"
-
-RaytracingAccelerationStructure TLAS : register(t1);
-
-// this shader will calculate lighting based on ray tracing shadow results
-// and also store the hit distance for later use
-RWTexture2D<float3> OutLightResult : register(u2);
-RWTexture2D<float> OutShadowHitDistance : register(u3);
 
 ByteAddressBuffer PointLightList : register(t8);
 ByteAddressBuffer SpotLightList : register(t9);
@@ -23,7 +21,12 @@ Texture2D SceneMipTexture : register(t10);
 SamplerState PointClampped : register(s11);
 SamplerState LinearClampped : register(s12);
 
-void TraceDirectLight(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, float MipRate, float MipLevel)
+#include "../UHInputs.hlsli"
+#include "UHRTCommon.hlsli"
+#include "../UHLightCommon.hlsli"
+#include "../UHMaterialCommon.hlsli"
+
+void TraceShadow(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, float MipRate, float MipLevel)
 {
     float SceneDepth = SceneBuffers[3].SampleLevel(PointClampped, ScreenUV, 0).r;
 
@@ -43,26 +46,13 @@ void TraceDirectLight(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, floa
 	// ------------------------------------------------------------------------------------------ Directional Light Tracing
 	// give a little gap for preventing self-shadowing, along the vertex normal direction
 	// distant pixel needs higher TMin
-    float Gap = lerp(GRTGapMin, GRTGapMax, saturate(MipRate * RT_MIPRATESCALE));
+    float Gap = lerp(GRTGapMin * 2, GRTGapMax * 2, saturate(MipRate * RT_MIPRATESCALE));
 
-    // trace shadow and calculate lights at the same time    
-    // also store the max hit distance
-    float3 LightResult = 0;
-    float MaxHitDistance = 0;
-    
-    float4 Diffuse = SceneBuffers[0].SampleLevel(LinearClampped, ScreenUV, 0);
-    float4 Specular = SceneBuffers[2].SampleLevel(LinearClampped, ScreenUV, 0);
-    float AttenNoise = GetAttenuationNoise(PixelCoord);
-    
-    UHLightInfo LightInfo;
-    LightInfo.Diffuse = Diffuse.rgb;
-    LightInfo.Specular = Specular;
-    LightInfo.Normal = WorldNormal;
-    LightInfo.WorldPos = WorldPos;
-    LightInfo.AttenNoise = AttenNoise;
-    LightInfo.SpecularNoise = AttenNoise * lerp(0.5f, 0.02f, Specular.a);
+    uint ReceiveLightBit = 0;
+    uint TraceCount = 0;
+    uint SoftShadowCount = 0;
 
-	for (uint Ldx = 0; Ldx < GNumDirLights; Ldx++)
+    for (uint Ldx = 0; Ldx < min(GNumDirLights, GRTMaxDirLight); Ldx++)
 	{
 		// shoot ray from world pos to light dir
 		UHDirectionalLight DirLight = UHDirLights[Ldx];
@@ -71,11 +61,16 @@ void TraceDirectLight(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, floa
         {
             float HitDist = 0;
             float Atten = 1.0f;
-            
             TraceDiretionalShadow(TLAS, DirLight, WorldPos, WorldNormal, Gap, MipLevel, Atten, HitDist);
-            LightInfo.ShadowMask = Atten;
-            LightResult += CalculateDirLight(DirLight, LightInfo);
-            MaxHitDistance = max(MaxHitDistance, HitDist);
+            
+            // output shadow to specific slice and set receive light bit
+            if (SoftShadowCount < GMaxSoftShadowLightsPerPixel)
+            {
+                OutShadowData[uint3(OutputCoord, SoftShadowCount++)] = float2(HitDist, Atten);
+            }
+            
+            ReceiveLightBit |= (Atten > 0.0f) ? 1u << TraceCount : 0;
+            TraceCount++;
         }
     }
     
@@ -88,8 +83,7 @@ void TraceDirectLight(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, floa
     uint LightCount = PointLightList.Load(TileOffset);
     TileOffset += 4;
 	
-    float3 LightToWorld;
-	
+    uint ClosestPointLightIndex = GetClosestPointLightIndex(PointLightList, TileIndex, WorldPos);
     for (Ldx = 0; Ldx < LightCount; Ldx++)
     {
         uint PointLightIdx = PointLightList.Load(TileOffset);
@@ -101,11 +95,17 @@ void TraceDirectLight(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, floa
         {
             float HitDist = 0;
             float Atten = 1.0f;
-            
             TracePointShadow(TLAS, PointLight, WorldPos, WorldNormal, Gap, MipLevel, Atten, HitDist);
-            LightInfo.ShadowMask = Atten;
-            LightResult += CalculatePointLight(PointLight, LightInfo);
-            MaxHitDistance = max(MaxHitDistance, HitDist);
+            
+            // soft shadow for the closest point light 
+            if (ClosestPointLightIndex == PointLightIdx && SoftShadowCount < GMaxSoftShadowLightsPerPixel)
+            {
+                OutShadowData[uint3(OutputCoord, SoftShadowCount++)] = float2(HitDist, Atten);
+            }
+            
+            // accumulate atten and max dist
+            ReceiveLightBit |= (Atten > 0.0f) ? 1u << TraceCount : 0;
+            TraceCount++;
         }
     }
 	
@@ -114,6 +114,7 @@ void TraceDirectLight(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, floa
     LightCount = SpotLightList.Load(TileOffset);
     TileOffset += 4;
 	
+    uint ClosestSpotLightIndex = GetClosestSpotLightIndex(SpotLightList, TileIndex, WorldPos);
     for (Ldx = 0; Ldx < LightCount; Ldx++)
     {
         uint SpotLightIdx = SpotLightList.Load(TileOffset);
@@ -125,24 +126,32 @@ void TraceDirectLight(uint2 PixelCoord, uint2 OutputCoord, float2 ScreenUV, floa
         {
             float HitDist = 0;
             float Atten = 1.0f;
-            
             TraceSpotShadow(TLAS, SpotLight, WorldPos, WorldNormal, Gap, MipLevel, Atten, HitDist);
-            LightInfo.ShadowMask = Atten;
-            LightResult += CalculateSpotLight(SpotLight, LightInfo);
-            MaxHitDistance = max(MaxHitDistance, HitDist);
+            
+            // soft shadow for the closest point light 
+            if (ClosestSpotLightIndex == SpotLightIdx && SoftShadowCount < GMaxSoftShadowLightsPerPixel)
+            {
+                OutShadowData[uint3(OutputCoord, SoftShadowCount++)] = float2(HitDist, Atten);
+            }
+            
+            // accumulate atten and max dist
+            ReceiveLightBit |= (Atten > 0.0f) ? 1u << TraceCount : 0;
+            TraceCount++;
         }
     }
-	
-    OutLightResult[OutputCoord] = LightResult;
-    OutShadowHitDistance[OutputCoord] = MaxHitDistance;
+    
+    OutReceiveLightBits[OutputCoord] = ReceiveLightBit;
 }
 
 [shader("raygeneration")]
-void RTDirectLightRayGen() 
+void RTShadowRayGen() 
 {
     uint2 OutputCoord = DispatchRaysIndex().xy;
-    OutLightResult[OutputCoord] = 0;
-    OutShadowHitDistance[OutputCoord] = 0;
+    for (uint Idx = 0; Idx < GMaxSoftShadowLightsPerPixel; Idx++)
+    {
+        OutShadowData[uint3(OutputCoord, Idx)] = float2(0.0f, 1.0f);
+    }
+    OutReceiveLightBits[OutputCoord] = 0;
 	
 	// early return if no lights
 	UHBRANCH
@@ -152,7 +161,7 @@ void RTDirectLightRayGen()
 	}
 
     // PixelCoord to UV
-    uint2 PixelCoord = OutputCoord * GResolution.xy * GDirectLightResolution.zw;
+    uint2 PixelCoord = OutputCoord * GResolution.xy * GShadowResolution.zw;
 	float2 ScreenUV = (PixelCoord + 0.5f) * GResolution.zw;
 
 	// calculate mip level before ray tracing kicks off
@@ -161,11 +170,11 @@ void RTDirectLightRayGen()
     float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
 
     // trace direct light
-    TraceDirectLight(PixelCoord, OutputCoord, ScreenUV, MipRate, MipLevel);
+    TraceShadow(PixelCoord, OutputCoord, ScreenUV, MipRate, MipLevel);
 }
 
 [shader("miss")]
-void RTDirectLightMiss(inout UHDefaultPayload Payload)
+void RTShadowMiss(inout UHDefaultPayload Payload)
 {
 	// do nothing
 }

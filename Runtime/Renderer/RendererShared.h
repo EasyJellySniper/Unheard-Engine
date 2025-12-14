@@ -41,8 +41,9 @@ extern std::vector<UHRenderTexture*> GSceneBuffers;
 extern std::vector<UHRenderTexture*> GSceneBuffersWithDepth;
 
 // ray-tracing
-extern UHRenderTexture* GRTDirectLightResult;
-extern UHRenderTexture* GRTDirectHitDistance;
+extern UHRenderTexture* GRTShadowData;
+extern UHRenderTexture* GRTSoftShadow;
+extern UHRenderTexture* GRTReceiveLightBits;
 extern UHRenderTexture* GRTReflectionResult;
 extern UHRenderTexture* GSmoothSceneNormal;
 extern UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
@@ -65,6 +66,8 @@ extern UHTexture2D* GWhiteTexture;
 extern UHTexture2D* GTransparentTexture;
 extern UHTextureCube* GBlackCube;
 extern UHRenderTexture* GBlackTextureArray;
+extern UHRenderTexture* GWhiteTextureArray;
+extern UHTexture2D* GMaxUIntTexture;
 
 // occlusion data
 extern UniquePtr<UHRenderBuffer<uint32_t>> GOcclusionResult[GMaxFrameInFlight];
@@ -89,6 +92,7 @@ extern UHRenderTexture* GIndirectOcclusionResult;
 
 // common clear colors
 extern VkClearColorValue GBlackClearColor;
+extern VkClearColorValue GWhiteClearColor;
 extern VkClearColorValue GTransparentClearColor;
 
 extern std::vector<UHTexture*> GetGBuffersSRV();

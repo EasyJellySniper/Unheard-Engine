@@ -195,24 +195,24 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     ImGui::Checkbox("Ray Tracing Denoise", &RenderingSettings.bDenoiseRayTracing);
     ImGui::NewLine();
 
-    // RT direct light
-    if (ImGui::Checkbox("Enable RT Direct Light", &RenderingSettings.bEnableRTDirectLight))
+    // RT Shadow
+    if (ImGui::Checkbox("Enable RT Shadow", &RenderingSettings.bEnableRTShadow))
     {
         Engine->GetGfx()->WaitGPU();
         DeferredRenderer->UpdateDescriptors();
     }
 
-    if (RenderingSettings.bEnableRTDirectLight)
+    if (RenderingSettings.bEnableRTShadow)
     {
-        std::vector<std::string> RTDLQualities = { "Full", "Half" };
-        if (ImGui::BeginCombo("Ray Tracing DL Quaility", RTDLQualities[RenderingSettings.RTDirectLightQuality].c_str()))
+        std::vector<std::string> RTShadowQualities = { "Full", "Half" };
+        if (ImGui::BeginCombo("Ray Tracing Shadow Quality", RTShadowQualities[RenderingSettings.RTShadowQuality].c_str()))
         {
-            for (size_t Idx = 0; Idx < RTDLQualities.size(); Idx++)
+            for (size_t Idx = 0; Idx < RTShadowQualities.size(); Idx++)
             {
-                const bool bIsSelected = (RenderingSettings.RTDirectLightQuality == Idx);
-                if (ImGui::Selectable(RTDLQualities[Idx].c_str(), bIsSelected))
+                const bool bIsSelected = (RenderingSettings.RTShadowQuality == Idx);
+                if (ImGui::Selectable(RTShadowQualities[Idx].c_str(), bIsSelected))
                 {
-                    RenderingSettings.RTDirectLightQuality = static_cast<int32_t>(Idx);
+                    RenderingSettings.RTShadowQuality = static_cast<int32_t>(Idx);
                     DeferredRenderer->ResizeRayTracingBuffers(true);
                     break;
                 }
