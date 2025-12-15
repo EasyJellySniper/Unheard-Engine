@@ -13,9 +13,8 @@ public:
 	UHKawaseBlurShader(UHGraphic* InGfx, std::string Name, UHKawaseBlurType InType);
 	virtual void OnCompile() override;
 
-	void BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output);
-
-	static const int32_t KawaseBlurCount = 4;
+	void BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output
+		, uint32_t InputMip = 0, uint32_t OutputMip = 0);
 private:
 	UHKawaseBlurType KawaseBlurType;
 };
@@ -24,6 +23,10 @@ struct UHKawaseBlurConstants
 {
 	uint32_t Width;
 	uint32_t Height;
+	int32_t PassCount;
+	bool bUseMipAsTempRT;
+	int32_t StartInputMip;
+	int32_t StartOutputMip;
 
 	void Release(UHGraphic* InGfx)
 	{

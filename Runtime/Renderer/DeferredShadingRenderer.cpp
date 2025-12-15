@@ -353,6 +353,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	const BoundingBox& SceneBound = CurrentScene->GetSceneBound();
 	SystemConstantsCPU.SceneCenter = SceneBound.Center;
 	SystemConstantsCPU.SceneExtent = SceneBound.Extents;
+	SystemConstantsCPU.RTReflectionMipCount = UHRTReflectionShader::ReflectionMipsCount;
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -495,10 +496,6 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			SoftShadowConsts.PCSSMaxPenumbra = RenderingSettings.PCSSMaxPenumbra;
 			SoftShadowConsts.PCSSBlockerDistScale = RenderingSettings.PCSSBlockerDistScale;
 
-			SoftShadowConsts.SoftShadowResolution.x = static_cast<float>(RenderResolution.width / 2);
-			SoftShadowConsts.SoftShadowResolution.y = static_cast<float>(RenderResolution.height / 2);
-			SoftShadowConsts.SoftShadowResolution.z = 1.0f / SoftShadowConsts.SoftShadowResolution.x;
-			SoftShadowConsts.SoftShadowResolution.w = 1.0f / SoftShadowConsts.SoftShadowResolution.y;
 			RTSoftShadowShader->GetConstants(CurrentFrameGT)->UploadData(&SoftShadowConsts, 0);
 		}
 	}

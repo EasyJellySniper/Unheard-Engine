@@ -37,10 +37,11 @@ void UHKawaseBlurShader::OnCompile()
 	CreateComputeState(CInfo);
 }
 
-void UHKawaseBlurShader::BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output)
+void UHKawaseBlurShader::BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output
+	, uint32_t InputMip, uint32_t OutputMip)
 {
-	PushImage(Output, 0, true, 0);
-	PushImage(Input, 1, false, 0);
+	PushImage(Output, 0, true, OutputMip);
+	PushImage(Input, 1, false, InputMip);
 	PushSampler(GLinearClampedSampler, 2);
 	FlushPushDescriptor(RenderBuilder.GetCmdList());
 }

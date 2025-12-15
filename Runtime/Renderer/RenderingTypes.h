@@ -89,6 +89,7 @@ struct UHSystemConstants
 
 	uint32_t GMaxReflectionRecursion;
 	float GScreenMipCount;
+	float RTReflectionMipCount;
 };
 
 struct UHObjectConstants
@@ -165,6 +166,7 @@ enum class UHRenderPassTypes
 	SmoothSceneNormalPass,
 	RayTracingIndirectLight,
 	RayTracingReflection,
+	ReflectionBlurPass,
 	LightCulling,
 	LightPass,
 	IndirectLightPass,

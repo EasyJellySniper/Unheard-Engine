@@ -10,8 +10,6 @@ cbuffer RTSoftShadowConstants : register(b2)
     float GPCSSMinPenumbra;
     float GPCSSMaxPenumbra;
     float GPCSSBlockerDistScale;
-    
-    float4 GSoftShadowResolution;
 }
 
 Texture2DArray<float2> InputRTShadowData : register(t3);
@@ -44,7 +42,7 @@ float Shadow3x3(float3 UV, float BaseShadow, float BaseDepth, float Penumbra, fl
 		UHUNROLL
         for (int J = -1; J <= 1; J++)
         {
-            float2 Offset = float2(I, J) * Penumbra * GSoftShadowResolution.zw;
+            float2 Offset = float2(I, J) * Penumbra * GShadowResolution.zw;
             float2 LightUV = UV.xy + Offset;
 			
             float CmpDepth = DepthTexture.SampleLevel(PointClampped, LightUV, 0).r;
@@ -75,7 +73,7 @@ float Shadow5x5(float3 UV, float BaseShadow, float BaseDepth, float Penumbra, fl
 		UHUNROLL
         for (int J = -2; J <= 2; J++)
         {
-            float2 Offset = float2(I, J) * Penumbra * GSoftShadowResolution.zw;
+            float2 Offset = float2(I, J) * Penumbra * GShadowResolution.zw;
             float2 LightUV = UV.xy + Offset;
 			
             float CmpDepth = DepthTexture.SampleLevel(PointClampped, LightUV, 0).r;
@@ -106,7 +104,7 @@ float Shadow7x7(float3 UV, float BaseShadow, float BaseDepth, float Penumbra, fl
 		UHUNROLL
         for (int J = -3; J <= 3; J++)
         {
-            float2 Offset = float2(I, J) * Penumbra * GSoftShadowResolution.zw;
+            float2 Offset = float2(I, J) * Penumbra * GShadowResolution.zw;
             float2 LightUV = UV.xy + Offset;
 			
             float CmpDepth = DepthTexture.SampleLevel(PointClampped, LightUV, 0).r;
@@ -164,13 +162,13 @@ float PCSS(float3 UV, float BaseDepth, float MipWeight)
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
 void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
 {
-    if (DTid.x >= GSoftShadowResolution.x || DTid.y >= GSoftShadowResolution.y)
+    if (DTid.x >= GShadowResolution.x || DTid.y >= GShadowResolution.y)
     {
         return;
     }
     
     uint2 PixelCoord = DTid.xy;
-    float2 UV = float2(PixelCoord + 0.5f) * GSoftShadowResolution.zw;
+    float2 UV = float2(PixelCoord + 0.5f) * GShadowResolution.zw;
     float BaseDepth = DepthTexture.SampleLevel(PointClampped, UV.xy, 0).r;
     
     for (uint Idx = 0; Idx < GMaxSoftShadowLightsPerPixel; Idx++)
@@ -206,7 +204,7 @@ void SoftRTShadowCS(uint3 DTid : SV_DispatchThreadID)
     }
     
     // point lights
-    uint2 TileCoordinate = PixelCoord.xy * GResolution.xy * GSoftShadowResolution.zw;
+    uint2 TileCoordinate = PixelCoord.xy * GResolution.xy * GShadowResolution.zw;
     uint TileX = CoordToTileX(TileCoordinate.x);
     uint TileY = CoordToTileY(TileCoordinate.y);
     uint TileIndex = TileX + TileY * GLightTileCountX;

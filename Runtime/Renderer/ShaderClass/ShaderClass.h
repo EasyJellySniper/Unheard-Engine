@@ -166,7 +166,7 @@ public:
 	void BindImage(const UHTexture* InImage, const int32_t DstBinding, const int32_t CurrentFrameRT, const bool bIsReadWrite, const int32_t MipIdx);
 	void BindImage(const std::vector<UHTexture*> InImages, const int32_t DstBinding);
 	void PushImage(const UHTexture* InImage, const int32_t DstBinding, const bool bIsReadWrite, const int32_t MipIdx
-		, const int32_t LayerIdx = UHINDEXNONE);
+		, const int32_t LayerIdx = UHINDEXNONE, bool bUavAsSrv = false);
 	void PushSampler(const UHSampler* InSampler, const int32_t DstBinding);
 	void FlushPushDescriptor(VkCommandBuffer InCmdList);
 

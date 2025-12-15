@@ -180,3 +180,7 @@ That is, only one light will be chosen for RT shadows per pixel. Or allow a few 
 14-12-2025:
 Reconstructed correct RT shadow for directional lights! Next is to deal with positional lights.
 Finally done the rework for shadows.
+
+15-12-2025:
+Differentiate shadow full/half quality, otherwise they look no differences.
+Optimized RT reflection blur by Kawase! No need to use gaussian filter at all.

@@ -7,8 +7,6 @@ struct UHRTSoftShadowConstants
 	float PCSSMinPenumbra;
 	float PCSSMaxPenumbra;
 	float PCSSBlockerDistScale;
-
-	XMFLOAT4 SoftShadowResolution;
 };
 
 class UHRTSoftShadowShader : public UHShaderClass

@@ -246,8 +246,6 @@ private:
 	// get current skycube
 	UHTextureCube* GetCurrentSkyCube() const;
 
-	void InitRTFilterConstants();
-
 
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
@@ -404,9 +402,6 @@ private:
 	UniquePtr<UHKawaseBlurShader> KawaseDownsampleShader;
 	UniquePtr<UHKawaseBlurShader> KawaseUpsampleShader;
 	bool bIsTemporalReset;
-
-	// filter constants
-	UHGaussianFilterConstants RTGaussianConsts;
 
 	// renderer instances
 	std::vector<UHRendererInstance> RendererInstances;

@@ -56,8 +56,8 @@ void ReflectionCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
     // CurrSceneData.a = fresnel factor
     float3 Fresnel = SchlickFresnel(Specular.rgb, lerp(0, NdotV, CurrSceneData.a));
     
-    // reflection from dynamic source (such as ray tracing), also make sure to follow screen mip count
-    SpecMip = (1.0f - SpecFade) * GScreenMipCount;
+    // reflection from dynamic source (such as ray tracing)
+    SpecMip = (1.0f - SpecFade) * GRTReflectionMipCount;
     float4 DynamicReflection = RTReflection.SampleLevel(LinearClampped, UV, SpecMip);
     IndirectSpecular = lerp(IndirectSpecular, DynamicReflection.rgb, DynamicReflection.a);
     IndirectSpecular *= SpecFade * Fresnel * Occlusion * GFinalReflectionStrength;

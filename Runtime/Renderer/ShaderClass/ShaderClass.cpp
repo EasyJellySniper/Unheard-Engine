@@ -208,10 +208,10 @@ void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, const int3
 }
 
 void UHShaderClass::PushImage(const UHTexture* InImage, const int32_t DstBinding
-	, const bool bIsReadWrite, const int32_t MipIdx, const int32_t LayerIdx)
+	, const bool bIsReadWrite, const int32_t MipIdx, const int32_t LayerIdx, bool bUavAsSrv)
 {
 	VkDescriptorImageInfo ImageInfo{};
-	ImageInfo.imageLayout = bIsReadWrite ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	ImageInfo.imageLayout = bIsReadWrite || bUavAsSrv ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	// fetch the proper image view
 	if (LayerIdx != UHINDEXNONE)
@@ -231,7 +231,7 @@ void UHShaderClass::PushImage(const UHTexture* InImage, const int32_t DstBinding
 
 	VkWriteDescriptorSet WriteSet{};
 	WriteSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	WriteSet.descriptorType = bIsReadWrite ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	WriteSet.descriptorType = bIsReadWrite && !bUavAsSrv ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	WriteSet.dstBinding = DstBinding;
 	WriteSet.descriptorCount = 1;
 
