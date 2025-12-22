@@ -111,29 +111,29 @@ void UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBu
 
 void UHDeferredShadingRenderer::DispatchKawaseBlur(UHRenderBuilder& RenderBuilder, const std::string& InName
 	, UHRenderTexture* Input, UHRenderTexture* Output
-	, const UHKawaseBlurConstants& Constants)
+	, const UHKawaseBlurConstants& InConstants)
 {
 	VkExtent2D FilterResolution = Input->GetExtent();
 
-	if (Constants.PassCount <= 0)
+	if (InConstants.PassCount <= 0)
 	{
 		return;
 	}
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), InName);
 
-	std::vector<UHRenderTexture*> KawaseRTs(Constants.PassCount + 1);
+	std::vector<UHRenderTexture*> KawaseRTs(InConstants.PassCount + 1);
 	KawaseRTs[0] = Input;
 
 	// N downsample passes
-	for (int32_t Idx = 0; Idx < Constants.PassCount; Idx++)
+	for (int32_t Idx = 0; Idx < InConstants.PassCount; Idx++)
 	{
 		const int32_t OutputIdx = Idx + 1;
-		KawaseRTs[OutputIdx] = Constants.KawaseTempRT[Idx];
+		KawaseRTs[OutputIdx] = InConstants.KawaseTempRT[Idx];
 
 		// whether to use mip as temp RT
-		const int32_t InputMip = Constants.bUseMipAsTempRT ? Constants.StartInputMip + Idx : 0;
-		const int32_t OutputMip = Constants.bUseMipAsTempRT ? Constants.StartOutputMip + 1 + Idx : 0;
+		const int32_t InputMip = InConstants.bUseMipAsTempRT ? InConstants.StartInputMip + Idx : 0;
+		const int32_t OutputMip = InConstants.bUseMipAsTempRT ? InConstants.StartOutputMip + 1 + Idx : 0;
 
 		// bind compute state
 		UHGraphicState* State = KawaseDownsampleShader->GetComputeState();
@@ -141,12 +141,13 @@ void UHDeferredShadingRenderer::DispatchKawaseBlur(UHRenderBuilder& RenderBuilde
 
 		// push constants
 		VkExtent2D KawaseExtent;
-		KawaseExtent.width = Constants.bUseMipAsTempRT ? FilterResolution.width >> OutputMip : FilterResolution.width >> OutputIdx;
-		KawaseExtent.height = Constants.bUseMipAsTempRT ? FilterResolution.height >> OutputMip : FilterResolution.height >> OutputIdx;
+		KawaseExtent.width = InConstants.bUseMipAsTempRT ? FilterResolution.width >> OutputMip : FilterResolution.width >> OutputIdx;
+		KawaseExtent.height = InConstants.bUseMipAsTempRT ? FilterResolution.height >> OutputMip : FilterResolution.height >> OutputIdx;
 
 		UHKawaseBlurConstants KawaseConstants;
 		KawaseConstants.Width = KawaseExtent.width;
 		KawaseConstants.Height = KawaseExtent.height;
+		KawaseConstants.PreserveAlpha = InConstants.PreserveAlpha;
 
 		const VkPushConstantRange& CosntRange = KawaseDownsampleShader->GetPushConstantRange();
 		RenderBuilder.PushConstant(KawaseDownsampleShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT
@@ -167,44 +168,48 @@ void UHDeferredShadingRenderer::DispatchKawaseBlur(UHRenderBuilder& RenderBuilde
 	}
 
 	// N upsample passes
-	KawaseRTs[0] = Output;
-	for (int32_t Idx = Constants.PassCount; Idx > 0; Idx--)
+	if (!InConstants.bDownsampleOnly)
 	{
-		const int32_t OutputIdx = Idx - 1;
+		KawaseRTs[0] = Output;
+		for (int32_t Idx = InConstants.PassCount; Idx > 0; Idx--)
+		{
+			const int32_t OutputIdx = Idx - 1;
 
-		// whether to use mip as temp RT
-		const int32_t InputMip = Constants.bUseMipAsTempRT ? Constants.StartInputMip + Idx : 0;
-		const int32_t OutputMip = Constants.bUseMipAsTempRT ? Constants.StartOutputMip + 1 + Idx : 0;
+			// whether to use mip as temp RT
+			const int32_t InputMip = InConstants.bUseMipAsTempRT ? InConstants.StartInputMip + Idx : 0;
+			const int32_t OutputMip = InConstants.bUseMipAsTempRT ? InConstants.StartOutputMip + Idx - 1 : 0;
 
-		// bind compute state
-		UHGraphicState* State = KawaseUpsampleShader->GetComputeState();
-		RenderBuilder.BindComputeState(State);
+			// bind compute state
+			UHGraphicState* State = KawaseUpsampleShader->GetComputeState();
+			RenderBuilder.BindComputeState(State);
 
-		// push constants
-		VkExtent2D KawaseExtent;
-		KawaseExtent.width = Constants.bUseMipAsTempRT ? FilterResolution.width >> OutputMip : FilterResolution.width >> OutputIdx;
-		KawaseExtent.height = Constants.bUseMipAsTempRT ? FilterResolution.height >> OutputMip : FilterResolution.height >> OutputIdx;
+			// push constants
+			VkExtent2D KawaseExtent;
+			KawaseExtent.width = InConstants.bUseMipAsTempRT ? FilterResolution.width >> OutputMip : FilterResolution.width >> OutputIdx;
+			KawaseExtent.height = InConstants.bUseMipAsTempRT ? FilterResolution.height >> OutputMip : FilterResolution.height >> OutputIdx;
 
-		UHKawaseBlurConstants KawaseConstants;
-		KawaseConstants.Width = KawaseExtent.width;
-		KawaseConstants.Height = KawaseExtent.height;
+			UHKawaseBlurConstants KawaseConstants;
+			KawaseConstants.Width = KawaseExtent.width;
+			KawaseConstants.Height = KawaseExtent.height;
+			KawaseConstants.PreserveAlpha = InConstants.PreserveAlpha;
 
-		const VkPushConstantRange& CosntRange = KawaseDownsampleShader->GetPushConstantRange();
-		RenderBuilder.PushConstant(KawaseUpsampleShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT
-			, CosntRange.size, &KawaseConstants);
+			const VkPushConstantRange& CosntRange = KawaseDownsampleShader->GetPushConstantRange();
+			RenderBuilder.PushConstant(KawaseUpsampleShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT
+				, CosntRange.size, &KawaseConstants);
 
-		// resource barriers
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(KawaseRTs[Idx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, InputMip));
-		RenderBuilder.PushResourceBarrier(UHImageBarrier(KawaseRTs[OutputIdx], VK_IMAGE_LAYOUT_GENERAL, OutputMip));
-		RenderBuilder.FlushResourceBarrier();
+			// resource barriers
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(KawaseRTs[Idx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, InputMip));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(KawaseRTs[OutputIdx], VK_IMAGE_LAYOUT_GENERAL, OutputMip));
+			RenderBuilder.FlushResourceBarrier();
 
-		// bind IO
-		KawaseDownsampleShader->BindParameters(RenderBuilder, KawaseRTs[Idx], KawaseRTs[OutputIdx]
-			, InputMip, OutputMip);
+			// bind IO
+			KawaseDownsampleShader->BindParameters(RenderBuilder, KawaseRTs[Idx], KawaseRTs[OutputIdx]
+				, InputMip, OutputMip);
 
-		// dispatch compute
-		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(KawaseExtent.width, GThreadGroup2D_X)
-			, MathHelpers::RoundUpDivide(KawaseExtent.height, GThreadGroup2D_Y), 1);
+			// dispatch compute
+			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(KawaseExtent.width, GThreadGroup2D_X)
+				, MathHelpers::RoundUpDivide(KawaseExtent.height, GThreadGroup2D_Y), 1);
+		}
 	}
 
 	RenderBuilder.ResourceBarrier(Output, Output->GetImageLayout(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

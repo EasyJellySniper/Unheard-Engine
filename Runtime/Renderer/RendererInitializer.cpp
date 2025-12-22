@@ -48,6 +48,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 #endif
 	, bHasRefractionMaterialGT(false)
 	, MeshInstanceCount(0)
+	, bNeedGenerateSH9(true)
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
@@ -827,8 +828,8 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
 
-	// indirect occlusion result
-	GIndirectOcclusionResult = GraphicInterface->RequestRenderTexture("IndirectLightResult", RenderResolution, MaskFormat, RenderTextureSettings);
+	// realtime AO result
+	GRealtimeAOResult = GraphicInterface->RequestRenderTexture("Realtime AO", RenderResolution, MaskFormat, RenderTextureSettings);
 
 	// rt buffers
 	ResizeRayTracingBuffers(false);
@@ -868,7 +869,7 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	UH_SAFE_RELEASE_TEX(GPreviousSceneResult);
 	UH_SAFE_RELEASE_TEX(GOpaqueSceneResult);
 	UH_SAFE_RELEASE_TEX(GMotionVectorRT);
-	UH_SAFE_RELEASE_TEX(GIndirectOcclusionResult);
+	UH_SAFE_RELEASE_TEX(GRealtimeAOResult);
 
 	ReleaseRayTracingBuffers();
 

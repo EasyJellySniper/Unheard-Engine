@@ -21,12 +21,26 @@ private:
 
 struct UHKawaseBlurConstants
 {
+	UHKawaseBlurConstants()
+		: Width(0)
+		, Height(0)
+		, PassCount(0)
+		, bUseMipAsTempRT(false)
+		, StartInputMip(0)
+		, StartOutputMip(0)
+		, bDownsampleOnly(false)
+		, PreserveAlpha(0)
+	{
+	}
+
 	uint32_t Width;
 	uint32_t Height;
+	uint32_t PreserveAlpha;
 	int32_t PassCount;
 	bool bUseMipAsTempRT;
 	int32_t StartInputMip;
 	int32_t StartOutputMip;
+	bool bDownsampleOnly;
 
 	void Release(UHGraphic* InGfx)
 	{

@@ -5,6 +5,7 @@
 struct KawaseBlurConstants
 {
     uint2 OutputResolution;
+    uint PreserveAlpha;
 };
 [[vk::push_constant]] KawaseBlurConstants Constants;
 
@@ -28,6 +29,7 @@ void KawaseDownsampleCS(uint3 DTid : SV_DispatchThreadID)
     uint2 PixelCoord = DTid.xy;
     float2 ScreenUV = float2(PixelCoord + 0.5f) / float2(Constants.OutputResolution);
     float2 HalfPixel = 1.0f / float2(Constants.OutputResolution);
+    float CenterAlpha = SampleTex(ScreenUV).a;
     
     float4 Sum = SampleTex(ScreenUV) * 4.0f;
     Sum += SampleTex(ScreenUV - HalfPixel);
@@ -36,7 +38,17 @@ void KawaseDownsampleCS(uint3 DTid : SV_DispatchThreadID)
     Sum += SampleTex(ScreenUV - float2(HalfPixel.x, -HalfPixel.y));
 
     // div 8
-    Result[PixelCoord] = Sum * 0.125f;
+    Sum *= 0.125f;
+
+    // whether to preserve alpham do not write to alpha at all if yes
+    if (Constants.PreserveAlpha > 0)
+    {
+        Result[PixelCoord].rgb = Sum.rgb;
+    }
+    else
+    {
+        Result[PixelCoord] = Sum;
+    }
 }
 
 [numthreads(UHTHREAD_GROUP2D_X, UHTHREAD_GROUP2D_Y, 1)]
@@ -50,6 +62,7 @@ void KawaseUpsampleCS(uint3 DTid : SV_DispatchThreadID)
     uint2 PixelCoord = DTid.xy;
     float2 ScreenUV = float2(DTid.xy + 0.5f) / float2(Constants.OutputResolution);
     float2 HalfPixel = 1.0f / float2(Constants.OutputResolution);
+    float CenterAlpha = SampleTex(ScreenUV).a;
     
     float4 Sum = SampleTex(ScreenUV + float2(-HalfPixel.x * 2.0f, 0.0f));
     Sum += SampleTex(ScreenUV + float2(-HalfPixel.x, HalfPixel.y)) * 2.0f;
@@ -61,5 +74,15 @@ void KawaseUpsampleCS(uint3 DTid : SV_DispatchThreadID)
     Sum += SampleTex(ScreenUV + float2(-HalfPixel.x, -HalfPixel.y)) * 2.0f;
     
     // div 12
-    Result[PixelCoord] = Sum * 0.083333f;
+    Sum *= 0.083333f;
+    
+    // whether to preserve alpham do not write to alpha at all if yes
+    if (Constants.PreserveAlpha > 0)
+    {
+        Result[PixelCoord].rgb = Sum.rgb;
+    }
+    else
+    {
+        Result[PixelCoord] = Sum;
+    }
 }

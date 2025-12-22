@@ -76,6 +76,10 @@
 #define ID_RTSHADOWS_SOFTSHADOW6        32819
 #define ID_RTSHADOWS_SOFTSHADOW7        32820
 #define ID_RTSHADOWS_SOFTSHADOW8        32821
+#define ID_RTINDIRECTOCCLUSION_OCCLUSION1 32822
+#define ID_RTINDIRECTOCCLUSION_OCCLUSION2 32823
+#define ID_VIEWMODE_RTINDIRECTOCCLUSION 32824
+#define ID_RTINDIRECTOCCLUSION          32825
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
@@ -84,7 +88,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        132
-#define _APS_NEXT_COMMAND_VALUE         32822
+#define _APS_NEXT_COMMAND_VALUE         32826
 #define _APS_NEXT_CONTROL_VALUE         1070
 #define _APS_NEXT_SYMED_VALUE           110
 #endif

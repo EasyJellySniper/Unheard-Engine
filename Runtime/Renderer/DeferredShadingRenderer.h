@@ -312,6 +312,7 @@ private:
 	bool bIsResetNeededShared;
 	bool bIsSwapChainResetGT;
 	bool bHasRefractionMaterialGT;
+	bool bNeedGenerateSH9;
 
 	// wrapper for render thread parameters
 	UHRenderThreadParameters RTParams;

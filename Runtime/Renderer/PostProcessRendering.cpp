@@ -65,13 +65,6 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 	// this index will toggle between 0 and 1 during the post processing
 	int32_t CurrentPostProcessRTIndex = 0;
-
-	// -------------------------- Tone Mapping --------------------------//
-	{
-		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ToneMappingPass)], "ToneMappingPass");
-		ToneMapShader->BindInputImage(PostProcessResults[1 - CurrentPostProcessRTIndex], CurrentFrameRT);
-		RenderEffect(ToneMapShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Tone mapping");
-	}
 	
 	// -------------------------- Temporal AA --------------------------//
 	{
@@ -104,6 +97,13 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 
 		RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+	}
+
+	// -------------------------- Tone Mapping --------------------------//
+	{
+		UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::ToneMappingPass)], "ToneMappingPass");
+		ToneMapShader->BindInputImage(PostProcessResults[1 - CurrentPostProcessRTIndex], CurrentFrameRT);
+		RenderEffect(ToneMapShader.get(), RenderBuilder, CurrentPostProcessRTIndex, "Tone mapping");
 	}
 
 #if WITH_EDITOR

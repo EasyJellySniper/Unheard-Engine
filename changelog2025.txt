@@ -184,3 +184,12 @@ Finally done the rework for shadows.
 15-12-2025:
 Differentiate shadow full/half quality, otherwise they look no differences.
 Optimized RT reflection blur by Kawase! No need to use gaussian filter at all.
+
+18-12-2025:
+Try to improve RTIL. Kawase blur seems working as well.
+Next is to soft the occlusion, it's probably better to separate the storage for indirect diffuse and occlusion.
+These two need different blur levels.
+
+19-12-2025:
+Separated RT indirect diffuse and occlusion buffers! For better control of the smooth level.
+Moved tone map pass after TAA for correctness. Next is to deal with performance of RTIL.

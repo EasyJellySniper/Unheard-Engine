@@ -11,7 +11,7 @@ UHKawaseBlurShader::UHKawaseBlurShader(UHGraphic* InGfx, std::string Name, UHKaw
 	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
 
 	PushConstantRange.offset = 0;
-	PushConstantRange.size = sizeof(uint32_t) * 2;
+	PushConstantRange.size = sizeof(uint32_t) * 3;
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	bPushDescriptor = true;
 

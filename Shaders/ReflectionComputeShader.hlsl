@@ -2,13 +2,15 @@
 #include "UHInputs.hlsli"
 #include "UHCommon.hlsli"
 #include "UHLightCommon.hlsli"
+#include "RayTracing/UHRTCommon.hlsli"
 
 // might support multiple cube in the future
 RWTexture2D<float4> SceneResult : register(u1);
 
 TextureCube EnvCube : register(t3);
 Texture2D RTReflection : register(t4);
-Texture2D RTIndirectOcclusion : register(t5);
+Texture2D RealtimeAO : register(t5);
+
 SamplerState EnvSampler : register(s6);
 SamplerState PointClampped : register(s7);
 SamplerState LinearClampped : register(s8);
@@ -33,11 +35,13 @@ void ReflectionCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadI
     }
     
     float3 WorldPos = ComputeWorldPositionFromDeviceZ(float2(DTid.xy + 0.5f), Depth);
-    float3 BumpNormal = DecodeNormal(SceneBuffers[1].SampleLevel(PointClampped, UV, 0).xyz);
-    float4 Specular = SceneBuffers[2].SampleLevel(PointClampped, UV, 0);
-    float Occlusion = SceneBuffers[0].SampleLevel(PointClampped, UV, 0).a;
-    // merge from RT indirect occlusion as well
-    Occlusion = min(Occlusion, RTIndirectOcclusion.SampleLevel(LinearClampped, UV, 0).a);
+    float3 BumpNormal = DecodeNormal(SceneBuffers[1].SampleLevel(LinearClampped, UV, 0).xyz);
+    float4 Specular = SceneBuffers[2].SampleLevel(LinearClampped, UV, 0);
+    
+    // merge RTAO and material AO
+    float RTAO = RealtimeAO.SampleLevel(LinearClampped, UV, 0).r;
+    float Occlusion = SceneBuffers[0].SampleLevel(LinearClampped, UV, 0).a;
+    Occlusion = min(Occlusion, RTAO);
     
     // use 1.0f - smooth * smooth as mip bias, so it will blurry with low smoothness
     float SpecFade = Specular.a * Specular.a;

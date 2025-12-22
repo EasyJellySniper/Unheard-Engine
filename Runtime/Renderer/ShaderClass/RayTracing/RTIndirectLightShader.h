@@ -29,7 +29,6 @@ public:
 	void BindParameters();
 
 	UHRenderBuffer<UHRTIndirectLightConstants>* GetConstants(const int32_t FrameIdx) const;
-	static const int32_t NumOfIndirectLightFrames = 2;
 
 private:
 	std::vector<uint32_t> ClosestHitIDs;

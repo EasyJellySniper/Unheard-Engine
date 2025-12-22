@@ -68,9 +68,9 @@ std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTranslucentShade
 UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 // indirect lighting
-UHRenderTexture* GRTIndirectLighting;
-UHRenderTexture* GRTIndirectHitDistance;
-UHRenderTexture* GIndirectOcclusionResult;
+UHRenderTexture* GRTIndirectDiffuse[GNumOfIndirectLightFrames];
+UHRenderTexture* GRTIndirectOcclusion[GNumOfIndirectLightFrames];
+UHRenderTexture* GRealtimeAOResult;
 
 VkClearColorValue GBlackClearColor = { 0.0f,0.0f,0.0f,1.0f };
 VkClearColorValue GWhiteClearColor = { 1.0f,1.0f,1.0f,1.0f };

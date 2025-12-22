@@ -86,9 +86,9 @@ extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTransluce
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 // indirect lighting, RT buffers + cache + result buffer
-extern UHRenderTexture* GRTIndirectLighting;
-extern UHRenderTexture* GRTIndirectHitDistance;
-extern UHRenderTexture* GIndirectOcclusionResult;
+extern UHRenderTexture* GRTIndirectDiffuse[GNumOfIndirectLightFrames];
+extern UHRenderTexture* GRTIndirectOcclusion[GNumOfIndirectLightFrames];
+extern UHRenderTexture* GRealtimeAOResult;
 
 // common clear colors
 extern VkClearColorValue GBlackClearColor;

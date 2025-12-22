@@ -12,8 +12,8 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 
 	// TLAS + RT result + shader const
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(GNumOfIndirectLightFrames, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(GNumOfIndirectLightFrames, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 	// GBuffers
@@ -91,8 +91,20 @@ void UHRTIndirectLightShader::BindParameters()
 		BindTLAS(GTopLevelAS[Idx].get(), 1, Idx);
 	}
 
-	BindRWImage(GRTIndirectLighting, 2);
-	BindRWImage(GRTIndirectHitDistance, 3);
+	std::vector<UHRenderTexture*> RtilTex;
+	for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
+	{
+		RtilTex.push_back(GRTIndirectDiffuse[Idx]);
+	}
+	BindRWImage(RtilTex, 2);
+
+	RtilTex.clear();
+	for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
+	{
+		RtilTex.push_back(GRTIndirectOcclusion[Idx]);
+	}
+	BindRWImage(RtilTex, 3);
+
 	BindConstant(RTIndirectLightConstants, 4, 0);
 	BindImage(GetGBuffersSRV(), 5);
 

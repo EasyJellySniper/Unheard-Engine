@@ -146,7 +146,7 @@ void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
         , ID_VIEWMODE_RTREFLECTION
         , ID_RTINDIRECT_INDIRECT1
         , ID_RTINDIRECT_INDIRECT2
-        , ID_VIEWMODE_INDIRECTOCCLUSION };
+        , ID_RTINDIRECTOCCLUSION };
 
     for (size_t Idx = 0; Idx < ViewModeMenuIDs.size(); Idx++)
     {

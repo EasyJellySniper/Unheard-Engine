@@ -216,7 +216,6 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
 	// fetch material data
     float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
     float MipLevel = Payload.MipLevel;
-    SamplerState PointClampSampler = UHSamplerTable[GPointClampSamplerIndex];
         
     // normal calculation, fetch the vertex normal
     bool bIsFrontFace = (HitKind() == HIT_KIND_TRIANGLE_FRONT_FACE);
@@ -378,8 +377,7 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 	float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
 	
     MaterialUsage Usages = (MaterialUsage)0;
-    // force highest mip for opacity for the best accuracy
-    UHMaterialInputs MaterialInput = GetMaterialOpacity(UV0, 0.0f, Usages);
+    UHMaterialInputs MaterialInput = GetMaterialOpacity(UV0, Payload.MipLevel, Usages);
 
     if (Usages.BlendMode == UH_ISMASKED && MaterialInput.Opacity < Usages.Cutoff)
 	{

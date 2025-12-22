@@ -39,8 +39,7 @@ void UHDeferredShadingRenderer::RefreshSkyLight(bool bNeedRecompile)
 	}
 
 	{
-		std::unique_lock<std::mutex> Lock(RenderThread->GetThreadMutex());
-		RTParams.bNeedGenerateSH9 = true;
+		bNeedGenerateSH9 = true;
 	}
 
 	if (RTParams.bEnableRayTracing)
@@ -66,7 +65,6 @@ void UHDeferredShadingRenderer::GenerateSH9Pass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.Dispatch(1, 1, 1);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
-	RTParams.bNeedGenerateSH9 = false;
 }
 
 void UHDeferredShadingRenderer::RenderSkyPass(UHRenderBuilder& RenderBuilder)

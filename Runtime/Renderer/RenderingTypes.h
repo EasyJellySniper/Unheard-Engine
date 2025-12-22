@@ -32,6 +32,9 @@ const uint32_t GHitGroupTableSlot = 2;
 const uint32_t GHitGroupShaderPerSlot = 2;
 const float G_PI = 3.141592653589793f;
 
+// indirect light frames
+const int32_t GNumOfIndirectLightFrames = 2;
+
 struct UHSystemConstants
 {
 	XMFLOAT4X4 GViewProj;

@@ -43,7 +43,7 @@ void UHDeferredShadingRenderer::DispatchLightPass(UHRenderBuilder& RenderBuilder
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Drawing Light Pass");
 	{
-		RenderBuilder.ResourceBarrier(GIndirectOcclusionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+		RenderBuilder.ResourceBarrier(GRealtimeAOResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
 		// bind state
 		UHComputeState* State = LightPassShader->GetComputeState();
@@ -56,7 +56,7 @@ void UHDeferredShadingRenderer::DispatchLightPass(UHRenderBuilder& RenderBuilder
 		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
 
-		RenderBuilder.ResourceBarrier(GIndirectOcclusionResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		RenderBuilder.ResourceBarrier(GRealtimeAOResult, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

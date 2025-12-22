@@ -1,5 +1,6 @@
+// Light pass shader
 RWTexture2D<float4> SceneResult : register(u1);
-RWTexture2D<float4> IndirectOcclusionResult : register(u2);
+RWTexture2D<float> AOResult : register(u2);
 
 #define UHGBUFFER_BIND t3
 #define UHDIRLIGHT_BIND t4
@@ -11,13 +12,6 @@ ByteAddressBuffer SpotLightList : register(t8);
 
 Texture2DArray<float> RTShadowResult : register(t10);
 Texture2D<uint> RTReceiveLightBits : register(t11);
-Texture2DArray<float4> RTIndirectLight : register(t12);
-Texture2D DepthTexture : register(t13);
-Texture2D MipTexture : register(t14);
-Texture2D MotionTexture : register(t15);
-
-SamplerState PointClampped : register(s16);
-SamplerState LinearClampped : register(s17);
 
 #include "UHInputs.hlsli"
 #include "UHCommon.hlsli"
@@ -25,36 +19,14 @@ SamplerState LinearClampped : register(s17);
 #include "UHLightCommon.hlsli"
 #include "UHSphericalHamonricCommon.hlsli"
 
-float Occlusion3x3(float2 UV, float BaseOcclusion, float BaseDepth, float Penumbra, float MipWeight
-    , float SliceIdx)
-{
-	// actually sampling
-    float Result = 0.0f;
-    float DepthDiffThres = lerp(0.0005f, 0.0001f, MipWeight);
-	
-	UHUNROLL
-    for (int I = -1; I <= 1; I++)
-    {
-		UHUNROLL
-        for (int J = -1; J <= 1; J++)
-        {
-            float2 LightUV = UV + float2(I, J) * Penumbra * GResolution.zw;
-			
-            float CmpDepth = DepthTexture.SampleLevel(PointClampped, LightUV, 0).r;
-            if (abs(CmpDepth - BaseDepth) > DepthDiffThres)
-            {
-                Result += BaseOcclusion;
-            }
-            else
-            {
-                Result += RTIndirectLight.SampleLevel(LinearClampped, float3(LightUV, SliceIdx), 0).a;
-            }
-        }
-    }
-    Result *= 0.11111111f;
-    
-    return Result;
-}
+Texture2D<float4> RTIndirectDiffuse[GNumOfIndirectFrames] : register(t12);
+Texture2D<float4> RTIndirectOcclusion[GNumOfIndirectFrames] : register(t13);
+Texture2D DepthTexture : register(t14);
+Texture2D MipTexture : register(t15);
+Texture2D MotionTexture : register(t16);
+
+SamplerState PointClampped : register(s17);
+SamplerState LinearClampped : register(s18);
 
 float ReceiveLightMask(uint ReceiveLightBits, uint InBits)
 {
@@ -73,7 +45,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     float2 UV = (PixelCoord + 0.5f) * GResolution.zw;
     float Depth = SceneBuffers[3].SampleLevel(PointClampped, UV, 0).r;
     float4 CurrSceneData = SceneResult[PixelCoord];
-    IndirectOcclusionResult[PixelCoord] = 1;
+    AOResult[PixelCoord] = 1;
 
 	// don't apply lighting to empty pixels or there is no light
 	UHBRANCH
@@ -189,7 +161,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     float3 ILResult = 0;
     
     // SH9
-    float Occlusion = 0;
+    float OutOcclusion = 0;
     float3 SkyLight = ShadeSH9(Diffuse.rgb, float4(WorldNormal, 1.0f), 1.0f);
     
     UHBRANCH
@@ -203,28 +175,26 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
         for (uint Idx = 0; Idx < GNumOfIndirectFrames; Idx++)
         {
             float2 IndirectUV = lerp(HistoryUV, UV, CurrentFrameIndex == Idx);
-            float4 IL = RTIndirectLight.SampleLevel(LinearClampped, float3(IndirectUV, Idx), 0);
+            float3 ILDiffuse = RTIndirectDiffuse[Idx].SampleLevel(LinearClampped, IndirectUV, 0).rgb;
+            float ILOcclusion = RTIndirectOcclusion[Idx].SampleLevel(LinearClampped, IndirectUV, 0).r;
   
-            // @TODO: soft occlusion
-            float SoftOcclusion = IL.a;
-            float ThisOcclusion = min(SoftOcclusion, Diffuse.a);
-            
-            ILResult += SkyLight * ThisOcclusion + IL.rgb * Diffuse.rgb;
-            Occlusion += ThisOcclusion;
+            // merge with material occlusion as well
+            float ThisOcclusion = min(ILOcclusion, Diffuse.a);
+            ILResult += (SkyLight + ILDiffuse.rgb * Diffuse.rgb) * ThisOcclusion;
+            OutOcclusion += ILOcclusion;
         }
     
-        ILResult *= 0.5f;
-        Occlusion *= 0.5f;
+        ILResult /= float(GNumOfIndirectFrames);
+        OutOcclusion /= float(GNumOfIndirectFrames);
     }
     else
     {
-        Occlusion = Diffuse.a;
-        ILResult += SkyLight * Occlusion;
+        OutOcclusion = 1.0f;
+        ILResult += SkyLight * Diffuse.a;
     }
     
     // accumulate results to scene
     SceneResult[PixelCoord] = float4(CurrSceneData.rgb + DirectResult + ILResult, CurrSceneData.a);
-    
-    // output IL result for reflection pass use
-    IndirectOcclusionResult[PixelCoord] = Occlusion;
+    // output realtime AO as well, so the result can be used in both reflection and translucent pass
+    AOResult[PixelCoord] = OutOcclusion;
 }

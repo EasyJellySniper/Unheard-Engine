@@ -11,8 +11,8 @@
 #include "../UHSphericalHamonricCommon.hlsli"
 
 RaytracingAccelerationStructure TLAS : register(t1);
-RWTexture2DArray<float4> OutResult : register(u2);
-RWTexture2D<float> OutHitDistance : register(u3);
+RWTexture2D<float3> OutDiffuse[GNumOfIndirectFrames] : register(u2);
+RWTexture2D<float> OutOcclusion[GNumOfIndirectFrames] : register(u3);
 
 cbuffer RTIndirectConstants : register(b4)
 {
@@ -47,8 +47,6 @@ static const float2 GRayOffset[GMaxNumOfIndirectLightRays] =
     float2(0.125f, 0.4444f) * 2.0f - 1.0f,
     float2(0.375f, 0.2222f) * 2.0f - 1.0f
 };
-
-static const float GIndirectLightMipBias = 10.0f;
 
 int GetClosestAxis(float3 InVec)
 {
@@ -126,7 +124,6 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
     float IndirectAtten = saturate((GIndirectLightFadeDistance - Payload.HitT) / GIndirectLightFadeDistance);
     IndirectAtten *= (1.0f - Payload.HitSpecular.a) * (1.0f - SceneSmoothness);
     IndirectAtten *= GIndirectLightScale;
-    IndirectAtten *= AOThisPixel;
     
     float3 ObjColorTerm = IndirectLightInfo.Diffuse * IndirectAtten;
     
@@ -270,8 +267,10 @@ float4 CalculateIndirectLighting(in UHDefaultPayload Payload
         }
     }
     
-    // indirect light from sky
-    Result += ShadeSH9(IndirectLightInfo.Diffuse.rgb, float4(SceneNormal, 1.0f), IndirectAtten);
+    // indirect light through the object that receives sky light
+    // this didn't shoot another ray to check whether hit position can receive sky light by now, as a perf hack
+    // just let the current position occlusion to dim it
+    Result += ShadeSH9(IndirectLightInfo.Diffuse.rgb, float4(IndirectLightInfo.Normal, 1.0f), IndirectAtten);
     
     return float4(Result, AOThisPixel);
 }
@@ -283,11 +282,11 @@ void RTIndirectLightRayGen()
     // the tracings are distributed to 2 frames
     // E.g. 4 samples = 2 rays per frame
     uint OutputIndex = GFrameNumber % GNumOfIndirectFrames;
-    uint3 OutputCoord = uint3(DispatchRaysIndex().xy, OutputIndex);
-    OutResult[OutputCoord] = float4(0, 0, 0, 1);
-    OutHitDistance[OutputCoord.xy] = 0;
+    uint2 OutputCoord = DispatchRaysIndex().xy;
+    OutDiffuse[OutputIndex][OutputCoord] = float3(0, 0, 0);
+    OutOcclusion[OutputIndex][OutputCoord] = 1;
     
-    uint2 PixelCoord = OutputCoord.xy * GIndirectDownsampleFactor;
+    uint2 PixelCoord = OutputCoord * GIndirectDownsampleFactor;
     float2 ScreenUV = float2(PixelCoord) * GResolution.zw;
     
     float SceneDepth = SceneBuffers[3].SampleLevel(PointClampped, ScreenUV, 0).r;
@@ -305,7 +304,7 @@ void RTIndirectLightRayGen()
     
     // Mip Level
     float MipRate = SceneMipTexture.SampleLevel(LinearClampped, ScreenUV, 0).r;
-    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GIndirectLightMipBias;
+    float MipLevel = max(0.5f * log2(MipRate * MipRate), 0) * GScreenMipCount + GRTMipBias;
     
     // Scene normal
     uint PackedSceneData = SceneDataTexture[PixelCoord];
@@ -367,10 +366,6 @@ void RTIndirectLightRayGen()
     
         IndirectRay.TMin = RayGap;
         IndirectRay.TMax = GIndirectLightMaxTraceDist;
-        
-        // see if it can use cached HitT for skipping trace this frame
-        uint3 CacheOutputCoord = OutputCoord;
-        CacheOutputCoord.z = OffsetIndex;
 
         UHDefaultPayload Payload = (UHDefaultPayload)0;
         Payload.MipLevel = MipLevel;
@@ -395,9 +390,8 @@ void RTIndirectLightRayGen()
     }
     
     // avg the result and output
-    OutResult[OutputCoord] = Result * 0.5f;
-    // also store the hit distance
-    OutHitDistance[OutputCoord.xy] = HitT;
+    OutDiffuse[OutputIndex][OutputCoord] = Result.rgb / float(GNumOfIndirectFrames);
+    OutOcclusion[OutputIndex][OutputCoord] = Result.a / float(GNumOfIndirectFrames);
 }
 
 [shader("miss")]

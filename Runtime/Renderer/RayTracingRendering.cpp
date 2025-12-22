@@ -13,8 +13,11 @@ void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
 	UH_SAFE_RELEASE_TEX(GRTReceiveLightBits);
 	UH_SAFE_RELEASE_TEX(GRTReflectionResult);
 	UH_SAFE_RELEASE_TEX(GSmoothSceneNormal);
-	UH_SAFE_RELEASE_TEX(GRTIndirectLighting);
-	UH_SAFE_RELEASE_TEX(GRTIndirectHitDistance);
+	for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
+	{
+		UH_SAFE_RELEASE_TEX(GRTIndirectDiffuse[Idx]);
+		UH_SAFE_RELEASE_TEX(GRTIndirectOcclusion[Idx]);
+	}
 }
 
 void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
@@ -55,18 +58,19 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 
 		// indirect light at half size
 		RTIndirectLightExtent = HalfRes;
+		RenderTextureSetting.bUseMipmap = true;
+		for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
+		{
+			GRTIndirectDiffuse[Idx] = GraphicInterface->RequestRenderTexture("RTIndirectDiffuse" + std::to_string(Idx)
+				, RTIndirectLightExtent
+				, UHTextureFormat::UH_FORMAT_R11G11B10
+				, RenderTextureSetting);
 
-		RenderTextureSetting.NumSlices = UHRTIndirectLightShader::NumOfIndirectLightFrames;
-		GRTIndirectLighting = GraphicInterface->RequestRenderTexture("RTIndirectLighting"
-			, RTIndirectLightExtent
-			, UHTextureFormat::UH_FORMAT_RGBA8_UNORM
-			, RenderTextureSetting);
-
-		RenderTextureSetting.NumSlices = 1;
-		GRTIndirectHitDistance = GraphicInterface->RequestRenderTexture("RTIndirectHitDistance"
-			, RTIndirectLightExtent
-			, UHTextureFormat::UH_FORMAT_R16F
-			, RenderTextureSetting);
+			GRTIndirectOcclusion[Idx] = GraphicInterface->RequestRenderTexture("RTIndirectOcclusion" + std::to_string(Idx)
+				, RTIndirectLightExtent
+				, UHTextureFormat::UH_FORMAT_R8_UNORM
+				, RenderTextureSetting);
+		}
 
 		if (bUpdateDescriptor)
 		{
@@ -239,8 +243,8 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Indirect Light");
 
 	// transition resource to UAV ready
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectHitDistance, VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuse[CurrentFrameRT], VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusion[CurrentFrameRT], VK_IMAGE_LAYOUT_GENERAL));
 	RenderBuilder.FlushResourceBarrier();
 
 	if (RTParams.bEnableRayTracing && RTInstanceCount > 0 && RTParams.bEnableRTIndirectLighting)
@@ -251,14 +255,36 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 		RenderBuilder.BindRTState(RTIndirectLightShader->GetRTState());
 
 		// trace the ray!
-		RenderBuilder.TraceRay(GRTIndirectLighting->GetExtent()
+		RenderBuilder.TraceRay(GRTIndirectDiffuse[0]->GetExtent()
 			, RTIndirectLightShader->GetRayGenTable()
 			, RTIndirectLightShader->GetMissTable()
 			, RTIndirectLightShader->GetHitGroupTable());
+
+		// blur both indirect diffuse / occlusion after tracing
+		UHKawaseBlurConstants KBConsts{};
+		KBConsts.PassCount = 3;
+		KBConsts.bUseMipAsTempRT = true;
+		KBConsts.StartInputMip = 0;
+		KBConsts.StartOutputMip = 0;
+
+		for (int32_t Mdx = 0; Mdx < KBConsts.PassCount; Mdx++)
+		{
+			KBConsts.KawaseTempRT.push_back(GRTIndirectDiffuse[CurrentFrameRT]);
+		}
+		DispatchKawaseBlur(RenderBuilder, "Blur Indirect Diffuse", GRTIndirectDiffuse[CurrentFrameRT], GRTIndirectDiffuse[CurrentFrameRT], KBConsts);
+
+		// lower pass count for occlusion
+		KBConsts.PassCount = 2;
+		KBConsts.KawaseTempRT.clear();
+		for (int32_t Mdx = 0; Mdx < KBConsts.PassCount; Mdx++)
+		{
+			KBConsts.KawaseTempRT.push_back(GRTIndirectOcclusion[CurrentFrameRT]);
+		}
+		DispatchKawaseBlur(RenderBuilder, "Blur Indirect Occlusion", GRTIndirectOcclusion[CurrentFrameRT], GRTIndirectOcclusion[CurrentFrameRT], KBConsts);
 	}
 
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectLighting, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectHitDistance, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuse[CurrentFrameRT], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusion[CurrentFrameRT], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
 	RenderBuilder.FlushResourceBarrier();
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
@@ -358,6 +384,8 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 		KBConsts.bUseMipAsTempRT = true;
 		KBConsts.StartInputMip = UHRTReflectionShader::ReflectionBlurStartMip;
 		KBConsts.StartOutputMip = KBConsts.StartInputMip;
+		// downsample only otherwise the mip will be too blurry
+		KBConsts.bDownsampleOnly = true;
 
 		for (int32_t Mdx = 0; Mdx < KBConsts.PassCount; Mdx++)
 		{

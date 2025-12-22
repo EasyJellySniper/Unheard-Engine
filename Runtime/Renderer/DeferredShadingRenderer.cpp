@@ -122,6 +122,8 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RTParams.bEnableTAA = RenderingSettings.bTemporalAA;
 	RTParams.bEnableRTDenoise = RenderingSettings.bDenoiseRayTracing;
 	RTParams.FrameNumber = GFrameNumber;
+	RTParams.bNeedGenerateSH9 = bNeedGenerateSH9;
+	bNeedGenerateSH9 = false;
 
 	// make sure upload data worker is done before rendering
 	WorkerThreads[0]->WaitTask();
@@ -203,20 +205,14 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			, GRTSoftShadow
 			, GRTSoftShadow
 			, GRTReflectionResult
-			, GRTIndirectLighting  // tex array with 2 layers
-			, GRTIndirectLighting
-			, GIndirectOcclusionResult
+			, GRTIndirectDiffuse[0]
+			, GRTIndirectDiffuse[1]
+			, GRealtimeAOResult
 		};
 
 		if (Buffers[DebugViewIndex] != nullptr)
 		{
-			if (DebugViewIndex >= UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight1) 
-				&& DebugViewIndex <= UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight2))
-			{
-				const uint32_t Index = DebugViewIndex - UH_ENUM_VALUE(UHDebugViewMode::RTIndirectLight1);
-				DebugViewShader->BindImage(Buffers[DebugViewIndex], 1, Index);
-			}
-			else if (DebugViewIndex >= UH_ENUM_VALUE(UHDebugViewMode::RTShadow0)
+			if (DebugViewIndex >= UH_ENUM_VALUE(UHDebugViewMode::RTShadow0)
 				&& DebugViewIndex <= UH_ENUM_VALUE(UHDebugViewMode::RTShadow7))
 			{
 				const uint32_t Index = DebugViewIndex - UH_ENUM_VALUE(UHDebugViewMode::RTShadow0);
@@ -224,7 +220,10 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			}
 			else
 			{
-				DebugViewShader->BindImage(Buffers[DebugViewIndex], 1);
+				for (int32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
+				{
+					DebugViewShader->BindImage(Buffers[DebugViewIndex], 1, Idx, false, 0);
+				}
 			}
 		}
 		else
@@ -912,8 +911,8 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				DispatchLightCulling(SceneRenderBuilder);
 				DispatchRayShadowPass(SceneRenderBuilder);
 				DispatchSmoothSceneNormalPass(SceneRenderBuilder);
-				DispatchRayIndirectLightPass(SceneRenderBuilder);
 				DispatchRayReflectionPass(SceneRenderBuilder);
+				DispatchRayIndirectLightPass(SceneRenderBuilder);
 
 				SceneRenderBuilder.ResourceBarrier(GSceneResult, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 				DispatchLightPass(SceneRenderBuilder);

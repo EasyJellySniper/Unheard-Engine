@@ -44,23 +44,15 @@ void UHReflectionPassShader::BindParameters(const bool bEnableRTReflection, cons
 	if (bEnableRTReflection)
 	{
 		BindImage(GRTReflectionResult, 4);
-		
+
 	}
 	else
 	{
 		BindImage(GTransparentTexture, 4);
 	}
 
-	if (bEnableRTIndirectLight)
-	{
-		BindImage(GIndirectOcclusionResult, 5);
-	}
-	else
-	{
-		BindImage(GBlackTexture, 5);
-	}
-
-	BindSampler(GSkyCubeSampler,6);
+	BindImage(GRealtimeAOResult, 5);
+	BindSampler(GSkyCubeSampler, 6);
 	BindSampler(GPointClampedSampler, 7);
 	BindSampler(GLinearClampedSampler, 8);
 }
