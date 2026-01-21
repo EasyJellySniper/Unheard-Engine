@@ -167,7 +167,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
     UHBRANCH
     if (GSystemRenderFeature & UH_RT_INDIRECTLIGHT)
     {
-        float2 Motion = MotionTexture.SampleLevel(LinearClampped, UV, 0).rg;
+        float2 Motion = MotionTexture.SampleLevel(PointClampped, UV, 0).rg;
         float2 HistoryUV = UV - Motion;
         uint CurrentFrameIndex = GFrameNumber & 1;
         
@@ -180,7 +180,7 @@ void LightCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThreadID)
   
             // merge with material occlusion as well
             float ThisOcclusion = min(ILOcclusion, Diffuse.a);
-            ILResult += (SkyLight + ILDiffuse.rgb * Diffuse.rgb) * ThisOcclusion;
+            ILResult += SkyLight * ThisOcclusion + ILDiffuse.rgb * Diffuse.rgb;
             OutOcclusion += ILOcclusion;
         }
     

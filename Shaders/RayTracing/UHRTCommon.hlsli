@@ -49,54 +49,36 @@ struct UHDefaultPayload
         HitSpecular = SrcPayload.HitSpecular;
         HitEmissive = SrcPayload.HitEmissive;
         HitScreenUV = SrcPayload.HitScreenUV;
-        
-        HitDiffuseTrans = SrcPayload.HitDiffuseTrans;
-        HitMaterialNormalTrans = SrcPayload.HitMaterialNormalTrans;
-        HitVertexNormalTrans = SrcPayload.HitVertexNormalTrans;
-        HitSpecularTrans = SrcPayload.HitSpecularTrans;
-        HitEmissiveTrans = SrcPayload.HitEmissiveTrans;
-        HitScreenUVTrans = SrcPayload.HitScreenUVTrans;
-        HitWorldPosTrans = SrcPayload.HitWorldPosTrans;
         HitRefractOffset = SrcPayload.HitRefractOffset;
         
         IsInsideScreen = SrcPayload.IsInsideScreen;
         HitInstanceIndex = SrcPayload.HitInstanceIndex;
-        HitWorldPos = SrcPayload.HitWorldPos;
+        
         RayDir = SrcPayload.RayDir;
         FresnelFactor = SrcPayload.FresnelFactor;
     }
 
+    // UHMinimalPayload
 	float HitT;
 	float MipLevel;
 	float HitAlpha;
+    
+    // UHIndirectPayload
 	// HLSL will pad bool to 4 bytes, so using uint here anyway
 	// Could pack more data to this variable in the future
     uint PayloadData;
-	
-	// for opaque
     float4 HitDiffuse;
-    float3 HitMaterialNormal;
     float3 HitVertexNormal;
-    float4 HitSpecular;
-	float3 HitEmissive;
     float2 HitScreenUV;
-	
-	// for translucent
-    float4 HitDiffuseTrans;
-    float3 HitMaterialNormalTrans;
-    float3 HitVertexNormalTrans;
-    float4 HitSpecularTrans;
-	// .a will store the opacity, which used differently from the HitAlpha above!
-    float4 HitEmissiveTrans;
-    float2 HitScreenUVTrans;
-    float3 HitWorldPosTrans;
-    float2 HitRefractOffset;
-	
     uint IsInsideScreen;
     uint HitInstanceIndex;
+    
+    float3 HitMaterialNormal;
+    float4 HitSpecular;
+	float3 HitEmissive;
+    float2 HitRefractOffset;
+	
     uint CurrentRecursion;
-
-    float3 HitWorldPos;
     float3 RayDir;
     float FresnelFactor;
 };

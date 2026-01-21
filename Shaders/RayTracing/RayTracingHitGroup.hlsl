@@ -141,55 +141,52 @@ uint3 GetIndex(in uint PrimIndex)
 	return Index;
 }
 
-float2 GetHitUV0(uint PrimIndex, Attribute Attr)
+float2 GetHitUV0(uint3 PrimIndices, Attribute Attr)
 {
     UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
-    uint3 Index = GetIndex(PrimIndex);
 
     StructuredBuffer<float2> UV0 = UHUV0Table[RendererInstances.MeshIndex];
 	float2 OutUV = 0;
 
 	// interpolate data according to barycentric coordinate
-	OutUV = UV0[Index[0]] + Attr.Bary.x * (UV0[Index[1]] - UV0[Index[0]])
-		+ Attr.Bary.y * (UV0[Index[2]] - UV0[Index[0]]);
+    OutUV = UV0[PrimIndices[0]] + Attr.Bary.x * (UV0[PrimIndices[1]] - UV0[PrimIndices[0]])
+		+ Attr.Bary.y * (UV0[PrimIndices[2]] - UV0[PrimIndices[0]]);
 
 	return OutUV;
 }
 
-float3 GetHitVertexNormal(uint PrimIndex, Attribute Attr)
+float3 GetHitVertexNormal(uint3 PrimIndices, Attribute Attr)
 {
     UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
-    uint3 Index = GetIndex(PrimIndex);
     
     StructuredBuffer<float3> Normal = UHNormalTable[RendererInstances.MeshIndex];
     float3 OutNormal = float3(0, 0, 1);
     
-    OutNormal = Normal[Index[0]] + Attr.Bary.x * (Normal[Index[1]] - Normal[Index[0]])
-		+ Attr.Bary.y * (Normal[Index[2]] - Normal[Index[0]]);
+    OutNormal = Normal[PrimIndices[0]] + Attr.Bary.x * (Normal[PrimIndices[1]] - Normal[PrimIndices[0]])
+		+ Attr.Bary.y * (Normal[PrimIndices[2]] - Normal[PrimIndices[0]]);
     
     return OutNormal;
 }
 
-float4 GetHitTangent(uint PrimIndex, Attribute Attr)
+float4 GetHitTangent(uint3 PrimIndices, Attribute Attr)
 {
     UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
-    uint3 Index = GetIndex(PrimIndex);
     
     StructuredBuffer<float4> Tangent = UHTangentTable[RendererInstances.MeshIndex];
     float4 OutTangent = float4(1, 0, 0, 1);
     
-    OutTangent = Tangent[Index[0]] + Attr.Bary.x * (Tangent[Index[1]] - Tangent[Index[0]])
-		+ Attr.Bary.y * (Tangent[Index[2]] - Tangent[Index[0]]);
+    OutTangent = Tangent[PrimIndices[0]] + Attr.Bary.x * (Tangent[PrimIndices[1]] - Tangent[PrimIndices[0]])
+		+ Attr.Bary.y * (Tangent[PrimIndices[2]] - Tangent[PrimIndices[0]]);
     
     return OutTangent;
 }
 
-float3 CalculateBumpNormal(float3 InBump, float3 VertexNormal, in Attribute Attr)
+float3 CalculateBumpNormal(float3 InBump, float3 VertexNormal, in Attribute Attr, uint3 PrimIndices)
 {
     bool bIsFrontFace = (HitKind() == HIT_KIND_TRIANGLE_FRONT_FACE);
     
     // tangent to world space
-    float4 VertexTangent = GetHitTangent(PrimitiveIndex(), Attr);
+    float4 VertexTangent = GetHitTangent(PrimIndices, Attr);
     VertexTangent.xyz = mul(VertexTangent.xyz, (float3x3) ObjectToWorld3x4());
             
     float3 Binormal = cross(VertexNormal, VertexTangent.xyz) * VertexTangent.w;
@@ -202,8 +199,8 @@ float3 CalculateBumpNormal(float3 InBump, float3 VertexNormal, in Attribute Attr
     return InBump;
 }
 
-void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attribute Attr)
-{
+void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attribute Attr, bool bMergeDiffuseEmissive = false)
+{    
     MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
     bool bIsOpaque = MatData.Data[1] <= UH_ISMASKED;
     
@@ -214,12 +211,13 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
     bool bInsideScreen = IsUVInsideScreen(ScreenUV) && (ClipPos.z > 0.0f);
 	
 	// fetch material data
-    float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
+    uint3 PrimIndices = GetIndex(PrimitiveIndex());
+    float2 UV0 = GetHitUV0(PrimIndices, Attr);
     float MipLevel = Payload.MipLevel;
         
     // normal calculation, fetch the vertex normal
     bool bIsFrontFace = (HitKind() == HIT_KIND_TRIANGLE_FRONT_FACE);
-    float3 VertexNormal = GetHitVertexNormal(PrimitiveIndex(), Attr);
+    float3 VertexNormal = GetHitVertexNormal(PrimIndices, Attr);
         
     // for normal transform, inverse-transposed world matrix is needed to deal with non-uniform scaling
     // so use WorldToObject3x4 instead
@@ -258,7 +256,7 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
                 RefractOffset = BumpNormal.xy * MaterialInput.Refraction;
             }
             
-            BumpNormal = CalculateBumpNormal(BumpNormal, VertexNormal, Attr);
+            BumpNormal = CalculateBumpNormal(BumpNormal, VertexNormal, Attr, PrimIndices);
 
         }
         else if (bRefraction)
@@ -278,11 +276,14 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
         Emissive = MaterialInput.Emissive;
     }
     
-    Payload.HitDiffuse = Diffuse;
+    Payload.HitDiffuse = bMergeDiffuseEmissive ? Diffuse + float4(Emissive, 0) : Diffuse;
     Payload.HitMaterialNormal = BumpNormal;
     Payload.HitVertexNormal = FlippedVertexNormal;
     Payload.HitSpecular = Specular;
-    Payload.HitEmissive = Emissive;
+    if (!bMergeDiffuseEmissive)
+    {
+        Payload.HitEmissive = Emissive;
+    }
     Payload.HitScreenUV = ScreenUV;
     if (!bIsOpaque)
     {
@@ -290,26 +291,33 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
     }
     
     Payload.IsInsideScreen = bInsideScreen;
-    Payload.HitWorldPos = WorldPos;
-    
-    // ray dir
     Payload.RayDir = WorldRayDirection();
 }
 
 [shader("closesthit")]
 void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
-    // closest hit shader, only opaque objects will reach here
+    // closest hit shader, only opaque objects will reach here as IgnoreHit() is used in any hit shader
     float PrevHitT = Payload.HitT;
-	Payload.HitT = RayTCurrent();
-    Payload.HitInstanceIndex = InstanceIndex();
-
-	// set alpha to 1 and cancel the flag of hit translucent if it's behind this opaque object
-    Payload.HitAlpha = 1.0f;
+    float PrevAlpha = Payload.HitAlpha;
+    Payload.HitT = RayTCurrent();
+    
+    // cancel the flag of hit translucent if it's behind this opaque object
     if ((Payload.PayloadData & PAYLOAD_HITTRANSLUCENT) && Payload.HitT <= PrevHitT)
     {
         Payload.PayloadData &= ~uint(PAYLOAD_HITTRANSLUCENT);
     }
+    
+    UHDefaultPayload TransPayload;
+    bool bHitTranslucent = (Payload.PayloadData & PAYLOAD_HITTRANSLUCENT) > 0;
+    if (bHitTranslucent)
+    {
+        TransPayload.CopyFrom(Payload);
+    }
+    
+    // set hit T, instance index and hit alpha
+    Payload.HitInstanceIndex = InstanceIndex();
+    Payload.HitAlpha = 1.0f;
 
     bool bIsReflection = (Payload.PayloadData & PAYLOAD_ISREFLECTION) > 0;
     bool bIsIndirectLight = (Payload.PayloadData & PAYLOAD_ISINDIRECTLIGHT) > 0;
@@ -318,10 +326,12 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
 		return;
 	}
     
-    float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
-    
+    UHBRANCH
     if (bIsReflection)
     {
+        uint3 PrimIndices = GetIndex(PrimitiveIndex());
+        float2 UV0 = GetHitUV0(PrimIndices, Attr);
+        
         // check whether to shoot the multiple bounce reflection ray
         // shoot only when the CurrentRecursion < MaxReflectionRecursion and smoothnes is > GRTReflectionSmoothCutoff
         MaterialUsage MatUsage;
@@ -342,9 +352,9 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
             MaterialInput = GetMaterialBumpNormal(UV0, Payload.MipLevel, Usages);
             bool bIsTangent = (Usages.MaterialFeature & UH_TANGENT_SPACE);
         
-            float3 WorldNormal = GetHitVertexNormal(PrimitiveIndex(), Attr);
+            float3 WorldNormal = GetHitVertexNormal(PrimIndices, Attr);
             WorldNormal = normalize(mul(WorldNormal, (float3x3) WorldToObject3x4()));
-            float3 Normal = bIsTangent ? CalculateBumpNormal(MaterialInput.Normal, WorldNormal, Attr) : WorldNormal;
+            float3 Normal = bIsTangent ? CalculateBumpNormal(MaterialInput.Normal, WorldNormal, Attr, PrimIndices) : WorldNormal;
         
             RayDesc BounceRay = (RayDesc) 0;
             BounceRay.Origin = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
@@ -364,17 +374,26 @@ void RTDefaultClosestHit(inout UHDefaultPayload Payload, in Attribute Attr)
             return;
         }
     }
-	
-	// world pos to screen uv conversion
+    
     float3 WorldPos = WorldRayOrigin() + WorldRayDirection() * Payload.HitT;
-    CalculateMaterial(Payload, WorldPos, Attr);
+    CalculateMaterial(Payload, WorldPos, Attr, bIsIndirectLight);
+    
+    if (bHitTranslucent)
+    {
+        Payload.HitDiffuse = lerp(Payload.HitDiffuse, TransPayload.HitDiffuse, PrevAlpha);
+        Payload.HitMaterialNormal = lerp(Payload.HitMaterialNormal, TransPayload.HitMaterialNormal, PrevAlpha);
+        Payload.HitVertexNormal = lerp(Payload.HitVertexNormal, TransPayload.HitVertexNormal, PrevAlpha);
+        Payload.HitSpecular = lerp(Payload.HitSpecular, TransPayload.HitSpecular, PrevAlpha);
+        Payload.HitEmissive = lerp(Payload.HitEmissive, TransPayload.HitEmissive, PrevAlpha);
+        Payload.HitT = PrevHitT;
+    }
 }
 
 [shader("anyhit")]
 void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
 {
 	// fetch material data and cutoff if it's alpha test
-	float2 UV0 = GetHitUV0(PrimitiveIndex(), Attr);
+    float2 UV0 = GetHitUV0(GetIndex(PrimitiveIndex()), Attr);
 	
     MaterialUsage Usages = (MaterialUsage)0;
     UHMaterialInputs MaterialInput = GetMaterialOpacity(UV0, Payload.MipLevel, Usages);
@@ -395,10 +414,12 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
             return;
         }
         
-		// for translucent object, evaludate the hit alpha and store the HitT data
+        // max alpha for the shadow pass
         Payload.HitAlpha = max(MaterialInput.Opacity, Payload.HitAlpha);
+        
+        // evaluate whether to update cloest trancluent material
         float ThisHitT = RayTCurrent();
-        bool bUpdateClosestTranslucent = false;
+        bool bUpdateClosestTranslucentMaterial = false;
         
         UHBRANCH
         if (Payload.HitT > 0)
@@ -406,44 +427,31 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
             if (ThisHitT < Payload.HitT)
             {
                 Payload.HitT = ThisHitT;
-                bUpdateClosestTranslucent = true;
+                bUpdateClosestTranslucentMaterial = true;
             }
         }
         else
         {
             Payload.HitT = ThisHitT;
-            bUpdateClosestTranslucent = true;
+            bUpdateClosestTranslucentMaterial = true;
         }
         
         // this tracing hits a translucent object
         Payload.PayloadData |= PAYLOAD_HITTRANSLUCENT;
         
-        if (bUpdateClosestTranslucent)
+        if (bUpdateClosestTranslucentMaterial)
         {
             // calc translucent material for reflection or indirect lighting
             bool bIsReflection = (Payload.PayloadData & PAYLOAD_ISREFLECTION) > 0;
             bool bIsIndirectLight = (Payload.PayloadData & PAYLOAD_ISINDIRECTLIGHT) > 0;
-            
+        
             if (bIsReflection || bIsIndirectLight)
             {
-                UHDefaultPayload TransPayload = Payload;
+                // override the closest translucent material
                 float3 WorldPos = WorldRayOrigin() + WorldRayDirection() * Payload.HitT;
-                CalculateMaterial(TransPayload, WorldPos, Attr);
-                    
-                Payload.HitDiffuseTrans = TransPayload.HitDiffuse;
-                Payload.HitMaterialNormalTrans = TransPayload.HitMaterialNormal;
-                Payload.HitVertexNormalTrans = TransPayload.HitVertexNormal;
-                Payload.HitSpecularTrans = TransPayload.HitSpecular;
-                Payload.HitEmissiveTrans = float4(TransPayload.HitEmissive, MaterialInput.Opacity);
-                Payload.HitScreenUVTrans = TransPayload.HitScreenUV;
-                Payload.HitWorldPosTrans = WorldPos;
-                Payload.HitRefractOffset = TransPayload.HitRefractOffset;
-                Payload.IsInsideScreen = TransPayload.IsInsideScreen;
-                Payload.HitInstanceIndex = InstanceIndex();
-                Payload.HitWorldPos = TransPayload.HitWorldPos;
-                Payload.RayDir = TransPayload.RayDir;
-                Payload.FresnelFactor = TransPayload.FresnelFactor;
-                
+                CalculateMaterial(Payload, WorldPos, Attr);
+                Payload.HitAlpha = MaterialInput.Opacity;
+
                 // set refraction flag
                 if (Usages.MaterialFeature & UH_REFRACTION)
                 {

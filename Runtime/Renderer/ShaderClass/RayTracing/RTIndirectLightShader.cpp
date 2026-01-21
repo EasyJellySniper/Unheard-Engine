@@ -77,7 +77,7 @@ void UHRTIndirectLightShader::OnCompile()
 	RTInfo.ClosestHitShaders = ClosestHitIDs;
 	RTInfo.AnyHitShaders = AnyHitIDs;
 	RTInfo.MissShader = MissShader;
-	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
+	RTInfo.PayloadSize = sizeof(UHMinimalPayload) + sizeof(UHIndirectPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
 	RTState = Gfx->RequestRTState(RTInfo);
 }

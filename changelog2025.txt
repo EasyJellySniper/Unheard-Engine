@@ -193,3 +193,7 @@ These two need different blur levels.
 19-12-2025:
 Separated RT indirect diffuse and occlusion buffers! For better control of the smooth level.
 Moved tone map pass after TAA for correctness. Next is to deal with performance of RTIL.
+
+22-12-2025:
+Tested tracing indirect shadow at lower resolution didn't save much and also introduce some artifacts.
+Re-consider diffuse and normal cache...

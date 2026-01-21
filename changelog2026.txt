@@ -1,0 +1,29 @@
+11-01-2026:
+Only calculate the diffuse term in the RT reflection lighting, don't know why I included the specular term before.
+Trying a method to store scene diffuse/normal in voxels.
+
+12-01-2026:
+My theory was right and the voxel cache can indeed save some performance.
+But I feel wrong to only invalidate the hit position diffuse/normal in voxel by another screen space pass.
+I should try to do that on fly during RT indirect, otherwise it won't update properly.
+Another find is reducing RT payload size helps performance as well! Maybe I should have a pass on my payload usages.
+
+14-01-2026:
+Make it not to apply occlusion on indirect diffuse, which seems wrong to me.
+Instead, only apply on the sky light. But I need a better solution to tell whether a point should receive sky light.
+Also fixed NaN issue in RTIL shader and minimize the payload size in RTIL/RTRF.
+
+15-01-2026:
+Added RT sky light shader for use.
+
+19-01-2026:
+Added RT sky light pass. Next is to apply it in lighting shaders and see if it's good enough.
+Nope, it was a bad idea lol. It's better to trace from the surface and tells whether to apply sky lighting.
+Storing sky occlusion results in voxels seems wrong, as a voxel might be completely occluded or inside a mesh.
+
+Let me just adjust occlusion formula at the moment - only start receiving sky light if a ray is missed.
+This might be too strict for certain pixels but the correctness comes first.
+
+21-01-2026:
+Improved sky light receiving in RTIL. Though it introduces higher GPU time, it gives me the correctness.
+Next is to figure out whether I can cache something for RTIL.

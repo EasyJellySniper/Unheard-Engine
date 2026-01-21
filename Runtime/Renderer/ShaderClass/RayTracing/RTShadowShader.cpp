@@ -54,7 +54,7 @@ void UHRTShadowShader::OnCompile()
 	RTInfo.ClosestHitShaders = ClosestHitIDs;
 	RTInfo.AnyHitShaders = AnyHitIDs;
 	RTInfo.MissShader = MissShader;
-	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
+	RTInfo.PayloadSize = sizeof(UHMinimalPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
 	RTState = Gfx->RequestRTState(RTInfo);
 }

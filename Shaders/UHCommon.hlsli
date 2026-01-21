@@ -397,4 +397,45 @@ float2 SphereDirToUV(float3 SphereDir)
     return OutputUV;
 }
 
+// https://entropymine.com/imageworsener/srgbformula/
+float3 SrgbToLinear(float3 InColor)
+{
+    float3 Result = 0;
+    
+    if (InColor.r < 0.04045f)
+    {
+        // S div 12.92
+        Result.r = InColor.r * 0.0773993808f;
+    }
+    else
+    {
+        // ((S+0.055) / 1.055) ^ 2.4
+        Result.r = pow(InColor.r * 0.9478672986f + 0.0521327014f, 2.4f);
+    }
+    
+    if (InColor.g < 0.04045f)
+    {
+        // S div 12.92
+        Result.g = InColor.g * 0.0773993808f;
+    }
+    else
+    {
+        // ((S+0.055) / 1.055) ^ 2.4
+        Result.g = pow(InColor.g * 0.9478672986f + 0.0521327014f, 2.4f);
+    }
+    
+    if (InColor.b < 0.04045f)
+    {
+        // S div 12.92
+        Result.b = InColor.b * 0.0773993808f;
+    }
+    else
+    {
+        // ((S+0.055) / 1.055) ^ 2.4
+        Result.b = pow(InColor.b * 0.9478672986f + 0.0521327014f, 2.4f);
+    }
+    
+    return Result;
+}
+
 #endif

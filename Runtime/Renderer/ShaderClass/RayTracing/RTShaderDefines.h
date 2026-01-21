@@ -2,36 +2,38 @@
 #include "Runtime/Classes/Types.h"
 
 // this should be sync with the define in the shader
-struct UHDefaultPayload
+
+// wrapper for minimal payload (shadows)
+struct UHMinimalPayload
 {
 	float HitT;
 	float MipLevel;
 	float HitAlpha;
+};
+
+// wrapper for indirect light payload
+struct UHIndirectPayload
+{
 	uint32_t PayloadData;
-
-	// for opaque
 	XMFLOAT4 HitDiffuse;
-	XMFLOAT3 HitNormal;
 	XMFLOAT3 HitVertexNormal;
-	XMFLOAT4 HitSpecular;
-	XMFLOAT3 HitEmissive;
 	XMFLOAT2 HitScreenUV;
-
-	// for translucent
-	XMFLOAT4 HitDiffuseTrans;
-	XMFLOAT3 HitNormalTrans;
-	XMFLOAT3 HitVertexNormalTrans;
-	XMFLOAT4 HitSpecularTrans;
-	XMFLOAT4 HitEmissiveTrans;
-	XMFLOAT2 HitScreenUVTrans;
-	XMFLOAT3 HitWorldPosTrans;
-	XMFLOAT2 HitRefractOffset;
 
 	uint32_t IsInsideScreen;
 	uint32_t HitInstanceIndex;
-	uint32_t CurrentRecursion;
+};
 
-	XMFLOAT3 HitWorldPos;
+struct UHDefaultPayload
+{
+	UHMinimalPayload MinimalPayload;
+	UHIndirectPayload IndirectPayload;
+
+	XMFLOAT3 HitMaterialNormal;
+	XMFLOAT4 HitSpecular;
+	XMFLOAT3 HitEmissive;
+	XMFLOAT2 HitRefractOffset;
+
+	uint32_t CurrentRecursion;
 	XMFLOAT3 RayDir;
 	float FresnelFactor;
 };

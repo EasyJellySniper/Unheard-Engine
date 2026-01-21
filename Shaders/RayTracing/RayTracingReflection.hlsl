@@ -59,7 +59,7 @@ void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload,
             
                 TracePointShadow(TLAS, PointLight, LightInfo.WorldPos, LightInfo.Normal, GShadowRayGap, MipLevel, Atten, HitDist);
                 LightInfo.ShadowMask = Atten;
-                Result += CalculatePointLight(PointLight, LightInfo);
+                Result += CalculatePointLight(PointLight, LightInfo, true);
             }
         }
     }
@@ -83,7 +83,7 @@ void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload,
             
                 TracePointShadow(TLAS, PointLight, LightInfo.WorldPos, LightInfo.Normal, GShadowRayGap, MipLevel, Atten, HitDist);
                 LightInfo.ShadowMask = Atten;
-                Result += CalculatePointLight(PointLight, LightInfo);
+                Result += CalculatePointLight(PointLight, LightInfo, true);
             }
         }
     }
@@ -114,7 +114,7 @@ void ConditionalCalculateSpotLight(uint TileIndex, in UHDefaultPayload Payload, 
             
                 TraceSpotShadow(TLAS, SpotLight, LightInfo.WorldPos, LightInfo.Normal, GShadowRayGap, MipLevel, Atten, HitDist);
                 LightInfo.ShadowMask = Atten;
-                Result += CalculateSpotLight(SpotLight, LightInfo);
+                Result += CalculateSpotLight(SpotLight, LightInfo, true);
             }
         }
     }
@@ -138,33 +138,22 @@ void ConditionalCalculateSpotLight(uint TileIndex, in UHDefaultPayload Payload, 
             
                 TraceSpotShadow(TLAS, SpotLight, LightInfo.WorldPos, LightInfo.Normal, GShadowRayGap, MipLevel, Atten, HitDist);
                 LightInfo.ShadowMask = Atten;
-                Result += CalculateSpotLight(SpotLight, LightInfo);
+                Result += CalculateSpotLight(SpotLight, LightInfo, true);
             }
         }
     }
 }
 
 float4 CalculateReflectionLighting(in UHDefaultPayload Payload
+    , float3 HitWorldPos
     , float MipLevel
     , float3 ReflectRay)
 {
     // doing the same lighting as object pass except the indirect specular
     float3 Result = 0;
-    bool bHitTranslucent = (Payload.PayloadData & PAYLOAD_HITTRANSLUCENT) > 0;
     bool bHitRefraction = (Payload.PayloadData & PAYLOAD_HITREFRACTION) > 0;
-    float2 ScreenUV = bHitTranslucent ? Payload.HitScreenUVTrans : Payload.HitScreenUV;
+    float2 ScreenUV = Payload.HitScreenUV;
     
-    // blend the hit info with translucent opactiy when necessary
-    UHDefaultPayload OriginPayload = Payload;
-    if (bHitTranslucent)
-    {
-        float TransOpacity = Payload.HitEmissiveTrans.a;
-        Payload.HitDiffuse = lerp(Payload.HitDiffuse, Payload.HitDiffuseTrans, TransOpacity);
-        Payload.HitSpecular = lerp(Payload.HitSpecular, Payload.HitSpecularTrans, TransOpacity);
-        Payload.HitMaterialNormal = lerp(Payload.HitMaterialNormal, Payload.HitMaterialNormalTrans, TransOpacity);
-        Payload.HitVertexNormal = lerp(Payload.HitVertexNormal, Payload.HitVertexNormalTrans, TransOpacity);
-        Payload.HitEmissive.rgb = lerp(Payload.HitEmissive.rgb, Payload.HitEmissiveTrans.rgb, TransOpacity);
-    }
     Payload.HitMaterialNormal = normalize(Payload.HitMaterialNormal);
     Payload.HitVertexNormal = normalize(Payload.HitVertexNormal);
     
@@ -173,11 +162,11 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     LightInfo.Diffuse = Payload.HitDiffuse.rgb;
     LightInfo.Specular = Payload.HitSpecular;
     LightInfo.Normal = Payload.HitMaterialNormal;
-    LightInfo.WorldPos = bHitTranslucent ? Payload.HitWorldPosTrans : Payload.HitWorldPos;
+    LightInfo.WorldPos = HitWorldPos;
     
     // check whether it's a refraction material
     // if yes, shoot another ray for it
-    if (bHitTranslucent && bHitRefraction)
+    if (bHitRefraction)
     {
         RayDesc RefractRay = (RayDesc) 0;
         
@@ -241,7 +230,7 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
             
                 TraceDiretionalShadow(TLAS, DirLight, LightInfo.WorldPos, LightInfo.Normal, GShadowRayGap, MipLevel, Atten, HitDist);
                 LightInfo.ShadowMask = Atten;
-                Result += CalculateDirLight(DirLight, LightInfo);
+                Result += CalculateDirLight(DirLight, LightInfo, true);
             }
         }
     }
@@ -375,7 +364,8 @@ void RTReflectionRayGen()
     
     if (Payload.IsHit())
     {
-        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, MipLevel, ReflectRay.Direction);
+        float3 HitWorldPos = ReflectRay.Origin + ReflectRay.Direction * Payload.HitT;
+        OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, MipLevel, ReflectRay.Direction);
     }
 }
 

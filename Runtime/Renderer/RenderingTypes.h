@@ -20,6 +20,9 @@ const uint32_t GNumOfGBuffersTrans = 5;
 const uint32_t GThreadGroup2D_X = 8;
 const uint32_t GThreadGroup2D_Y = 8;
 const uint32_t GThreadGroup1D = 64;
+const uint32_t GThreadGroup3D_X = 4;
+const uint32_t GThreadGroup3D_Y = 4;
+const uint32_t GThreadGroup3D_Z = 4;
 
 // descriptor set space number
 const uint32_t GTextureTableSpace = 1;

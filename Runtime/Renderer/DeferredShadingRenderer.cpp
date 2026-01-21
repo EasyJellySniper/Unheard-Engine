@@ -460,10 +460,13 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	}
 
 	// upload SH9 data, for now use the 4th mip slice in it
-	UHSphericalHarmonicConstants SH9Constant{};
-	SH9Constant.MipLevel = 4;
-	SH9Constant.Weight = 4.0f * G_PI / 64.0f;
-	SH9Shader->GetSH9Constants(CurrentFrameGT)->UploadData(&SH9Constant, 0);
+	if (bNeedGenerateSH9)
+	{
+		UHSphericalHarmonicConstants SH9Constant{};
+		SH9Constant.MipLevel = 4;
+		SH9Constant.Weight = 4.0f * G_PI / 64.0f;
+		SH9Shader->GetSH9Constants(CurrentFrameGT)->UploadData(&SH9Constant, 0);
+	}
 
 	// upload tonemap data
 	UHToneMapData ToneMapData(RenderingSettings.GammaCorrection, RenderingSettings.HDRWhitePaperNits, RenderingSettings.HDRContrast);
