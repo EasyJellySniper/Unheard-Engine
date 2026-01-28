@@ -771,6 +771,7 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	if (GraphicInterface->IsRayTracingEnabled())
 	{
 		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
+		UH_SAFE_RELEASE(RTMinimalHitGroupShader);
 		UH_SAFE_RELEASE(RTShadowShader);
 		UH_SAFE_RELEASE(RTReflectionShader);
 		UH_SAFE_RELEASE(RTIndirectLightShader);
@@ -1767,13 +1768,19 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 
 		UH_SAFE_RELEASE(RTDefaultHitGroupShader);
 		RTDefaultHitGroupShader = MakeUnique<UHRTDefaultHitGroupShader>(GraphicInterface, "RTDefaultHitGroupShader", CurrentScene->GetMaterials());
-	}
 
-	for (size_t Idx = 0; Idx < InMats.size(); Idx++)
+		UH_SAFE_RELEASE(RTMinimalHitGroupShader);
+		RTMinimalHitGroupShader = MakeUnique<UHRTMinimalHitGroupShader>(GraphicInterface, "RTMinimalHitGroupShader", CurrentScene->GetMaterials());
+	}
+	else
 	{
-		if (InMats[Idx])
+		for (size_t Idx = 0; Idx < InMats.size(); Idx++)
 		{
-			RTDefaultHitGroupShader->UpdateHitShader(GraphicInterface, InMats[Idx]);
+			if (InMats[Idx])
+			{
+				RTDefaultHitGroupShader->UpdateHitShader(GraphicInterface, InMats[Idx]);
+				RTMinimalHitGroupShader->UpdateHitShader(GraphicInterface, InMats[Idx]);
+			}
 		}
 	}
 
@@ -1790,13 +1797,41 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 	UH_SAFE_RELEASE(RTReflectionShader);
 	UH_SAFE_RELEASE(RTIndirectLightShader);
 
-	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+	// merge default and minimal hitgroup shader, the layout works as the follow:
+	// 0: default closest for material 0
+	// 1: minimal closest for material 0
+	// 2: default closest for material 1
+	// 3: minimal closest for material 1
+	// ...continue, so it is important to set correct instanceShaderBindingTableRecordOffset in AccelerationStructure.cpp
+	const std::vector<uint32_t>& DefaultClosests = RTDefaultHitGroupShader->GetClosestShaders();
+	const std::vector<uint32_t>& DefaultAnyHits = RTDefaultHitGroupShader->GetAnyHitShaders();
+	const std::vector<uint32_t>& MinimalClosests = RTMinimalHitGroupShader->GetClosestShaders();
+	const std::vector<uint32_t>& MinimalAnyHits = RTMinimalHitGroupShader->GetAnyHitShaders();
+
+	std::vector<uint32_t> ClosestHits;
+	std::vector<uint32_t> AnyHits;
+	for (size_t Idx = 0; Idx < DefaultClosests.size(); Idx++)
+	{
+		ClosestHits.push_back(DefaultClosests[Idx]);
+		ClosestHits.push_back(MinimalClosests[Idx]);
+		AnyHits.push_back(DefaultAnyHits[Idx]);
+		AnyHits.push_back(MinimalAnyHits[Idx]);
+	}
+
+	// minimal HG for RT shadow
+	RTShadowShader = MakeUnique<UHRTShadowShader>(GraphicInterface, "RTShadowShader"
+		, ClosestHits
+		, AnyHits
 		, Layouts);
 
-	RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+	RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader"
+		, ClosestHits
+		, AnyHits
 		, Layouts);
 
-	RTIndirectLightShader = MakeUnique<UHRTIndirectLightShader>(GraphicInterface, "RTIndirectLightShader", RTDefaultHitGroupShader->GetClosestShaders(), RTDefaultHitGroupShader->GetAnyHitShaders()
+	RTIndirectLightShader = MakeUnique<UHRTIndirectLightShader>(GraphicInterface, "RTIndirectLightShader"
+		, ClosestHits
+		, AnyHits
 		, Layouts);
 
 	// setup RT descriptor sets that will be used in rendering

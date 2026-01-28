@@ -17,9 +17,6 @@ struct UHIndirectPayload
 	uint32_t PayloadData;
 	XMFLOAT4 HitDiffuse;
 	XMFLOAT3 HitVertexNormal;
-	XMFLOAT2 HitScreenUV;
-
-	uint32_t IsInsideScreen;
 	uint32_t HitInstanceIndex;
 };
 

@@ -46,14 +46,14 @@ UHRTShadowShader::UHRTShadowShader(UHGraphic* InGfx, std::string Name
 void UHRTShadowShader::OnCompile()
 {
 	RayGenShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowRayGen", "lib_6_3");
-	MissShader = Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowMiss", "lib_6_3");
+	MissShaders.push_back(Gfx->RequestShader("RTShadowShader", "Shaders/RayTracing/RayTracingShadow.hlsl", "RTShadowMiss", "lib_6_3"));
 
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
 	RTInfo.RayGenShader = RayGenShader;
 	RTInfo.ClosestHitShaders = ClosestHitIDs;
 	RTInfo.AnyHitShaders = AnyHitIDs;
-	RTInfo.MissShader = MissShader;
+	RTInfo.MissShaders = MissShaders;
 	RTInfo.PayloadSize = sizeof(UHMinimalPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
 	RTState = Gfx->RequestRTState(RTInfo);

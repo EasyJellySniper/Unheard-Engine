@@ -53,14 +53,15 @@ UHRTReflectionShader::UHRTReflectionShader(UHGraphic* InGfx, std::string Name
 void UHRTReflectionShader::OnCompile()
 {
 	RayGenShader = Gfx->RequestShader("RTReflectionShader", "Shaders/RayTracing/RayTracingReflection.hlsl", "RTReflectionRayGen", "lib_6_3");
-	MissShader = Gfx->RequestShader("RTReflectionShader", "Shaders/RayTracing/RayTracingReflection.hlsl", "RTReflectionMiss", "lib_6_3");
+	MissShaders.push_back(Gfx->RequestShader("RTReflectionShader", "Shaders/RayTracing/RayTracingReflection.hlsl", "RTReflectionShadowMiss", "lib_6_3"));
+	MissShaders.push_back(Gfx->RequestShader("RTReflectionShader", "Shaders/RayTracing/RayTracingReflection.hlsl", "RTReflectionMiss", "lib_6_3"));
 
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
 	RTInfo.RayGenShader = RayGenShader;
 	RTInfo.ClosestHitShaders = ClosestHitIDs;
 	RTInfo.AnyHitShaders = AnyHitIDs;
-	RTInfo.MissShader = MissShader;
+	RTInfo.MissShaders = MissShaders;
 	RTInfo.PayloadSize = sizeof(UHDefaultPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
 	RTInfo.MaxRecursionDepth = MaxReflectionRecursion;

@@ -46,6 +46,7 @@
 #include "ShaderClass/RayTracing/RTIndirectLightShader.h"
 #include "ShaderClass/PostProcessing/KawaseBlurShader.h"
 #include "ShaderClass/RayTracing/RTSoftShadowShader.h"
+#include "ShaderClass/RayTracing/RTMinimalHitGroupShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -433,6 +434,7 @@ private:
 
 	// -------------------------------------------- Ray tracing related -------------------------------------------- //
 	UniquePtr<UHRTDefaultHitGroupShader> RTDefaultHitGroupShader;
+	UniquePtr<UHRTMinimalHitGroupShader> RTMinimalHitGroupShader;
 	UniquePtr<UHRTShadowShader> RTShadowShader;
 	UniquePtr<UHRTReflectionShader> RTReflectionShader;
 	std::vector<VkDescriptorSet> RTDescriptorSets[GMaxFrameInFlight];

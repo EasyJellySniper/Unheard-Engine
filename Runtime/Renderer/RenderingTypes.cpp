@@ -100,7 +100,6 @@ UHRayTracingInfo::UHRayTracingInfo()
 	: PipelineLayout(nullptr)
 	, MaxRecursionDepth(1)
 	, RayGenShader(-1)
-	, MissShader(-1)
 	, PayloadSize(sizeof(UHDefaultPayload))
 	, AttributeSize(sizeof(UHDefaultAttribute))
 {
@@ -144,9 +143,19 @@ bool UHRayTracingInfo::operator==(const UHRayTracingInfo& InInfo)
 		}
 	}
 
-	if (InInfo.MissShader != MissShader)
+	if (InInfo.MissShaders.size() != MissShaders.size())
 	{
 		return false;
+	}
+	else
+	{
+		for (size_t Idx = 0; Idx < MissShaders.size(); Idx++)
+		{
+			if (MissShaders[Idx] != InInfo.MissShaders[Idx])
+			{
+				return false;
+			}
+		}
 	}
 
 	return InInfo.PipelineLayout == PipelineLayout

@@ -174,7 +174,7 @@ void RTShadowRayGen()
 }
 
 [shader("miss")]
-void RTShadowMiss(inout UHDefaultPayload Payload)
+void RTShadowMiss(inout UHMinimalPayload Payload)
 {
 	// do nothing
 }

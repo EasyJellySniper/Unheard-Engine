@@ -438,6 +438,9 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSoftShadowShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -843,6 +846,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSoftShadowShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

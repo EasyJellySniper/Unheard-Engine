@@ -438,4 +438,14 @@ float3 SrgbToLinear(float3 InColor)
     return Result;
 }
 
+float2 CalculateScreenUV(float3 InWorldPos, out bool bInsideScreen)
+{
+    float4 ClipPos = mul(float4(InWorldPos, 1.0f), GViewProj);
+    ClipPos /= ClipPos.w;
+	
+    float2 ScreenUV = ClipPos.xy * 0.5f + 0.5f;
+    bInsideScreen = IsUVInsideScreen(ScreenUV) && (ClipPos.z > 0.0f);
+    return ScreenUV;
+}
+
 #endif

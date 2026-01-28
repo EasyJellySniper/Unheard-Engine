@@ -73,15 +73,6 @@ UHMaterialInputs GetMaterialBumpNormal(float2 UV0, float MipLevel, out MaterialU
 	//%UHS_INPUT_NormalOnly
 }
 
-// get only the emissive from the material
-UHMaterialInputs GetMaterialEmissive(float2 UV0, float MipLevel)
-{
-    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
-    
-    // material input code will be generated in C++ side
-	//%UHS_INPUT_EmissiveOnly
-}
-
 // get material input fully
 UHMaterialInputs GetMaterialInput(float2 UV0, float MipLevel, out MaterialUsage Usages)
 {
@@ -203,12 +194,6 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
 {    
     MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
     bool bIsOpaque = MatData.Data[1] <= UH_ISMASKED;
-    
-    float4 ClipPos = mul(float4(WorldPos, 1.0f), GViewProj);
-    ClipPos /= ClipPos.w;
-	
-    float2 ScreenUV = ClipPos.xy * 0.5f + 0.5f;
-    bool bInsideScreen = IsUVInsideScreen(ScreenUV) && (ClipPos.z > 0.0f);
 	
 	// fetch material data
     uint3 PrimIndices = GetIndex(PrimitiveIndex());
@@ -284,13 +269,11 @@ void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attri
     {
         Payload.HitEmissive = Emissive;
     }
-    Payload.HitScreenUV = ScreenUV;
     if (!bIsOpaque)
     {
         Payload.HitRefractOffset = RefractOffset;
     }
     
-    Payload.IsInsideScreen = bInsideScreen;
     Payload.RayDir = WorldRayDirection();
 }
 
@@ -461,6 +444,45 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
         }
         
         // do not accept the hit and let the ray continue
+        IgnoreHit();
+    }
+}
+
+[shader("closesthit")]
+void RTMinimalClosestHit(inout UHMinimalPayload Payload, in Attribute Attr)
+{
+    // simply output HitT and HitAlpha
+    Payload.HitT = RayTCurrent();
+    Payload.HitAlpha = 1.0f;
+}
+
+[shader("anyhit")]
+void RTMinimalAnyHit(inout UHMinimalPayload Payload, in Attribute Attr)
+{
+    // fetch material data and cutoff if it's alpha test
+    float2 UV0 = GetHitUV0(GetIndex(PrimitiveIndex()), Attr);
+	
+    MaterialUsage Usages = (MaterialUsage) 0;
+    UHMaterialInputs MaterialInput = GetMaterialOpacity(UV0, Payload.MipLevel, Usages);
+
+    if (Usages.BlendMode == UH_ISMASKED && MaterialInput.Opacity < Usages.Cutoff)
+    {
+		// discard this hit if it's alpha testing
+        IgnoreHit();
+        return;
+    }
+    
+    if (Usages.BlendMode > UH_ISMASKED)
+    {
+        // The same rule as in MotionPixelShader.hlsl, not worth a update for 0 alpha pixel
+        if (MaterialInput.Opacity < 0.001f)
+        {
+            IgnoreHit();
+            return;
+        }
+        
+        // select max alpha for the shadow pass
+        Payload.HitAlpha = max(MaterialInput.Opacity, Payload.HitAlpha);
         IgnoreHit();
     }
 }

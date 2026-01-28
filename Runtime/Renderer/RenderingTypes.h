@@ -37,64 +37,65 @@ const float G_PI = 3.141592653589793f;
 
 // indirect light frames
 const int32_t GNumOfIndirectLightFrames = 2;
+const int32_t GNumOfIndirectLightRays = 4;
 
 struct UHSystemConstants
 {
-	XMFLOAT4X4 GViewProj;
-	XMFLOAT4X4 GViewProjInv;
-	XMFLOAT4X4 GViewProj_NonJittered;
-	XMFLOAT4X4 GViewProjInv_NonJittered;
-	XMFLOAT4X4 GPrevViewProj_NonJittered;
-	XMFLOAT4X4 GProjInv;
-	XMFLOAT4X4 GProjInv_NonJittered;
-	XMFLOAT4X4 GView;
-	XMFLOAT4 GResolution;
-	XMFLOAT4 GShadowResolution;
-	XMFLOAT3 GCameraPos;
-	uint32_t GNumDirLights;
+	XMFLOAT4X4 ViewProj;
+	XMFLOAT4X4 ViewProjInv;
+	XMFLOAT4X4 ViewProj_NonJittered;
+	XMFLOAT4X4 ViewProjInv_NonJittered;
+	XMFLOAT4X4 PrevViewProj_NonJittered;
+	XMFLOAT4X4 ProjInv;
+	XMFLOAT4X4 ProjInv_NonJittered;
+	XMFLOAT4X4 View;
+	XMFLOAT4 Resolution;
+	XMFLOAT4 ShadowResolution;
+	XMFLOAT3 CameraPos;
+	uint32_t NumDirLights;
 
-	XMFLOAT3 GAmbientSky;
-	float GJitterOffsetX;
-	XMFLOAT3 GAmbientGround;
-	float GJitterOffsetY;
+	XMFLOAT3 AmbientSky;
+	float JitterOffsetX;
+	XMFLOAT3 AmbientGround;
+	float JitterOffsetY;
 
-	XMFLOAT3 GCameraDir;
-	uint32_t GNumRTInstances;
+	XMFLOAT3 CameraDir;
+	uint32_t NumRTInstances;
 
-	float GJitterScaleMin;
-	float GJitterScaleFactor;
-	uint32_t GNumPointLights;
-	uint32_t GLightTileCountX;
+	float JitterScaleMin;
+	float JitterScaleFactor;
+	uint32_t NumPointLights;
+	uint32_t LightTileCountX;
 
-	uint32_t GMaxPointLightPerTile;
-	uint32_t GNumSpotLights;
-	uint32_t GMaxSpotLightPerTile;
-	uint32_t GFrameNumber;
+	uint32_t MaxPointLightPerTile;
+	uint32_t NumSpotLights;
+	uint32_t MaxSpotLightPerTile;
+	uint32_t FrameNumber;
 	
 	// the feature shall be able to store up to 32 flag bits without issues
-	uint32_t GSystemRenderFeature;
-	float GDirectionalShadowRayTMax;
-	uint32_t GLinearClampSamplerIndex;
-	uint32_t GSkyCubeSamplerIndex;
+	uint32_t SystemRenderFeature;
+	float DirectionalShadowRayTMax;
+	uint32_t LinearClampSamplerIndex;
+	uint32_t SkyCubeSamplerIndex;
 
-	uint32_t GPointClampSamplerIndex;
+	uint32_t PointClampSamplerIndex;
 	uint32_t RTReflectionQuality;
 	float RTReflectionRayTMax;
 	float RTReflectionSmoothCutoff;
 
-	float GEnvCubeMipMapCount;
-	uint32_t GDefaultAnisoSamplerIndex;
-	uint32_t GOpaqueSceneTextureIndex;
-	float GFinalReflectionStrength;
+	float EnvCubeMipMapCount;
+	uint32_t DefaultAnisoSamplerIndex;
+	uint32_t OpaqueSceneTextureIndex;
+	float FinalReflectionStrength;
 
 	XMFLOAT3 SceneCenter;
-	float GNearPlane;
+	float NearPlane;
 
 	XMFLOAT3 SceneExtent;
-	float GRTCullingDistance;
+	float RTCullingDistance;
 
-	uint32_t GMaxReflectionRecursion;
-	float GScreenMipCount;
+	uint32_t MaxReflectionRecursion;
+	float ScreenMipCount;
 	float RTReflectionMipCount;
 };
 
@@ -259,7 +260,7 @@ struct UHRayTracingInfo
 	uint32_t RayGenShader;
 	std::vector<uint32_t> ClosestHitShaders;
 	std::vector<uint32_t> AnyHitShaders;
-	uint32_t MissShader;
+	std::vector<uint32_t> MissShaders;
 	uint32_t PayloadSize;
 	uint32_t AttributeSize;
 };

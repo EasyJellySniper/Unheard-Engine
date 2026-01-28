@@ -20,6 +20,9 @@ static const uint GNumOfIndirectFrames = 2;
 static const int GRTMaxDirLight = 2;
 static const float GRTGapMin = 0.005f;
 static const float GRTGapMax = 0.05f;
+static const uint GRTMinimalHitGroupOffset = 1;
+static const uint GRTShadowMissShaderIndex = 0;
+static const uint GRTDefaultMissShaderIndex = 1;
 
 struct UHInstanceLights
 {
@@ -28,6 +31,18 @@ struct UHInstanceLights
 };
 
 // struct has to be the same as the c++ define in RTShaderDefines.h
+struct UHMinimalPayload
+{
+    bool IsHit()
+    {
+        return HitT > 0;
+    }
+    
+    float HitT;
+    float MipLevel;
+    float HitAlpha;
+};
+
 struct UHDefaultPayload
 {
 	bool IsHit() 
@@ -48,12 +63,9 @@ struct UHDefaultPayload
         HitVertexNormal = SrcPayload.HitVertexNormal;
         HitSpecular = SrcPayload.HitSpecular;
         HitEmissive = SrcPayload.HitEmissive;
-        HitScreenUV = SrcPayload.HitScreenUV;
         HitRefractOffset = SrcPayload.HitRefractOffset;
         
-        IsInsideScreen = SrcPayload.IsInsideScreen;
         HitInstanceIndex = SrcPayload.HitInstanceIndex;
-        
         RayDir = SrcPayload.RayDir;
         FresnelFactor = SrcPayload.FresnelFactor;
     }
@@ -69,8 +81,6 @@ struct UHDefaultPayload
     uint PayloadData;
     float4 HitDiffuse;
     float3 HitVertexNormal;
-    float2 HitScreenUV;
-    uint IsInsideScreen;
     uint HitInstanceIndex;
     
     float3 HitMaterialNormal;
@@ -142,9 +152,9 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
     ShadowRay.TMin = Gap;
     ShadowRay.TMax = GDirectionalShadowRayTMax;
 
-    UHDefaultPayload Payload = (UHDefaultPayload) 0;
+    UHMinimalPayload Payload = (UHMinimalPayload) 0;
     Payload.MipLevel = MipLevel;
-    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, ShadowRay, Payload);
 
 	// output both attenuation and hit distance
     if (Payload.IsHit())
@@ -198,9 +208,9 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
         return false;
     }
         
-    UHDefaultPayload Payload = (UHDefaultPayload) 0;
+    UHMinimalPayload Payload = (UHMinimalPayload) 0;
     Payload.MipLevel = MipLevel;
-    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, ShadowRay, Payload);
 		
     if (Payload.IsHit())
     {
@@ -254,9 +264,9 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
         return false;
     }
 		
-    UHDefaultPayload Payload = (UHDefaultPayload) 0;
+    UHMinimalPayload Payload = (UHMinimalPayload) 0;
     Payload.MipLevel = MipLevel;
-    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, ShadowRay, Payload);
+    TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, ShadowRay, Payload);
 		
     if (Payload.IsHit())
     {

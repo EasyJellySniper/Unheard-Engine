@@ -359,7 +359,6 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 {
 	RayTracingInfo = InInfo;
 	const UHShader* RG = SafeGetObjectFromTable<const UHShader>(RayTracingInfo.RayGenShader);
-	const UHShader* Miss = SafeGetObjectFromTable<const UHShader>(RayTracingInfo.MissShader);
 	std::string ShaderDebugName;
 
 	VkRayTracingPipelineCreateInfoKHR CreateInfo{};
@@ -376,24 +375,38 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	RGStageInfo.pName = RGEntryName.c_str();
 	ShaderDebugName += "_" + RG->GetName() + "_" + RGEntryName;
 
-	// set miss shader
-	std::string MissEntryName = Miss->GetEntryName();
-	VkPipelineShaderStageCreateInfo MissStageInfo{};
-	MissStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	MissStageInfo.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
-	MissStageInfo.module = Miss->GetShader();
-	MissStageInfo.pName = MissEntryName.c_str();
-	ShaderDebugName += "_" + Miss->GetName() + "_" + MissEntryName;
+	// set miss shader stage
+	const size_t NumMissShaders = RayTracingInfo.MissShaders.size();
+	std::vector<VkPipelineShaderStageCreateInfo> MissStageInfos(NumMissShaders);
+	std::vector<std::string> MissEntryNames(NumMissShaders);
+	std::vector<UHShader*> MissShaders(NumMissShaders);
+
+	for (size_t Idx = 0; Idx < NumMissShaders; Idx++)
+	{
+		MissShaders[Idx] = SafeGetObjectFromTable<UHShader>(RayTracingInfo.MissShaders[Idx]);
+		VkPipelineShaderStageCreateInfo MissStageInfo{};
+		if (MissShaders[Idx] != nullptr)
+		{
+			MissEntryNames[Idx] = MissShaders[Idx]->GetEntryName();
+			MissStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			MissStageInfo.stage = VK_SHADER_STAGE_MISS_BIT_KHR;
+			MissStageInfo.module = MissShaders[Idx]->GetShader();
+			MissStageInfo.pName = MissEntryNames[Idx].c_str();
+			MissStageInfos[Idx] = MissStageInfo;
+			ShaderDebugName += "_" + MissShaders[Idx]->GetName() + "_" + MissEntryNames[Idx];
+		}
+	}
 
 	// closest hit and any hit should have the same size
 	assert(RayTracingInfo.ClosestHitShaders.size() == RayTracingInfo.AnyHitShaders.size());
 
-	// set closest hit shader
-	std::vector<VkPipelineShaderStageCreateInfo> CHGStageInfos(RayTracingInfo.ClosestHitShaders.size());
-	std::vector<std::string> CHGEntryNames(RayTracingInfo.ClosestHitShaders.size());
+	// set closest hit shader stage
+	const size_t NumClosestShaders = RayTracingInfo.ClosestHitShaders.size();
+	std::vector<VkPipelineShaderStageCreateInfo> CHGStageInfos(NumClosestShaders);
+	std::vector<std::string> CHGEntryNames(NumClosestShaders);
+	std::vector<UHShader*> ClosestHits(NumClosestShaders);
 
-	std::vector<UHShader*> ClosestHits(RayTracingInfo.ClosestHitShaders.size());
-	for (size_t Idx = 0; Idx < RayTracingInfo.ClosestHitShaders.size(); Idx++)
+	for (size_t Idx = 0; Idx < NumClosestShaders; Idx++)
 	{
 		ClosestHits[Idx] = SafeGetObjectFromTable<UHShader>(RayTracingInfo.ClosestHitShaders[Idx]);
 		VkPipelineShaderStageCreateInfo CHGStageInfo{};
@@ -408,11 +421,11 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 		}
 	}
 
-	// set any hit shader
+	// set any hit shader stage
 	std::vector<VkPipelineShaderStageCreateInfo> AHGStageInfos(RayTracingInfo.AnyHitShaders.size());
 	std::vector<std::string> AHGEntryNames(RayTracingInfo.AnyHitShaders.size());
-
 	std::vector<UHShader*> AnyHits(RayTracingInfo.AnyHitShaders.size());
+
 	for (size_t Idx = 0; Idx < RayTracingInfo.AnyHitShaders.size(); Idx++)
 	{
 		AnyHits[Idx] = SafeGetObjectFromTable<UHShader>(RayTracingInfo.AnyHitShaders[Idx]);
@@ -428,7 +441,11 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 		}
 	}
 
-	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages = { RGStageInfo, MissStageInfo };
+	std::vector<VkPipelineShaderStageCreateInfo> ShaderStages = { RGStageInfo };
+
+	// insert miss shaders
+	ShaderStages.insert(ShaderStages.end(), MissStageInfos.begin(), MissStageInfos.end());
+
 	// insert hit groups
 	for (size_t Idx = 0; Idx < CHGStageInfos.size(); Idx++)
 	{
@@ -448,29 +465,36 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	RGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
 	RGGroupInfo.generalShader = GRayGenTableSlot;
 
-	VkRayTracingShaderGroupCreateInfoKHR MissGroupInfo{};
-	MissGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
-	MissGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-	MissGroupInfo.closestHitShader = VK_SHADER_UNUSED_KHR;
-	MissGroupInfo.anyHitShader = VK_SHADER_UNUSED_KHR;
-	MissGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
-	MissGroupInfo.generalShader = GMissTableSlot;
+	std::vector<VkRayTracingShaderGroupCreateInfoKHR> MissGroupInfos(RayTracingInfo.MissShaders.size());
+	for (size_t Idx = 0; Idx < MissGroupInfos.size(); Idx++)
+	{
+		VkRayTracingShaderGroupCreateInfoKHR MissGroupInfo{};
+		MissGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
+		MissGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
+		MissGroupInfo.closestHitShader = VK_SHADER_UNUSED_KHR;
+		MissGroupInfo.anyHitShader = VK_SHADER_UNUSED_KHR;
+		MissGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
+		MissGroupInfo.generalShader = GMissTableSlot + static_cast<uint32_t>(Idx);
+		MissGroupInfos[Idx] = MissGroupInfo;
+	}
 
-	// setup all hit groups, for each record has one closest and one anyhit
+	// setup all hit groups, each record has at least one closest and one anyhit shader entry
+	const uint32_t HitGroupTableStart = GHitGroupTableSlot + static_cast<uint32_t>(MissGroupInfos.size()) - 1;
 	std::vector<VkRayTracingShaderGroupCreateInfoKHR> HGGroupInfos(RayTracingInfo.AnyHitShaders.size());
-	for (size_t Idx = 0; Idx < RayTracingInfo.AnyHitShaders.size(); Idx++)
+	for (size_t Idx = 0; Idx < HGGroupInfos.size(); Idx++)
 	{
 		VkRayTracingShaderGroupCreateInfoKHR HGGroupInfo{};
 		HGGroupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 		HGGroupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-		HGGroupInfo.closestHitShader = static_cast<uint32_t>(GHitGroupTableSlot + Idx * GHitGroupShaderPerSlot);
-		HGGroupInfo.anyHitShader = static_cast<uint32_t>(GHitGroupTableSlot + 1 + Idx * GHitGroupShaderPerSlot);
+		HGGroupInfo.closestHitShader = static_cast<uint32_t>(HitGroupTableStart + Idx * GHitGroupShaderPerSlot);
+		HGGroupInfo.anyHitShader = static_cast<uint32_t>(HitGroupTableStart + 1 + Idx * GHitGroupShaderPerSlot);
 		HGGroupInfo.intersectionShader = VK_SHADER_UNUSED_KHR;
 		HGGroupInfo.generalShader = VK_SHADER_UNUSED_KHR;
 		HGGroupInfos[Idx] = HGGroupInfo;
 	}
 
-	std::vector<VkRayTracingShaderGroupCreateInfoKHR> GroupInfos = { RGGroupInfo, MissGroupInfo };
+	std::vector<VkRayTracingShaderGroupCreateInfoKHR> GroupInfos = { RGGroupInfo };
+	GroupInfos.insert(GroupInfos.end(), MissGroupInfos.begin(), MissGroupInfos.end());
 	GroupInfos.insert(GroupInfos.end(), HGGroupInfos.begin(), HGGroupInfos.end());
 	CreateInfo.groupCount = static_cast<uint32_t>(GroupInfos.size());
 	CreateInfo.pGroups = GroupInfos.data();

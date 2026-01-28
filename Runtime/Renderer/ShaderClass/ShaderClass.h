@@ -181,10 +181,8 @@ public:
 	void SetNewMaterialCache(UHMaterial* InMat);
 	void SetNewRenderPass(VkRenderPass InRenderPass);
 
-	uint32_t GetRayGenShader() const;
 	const std::vector<uint32_t>& GetClosestShaders() const;
 	const std::vector<uint32_t>& GetAnyHitShaders() const;
-	uint32_t GetMissShader() const;
 	UHGraphicState* GetState() const;
 	UHGraphicState* GetRTState() const;
 	UHComputeState* GetComputeState() const;
@@ -234,7 +232,7 @@ protected:
 	uint32_t RayGenShader;
 	std::vector<uint32_t> ClosestHitShaders;
 	std::vector<uint32_t> AnyHitShaders;
-	uint32_t MissShader;
+	std::vector<uint32_t> MissShaders;
 	uint32_t ShaderAS;
 	uint32_t ShaderMS;
 

@@ -16,7 +16,7 @@ groupshared float4 GNormalCache[UHTHREAD_GROUP1D + 2 * MAX_REFINE_RADIUS];
 
 float4 SelectCandidateNormal(int2 PixelCoord)
 {
-    float2 UV = float2(PixelCoord) * GResolution.zw * REFINE_DOWNSIZE_FACTOR;
+    float2 UV = float2(PixelCoord + 0.5f) * GResolution.zw * REFINE_DOWNSIZE_FACTOR;
     float4 OpaqueN = OpaqueNormalTexture.SampleLevel(LinearSampler, UV, 0);
     
     return float4(DecodeNormal(OpaqueN.xyz), OpaqueN.a > 0 ? 1 : 0);

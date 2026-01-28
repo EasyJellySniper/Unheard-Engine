@@ -274,54 +274,54 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	const UHRenderingSettings& RenderingSettings = ConfigInterface->RenderingSetting();
 
 	// setup system constants and upload
-	SystemConstantsCPU.GViewProj = CurrentCamera->GetViewProjMatrix();
-	SystemConstantsCPU.GViewProjInv = CurrentCamera->GetInvViewProjMatrix();
-	SystemConstantsCPU.GPrevViewProj_NonJittered = CurrentCamera->GetPrevViewProjMatrixNonJittered();
-	SystemConstantsCPU.GViewProj_NonJittered = CurrentCamera->GetViewProjMatrixNonJittered();
-	SystemConstantsCPU.GViewProjInv_NonJittered = CurrentCamera->GetInvViewProjMatrixNonJittered();
-	SystemConstantsCPU.GView = CurrentCamera->GetViewMatrix();
-	SystemConstantsCPU.GProjInv = CurrentCamera->GetInvProjMatrix();
-	SystemConstantsCPU.GProjInv_NonJittered = CurrentCamera->GetInvProjMatrixNonJittered();
+	SystemConstantsCPU.ViewProj = CurrentCamera->GetViewProjMatrix();
+	SystemConstantsCPU.ViewProjInv = CurrentCamera->GetInvViewProjMatrix();
+	SystemConstantsCPU.PrevViewProj_NonJittered = CurrentCamera->GetPrevViewProjMatrixNonJittered();
+	SystemConstantsCPU.ViewProj_NonJittered = CurrentCamera->GetViewProjMatrixNonJittered();
+	SystemConstantsCPU.ViewProjInv_NonJittered = CurrentCamera->GetInvViewProjMatrixNonJittered();
+	SystemConstantsCPU.View = CurrentCamera->GetViewMatrix();
+	SystemConstantsCPU.ProjInv = CurrentCamera->GetInvProjMatrix();
+	SystemConstantsCPU.ProjInv_NonJittered = CurrentCamera->GetInvProjMatrixNonJittered();
 
-	SystemConstantsCPU.GResolution.x = static_cast<float>(RenderResolution.width);
-	SystemConstantsCPU.GResolution.y = static_cast<float>(RenderResolution.height);
-	SystemConstantsCPU.GResolution.z = 1.0f / SystemConstantsCPU.GResolution.x;
-	SystemConstantsCPU.GResolution.w = 1.0f / SystemConstantsCPU.GResolution.y;
+	SystemConstantsCPU.Resolution.x = static_cast<float>(RenderResolution.width);
+	SystemConstantsCPU.Resolution.y = static_cast<float>(RenderResolution.height);
+	SystemConstantsCPU.Resolution.z = 1.0f / SystemConstantsCPU.Resolution.x;
+	SystemConstantsCPU.Resolution.w = 1.0f / SystemConstantsCPU.Resolution.y;
 
-	SystemConstantsCPU.GCameraPos = CurrentCamera->GetPosition();
-	SystemConstantsCPU.GCameraDir = CurrentCamera->GetForward();
-	SystemConstantsCPU.GNumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
-	SystemConstantsCPU.GNumPointLights = static_cast<uint32_t>(CurrentScene->GetPointLightCount());
-	SystemConstantsCPU.GNumSpotLights = static_cast<uint32_t>(CurrentScene->GetSpotLightCount());
-	SystemConstantsCPU.GMaxPointLightPerTile = MaxPointLightPerTile;
-	SystemConstantsCPU.GMaxSpotLightPerTile = MaxSpotLightPerTile;
+	SystemConstantsCPU.CameraPos = CurrentCamera->GetPosition();
+	SystemConstantsCPU.CameraDir = CurrentCamera->GetForward();
+	SystemConstantsCPU.NumDirLights = static_cast<uint32_t>(CurrentScene->GetDirLightCount());
+	SystemConstantsCPU.NumPointLights = static_cast<uint32_t>(CurrentScene->GetPointLightCount());
+	SystemConstantsCPU.NumSpotLights = static_cast<uint32_t>(CurrentScene->GetSpotLightCount());
+	SystemConstantsCPU.MaxPointLightPerTile = MaxPointLightPerTile;
+	SystemConstantsCPU.MaxSpotLightPerTile = MaxSpotLightPerTile;
 
 	uint32_t Dummy;
-	GetLightCullingTileCount(SystemConstantsCPU.GLightTileCountX, Dummy);
+	GetLightCullingTileCount(SystemConstantsCPU.LightTileCountX, Dummy);
 
 	if (RenderingSettings.bTemporalAA)
 	{
 		XMFLOAT4 Offset = CurrentCamera->GetJitterOffset();
-		SystemConstantsCPU.GJitterOffsetX = Offset.x;
-		SystemConstantsCPU.GJitterOffsetY = Offset.y;
-		SystemConstantsCPU.GJitterScaleMin = Offset.z;
-		SystemConstantsCPU.GJitterScaleFactor = Offset.w;
+		SystemConstantsCPU.JitterOffsetX = Offset.x;
+		SystemConstantsCPU.JitterOffsetY = Offset.y;
+		SystemConstantsCPU.JitterScaleMin = Offset.z;
+		SystemConstantsCPU.JitterScaleFactor = Offset.w;
 	}
 
 	// set sky light data
 	UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
-	SystemConstantsCPU.GAmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
-	SystemConstantsCPU.GAmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
+	SystemConstantsCPU.AmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
+	SystemConstantsCPU.AmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
 
-	SystemConstantsCPU.GShadowResolution.x = static_cast<float>(RTShadowExtent.width);
-	SystemConstantsCPU.GShadowResolution.y = static_cast<float>(RTShadowExtent.height);
-	SystemConstantsCPU.GShadowResolution.z = 1.0f / SystemConstantsCPU.GShadowResolution.x;
-	SystemConstantsCPU.GShadowResolution.w = 1.0f / SystemConstantsCPU.GShadowResolution.y;
+	SystemConstantsCPU.ShadowResolution.x = static_cast<float>(RTShadowExtent.width);
+	SystemConstantsCPU.ShadowResolution.y = static_cast<float>(RTShadowExtent.height);
+	SystemConstantsCPU.ShadowResolution.z = 1.0f / SystemConstantsCPU.ShadowResolution.x;
+	SystemConstantsCPU.ShadowResolution.w = 1.0f / SystemConstantsCPU.ShadowResolution.y;
 
 	UHTextureCube* SkyCube = GetCurrentSkyCube();
 
-	SystemConstantsCPU.GNumRTInstances = RTInstanceCount;
-	SystemConstantsCPU.GFrameNumber = GFrameNumber;
+	SystemConstantsCPU.NumRTInstances = RTInstanceCount;
+	SystemConstantsCPU.FrameNumber = GFrameNumber;
 
 	// pack system rendering feature data
 	uint32_t FeatureData = 0;
@@ -330,24 +330,24 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	FeatureData |= RenderingSettings.bDenoiseRayTracing ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureUseSmoothNormalForRaytracing) : 0;
 	FeatureData |= (RenderingSettings.bEnableRayTracing && RenderingSettings.bEnableRTIndirectLighting)
 		? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTIndirectLight) : 0;
-	SystemConstantsCPU.GSystemRenderFeature = FeatureData;
+	SystemConstantsCPU.SystemRenderFeature = FeatureData;
 
-	SystemConstantsCPU.GDirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
-	SystemConstantsCPU.GLinearClampSamplerIndex = LinearClampSamplerIndex;
-	SystemConstantsCPU.GSkyCubeSamplerIndex = SkyCubeSamplerIndex;
-	SystemConstantsCPU.GPointClampSamplerIndex = PointClampSamplerIndex;
+	SystemConstantsCPU.DirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
+	SystemConstantsCPU.LinearClampSamplerIndex = LinearClampSamplerIndex;
+	SystemConstantsCPU.SkyCubeSamplerIndex = SkyCubeSamplerIndex;
+	SystemConstantsCPU.PointClampSamplerIndex = PointClampSamplerIndex;
 	SystemConstantsCPU.RTReflectionQuality = RenderingSettings.RTReflectionQuality;
 	SystemConstantsCPU.RTReflectionRayTMax = RenderingSettings.RTReflectionTMax;
 	SystemConstantsCPU.RTReflectionSmoothCutoff = RenderingSettings.RTReflectionSmoothCutoff;
-	SystemConstantsCPU.GFinalReflectionStrength = RenderingSettings.FinalReflectionStrength;
-	SystemConstantsCPU.GEnvCubeMipMapCount = (SkyCube != nullptr) ? static_cast<float>(SkyCube->GetMipMapCount()) : 0;
-	SystemConstantsCPU.GOpaqueSceneTextureIndex = OpaqueSceneTextureIndex;
-	SystemConstantsCPU.GDefaultAnisoSamplerIndex = DefaultSamplerIndex;
-	SystemConstantsCPU.GNearPlane = CurrentCamera->GetNearPlane();
-	SystemConstantsCPU.GRTCullingDistance = RenderingSettings.RTCullingRadius;
-	SystemConstantsCPU.GMaxReflectionRecursion = UHRTReflectionShader::MaxReflectionRecursion;
-	SystemConstantsCPU.GScreenMipCount = std::floorf(
-		std::log2f(std::max(SystemConstantsCPU.GResolution.x, SystemConstantsCPU.GResolution.y)));
+	SystemConstantsCPU.FinalReflectionStrength = RenderingSettings.FinalReflectionStrength;
+	SystemConstantsCPU.EnvCubeMipMapCount = (SkyCube != nullptr) ? static_cast<float>(SkyCube->GetMipMapCount()) : 0;
+	SystemConstantsCPU.OpaqueSceneTextureIndex = OpaqueSceneTextureIndex;
+	SystemConstantsCPU.DefaultAnisoSamplerIndex = DefaultSamplerIndex;
+	SystemConstantsCPU.NearPlane = CurrentCamera->GetNearPlane();
+	SystemConstantsCPU.RTCullingDistance = RenderingSettings.RTCullingRadius;
+	SystemConstantsCPU.MaxReflectionRecursion = UHRTReflectionShader::MaxReflectionRecursion;
+	SystemConstantsCPU.ScreenMipCount = std::floorf(
+		std::log2f(std::max(SystemConstantsCPU.Resolution.x, SystemConstantsCPU.Resolution.y)));
 
 	const BoundingBox& SceneBound = CurrentScene->GetSceneBound();
 	SystemConstantsCPU.SceneCenter = SceneBound.Center;

@@ -353,6 +353,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshInstanceTable.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h" />
@@ -498,6 +499,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\CollectLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTDefaultHitGroupShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.cpp" />

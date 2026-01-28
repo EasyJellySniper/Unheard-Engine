@@ -27,3 +27,14 @@ This might be too strict for certain pixels but the correctness comes first.
 21-01-2026:
 Improved sky light receiving in RTIL. Though it introduces higher GPU time, it gives me the correctness.
 Next is to figure out whether I can cache something for RTIL.
+
+27-01-2026:
+Applied RTIL cache. It does work well at certain places! Can save about 0.3~1.1ms depend on the location.
+I need to consider the motion for it as well. 
+Sadly..it still didn't cache much when I moved camera, mainly because the jumping frame RT. (Not shooting all 4 rays per-frame)
+Next I will still try the world position storage instead. That was a nice attempt though.
+
+28-01-2026:
+Carry on RTIL cache experiments. Further reduced payload size.
+Massively changed the hit groups structure and allowed multiple miss shaders.
+So that the shadow ray tracing will be as lightweight as possible. This also changed how I access the SBT.

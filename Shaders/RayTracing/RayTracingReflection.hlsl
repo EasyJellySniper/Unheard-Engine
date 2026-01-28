@@ -35,7 +35,7 @@ SamplerState LinearClampped : register(s17);
 static const float GShadowRayGap = 0.01f;
 
 void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload, UHLightInfo LightInfo
-    , float MipLevel, inout float3 Result)
+    , float MipLevel, bool bIsInsideScreen, inout float3 Result)
 {
     // fetch tiled point light
     uint TileOffset = GetPointLightOffset(TileIndex);
@@ -43,7 +43,7 @@ void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload,
     TileOffset += 4;
     
     UHBRANCH
-    if (Payload.IsInsideScreen && PointLightCount > 0)
+    if (bIsInsideScreen && PointLightCount > 0)
     {
         for (uint Ldx = 0; Ldx < PointLightCount; Ldx++)
         {
@@ -90,7 +90,7 @@ void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload,
 }
 
 void ConditionalCalculateSpotLight(uint TileIndex, in UHDefaultPayload Payload, UHLightInfo LightInfo
-    , float MipLevel, inout float3 Result)
+    , float MipLevel, bool bIsInsideScreen, inout float3 Result)
 {
     // fetch tiled spot light
     uint TileOffset = GetSpotLightOffset(TileIndex);
@@ -98,7 +98,7 @@ void ConditionalCalculateSpotLight(uint TileIndex, in UHDefaultPayload Payload, 
     TileOffset += 4;
     
     UHBRANCH
-    if (Payload.IsInsideScreen && SpotLightCount > 0)
+    if (bIsInsideScreen && SpotLightCount > 0)
     {        
         for (uint Ldx = 0; Ldx < SpotLightCount; Ldx++)
         {
@@ -152,7 +152,10 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     // doing the same lighting as object pass except the indirect specular
     float3 Result = 0;
     bool bHitRefraction = (Payload.PayloadData & PAYLOAD_HITREFRACTION) > 0;
-    float2 ScreenUV = Payload.HitScreenUV;
+    
+    // calculate hit screen uv
+    bool bInsideScreen;
+    float2 HitScreenUV = CalculateScreenUV(HitWorldPos, bInsideScreen);
     
     Payload.HitMaterialNormal = normalize(Payload.HitMaterialNormal);
     Payload.HitVertexNormal = normalize(Payload.HitVertexNormal);
@@ -184,14 +187,18 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
         RefractPayload.MipLevel = MipLevel;
         RefractPayload.PayloadData |= PAYLOAD_ISREFLECTION;
             
-        TraceRay(TLAS, RAY_FLAG_CULL_NON_OPAQUE, 0xff, 0, 0, 0, RefractRay, RefractPayload);
+        TraceRay(TLAS, RAY_FLAG_CULL_NON_OPAQUE, 0xff, 0, 0, GRTDefaultMissShaderIndex, RefractRay, RefractPayload);
             
         // proceed to opaque lighting if hit
         if (RefractPayload.IsHit())
         {
             // set payload to the newly hit one
             Payload = RefractPayload;
-            ScreenUV = Payload.HitScreenUV;
+            {
+                // calc new screen uv based on new hit pos
+                float3 NewWorldPos = RefractRay.Origin + RefractRay.Direction * Payload.HitT;
+                HitScreenUV = CalculateScreenUV(NewWorldPos, bInsideScreen);
+            }
             LightInfo.Diffuse = Payload.HitDiffuse.rgb;
             LightInfo.Specular = Payload.HitSpecular;
             LightInfo.Normal = Payload.HitMaterialNormal;
@@ -207,7 +214,7 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     
     // for point lights and spot lights, fetch from tile-based light if it's inside screen
     // otherwise, fetch from the closest lights to current camera for now
-    uint2 PixelCoord = uint2(ScreenUV * GResolution.xy);
+    uint2 PixelCoord = uint2(HitScreenUV * GResolution.xy);
     uint TileX = CoordToTileX(PixelCoord.x);
     uint TileY = CoordToTileY(PixelCoord.y);
     uint TileIndex = TileX + TileY * GLightTileCountX;
@@ -238,13 +245,13 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
     // point lights
     if (GNumPointLights > 0)
     {
-        ConditionalCalculatePointLight(TileIndex, Payload, LightInfo, MipLevel, Result);
+        ConditionalCalculatePointLight(TileIndex, Payload, LightInfo, MipLevel, bInsideScreen, Result);
     }
     
     // spot lights
     if (GNumSpotLights > 0)
     {
-        ConditionalCalculateSpotLight(TileIndex, Payload, LightInfo, MipLevel, Result);
+        ConditionalCalculateSpotLight(TileIndex, Payload, LightInfo, MipLevel, bInsideScreen, Result);
     }
     
     // indirect light and emissive
@@ -360,13 +367,19 @@ void RTReflectionRayGen()
     // init CurrentRecursion as 1
     Payload.CurrentRecursion = 1;
 
-    TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, 0, ReflectRay, Payload);
+    TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, GRTDefaultMissShaderIndex, ReflectRay, Payload);
     
     if (Payload.IsHit())
     {
         float3 HitWorldPos = ReflectRay.Origin + ReflectRay.Direction * Payload.HitT;
         OutResult[PixelCoord] = CalculateReflectionLighting(Payload, HitWorldPos, MipLevel, ReflectRay.Direction);
     }
+}
+
+[shader("miss")]
+void RTReflectionShadowMiss(inout UHMinimalPayload Payload)
+{
+    // if shadow ray missed
 }
 
 [shader("miss")]

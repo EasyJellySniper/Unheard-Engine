@@ -171,8 +171,10 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 			InstanceKHR.flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
 		}
 
-		// set material buffer data index as SBT index, each material has an unique hitgroup shader
-		InstanceKHR.instanceShaderBindingTableRecordOffset = Mat->GetBufferDataIndex();
+		// set material index * 2 as SBT index, as each material has a default hitgroup and another minimal hitgroup
+		InstanceKHR.instanceShaderBindingTableRecordOffset = Mat->GetBufferDataIndex() * 2;
+
+		// set material index as custom index also
 		InstanceKHR.instanceCustomIndex = Mat->GetBufferDataIndex();
 
 		// cache the instance KHRs and renderers for later use
@@ -313,8 +315,10 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 			InstanceKHRs[Idx].flags |= VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
 		}
 
-		// set material buffer data index as SBT index, each material has an unique hitgroup shader
-		InstanceKHRs[Idx].instanceShaderBindingTableRecordOffset = Mat->GetBufferDataIndex();
+		// set material index * 2 as SBT index, as each material has a default hitgroup and another minimal hitgroup
+		InstanceKHRs[Idx].instanceShaderBindingTableRecordOffset = Mat->GetBufferDataIndex() * 2;
+
+		// set material index as custom index also
 		InstanceKHRs[Idx].instanceCustomIndex = Mat->GetBufferDataIndex();
 	}
 

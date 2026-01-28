@@ -5,10 +5,10 @@
 #define UHSPOTLIGHT_BIND t8
 #define SH9_BIND t9
 #include "../UHInputs.hlsli"
+#include "../UHSphericalHamonricCommon.hlsli"
 #include "UHRTCommon.hlsli"
 #include "../UHLightCommon.hlsli"
 #include "../UHMaterialCommon.hlsli"
-#include "../UHSphericalHamonricCommon.hlsli"
 
 RaytracingAccelerationStructure TLAS : register(t1);
 RWTexture2D<float3> OutDiffuse[GNumOfIndirectFrames] : register(u2);
@@ -78,6 +78,11 @@ int GetClosestAxis(float3 InVec)
     return ClosestAxis;
 }
 
+bool IsValidCacheCoord(int2 InCoord)
+{
+    return (InCoord.x >= 0) && (InCoord.y >= 0) && (InCoord.x < GResolution.x) && (InCoord.y < GResolution.y);
+}
+
 float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
     , float2 ScreenUV
     , float3 ScenePos
@@ -85,11 +90,13 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
     , float3 HitWorldPos
     , float SceneSmoothness
     , float MipLevel
-    , float RayGap)
+    , float RayGap
+)
 {
     // doing the same lighting as object pass except the indirect specular
     float3 Result = 0;
-    float2 HitScreenUV = OldPayload.HitScreenUV;
+    bool bIsInsideScreen;
+    float2 HitScreenUV = CalculateScreenUV(HitWorldPos, bIsInsideScreen);
     
     OldPayload.HitVertexNormal = normalize(OldPayload.HitVertexNormal);
     
@@ -144,7 +151,7 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
         
         // fetch tiled point light if the hit point is inside screen, otherwise need to lookup from instance lights
         UHBRANCH
-        if (OldPayload.IsInsideScreen && PointLightCount > 0)
+        if (bIsInsideScreen && PointLightCount > 0)
         {
             for (uint Ldx = 0; Ldx < PointLightCount; Ldx++)
             {
@@ -202,7 +209,7 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
         TileOffset += 4;
         
         UHBRANCH
-        if (OldPayload.IsInsideScreen && SpotLightCount > 0)
+        if (bIsInsideScreen && SpotLightCount > 0)
         {
             for (uint Ldx = 0; Ldx < SpotLightCount; Ldx++)
             {
@@ -254,7 +261,7 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
         }
     }
     
-    {
+    {        
         // bounced sky light, for now it shoots two extra rays for checking whether to receive bounced sky light
         // (1) Ray along the hit normal
         // (2) Ray reflect with the hit normal
@@ -266,20 +273,32 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
         BouncedSkyRay.TMax = GIndirectLightMaxTraceDist;
         BouncedSkyRay.Direction = IndirectLightInfo.Normal;
         
-        // first ray
-        UHDefaultPayload NewPayload = (UHDefaultPayload) 0;
-        NewPayload.MipLevel = MipLevel;
-        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, BouncedSkyRay, NewPayload);
-        BouncedSkyLightOcclusion += NewPayload.IsHit() ? (1.0f - NewPayload.HitAlpha) : 1.0f;
+        // check whether to sample from cache instead of shooting new rays
+        bool bUseIndirectCache = false;
         
-        // second ray
-        BouncedSkyRay.TMax = BouncedSkyLightOcclusion == 0.0f;
-        BouncedSkyRay.Direction = reflect(OldPayload.RayDir, IndirectLightInfo.Normal);
-        NewPayload = (UHDefaultPayload) 0;
-        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, 0, BouncedSkyRay, NewPayload);
-        BouncedSkyLightOcclusion += NewPayload.IsHit() ? (1.0f - NewPayload.HitAlpha) : 1.0f;
+        UHBRANCH
+        if (bUseIndirectCache)
+        {
+            // @TODO: Implement cache to save extra rays
+        }
+        else
+        {
+            // first ray
+            UHMinimalPayload NewPayload = (UHMinimalPayload) 0;
+            NewPayload.MipLevel = MipLevel;
+            TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, BouncedSkyRay, NewPayload);
+            BouncedSkyLightOcclusion += NewPayload.IsHit() ? (1.0f - NewPayload.HitAlpha) : 1.0f;
+        
+            // second ray
+            BouncedSkyRay.TMax = BouncedSkyLightOcclusion == 0.0f;
+            BouncedSkyRay.Direction = reflect(OldPayload.RayDir, IndirectLightInfo.Normal);
+            NewPayload = (UHMinimalPayload) 0;
+            TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, BouncedSkyRay, NewPayload);
+            BouncedSkyLightOcclusion += NewPayload.IsHit() ? (1.0f - NewPayload.HitAlpha) : 1.0f;
     
-        BouncedSkyLightOcclusion *= 0.5f;
+            BouncedSkyLightOcclusion *= 0.5f;
+        }
+        
         // +1.0f is not a typo here, it's to merge both sky light and bounced diffuse x sky light
         Result += ShadeSH9((1.0f + IndirectLightInfo.Diffuse) * 0.5f, float4(IndirectLightInfo.Normal, 1.0f), BouncedSkyLightOcclusion);
     }
@@ -305,7 +324,7 @@ void RTIndirectLightRayGen()
     OutOcclusion[OutputIndex][OutputCoord] = 1;
     
     uint2 PixelCoord = OutputCoord * GIndirectDownsampleFactor;
-    float2 ScreenUV = float2(PixelCoord) * GResolution.zw;
+    float2 ScreenUV = float2(PixelCoord + 0.5f) * GResolution.zw;
     
     float SceneDepth = SceneBuffers[3].SampleLevel(PointClampped, ScreenUV, 0).r;
     float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
@@ -389,7 +408,7 @@ void RTIndirectLightRayGen()
         Payload.PayloadData |= PAYLOAD_ISINDIRECTLIGHT;
     
         // trace ray!
-        TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, 0, IndirectRay, Payload);
+        TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, GRTDefaultMissShaderIndex, IndirectRay, Payload);
         
         if (Payload.IsHit())
         {
@@ -406,6 +425,12 @@ void RTIndirectLightRayGen()
     // avg the result and output
     OutDiffuse[OutputIndex][OutputCoord] = Result.rgb / float(GNumOfIndirectFrames);
     OutOcclusion[OutputIndex][OutputCoord] = Result.a / float(GNumOfIndirectFrames);
+}
+
+[shader("miss")]
+void RTIndirectShadowMiss(inout UHMinimalPayload Payload)
+{
+    // if shadow ray missed
 }
 
 [shader("miss")]

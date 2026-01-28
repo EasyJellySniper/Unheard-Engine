@@ -44,7 +44,6 @@ UHShaderClass::UHShaderClass(UHGraphic* InGfx, std::string InName, std::type_ind
 	, ShaderPS(UHINDEXNONE)
 	, ShaderCS(UHINDEXNONE)
 	, RayGenShader(UHINDEXNONE)
-	, MissShader(UHINDEXNONE)
 	, ShaderAS(UHINDEXNONE)
 	, ShaderMS(UHINDEXNONE)
 	, RTState(nullptr)
@@ -394,11 +393,6 @@ void UHShaderClass::SetNewRenderPass(VkRenderPass InRenderPass)
 	RenderPassCache = InRenderPass;
 }
 
-uint32_t UHShaderClass::GetRayGenShader() const
-{
-	return RayGenShader;
-}
-
 const std::vector<uint32_t>& UHShaderClass::GetClosestShaders() const
 {
 	return ClosestHitShaders;
@@ -407,11 +401,6 @@ const std::vector<uint32_t>& UHShaderClass::GetClosestShaders() const
 const std::vector<uint32_t>& UHShaderClass::GetAnyHitShaders() const
 {
 	return AnyHitShaders;
-}
-
-uint32_t UHShaderClass::GetMissShader() const
-{
-	return MissShader;
 }
 
 UHGraphicState* UHShaderClass::GetState() const
@@ -662,31 +651,36 @@ void UHShaderClass::InitMissTable()
 {
 	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
 
-	// get data for HG as well
-	if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GMissTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
-	{
-		UHE_LOG(L"Failed to get hit group handle!\n");
-	}
-
-	// copy HG records to the buffer, both closest hit and any hit will be put in the same hit group
-	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+	// create miss shader table
+	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>(MissShaders.size(), VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		, Name + "_MissTable");
-	MissTable->UploadAllData(TempData.data());
+
+	// miss shader setup
+	for (size_t Idx = 0; Idx < MissShaders.size(); Idx++)
+	{
+		if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GMissTableSlot + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+		{
+			UHE_LOG(L"Failed to get hit group handle!\n");
+			continue;
+		}
+
+		MissTable->UploadData(TempData.data(), Idx);
+	}
 }
 
 void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 {
 	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
 
-	// get data for HG as well
 	// create HG buffer
 	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		, Name + "_HitGroupTable");
 
+	const uint32_t HitGroupTableStart = GHitGroupTableSlot + static_cast<uint32_t>(MissShaders.size()) - 1;
 	for (size_t Idx = 0; Idx < NumMaterials; Idx++)
 	{
 		// copy hit group
-		if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GHitGroupTableSlot + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
+		if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), HitGroupTableStart + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 		{
 			UHE_LOG(L"Failed to get hit group handle!\n");
 			continue;

@@ -69,14 +69,15 @@ void UHRTIndirectLightShader::Release()
 void UHRTIndirectLightShader::OnCompile()
 {
 	RayGenShader = Gfx->RequestShader("RTIndirectLightShader", "Shaders/RayTracing/RayTracingIndirectLight.hlsl", "RTIndirectLightRayGen", "lib_6_3");
-	MissShader = Gfx->RequestShader("RTIndirectLightShader", "Shaders/RayTracing/RayTracingIndirectLight.hlsl", "RTIndirectLightMiss", "lib_6_3");
+	MissShaders.push_back(Gfx->RequestShader("RTIndirectLightShader", "Shaders/RayTracing/RayTracingIndirectLight.hlsl", "RTIndirectShadowMiss", "lib_6_3"));
+	MissShaders.push_back(Gfx->RequestShader("RTIndirectLightShader", "Shaders/RayTracing/RayTracingIndirectLight.hlsl", "RTIndirectLightMiss", "lib_6_3"));
 
 	UHRayTracingInfo RTInfo{};
 	RTInfo.PipelineLayout = PipelineLayout;
 	RTInfo.RayGenShader = RayGenShader;
 	RTInfo.ClosestHitShaders = ClosestHitIDs;
 	RTInfo.AnyHitShaders = AnyHitIDs;
-	RTInfo.MissShader = MissShader;
+	RTInfo.MissShaders = MissShaders;
 	RTInfo.PayloadSize = sizeof(UHMinimalPayload) + sizeof(UHIndirectPayload);
 	RTInfo.AttributeSize = sizeof(UHDefaultAttribute);
 	RTState = Gfx->RequestRTState(RTInfo);
