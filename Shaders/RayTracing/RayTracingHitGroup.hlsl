@@ -396,10 +396,7 @@ void RTDefaultAnyHit(inout UHDefaultPayload Payload, in Attribute Attr)
             IgnoreHit();
             return;
         }
-        
-        // max alpha for the shadow pass
-        Payload.HitAlpha = max(MaterialInput.Opacity, Payload.HitAlpha);
-        
+
         // evaluate whether to update cloest trancluent material
         float ThisHitT = RayTCurrent();
         bool bUpdateClosestTranslucentMaterial = false;

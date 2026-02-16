@@ -1,6 +1,8 @@
 #include "RTIndirectLightShader.h"
 #include "../../RendererShared.h"
+#include "../../RenderBuilder.h"
 
+// --------------------------- UHRTIndirectLightShader
 UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string Name
 	, const std::vector<uint32_t>& InClosestHits
 	, const std::vector<uint32_t>& InAnyHits
@@ -12,8 +14,8 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 
 	// TLAS + RT result + shader const
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
-	AddLayoutBinding(GNumOfIndirectLightFrames, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-	AddLayoutBinding(GNumOfIndirectLightFrames, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 	// GBuffers
@@ -29,6 +31,7 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 
 	// light lists
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -36,6 +39,8 @@ UHRTIndirectLightShader::UHRTIndirectLightShader(UHGraphic* InGfx, std::string N
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 	// sampler
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 	AddLayoutBinding(1, VK_SHADER_STAGE_RAYGEN_BIT_KHR, VK_DESCRIPTOR_TYPE_SAMPLER);
 
@@ -92,20 +97,8 @@ void UHRTIndirectLightShader::BindParameters()
 		BindTLAS(GTopLevelAS[Idx].get(), 1, Idx);
 	}
 
-	std::vector<UHRenderTexture*> RtilTex;
-	for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
-	{
-		RtilTex.push_back(GRTIndirectDiffuse[Idx]);
-	}
-	BindRWImage(RtilTex, 2);
-
-	RtilTex.clear();
-	for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
-	{
-		RtilTex.push_back(GRTIndirectOcclusion[Idx]);
-	}
-	BindRWImage(RtilTex, 3);
-
+	BindRWImage(GRTIndirectDiffuse, 2, 0);
+	BindRWImage(GRTIndirectOcclusion, 3, 0);
 	BindConstant(RTIndirectLightConstants, 4, 0);
 	BindImage(GetGBuffersSRV(), 5);
 
@@ -119,18 +112,85 @@ void UHRTIndirectLightShader::BindParameters()
 	BindImage(GSceneMip, 10);
 	BindImage(GSceneData, 11);
 	BindImage(GSmoothSceneNormal, 12);
+	BindImage(GRTSkyData, 13);
 
 	// light lists (indices)
-	BindStorage(GInstanceLightsBuffer, 13, 0, true);
-	BindStorage(GPointLightListBuffer.get(), 14, 0, true);
-	BindStorage(GSpotLightListBuffer.get(), 15, 0, true);
+	BindStorage(GInstanceLightsBuffer, 14, 0, true);
+	BindStorage(GPointLightListBuffer.get(), 15, 0, true);
+	BindStorage(GSpotLightListBuffer.get(), 16, 0, true);
 
 	// sampler
-	BindSampler(GPointClampedSampler, 16);
-	BindSampler(GLinearClampedSampler, 17);
+	BindSampler(GPointClampedSampler, 17);
+	BindSampler(GLinearClampedSampler, 18);
+	BindSampler(GPointClamped3DSampler, 19);
+	BindSampler(GLinearClamped3DSampler, 20);
 }
 
 UHRenderBuffer<UHRTIndirectLightConstants>* UHRTIndirectLightShader::GetConstants(const int32_t FrameIdx) const
 {
 	return RTIndirectLightConstants[FrameIdx].get();
+}
+
+// --------------------------- UHRTIndirectReprojectionShader
+UHRTIndirectReprojectionShader::UHRTIndirectReprojectionShader(UHGraphic* InGfx, std::string Name, UHRTIndirectReprojectType InType)
+	: UHShaderClass(InGfx, Name, typeid(UHRTIndirectReprojectionShader), nullptr)
+	, ReprojectionType(InType)
+{
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+	AddLayoutBinding(1, VK_SHADER_STAGE_COMPUTE_BIT, VK_DESCRIPTOR_TYPE_SAMPLER);
+
+	// utilize push constants, so the shader could be reused
+	PushConstantRange.offset = 0;
+	PushConstantRange.size = sizeof(UHRTIndirectReprojectionConstants);
+	PushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bPushDescriptor = true;
+
+	CreateLayoutAndDescriptor();
+	OnCompile();
+}
+
+void UHRTIndirectReprojectionShader::OnCompile()
+{
+	if (ReprojectionType == UHRTIndirectReprojectType::SkyReprojection)
+	{
+		ShaderCS = Gfx->RequestShader(Name, "Shaders/RayTracing/RTIndirectLightReprojection.hlsl", "RTSkyReprojectionCS", "cs_6_0");
+	}
+	else
+	{
+		ShaderCS = Gfx->RequestShader(Name, "Shaders/RayTracing/RTIndirectLightReprojection.hlsl", "RTDiffuseReprojectionCS", "cs_6_0");
+	}
+
+	// state
+	UHComputePassInfo Info(PipelineLayout);
+	Info.CS = ShaderCS;
+
+	CreateComputeState(Info);
+}
+
+void UHRTIndirectReprojectionShader::BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output, const int32_t FrameIdx)
+{
+	PushConstantBuffer(GSystemConstantBuffer[FrameIdx], 0, 0);
+	PushImage(Output, 1, true, 0);
+
+	PushImage(Input, 2, false, 0);
+	PushImage(GMotionVectorRT, 3, false, 0);
+	PushImage(GSceneDepth, 4, false, 0);
+	PushImage(GSceneNormal, 5, false, 0);
+	PushImage(GHistoryDepth, 6, false, 0);
+	PushImage(GHistoryNormal, 7, false, 0);
+
+	PushSampler(GPointClampedSampler, 8);
+	PushSampler(GLinearClampedSampler, 9);
+
+	FlushPushDescriptor(RenderBuilder.GetCmdList());
 }

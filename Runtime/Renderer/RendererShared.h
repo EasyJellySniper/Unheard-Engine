@@ -35,6 +35,8 @@ extern UHRenderTexture* GMotionVectorRT;
 extern UHRenderTexture* GPostProcessRT;
 extern UHRenderTexture* GPreviousSceneResult;
 extern UHRenderTexture* GOpaqueSceneResult;
+extern UHRenderTexture* GHistoryDepth;
+extern UHRenderTexture* GHistoryNormal;
 
 // accessor for GBuffers
 extern std::vector<UHRenderTexture*> GSceneBuffers;
@@ -55,6 +57,7 @@ extern UHTextureCube* GSkyLightCube;
 extern UHSampler* GPointClampedSampler;
 extern UHSampler* GLinearClampedSampler;
 extern UHSampler* GSkyCubeSampler;
+extern UHSampler* GPointClamped3DSampler;
 extern UHSampler* GLinearClamped3DSampler;
 
 // SH9 data
@@ -86,9 +89,12 @@ extern std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTransluce
 extern UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 // indirect lighting, RT buffers + cache + result buffer
-extern UHRenderTexture* GRTIndirectDiffuse[GNumOfIndirectLightFrames];
-extern UHRenderTexture* GRTIndirectOcclusion[GNumOfIndirectLightFrames];
-extern UHRenderTexture* GRealtimeAOResult;
+extern UHRenderTexture* GRTIndirectDiffuse;
+extern UHRenderTexture* GRTIndirectDiffuseHistory;
+extern UHRenderTexture* GRTIndirectOcclusion;
+extern UHRenderTexture* GRTIndirectOcclusionHistory;
+extern UHRenderTexture* GRTSkyData;
+extern UHRenderTexture* GRTSkyDiscoverAngle;
 
 // common clear colors
 extern VkClearColorValue GBlackClearColor;

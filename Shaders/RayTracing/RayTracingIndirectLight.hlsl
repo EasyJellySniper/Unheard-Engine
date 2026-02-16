@@ -11,79 +11,190 @@
 #include "../UHMaterialCommon.hlsli"
 
 RaytracingAccelerationStructure TLAS : register(t1);
-RWTexture2D<float3> OutDiffuse[GNumOfIndirectFrames] : register(u2);
-RWTexture2D<float> OutOcclusion[GNumOfIndirectFrames] : register(u3);
+RWTexture2D<float4> OutDiffuse : register(u2);
+RWTexture2D<float2> OutSkyData : register(u3);
 
 cbuffer RTIndirectConstants : register(b4)
 {
     float GIndirectLightScale;
     float GIndirectLightFadeDistance;
     float GIndirectLightMaxTraceDist;
-    float GOcclusionEndDistance;
+    float GMinSkyConeAngle;
     
-    float GOcclusionStartDistance;
+    float GMaxSkyConeAngle;
     int GIndirectDownsampleFactor;
-    float GIndirectRayOffsetScale;
+    float GIndirectRayAngle;
 }
 
 Texture2D SceneMipTexture : register(t10);
 Texture2D<uint> SceneDataTexture : register(t11);
 Texture2D SmoothSceneNormalTexture : register(t12);
+Texture3D SkyDataVoxel : register(t13);
 
 // lighting parameters
-StructuredBuffer<UHInstanceLights> InstanceLights : register(t13);
-ByteAddressBuffer PointLightList : register(t14);
-ByteAddressBuffer SpotLightList : register(t15);
+StructuredBuffer<UHInstanceLights> InstanceLights : register(t14);
+ByteAddressBuffer PointLightList : register(t15);
+ByteAddressBuffer SpotLightList : register(t16);
 
-SamplerState PointClampped : register(s16);
-SamplerState LinearClampped : register(s17);
+SamplerState PointClampped : register(s17);
+SamplerState LinearClampped : register(s18);
+SamplerState Point3DClampped : register(s19);
+SamplerState Linear3DClampped : register(s20);
 
 static const float GILMipBias = 7.5f;
-static const uint GMaxNumOfIndirectLightRays = 4;
-// cherry-picked halton sequence, can be changed in the future
-static const float2 GRayOffset[GMaxNumOfIndirectLightRays] =
+
+// more cherry-picked sequences for indirect tracing use
+// this is a mixture of Halton sequence and first few for the center-biased UV
+static const float2 GRayOffset[8] =
 {
-    float2(0.5f, 0.3333f) * 2.0f - 1.0f,
-    float2(0.25f, 0.6666f) * 2.0f - 1.0f,
-    float2(0.125f, 0.4444f) * 2.0f - 1.0f,
-    float2(0.375f, 0.2222f) * 2.0f - 1.0f
+    float2(0.5, 1.0),
+    float2(0.9, 0.98),
+    float2(0.98, 0.87),
+    float2(0.25, 0.6667),
+    float2(0.75, 0.1111),
+    float2(0.125, 0.4444),
+    float2(0.625, 0.7778),
+    float2(0.375, 0.2222),
 };
 
-int GetClosestAxis(float3 InVec)
+static const float GMaxSkyNeighborWeight = 8.0f;
+
+uint GetJitterPhase2D(uint2 PixelCoord)
 {
-    const float3 Axis[6] =
+    uint PixelIndex1D = PixelCoord.x + PixelCoord.y * (GResolution.x / GIndirectDownsampleFactor);
+    return (GFrameNumber * 3 + PixelIndex1D) % 8;
+}
+
+float4 SampleSkyData(float3 WorldPos, float3 Normal, uint2 PixelCoord, bool bCenterVoxelOnly)
+{
+    float3 SceneBoundMin = GSceneCenter - GSceneExtent;
+    float3 BaseVolumeUV = (WorldPos - SceneBoundMin) / (2.0f * GSceneExtent);
+    float3 VoxelSize = 1.0f / (2.0f * GSceneExtent);
+    
+    uint Phase = (GFrameNumber + PixelCoord.x * 13 + PixelCoord.y * 17) % 8;
+    float3 Jitter = CoordinateToHash3(PixelCoord, Phase);
+    BaseVolumeUV += Jitter * VoxelSize;
+    
+    int3 Offsets[27] =
     {
-        float3(1, 0, 0),
-        float3(-1, 0, 0),
-        float3(0, 1, 0),
-        float3(0, -1, 0),
-        float3(0, 0, 1),
-        float3(0, 0, -1)
+        int3(0, 0, 0),
+        int3(1, 0, 0),
+        int3(-1, 0, 0),
+        int3(0, 1, 0),
+        int3(0, -1, 0),
+        int3(0, 0, 1),
+        int3(0, 0, -1),
+        int3(-1, -1, 0),
+        int3(1, 1, 0),
+        int3(1, 0, 1),
+        int3(1, 0, -1),
+        int3(1, -1, 0),
+        int3(0, 1, 1),
+        int3(0, 1, -1),
+        int3(0, -1, 1),
+        int3(0, -1, -1),
+        int3(-1, 1, 0),
+        int3(-1, 0, 1),
+        int3(-1, 0, -1),
+        int3(-1, 1, 1),
+        int3(1, -1, -1),
+        int3(-1, 1, -1),
+        int3(1, -1, 1),
+        int3(-1, -1, 1),
+        int3(1, 1, -1),
+        int3(-1, -1, -1),
+        int3(1, 1, 1),
     };
     
-    int ClosestAxis = 0;
-    float MaxDot = 0.0f;
+    float3 GatherDir = 0;
+    float GatherWeight = 0;
     
+    // ----------------------- 27 tap nearest gathering to preserve sky direction
     UHUNROLL
-    for (int Idx = 0; Idx < 6; Idx++)
+    for (uint I = 0; I < 27; I++)
     {
-        float DotSum = dot(InVec, Axis[Idx]);
-        if (DotSum > MaxDot)
+        float3 VolumeUV = BaseVolumeUV + Offsets[I] * VoxelSize;
+        float4 SkyData = SkyDataVoxel.SampleLevel(Point3DClampped, VolumeUV, 0);
+        
+        UHBRANCH
+        if (bCenterVoxelOnly)
         {
-            MaxDot = DotSum;
-            ClosestAxis = Idx;
+            return SkyData;
         }
+        
+        // bias neighbors by surface normal, but allows slight back-facing contributions
+        // helps around doors, thin walls, stair lips
+        float NdotL = dot(Normal, SkyData.xyz);
+        float NWeight = saturate((NdotL + 0.1f) * 1.1f);
+        float CenterBias = (I == 0) ? 1.5f : 1.0f;
+        float DistWeight = 1.0f / (1.0f + length(Offsets[I]));
+
+        float W = SkyData.w * NWeight * CenterBias * DistWeight;
+        GatherDir += SkyData.xyz * W;
+        GatherWeight += W;
     }
     
-    return ClosestAxis;
+    if (GatherWeight > 0 && dot(GatherDir, GatherDir) > UH_FLOAT_EPSILON)
+    {
+        // safe normalization
+        GatherDir = normalize(GatherDir);
+    }
+    else
+    {
+        // fallback
+        GatherDir = Normal;
+    }
+    
+    GatherWeight = saturate(GatherWeight / GMaxSkyNeighborWeight);
+    
+    return float4(GatherDir, GatherWeight);
 }
 
-bool IsValidCacheCoord(int2 InCoord)
+float2 TraceSkyVisibility(uint2 OutputCoord, float3 SceneWorldPos, float3 SceneNormal, float2 ScreenUV, float RayGap)
 {
-    return (InCoord.x >= 0) && (InCoord.y >= 0) && (InCoord.x < GResolution.x) && (InCoord.y < GResolution.y);
+    if ((GSystemRenderFeature & UH_ENV_CUBE) == 0)
+    {
+        return 0;
+    }
+    
+    // calculate sky tracing cone angle based on the confidence weight
+    float4 SkyData = SampleSkyData(SceneWorldPos, SceneNormal, OutputCoord, false);
+    float SkyConfidence = max(SkyData.w, 0.05f);
+    float SkyConeAngle = lerp(cos(GMinSkyConeAngle * UH_DEG_TO_RAD), cos(GMaxSkyConeAngle * UH_DEG_TO_RAD), SkyConfidence);
+    SkyConeAngle = acos(SkyConeAngle);
+    
+    // build TBN from the bent dir
+    float3 SkyT, SkyB;
+    BuildTBNFromNormal(SkyData.xyz, SkyT, SkyB);
+    
+    // halton uv and random rotation
+    uint Phase = GetJitterPhase2D(OutputCoord);
+    float2 UV = GRayOffset[Phase];
+    float RandAngle = CoordinateToHash(OutputCoord + Phase) * UH_PI * 2.0f;
+    
+    float3 ConeDir = ConvertUVToConePos(UV, SkyConeAngle);
+    ConeDir = normalize(ConeDir.x * SkyT + ConeDir.y * SkyB + ConeDir.z * SkyData.xyz);
+    ConeDir = RotateVectorByAxisAngle(ConeDir, SkyData.xyz, RandAngle);
+            
+    RayDesc SkyRay = (RayDesc) 0;
+    SkyRay.Origin = SceneWorldPos + SceneNormal * RayGap;
+    SkyRay.Direction = ConeDir;
+    SkyRay.TMin = RayGap;
+    SkyRay.TMax = max(max(GSceneExtent.x, GSceneExtent.y), GSceneExtent.z) * 2.0f;
+    
+    float SkyVisibility = 0.0f;
+    if (dot(ConeDir, SceneNormal) > 0)
+    {
+        UHMinimalPayload Payload = (UHMinimalPayload) 0;
+        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, SkyRay, Payload);
+        SkyVisibility = Payload.IsHit() ? 0.0f : 1.0f;
+    }
+    
+    SkyVisibility *= saturate(dot(SkyData.xyz, SceneNormal));
+    return float2(SkyVisibility, SkyConfidence);
 }
 
-float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
+float3 CalculateIndirectLighting(in UHDefaultPayload OldPayload
     , float2 ScreenUV
     , float3 ScenePos
     , float3 SceneNormal
@@ -91,6 +202,7 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
     , float SceneSmoothness
     , float MipLevel
     , float RayGap
+    , uint2 PixelCoord
 )
 {
     // doing the same lighting as object pass except the indirect specular
@@ -116,10 +228,9 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
     // calc indirect atten = inverse square distance atten x (1 - smoothness) x final scale
     // as high smoothness surfaces will reflect more than indirect diffuse
     float IndirectAtten = saturate((GIndirectLightFadeDistance - OldPayload.HitT) / GIndirectLightFadeDistance);
+    IndirectAtten *= IndirectAtten;
     IndirectAtten *= (1.0f - SceneSmoothness);
     IndirectAtten *= GIndirectLightScale;
-    
-    float3 ObjColorTerm = IndirectLightInfo.Diffuse * IndirectAtten;
     
     // dir indirect diffuse
     if (GNumDirLights > 0)
@@ -134,13 +245,13 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
                 float Shadow = 1.0f;
             
                 TraceDiretionalShadow(TLAS, DirLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel, Shadow, HitDist);
-                Result += DirLight.Color.rgb * ObjColorTerm * Shadow;
+                
+                // setup shadow mask and calculate dir light, true for skipping specular term as diffuse is the only concern here
+                IndirectLightInfo.ShadowMask = Shadow;
+                Result += CalculateDirLight(DirLight, IndirectLightInfo, true) * IndirectAtten;
             }
         }
     }
-    
-    // need to calculate attenuation for positional lights
-    float PositionalLightAtten = 0.0f;
     
     // point indirect light
     if (GNumPointLights > 0)
@@ -162,14 +273,13 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
                 UHBRANCH
                 if (PointLight.bIsEnabled)
                 {
-                    PositionalLightAtten = CalculatePointLightAttenuation(PointLight.Radius, IndirectLightInfo.AttenNoise
-                        , ScenePos - PointLight.Position);
-                    
                     float HitDist = 0;
                     float Shadow = 1.0f;
                     TracePointShadow(TLAS, PointLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
                         , Shadow, HitDist);
-                    Result += PointLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                    
+                    IndirectLightInfo.ShadowMask = Shadow;
+                    Result += CalculatePointLight(PointLight, IndirectLightInfo, true) * IndirectAtten;
                 }
             }
         }
@@ -188,14 +298,13 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
                 UHBRANCH
                 if (PointLight.bIsEnabled)
                 {
-                    PositionalLightAtten = CalculatePointLightAttenuation(PointLight.Radius, IndirectLightInfo.AttenNoise
-                        , ScenePos - PointLight.Position);
-                    
                     float HitDist = 0;
                     float Shadow = 1.0f;
                     TracePointShadow(TLAS, PointLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
                         , Shadow, HitDist);
-                    Result += PointLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                    
+                    IndirectLightInfo.ShadowMask = Shadow;
+                    Result += CalculatePointLight(PointLight, IndirectLightInfo, true) * IndirectAtten;
                 }
             }
         }
@@ -220,15 +329,13 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
                 UHBRANCH
                 if (SpotLight.bIsEnabled)
                 {
-                    PositionalLightAtten = CalculateSpotLightAttenuation(SpotLight.Radius, IndirectLightInfo.AttenNoise
-                        , ScenePos - SpotLight.Position
-                        , SpotLight.Dir, SpotLight.Angle, SpotLight.InnerAngle);
-                    
                     float HitDist = 0;
                     float Shadow = 1.0f;
                     TraceSpotShadow(TLAS, SpotLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
                         , Shadow, HitDist);
-                    Result += SpotLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                    
+                    IndirectLightInfo.ShadowMask = Shadow;
+                    Result += CalculateSpotLight(SpotLight, IndirectLightInfo, true) * IndirectAtten;
                 }
             }
         }
@@ -247,88 +354,39 @@ float4 CalculateIndirectLighting(in UHDefaultPayload OldPayload
                 UHBRANCH
                 if (SpotLight.bIsEnabled)
                 {
-                    PositionalLightAtten = CalculateSpotLightAttenuation(SpotLight.Radius, IndirectLightInfo.AttenNoise
-                        , ScenePos - SpotLight.Position
-                        , SpotLight.Dir, SpotLight.Angle, SpotLight.InnerAngle);
-                    
                     float HitDist = 0;
                     float Shadow = 1.0f;
                     TraceSpotShadow(TLAS, SpotLight, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, RayGap, MipLevel
                         , Shadow, HitDist);
-                    Result += SpotLight.Color.rgb * ObjColorTerm * PositionalLightAtten * Shadow;
+                    
+                    IndirectLightInfo.ShadowMask = Shadow;
+                    Result += CalculateSpotLight(SpotLight, IndirectLightInfo, true) * IndirectAtten;
                 }
             }
         }
     }
     
-    {        
-        // bounced sky light, for now it shoots two extra rays for checking whether to receive bounced sky light
-        // (1) Ray along the hit normal
-        // (2) Ray reflect with the hit normal
-        float BouncedSkyLightOcclusion = 0.0f;
-    
-        RayDesc BouncedSkyRay = (RayDesc) 0;
-        BouncedSkyRay.Origin = IndirectLightInfo.WorldPos + IndirectLightInfo.Normal * RayGap;
-        BouncedSkyRay.TMin = RayGap;
-        BouncedSkyRay.TMax = GIndirectLightMaxTraceDist;
-        BouncedSkyRay.Direction = IndirectLightInfo.Normal;
-        
-        // check whether to sample from cache instead of shooting new rays
-        bool bUseIndirectCache = false;
-        
-        UHBRANCH
-        if (bUseIndirectCache)
-        {
-            // @TODO: Implement cache to save extra rays
-        }
-        else
-        {
-            // first ray
-            UHMinimalPayload NewPayload = (UHMinimalPayload) 0;
-            NewPayload.MipLevel = MipLevel;
-            TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, BouncedSkyRay, NewPayload);
-            BouncedSkyLightOcclusion += NewPayload.IsHit() ? (1.0f - NewPayload.HitAlpha) : 1.0f;
-        
-            // second ray
-            BouncedSkyRay.TMax = BouncedSkyLightOcclusion == 0.0f;
-            BouncedSkyRay.Direction = reflect(OldPayload.RayDir, IndirectLightInfo.Normal);
-            NewPayload = (UHMinimalPayload) 0;
-            TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, GRTMinimalHitGroupOffset, 0, GRTShadowMissShaderIndex, BouncedSkyRay, NewPayload);
-            BouncedSkyLightOcclusion += NewPayload.IsHit() ? (1.0f - NewPayload.HitAlpha) : 1.0f;
-    
-            BouncedSkyLightOcclusion *= 0.5f;
-        }
-        
-        // +1.0f is not a typo here, it's to merge both sky light and bounced diffuse x sky light
-        Result += ShadeSH9((1.0f + IndirectLightInfo.Diffuse) * 0.5f, float4(IndirectLightInfo.Normal, 1.0f), BouncedSkyLightOcclusion);
+    {
+        float BouncedSkyLightOcclusion = TraceSkyVisibility(PixelCoord, IndirectLightInfo.WorldPos, IndirectLightInfo.Normal, 0, RayGap).r;
+        Result += ShadeSH9(IndirectLightInfo.Diffuse, float4(IndirectLightInfo.Normal, 1.0f), BouncedSkyLightOcclusion) * IndirectAtten;
     }
-
-    // consider indirect occlusion for this pixel as well
-    // for now it's using an aggressive calculation, as long as it's not a missing ray it's considered blocked
-    // but lerp with translucent opacity
-    float AOThisPixel = 1.0f - OldPayload.HitAlpha;
     
     // prevent NaN and output, though it's weird that NaN happened
-    return float4(-min(-Result, 0.0f), AOThisPixel);
+    return -min(-Result, 0.0f);
 }
 
 [shader("raygeneration")]
 void RTIndirectLightRayGen()
 {
-    // the system will now collect the tracing result with 4 samples
-    // the tracings are distributed to 2 frames
-    // E.g. 4 samples = 2 rays per frame
-    uint OutputIndex = GFrameNumber % GNumOfIndirectFrames;
     uint2 OutputCoord = DispatchRaysIndex().xy;
-    OutDiffuse[OutputIndex][OutputCoord] = float3(0, 0, 0);
-    OutOcclusion[OutputIndex][OutputCoord] = 1;
+    OutDiffuse[OutputCoord] = 0;
+    OutSkyData[OutputCoord] = 1;
     
     uint2 PixelCoord = OutputCoord * GIndirectDownsampleFactor;
     float2 ScreenUV = float2(PixelCoord + 0.5f) * GResolution.zw;
     
     float SceneDepth = SceneBuffers[3].SampleLevel(PointClampped, ScreenUV, 0).r;
     float3 SceneWorldPos = ComputeWorldPositionFromDeviceZ_UV(ScreenUV, SceneDepth, true);
-    
     float4 OpaqueBump = SceneBuffers[1].SampleLevel(LinearClampped, ScreenUV, 0);
 
     bool bTraceThisPixel = OpaqueBump.a > 0;
@@ -360,71 +418,59 @@ void RTIndirectLightRayGen()
         SceneNormal = DecodeNormal(SceneNormal);
     }
     
-    // Small ray rap applied for avoiding self-occlusion
+    // small ray rap applied for avoiding self-occlusion
     float RayGap = lerp(0.05f, GRTGapMax * 2, saturate(MipRate * RT_MIPRATESCALE));
-    float4 Result = 0;
+    float3 Result = 0;
+   
+    // ------------ the first phase - trace sky visibility
+    OutSkyData[OutputCoord] = TraceSkyVisibility(OutputCoord, SceneWorldPos, SceneNormal, ScreenUV, RayGap);
     
-    UHUNROLL
-    for (uint RayIdx = 0; RayIdx < GNumOfIndirectFrames; RayIdx++)
-    {    
-        // Even frames: Trace 0 1
-        // Odd frames: Trace 2 3
-        uint OffsetIndex = (GFrameNumber & 1) ? (RayIdx + 2) : RayIdx;
-        
-        // Ray setup and trace
+    // debugging
+    if (false)
+    {
+        float4 SkyData = SampleSkyData(SceneWorldPos, SceneNormal, OutputCoord, false);
+        OutDiffuse[OutputCoord] = float4(SkyData.xyz * 0.5f + 0.5f, 1);
+        OutSkyData[OutputCoord] = SkyData.w;
+        return;
+    }
+    
+    // ------------ the second phase - indirect ray setup and trace for bounced diffuse
+    float3 Tangent;
+    float3 BiNormal;
+    BuildTBNFromNormal(SceneNormal, Tangent, BiNormal);
+    
+    {
         RayDesc IndirectRay = (RayDesc) 0;
         IndirectRay.Origin = SceneWorldPos + SceneNormal * RayGap;
-        {
-            // Offset the scene normal as the ray direction
-            // but need to figure out which two components to offset as the data is in world space
-            int ClosestAxis = GetClosestAxis(SceneNormal);
-            float3 RayDir = SceneNormal;
+            
+        // setup cone dir offset
+        uint Phase = GetJitterPhase2D(OutputCoord);
+        float RandAngle = CoordinateToHash(OutputCoord + Phase) * UH_PI * 2.0f;
+        float3 ConeDir = ConvertUVToConePos(GRayOffset[Phase], GIndirectRayAngle * UH_DEG_TO_RAD);
         
-            if (ClosestAxis < 2)
-            {
-                // x is the forward axis, offset yz
-                RayDir += GIndirectRayOffsetScale * float3(0, GRayOffset[OffsetIndex]);
-            }
-            else if (ClosestAxis < 4)
-            {
-                // y is the forward axis, offset xz
-                RayDir += GIndirectRayOffsetScale * float3(GRayOffset[OffsetIndex].x, 0, GRayOffset[OffsetIndex].y);
-            }
-            else
-            {
-                // z is the forward axis, offset xy
-                RayDir += GIndirectRayOffsetScale * float3(GRayOffset[OffsetIndex], 0);
-            }
-        
-            RayDir = normalize(RayDir);
-            IndirectRay.Direction = RayDir;
-        }
+        ConeDir = normalize(ConeDir.x * Tangent + ConeDir.y * BiNormal + ConeDir.z * SceneNormal);
+        ConeDir = RotateVectorByAxisAngle(ConeDir, SceneNormal, RandAngle);
+        IndirectRay.Direction = ConeDir;
     
         IndirectRay.TMin = RayGap;
         IndirectRay.TMax = GIndirectLightMaxTraceDist;
 
-        UHDefaultPayload Payload = (UHDefaultPayload)0;
+        UHDefaultPayload Payload = (UHDefaultPayload) 0;
         Payload.MipLevel = MipLevel;
         Payload.PayloadData |= PAYLOAD_ISINDIRECTLIGHT;
     
         // trace ray!
-        TraceRay(TLAS, RAY_FLAG_NONE, 0xff, 0, 0, GRTDefaultMissShaderIndex, IndirectRay, Payload);
+        TraceRay(TLAS, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff, 0, 0, GRTDefaultMissShaderIndex, IndirectRay, Payload);
         
         if (Payload.IsHit())
         {
             float3 HitWorldPos = IndirectRay.Origin + IndirectRay.Direction * Payload.HitT;
             Result += CalculateIndirectLighting(Payload, ScreenUV, SceneWorldPos, SceneNormal
-                , HitWorldPos, Smoothness, MipLevel, RayGap);
+                    , HitWorldPos, Smoothness, MipLevel, RayGap, OutputCoord);
         }
-        else
-        {
-            Result += float4(0, 0, 0, 1);
-        }
+        
+        OutDiffuse[OutputCoord] = float4(Result, 1.0f);
     }
-    
-    // avg the result and output
-    OutDiffuse[OutputIndex][OutputCoord] = Result.rgb / float(GNumOfIndirectFrames);
-    OutOcclusion[OutputIndex][OutputCoord] = Result.a / float(GNumOfIndirectFrames);
 }
 
 [shader("miss")]

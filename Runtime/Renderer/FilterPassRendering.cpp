@@ -109,6 +109,80 @@ void UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBu
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
+// dispatch bilateral filtering
+void UHDeferredShadingRenderer::DispatchBilateralFilter(UHRenderBuilder& RenderBuilder, const std::string& InName
+	, UHRenderTexture* Input, UHRenderTexture* Output
+	, const UHBilateralFilterConstants& Constants)
+{
+	VkExtent2D FilterResolution;
+	FilterResolution.width = Constants.FilterResolution[0];
+	FilterResolution.height = Constants.FilterResolution[1];
+
+	// early return if the resolution is too small
+	if (FilterResolution.width * FilterResolution.height < 16)
+	{
+		return;
+	}
+
+	// get temp buffers
+	UHRenderTexture* FilterTempRT0 = Constants.FilterTempRT0;
+	UHRenderTexture* FilterTempRT1 = Constants.FilterTempRT1;
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), InName);
+
+	// blit the input to RT1
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(Input, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(FilterTempRT1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
+	RenderBuilder.Blit(Input, FilterTempRT1, FilterResolution, FilterResolution);
+
+	// update constants
+	const VkPushConstantRange& CosntRange = BilateralFilterHShader->GetPushConstantRange();
+	RenderBuilder.PushConstant(BilateralFilterHShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, CosntRange.size, &Constants);
+	RenderBuilder.PushConstant(BilateralFilterVShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, CosntRange.size, &Constants);
+
+	for (int32_t Idx = 0; Idx < Constants.IterationCount; Idx++)
+	{
+		// Horizontal pass to the temp texture
+		{
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(FilterTempRT1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(FilterTempRT0, VK_IMAGE_LAYOUT_GENERAL));
+			RenderBuilder.FlushResourceBarrier();
+
+			// bind compute state
+			UHGraphicState* State = BilateralFilterHShader->GetComputeState();
+			RenderBuilder.BindComputeState(State);
+			BilateralFilterHShader->BindParameters(RenderBuilder, FilterTempRT1, FilterTempRT0, CurrentFrameRT);
+
+			// dispatch compute
+			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(FilterResolution.width, GThreadGroup1D), FilterResolution.height, 1);
+		}
+
+		// Vertical pass from temp horizontal blur result to output
+		{
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(FilterTempRT0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+			RenderBuilder.PushResourceBarrier(UHImageBarrier(FilterTempRT1, VK_IMAGE_LAYOUT_GENERAL));
+			RenderBuilder.FlushResourceBarrier();
+
+			// bind compute state
+			UHGraphicState* State = BilateralFilterVShader->GetComputeState();
+			RenderBuilder.BindComputeState(State);
+			BilateralFilterVShader->BindParameters(RenderBuilder, FilterTempRT0, FilterTempRT1, CurrentFrameRT);
+
+			// dispatch compute
+			RenderBuilder.Dispatch(FilterResolution.width, MathHelpers::RoundUpDivide(FilterResolution.height, GThreadGroup1D), 1);
+		}
+	}
+
+	// blit result to output
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(FilterTempRT1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(Output, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
+	RenderBuilder.Blit(FilterTempRT1, Output, FilterResolution, FilterResolution);
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}
+
 void UHDeferredShadingRenderer::DispatchKawaseBlur(UHRenderBuilder& RenderBuilder, const std::string& InName
 	, UHRenderTexture* Input, UHRenderTexture* Output
 	, const UHKawaseBlurConstants& InConstants)

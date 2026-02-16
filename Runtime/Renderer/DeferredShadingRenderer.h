@@ -47,6 +47,8 @@
 #include "ShaderClass/PostProcessing/KawaseBlurShader.h"
 #include "ShaderClass/RayTracing/RTSoftShadowShader.h"
 #include "ShaderClass/RayTracing/RTMinimalHitGroupShader.h"
+#include "ShaderClass/RayTracing/RTSkyLightShader.h"
+#include "ShaderClass/PostProcessing/BilateralFilterShader.h"
 
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
@@ -79,6 +81,7 @@ struct UHRenderThreadParameters
 		, bEnableRTReflection(false)
 		, bEnableRTIndirectLighting(false)
 		, FrameNumber(0)
+		, bNeedDepthNormalHistory(false)
 	{
 
 	}
@@ -102,6 +105,7 @@ struct UHRenderThreadParameters
 	bool bEnableRTReflection;
 	bool bEnableRTIndirectLighting;
 	uint32_t FrameNumber;
+	bool bNeedDepthNormalHistory;
 };
 
 // Deferred Shading Renderer class for Unheard Engine, initialize with a UHGraphic pointer and a asset pointer
@@ -161,6 +165,10 @@ public:
 	void DispatchGaussianFilter(UHRenderBuilder& RenderBuilder, const std::string& InName
 		, UHRenderTexture* Input, UHRenderTexture* Output
 		, const UHGaussianFilterConstants& Constants);
+
+	void DispatchBilateralFilter(UHRenderBuilder& RenderBuilder, const std::string& InName
+		, UHRenderTexture* Input, UHRenderTexture* Output
+		, const UHBilateralFilterConstants& Constants);
 
 	void DispatchKawaseBlur(UHRenderBuilder& RenderBuilder, const std::string& InName
 		, UHRenderTexture* Input, UHRenderTexture* Output
@@ -247,6 +255,8 @@ private:
 	// get current skycube
 	UHTextureCube* GetCurrentSkyCube() const;
 
+	bool NeedDepthNormalHistory() const;
+
 
 	/************************************************ rendering functions ************************************************/
 	void BuildTopLevelAS(UHRenderBuilder& RenderBuilder);
@@ -258,6 +268,7 @@ private:
 	void DispatchLightCulling(UHRenderBuilder& RenderBuilder);
 	void DispatchRayShadowPass(UHRenderBuilder& RenderBuilder);
 	void DispatchSmoothSceneNormalPass(UHRenderBuilder& RenderBuilder);
+	void DispatchRaySkyLightPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayIndirectLightPass(UHRenderBuilder& RenderBuilder);
 	void DispatchRayReflectionPass(UHRenderBuilder& RenderBuilder);
 	void DispatchLightPass(UHRenderBuilder& RenderBuilder);
@@ -270,6 +281,7 @@ private:
 	void RenderEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void Dispatch2DEffect(UHShaderClass* InShader, UHRenderBuilder& RenderBuilder, int32_t& PostProcessIdx, std::string InName);
 	void RenderPostProcessing(UHRenderBuilder& RenderBuilder);
+	void CopyDepthNormalHistory(UHRenderBuilder& RenderBuilder);
 
 	void ScreenshotForRefraction(std::string PassName, UHRenderBuilder& RenderBuilder);
 
@@ -403,6 +415,8 @@ private:
 	UniquePtr<UHUpsampleShader> UpsampleNearestHShader;
 	UniquePtr<UHKawaseBlurShader> KawaseDownsampleShader;
 	UniquePtr<UHKawaseBlurShader> KawaseUpsampleShader;
+	UniquePtr<UHBilateralFilterShader> BilateralFilterHShader;
+	UniquePtr<UHBilateralFilterShader> BilateralFilterVShader;
 	bool bIsTemporalReset;
 
 	// renderer instances
@@ -447,11 +461,16 @@ private:
 	UniquePtr<UHRTSmoothSceneNormalShader> RTSmoothSceneNormalHShader;
 	UniquePtr<UHRTSmoothSceneNormalShader> RTSmoothSceneNormalVShader;
 	UniquePtr<UHRTIndirectLightShader> RTIndirectLightShader;
+	UniquePtr<UHRTSkyLightShader> RTSkyLightShader;
 	UniquePtr<UHRTSoftShadowShader> RTSoftShadowShader;
+	UniquePtr<UHRTIndirectReprojectionShader> RTSkyReprojectionShader;
+	UniquePtr<UHRTIndirectReprojectionShader> RTDiffuseReprojectionShader;
 
 	uint32_t RTInstanceCount;
 	VkExtent2D RTShadowExtent;
 	VkExtent2D RTIndirectLightExtent;
+	UHBilateralFilterConstants RTIndirectDiffuseBFConsts;
+	UHBilateralFilterConstants RTIndirectOcclusionBFConsts;
 
 	// -------------------------------------------- Culling & sorting related -------------------------------------------- //
 	std::vector<UHMeshRendererComponent*> OpaquesToRender;

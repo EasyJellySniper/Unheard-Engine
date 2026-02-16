@@ -55,6 +55,14 @@ void UHSkyLightComponent::OnPostLoad(UHAssetManager* InAssetMgr)
 	CubemapCache = (UHTextureCube*)InAssetMgr->GetAsset(CubemapId);
 }
 
+void UHSkyLightComponent::OnActivityChanged()
+{
+#if WITH_EDITOR
+	// refresh sky light when activity changed just in case
+	UHDeferredShadingRenderer::GetRendererEditorOnly()->RefreshSkyLight(true);
+#endif
+}
+
 void UHSkyLightComponent::SetSkyColor(XMFLOAT3 InColor)
 {
 	AmbientSkyColor = InColor;

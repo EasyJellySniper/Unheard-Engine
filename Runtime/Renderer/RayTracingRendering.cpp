@@ -13,11 +13,17 @@ void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
 	UH_SAFE_RELEASE_TEX(GRTReceiveLightBits);
 	UH_SAFE_RELEASE_TEX(GRTReflectionResult);
 	UH_SAFE_RELEASE_TEX(GSmoothSceneNormal);
-	for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
-	{
-		UH_SAFE_RELEASE_TEX(GRTIndirectDiffuse[Idx]);
-		UH_SAFE_RELEASE_TEX(GRTIndirectOcclusion[Idx]);
-	}
+
+	UH_SAFE_RELEASE_TEX(GRTIndirectDiffuse);
+	UH_SAFE_RELEASE_TEX(GRTIndirectDiffuseHistory);
+	UH_SAFE_RELEASE_TEX(GRTIndirectOcclusion);
+	UH_SAFE_RELEASE_TEX(GRTIndirectOcclusionHistory);
+
+	UH_SAFE_RELEASE_TEX(GRTSkyData);
+	UH_SAFE_RELEASE_TEX(GRTSkyDiscoverAngle);
+
+	RTIndirectDiffuseBFConsts.Release(GraphicInterface);
+	RTIndirectOcclusionBFConsts.Release(GraphicInterface);
 }
 
 void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
@@ -58,18 +64,97 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 
 		// indirect light at half size
 		RTIndirectLightExtent = HalfRes;
-		RenderTextureSetting.bUseMipmap = true;
-		for (int32_t Idx = 0; Idx < GNumOfIndirectLightFrames; Idx++)
-		{
-			GRTIndirectDiffuse[Idx] = GraphicInterface->RequestRenderTexture("RTIndirectDiffuse" + std::to_string(Idx)
-				, RTIndirectLightExtent
-				, UHTextureFormat::UH_FORMAT_R11G11B10
-				, RenderTextureSetting);
 
-			GRTIndirectOcclusion[Idx] = GraphicInterface->RequestRenderTexture("RTIndirectOcclusion" + std::to_string(Idx)
-				, RTIndirectLightExtent
-				, UHTextureFormat::UH_FORMAT_R8_UNORM
-				, RenderTextureSetting);
+		GRTIndirectDiffuse = GraphicInterface->RequestRenderTexture("RTIndirectDiffuse"
+			, RTIndirectLightExtent
+			, UHTextureFormat::UH_FORMAT_RGBA16F
+			, RenderTextureSetting);
+
+		GRTIndirectDiffuseHistory = GraphicInterface->RequestRenderTexture("RTIndirectDiffuseHistory"
+			, RTIndirectLightExtent
+			, GRTIndirectDiffuse->GetFormat()
+			, RenderTextureSetting);
+
+		GRTIndirectOcclusion = GraphicInterface->RequestRenderTexture("RTIndirectOcclusion"
+			, RTIndirectLightExtent
+			, UHTextureFormat::UH_FORMAT_RG16F
+			, RenderTextureSetting);
+
+		GRTIndirectOcclusionHistory = GraphicInterface->RequestRenderTexture("RTIndirectOcclusionHistory"
+			, RTIndirectLightExtent
+			, GRTIndirectOcclusion->GetFormat()
+			, RenderTextureSetting);
+
+		// initialize UHBilateralFilterConstants for filtering RTDiffuse result
+		RTIndirectDiffuseBFConsts.FilterResolution[0] = RTIndirectLightExtent.width;
+		RTIndirectDiffuseBFConsts.FilterResolution[1] = RTIndirectLightExtent.height;
+		RTIndirectDiffuseBFConsts.KernalRadius = 4;
+		RTIndirectDiffuseBFConsts.SceneBufferUpsample = RenderResolution.width / RTIndirectLightExtent.width;
+		RTIndirectDiffuseBFConsts.SigmaS = 3.5f;
+		RTIndirectDiffuseBFConsts.SigmaD = 0.12f;
+		RTIndirectDiffuseBFConsts.SigmaN = 8.0f;
+		RTIndirectDiffuseBFConsts.SigmaC = 2.0f;
+		RTIndirectDiffuseBFConsts.IterationCount = 2;
+
+		RTIndirectDiffuseBFConsts.FilterTempRT0 = GraphicInterface->RequestRenderTexture("RTDiffuse_FilterTempRT0"
+			, RTIndirectLightExtent
+			, GRTIndirectDiffuse->GetFormat()
+			, RenderTextureSetting);
+
+		RTIndirectDiffuseBFConsts.FilterTempRT1 = GraphicInterface->RequestRenderTexture("RTDiffuse_FilterTempRT1"
+			, RTIndirectLightExtent
+			, GRTIndirectDiffuse->GetFormat()
+			, RenderTextureSetting);
+
+		// initialize UHBilateralFilterConstants for filtering RTAO result
+		RTIndirectOcclusionBFConsts.FilterResolution[0] = RTIndirectLightExtent.width;
+		RTIndirectOcclusionBFConsts.FilterResolution[1] = RTIndirectLightExtent.height;
+		RTIndirectOcclusionBFConsts.KernalRadius = 2;
+		RTIndirectOcclusionBFConsts.SceneBufferUpsample = RenderResolution.width / RTIndirectLightExtent.width;
+		RTIndirectOcclusionBFConsts.SigmaS = 3.0f;
+		RTIndirectOcclusionBFConsts.SigmaD = 0.035f;
+		RTIndirectOcclusionBFConsts.SigmaN = 48.0f;
+		RTIndirectOcclusionBFConsts.SigmaC = 0.0f;
+		RTIndirectOcclusionBFConsts.IterationCount = 1;
+
+		// for BF pass only R channel is needed
+		RTIndirectOcclusionBFConsts.FilterTempRT0 = GraphicInterface->RequestRenderTexture("RTAO_FilterTempRT0"
+			, RTIndirectLightExtent
+			, UHTextureFormat::UH_FORMAT_R16F
+			, RenderTextureSetting);
+
+		RTIndirectOcclusionBFConsts.FilterTempRT1 = GraphicInterface->RequestRenderTexture("RTAO_FilterTempRT1"
+			, RTIndirectLightExtent
+			, UHTextureFormat::UH_FORMAT_R16F
+			, RenderTextureSetting);
+
+		// sky visibility data, stored in volume based on the scene bound
+		if (CurrentScene != nullptr)
+		{
+			const BoundingBox& SceneBound = CurrentScene->GetSceneBound();
+
+			VkExtent2D VolumeSize;
+			VolumeSize.width = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.x * 2.0f));
+			VolumeSize.height = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.y * 2.0f));
+			const uint32_t VolumeSlices = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.z * 2.0f));
+
+			RenderTextureSetting.bIsVolume = true;
+			RenderTextureSetting.NumSlices = VolumeSlices;
+
+			if (VolumeSize.width * VolumeSize.height * VolumeSlices > 0)
+			{
+				GRTSkyData = GraphicInterface->RequestRenderTexture("RTSkyVisibilityData"
+					, VolumeSize
+					// xyz: bent sky direciton, w: visibility
+					, UHTextureFormat::UH_FORMAT_RGBA16F
+					, RenderTextureSetting);
+
+				GRTSkyDiscoverAngle = GraphicInterface->RequestRenderTexture("RTSkyDiscoverAngle"
+					, VolumeSize
+					// store extra sky discover angle
+					, UHTextureFormat::UH_FORMAT_R16F
+					, RenderTextureSetting);
+			}
 		}
 
 		if (bUpdateDescriptor)
@@ -235,6 +320,35 @@ void UHDeferredShadingRenderer::DispatchSmoothSceneNormalPass(UHRenderBuilder& R
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
 
+void UHDeferredShadingRenderer::DispatchRaySkyLightPass(UHRenderBuilder& RenderBuilder)
+{
+	UHGameTimerScope Scope("RaySkyLightPass", false);
+	UHGPUTimeQueryScope TimeScope(RenderBuilder.GetCmdList(), GPUTimeQueries[UH_ENUM_VALUE(UHRenderPassTypes::RayTracingSkyLight)], "RayTracingSkyLight");
+
+	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Sky Light");
+
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSkyData, VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSkyDiscoverAngle, VK_IMAGE_LAYOUT_GENERAL));
+	RenderBuilder.FlushResourceBarrier();
+
+	if (RTParams.bEnableRayTracing && RTInstanceCount > 0 && RTParams.bEnableRTIndirectLighting && RTParams.bEnableSkyLight)
+	{
+		// [0] is to bind the shader descriptor
+		RTDescriptorSets[CurrentFrameRT][0] = RTSkyLightShader->GetDescriptorSet(CurrentFrameRT);
+		RenderBuilder.BindRTDescriptorSet(RTSkyLightShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);
+		RenderBuilder.BindRTState(RTSkyLightShader->GetRTState());
+
+		// trace the ray!
+		RenderBuilder.TraceRay(GRTSkyData->GetExtent()
+			, RTSkyLightShader->GetRayGenTable()
+			, RTSkyLightShader->GetMissTable()
+			, RTSkyLightShader->GetHitGroupTable()
+			, GRTSkyData->GetImageSlices());
+	}
+
+	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
+}
+
 void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RayIndirectLightPass", false);
@@ -242,50 +356,91 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Indirect Light");
 
-	// transition resource to UAV ready
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuse[CurrentFrameRT], VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusion[CurrentFrameRT], VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.FlushResourceBarrier();
-
 	if (RTParams.bEnableRayTracing && RTInstanceCount > 0 && RTParams.bEnableRTIndirectLighting)
 	{
+		// transition resource to UAV ready
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuse, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuseHistory, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusion, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusionHistory, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSkyData, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+
 		// [0] is to bind the shader descriptor
 		RTDescriptorSets[CurrentFrameRT][0] = RTIndirectLightShader->GetDescriptorSet(CurrentFrameRT);
 		RenderBuilder.BindRTDescriptorSet(RTIndirectLightShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);
 		RenderBuilder.BindRTState(RTIndirectLightShader->GetRTState());
 
 		// trace the ray!
-		RenderBuilder.TraceRay(GRTIndirectDiffuse[0]->GetExtent()
+		RenderBuilder.TraceRay(GRTIndirectDiffuse->GetExtent()
 			, RTIndirectLightShader->GetRayGenTable()
 			, RTIndirectLightShader->GetMissTable()
 			, RTIndirectLightShader->GetHitGroupTable());
 
-		// blur both indirect diffuse / occlusion after tracing
-		UHKawaseBlurConstants KBConsts{};
-		KBConsts.PassCount = 3;
-		KBConsts.bUseMipAsTempRT = true;
-		KBConsts.StartInputMip = 0;
-		KBConsts.StartOutputMip = 0;
-
-		for (int32_t Mdx = 0; Mdx < KBConsts.PassCount; Mdx++)
+		// filtering for the indirect diffuse
 		{
-			KBConsts.KawaseTempRT.push_back(GRTIndirectDiffuse[CurrentFrameRT]);
-		}
-		DispatchKawaseBlur(RenderBuilder, "Blur Indirect Diffuse", GRTIndirectDiffuse[CurrentFrameRT], GRTIndirectDiffuse[CurrentFrameRT], KBConsts);
+			// temporal accumulation
+			RenderBuilder.BindComputeState(RTDiffuseReprojectionShader->GetComputeState());
+			RTDiffuseReprojectionShader->BindParameters(RenderBuilder, GRTIndirectDiffuseHistory, GRTIndirectDiffuse, CurrentFrameRT);
 
-		// lower pass count for occlusion
-		KBConsts.PassCount = 2;
-		KBConsts.KawaseTempRT.clear();
-		for (int32_t Mdx = 0; Mdx < KBConsts.PassCount; Mdx++)
-		{
-			KBConsts.KawaseTempRT.push_back(GRTIndirectOcclusion[CurrentFrameRT]);
+			// setup parameter
+			UHRTIndirectReprojectionConstants Consts;
+			Consts.Resolution[0] = RTIndirectLightExtent.width;
+			Consts.Resolution[1] = RTIndirectLightExtent.height;
+			Consts.AlphaMin = 0.05f;
+			Consts.AlphaMax = 0.2f;
+			RenderBuilder.PushConstant(RTDiffuseReprojectionShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT
+				, RTDiffuseReprojectionShader->GetPushConstantRange().size, &Consts);
+
+			// trigger a UAV barrier transition (RayGen -> Compute) and dispatch
+			RenderBuilder.ResourceBarrier(GRTIndirectDiffuse, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RTIndirectLightExtent.width, GThreadGroup2D_X)
+				, MathHelpers::RoundUpDivide(RTIndirectLightExtent.height, GThreadGroup2D_Y)
+				, 1);
+
+			// bilateral filtering for RT indirect diffuse
+			DispatchBilateralFilter(RenderBuilder, "Indirect Diffuse Bilateral Filter", GRTIndirectDiffuse, GRTIndirectDiffuse, RTIndirectDiffuseBFConsts);
 		}
-		DispatchKawaseBlur(RenderBuilder, "Blur Indirect Occlusion", GRTIndirectOcclusion[CurrentFrameRT], GRTIndirectOcclusion[CurrentFrameRT], KBConsts);
+
+		// filtering for the sky occlusion
+		{
+			// temporal accumulation
+			RenderBuilder.BindComputeState(RTSkyReprojectionShader->GetComputeState());
+			RTSkyReprojectionShader->BindParameters(RenderBuilder, GRTIndirectOcclusionHistory, GRTIndirectOcclusion, CurrentFrameRT);
+
+			// setup parameter
+			UHRTIndirectReprojectionConstants Consts;
+			Consts.Resolution[0] = RTIndirectLightExtent.width;
+			Consts.Resolution[1] = RTIndirectLightExtent.height;
+			Consts.AlphaMin = 0.05f;
+			Consts.AlphaMax = 0.5f;
+			RenderBuilder.PushConstant(RTSkyReprojectionShader->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT
+				, RTSkyReprojectionShader->GetPushConstantRange().size, &Consts);
+
+			// trigger a UAV barrier transition (RayGen -> Compute) and dispatch
+			RenderBuilder.ResourceBarrier(GRTIndirectOcclusion, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RTIndirectLightExtent.width, GThreadGroup2D_X)
+				, MathHelpers::RoundUpDivide(RTIndirectLightExtent.height, GThreadGroup2D_Y)
+				, 1);
+
+			// bilateral filtering for RT indirect occlusion
+			DispatchBilateralFilter(RenderBuilder, "Indirect Occlusion Bilateral Filter", GRTIndirectOcclusion, GRTIndirectOcclusion, RTIndirectOcclusionBFConsts);
+		}
+
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuse, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuseHistory, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusion, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusionHistory, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+
+		// copy indirect occlusion history
+		RenderBuilder.CopyTexture(GRTIndirectDiffuse, GRTIndirectDiffuseHistory);
+		RenderBuilder.CopyTexture(GRTIndirectOcclusion, GRTIndirectOcclusionHistory);
+
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuse, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusion, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
 	}
-
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectDiffuse[CurrentFrameRT], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTIndirectOcclusion[CurrentFrameRT], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-	RenderBuilder.FlushResourceBarrier();
 
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }
@@ -294,14 +449,6 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 {
 	if (!RTParams.bEnableRayTracing || RTInstanceCount == 0 || !RTParams.bEnableRTReflection)
 	{
-		if (GRTReflectionResult != nullptr)
-		{
-			for (uint32_t Mdx = 0; Mdx < GRTReflectionResult->GetMipMapCount(); Mdx++)
-			{
-				RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, Mdx));
-			}
-			RenderBuilder.FlushResourceBarrier();
-		}
 		return;
 	}
 
@@ -334,10 +481,11 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 			HalfRes.height >>= 1;
 			RenderBuilder.TraceRay(HalfRes, RTReflectionShader->GetRayGenTable(), RTReflectionShader->GetMissTable(), RTReflectionShader->GetHitGroupTable());
 
-			// Upsample after the half res tracing
+			// ipsample after the half res tracing
 			RenderBuilder.BindComputeState(UpsampleNearest2x2Shader->GetComputeState());
 			UpsampleNearest2x2Shader->BindParameters(RenderBuilder, CurrentFrameRT, GRTReflectionResult, Consts);
 
+			// trigger a UAV barrier transition (RayGen -> Compute)
 			RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
 				, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)

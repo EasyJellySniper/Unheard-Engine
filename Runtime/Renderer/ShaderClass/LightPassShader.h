@@ -7,7 +7,7 @@ public:
 	UHLightPassShader(UHGraphic* InGfx, std::string Name);
 	virtual void OnCompile() override;
 
-	void BindParameters(const bool bIsRaytracingEnableRT);
+	void BindParameters(const bool bIsRaytracingEnableRT, const bool bEnableRTIndirectLight);
 
 	// this must sync with shader implementation
 	static const uint32_t MaxSoftShadowLightsPerPixel = 8;

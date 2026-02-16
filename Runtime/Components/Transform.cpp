@@ -227,6 +227,15 @@ XMFLOAT3 UHTransformComponent::GetScale() const
 	return Scale;
 }
 
+XMFLOAT3 UHTransformComponent::GetRotationEuler()
+{
+	// get euler angle from rotation matrix
+	// this function should be used for editor display and not available in runtime
+	MathHelpers::MatrixToPitchYawRoll(RotationMatrix, RotationEuler.x, RotationEuler.y, RotationEuler.z);
+
+	return RotationEuler;
+}
+
 bool UHTransformComponent::IsWorldDirty() const
 {
 	return bIsWorldDirty || bIsFirstFrame;
@@ -259,14 +268,4 @@ void UHTransformComponent::OnGenerateDetailView()
 		SetScale(Scale);
 	}
 }
-
-XMFLOAT3 UHTransformComponent::GetRotationEuler()
-{
-	// get euler angle from rotation matrix
-	// this function should be used for editor display and not available in runtime
-	MathHelpers::MatrixToPitchYawRoll(RotationMatrix, RotationEuler.x, RotationEuler.y, RotationEuler.z);
-
-	return RotationEuler;
-}
-
 #endif

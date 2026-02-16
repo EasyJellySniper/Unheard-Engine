@@ -107,9 +107,9 @@ public:
 		, RTIndirectLightScale(0.75f)
 		, RTIndirectLightFadeDistance(20.0f)
 		, RTIndirectTMax(50.0f)
-		, OcclusionStartDistance(0.0f)
-		, OcclusionEndDistance(15.0f)
-		, IndirectRayOffsetScale(0.5f)
+		, MaxSkyConeAngle(0.0f)
+		, MinSkyConeAngle(15.0f)
+		, IndirectRayAngle(15.0f)
 	{
 
 	}
@@ -148,9 +148,9 @@ public:
 	float RTIndirectLightScale;
 	float RTIndirectLightFadeDistance;
 	float RTIndirectTMax;
-	float OcclusionStartDistance;
-	float OcclusionEndDistance;
-	float IndirectRayOffsetScale;
+	float MaxSkyConeAngle;
+	float MinSkyConeAngle;
+	float IndirectRayAngle;
 
 	bool bEnableAsyncCompute;
 	bool bEnableHardwareOcclusion;

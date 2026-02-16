@@ -35,10 +35,6 @@ const uint32_t GHitGroupTableSlot = 2;
 const uint32_t GHitGroupShaderPerSlot = 2;
 const float G_PI = 3.141592653589793f;
 
-// indirect light frames
-const int32_t GNumOfIndirectLightFrames = 2;
-const int32_t GNumOfIndirectLightRays = 4;
-
 struct UHSystemConstants
 {
 	XMFLOAT4X4 ViewProj;
@@ -97,6 +93,7 @@ struct UHSystemConstants
 	uint32_t MaxReflectionRecursion;
 	float ScreenMipCount;
 	float RTReflectionMipCount;
+	float FarPlane;
 };
 
 struct UHObjectConstants
@@ -115,30 +112,30 @@ struct UHObjectConstants
 struct UHDirectionalLightConstants
 {
 	// intensity is multiplied to Color before sending to GPU
-	XMFLOAT4 Color;
-	XMFLOAT3 Dir;
+	XMFLOAT4 Color = XMFLOAT4();
+	XMFLOAT3 Dir = XMFLOAT3();
 	int32_t IsEnabled = 1;
 };
 
 struct UHPointLightConstants
 {
 	// intensity is multiplied to Color before sending to GPU
-	XMFLOAT4 Color;
-	float Radius;
-	XMFLOAT3 Position;
+	XMFLOAT4 Color = XMFLOAT4();
+	float Radius = 0.0f;
+	XMFLOAT3 Position = XMFLOAT3();
 	int32_t IsEnabled = 1;
 };
 
 struct UHSpotLightConstants
 {
-	XMFLOAT4X4 WorldToLight;
+	XMFLOAT4X4 WorldToLight = XMFLOAT4X4();
 	// intensity is multiplied to Color before sending to GPU
-	XMFLOAT4 Color;
-	XMFLOAT3 Dir;
-	float Radius;
-	float Angle;
-	XMFLOAT3 Position;
-	float InnerAngle;
+	XMFLOAT4 Color = XMFLOAT4();
+	XMFLOAT3 Dir = XMFLOAT3();
+	float Radius = 0.0f;
+	float Angle = 0.0f;
+	XMFLOAT3 Position = XMFLOAT3();
+	float InnerAngle = 0.0f;
 	int32_t IsEnabled = 1;
 };
 
@@ -171,6 +168,7 @@ enum class UHRenderPassTypes
 	RayTracingShadow,
 	SoftShadowPass,
 	SmoothSceneNormalPass,
+	RayTracingSkyLight,
 	RayTracingIndirectLight,
 	RayTracingReflection,
 	ReflectionBlurPass,

@@ -19,14 +19,17 @@ UHDemoScript::UHDemoScript()
 	, SecondDirectionalLight(nullptr)
 	, DefaultSkyLight(nullptr)
 	, EngineCache(nullptr)
+	, Door3363Renderer(nullptr)
 {
 	SetName("Demo Script Component");
 }
 
 void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 {
-	InEngine->OnLoadScene("Assets/Scenes/test.uhscene");
-	return;
+	EngineCache = InEngine;
+	//InEngine->OnLoadScene("Assets/Scenes/test2.uhscene");
+	//return;
+
 	if (TestType == UHDemoType::DayTest)
 	{
 		InEngine->OnLoadScene("Assets/Scenes/VikingWithStones.uhscene");
@@ -40,14 +43,27 @@ void UHDemoScript::OnEngineInitialized(UHEngine* InEngine)
 		InEngine->OnLoadScene("Assets/Scenes/VikingHouses_SpotLightNight.uhscene");
 	}
 
-	EngineCache = InEngine;
 	//ObsoleteInitialization(InScene, InAsset, InGfx);
 	//return;
 }
 
+float fract(float x)
+{
+	return x - std::floor(x);
+}
+
 void UHDemoScript::OnEngineUpdate(float DeltaTime)
 {
-	return;
+	if (Door3363Renderer)
+	{
+		// rotate door's Y between two angle
+		XMFLOAT3 DoorRot = Door3363Renderer->GetRotationEuler();
+		float Time = EngineCache->GetGameTimer()->GetTotalTime();
+		float T = abs(fract(Time * 0.2f) * 2.0f - 1.0f);
+		DoorRot.y = MathHelpers::Lerp(1.0f, 85.0f, T);
+		Door3363Renderer->SetRotation(DoorRot);
+	}
+
 	float LightRotSpd = 5.0f * DeltaTime;
 	if (TestType == UHDemoType::DayTest)
 	{
@@ -185,6 +201,11 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 			{
 				Geo364Renderer = MRC;
 				Geo364Renderer->SetMoveable(true);
+			}
+			else if (UHUtilities::StringFind(MRC->GetName(), "3363") && UHUtilities::StringFind(InScene->GetName(), "test2"))
+			{
+				Door3363Renderer = MRC;
+				Door3363Renderer->SetMoveable(true);
 			}
 		}
 	}

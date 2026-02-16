@@ -174,8 +174,8 @@ private:
 	bool bNeedSetScissorRect;
 
 	// lookup table for stage flag and access flag
-	static std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;
-	static std::unordered_map<VkImageLayout, VkAccessFlags> LayoutToAccessFlags;
+	std::unordered_map<VkImageLayout, VkPipelineStageFlags> LayoutToStageFlags;
+	std::unordered_map<VkImageLayout, VkAccessFlags> LayoutToAccessFlags;
 	std::vector<UHImageBarrier> ImageBarriers;
 
 	VkExtent2D PrevViewport;

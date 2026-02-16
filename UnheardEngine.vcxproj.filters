@@ -441,6 +441,12 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSkyLightShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\BilateralFilterShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -851,6 +857,12 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSkyLightShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\BilateralFilterShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="UnheardEngine.rc">
@@ -918,5 +930,8 @@
     <None Include="Shaders\RayTracing\RayTracingIndirectLight.hlsl" />
     <None Include="Shaders\PostProcessing\KawaseBlurComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RTSoftShadowComputeShader.hlsl" />
+    <None Include="Shaders\RayTracing\RayTracingSkyLight.hlsl" />
+    <None Include="Shaders\PostProcessing\BilateralFilterComputeShader.hlsl" />
+    <None Include="Shaders\RayTracing\RTIndirectLightReprojection.hlsl" />
   </ItemGroup>
 </Project>

@@ -341,6 +341,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\MotionPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\OcclusionPassShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\BilateralFilterShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.h" />
@@ -354,6 +355,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMeshInstanceTable.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.h" />
+    <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSkyLightShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.h" />
@@ -489,6 +491,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\MeshPreviewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\MotionPassShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\OcclusionPassShader.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\BilateralFilterShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugBoundShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\DebugViewShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\PostProcessing\GaussianFilterShader.cpp" />
@@ -501,6 +504,7 @@
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTIndirectLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTMinimalHitGroupShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionMipmap.cpp" />
+    <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSkyLightShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTSmoothNormalShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTReflectionShader.cpp" />
     <ClCompile Include="Runtime\Renderer\ShaderClass\RayTracing\RTShadowShader.cpp" />
@@ -758,6 +762,21 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\RayTracing\RTSoftShadowComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RayTracingSkyLight.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\PostProcessing\BilateralFilterComputeShader.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\RayTracing\RTIndirectLightReprojection.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

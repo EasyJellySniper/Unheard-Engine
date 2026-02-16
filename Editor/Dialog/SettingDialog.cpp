@@ -266,9 +266,9 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
         ImGui::InputFloat("RT Indirect Light Scale", &RenderingSettings.RTIndirectLightScale);
         ImGui::InputFloat("RT Indirect Light Fade Distance", &RenderingSettings.RTIndirectLightFadeDistance);
         ImGui::InputFloat("RT Indirect TMax", &RenderingSettings.RTIndirectTMax);
-        ImGui::InputFloat("RT Indirect Ray Offset Scale", &RenderingSettings.IndirectRayOffsetScale);
-        ImGui::InputFloat("Occsluion Start Distance", &RenderingSettings.OcclusionStartDistance);
-        ImGui::InputFloat("Occsluion End Distance", &RenderingSettings.OcclusionEndDistance);
+        ImGui::InputFloat("RT Indirect Ray Angle", &RenderingSettings.IndirectRayAngle);
+        ImGui::InputFloat("RT Min Sky Cone Angle", &RenderingSettings.MinSkyConeAngle);
+        ImGui::InputFloat("RT Max Sky Cone Angle", &RenderingSettings.MaxSkyConeAngle);
     }
 
     ImGui::PopItemWidth();

@@ -84,9 +84,9 @@ void UHConfigManager::LoadConfig()
 		GET_UHE_SETTING(RenderingSettings, RTIndirectLightScale);
 		GET_UHE_SETTING(RenderingSettings, RTIndirectLightFadeDistance);
 		GET_UHE_SETTING(RenderingSettings, RTIndirectTMax);
-		GET_UHE_SETTING(RenderingSettings, OcclusionStartDistance);
-		GET_UHE_SETTING(RenderingSettings, OcclusionEndDistance);
-		GET_UHE_SETTING(RenderingSettings, IndirectRayOffsetScale);
+		GET_UHE_SETTING(RenderingSettings, MaxSkyConeAngle);
+		GET_UHE_SETTING(RenderingSettings, MinSkyConeAngle);
+		GET_UHE_SETTING(RenderingSettings, IndirectRayAngle);
 
 		// clamp a few parameters
 		RenderingSettings.RenderWidth = std::clamp(RenderingSettings.RenderWidth, 480, 16384);
@@ -163,9 +163,9 @@ void UHConfigManager::ApplyConfig()
 		SET_UHE_SETTING(RenderingSettings, RTIndirectLightScale);
 		SET_UHE_SETTING(RenderingSettings, RTIndirectLightFadeDistance);
 		SET_UHE_SETTING(RenderingSettings, RTIndirectTMax);
-		SET_UHE_SETTING(RenderingSettings, OcclusionStartDistance);
-		SET_UHE_SETTING(RenderingSettings, OcclusionEndDistance);
-		SET_UHE_SETTING(RenderingSettings, IndirectRayOffsetScale);
+		SET_UHE_SETTING(RenderingSettings, MaxSkyConeAngle);
+		SET_UHE_SETTING(RenderingSettings, MinSkyConeAngle);
+		SET_UHE_SETTING(RenderingSettings, IndirectRayAngle);
 	}
 }
 

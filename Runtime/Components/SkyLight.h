@@ -13,6 +13,7 @@ public:
 	virtual void OnSave(std::ofstream& OutStream) override;
 	virtual void OnLoad(std::ifstream& InStream) override;
 	virtual void OnPostLoad(UHAssetManager* InAssetMgr) override;
+	virtual void OnActivityChanged() override;
 
 	void SetSkyColor(XMFLOAT3 InColor);
 	void SetGroundColor(XMFLOAT3 InColor);

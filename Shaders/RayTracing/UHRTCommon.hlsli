@@ -16,7 +16,6 @@
 // perf hack mip bias for RT, it also reduces the noise from sharp textures
 static const float GRTMipBias = 2.0f;
 static const uint GMaxPointSpotLightPerInstance = 16;
-static const uint GNumOfIndirectFrames = 2;
 static const int GRTMaxDirLight = 2;
 static const float GRTGapMin = 0.005f;
 static const float GRTGapMax = 0.05f;

@@ -47,6 +47,7 @@ public:
 	XMFLOAT3 GetForward() const;
 	XMFLOAT3 GetPosition() const;
 	XMFLOAT3 GetScale() const;
+	XMFLOAT3 GetRotationEuler();
 
 	// is transform changed
 	bool IsWorldDirty() const;
@@ -54,7 +55,6 @@ public:
 
 #if WITH_EDITOR
 	virtual void OnGenerateDetailView() override;
-	XMFLOAT3 GetRotationEuler();
 #endif
 
 protected:

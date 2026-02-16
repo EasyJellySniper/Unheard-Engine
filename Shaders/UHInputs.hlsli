@@ -141,6 +141,7 @@ cbuffer SystemConstants : register(UHSYSTEM_BIND)
     uint GMaxReflectionRecursion;
     float GScreenMipCount;
     float GRTReflectionMipCount;
+    float GFarPlane;
 }
 
 // IT means inverse-transposed

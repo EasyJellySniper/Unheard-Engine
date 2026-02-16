@@ -49,6 +49,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, bHasRefractionMaterialGT(false)
 	, MeshInstanceCount(0)
 	, bNeedGenerateSH9(true)
+	, RTIndirectOcclusionBFConsts(UHBilateralFilterConstants())
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
@@ -377,6 +378,9 @@ void UHDeferredShadingRenderer::PrepareSamplers()
 	GPointClampedSampler = GraphicInterface->RequestTextureSampler(PointClampedInfo);
 	PointClampSamplerIndex = UHUtilities::FindIndex(GraphicInterface->GetSamplers(), GPointClampedSampler);
 
+	PointClampedInfo.AddressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	GPointClamped3DSampler = GraphicInterface->RequestTextureSampler(PointClampedInfo);
+
 #if WITH_EDITOR
 	// request a sampler for preview scene
 	PointClampedInfo.MipBias = 0;
@@ -491,6 +495,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 
 	GaussianFilterHShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterHShader", UHGaussianFilterType::FilterHorizontal);
 	GaussianFilterVShader = MakeUnique<UHGaussianFilterShader>(GraphicInterface, "FilterVShader", UHGaussianFilterType::FilterVertical);
+	BilateralFilterHShader = MakeUnique<UHBilateralFilterShader>(GraphicInterface, "BFilterHShader", UHBilaterialFilterType::FilterHorizontal);
+	BilateralFilterVShader = MakeUnique<UHBilateralFilterShader>(GraphicInterface, "BFilterVShader", UHBilaterialFilterType::FilterVertical);
 
 	UpsampleNearest2x2Shader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmm2x2Shader", UHUpsampleMethod::Nearest2x2);
 	UpsampleNearest4x4Shader = MakeUnique<UHUpsampleShader>(GraphicInterface, "UpsampleNmm4x4Shader", UHUpsampleMethod::Nearest4x4);
@@ -508,6 +514,8 @@ void UHDeferredShadingRenderer::PrepareRenderingShaders()
 		RTSmoothSceneNormalHShader = MakeUnique<UHRTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalHShader", false);
 		RTSmoothSceneNormalVShader = MakeUnique<UHRTSmoothSceneNormalShader>(GraphicInterface, "RTSmoothSceneNormalVShader", true);
 		RTSoftShadowShader = MakeUnique<UHRTSoftShadowShader>(GraphicInterface, "RTSoftShadowShader");
+		RTSkyReprojectionShader = MakeUnique<UHRTIndirectReprojectionShader>(GraphicInterface, "RTSkyReprojectionShader", UHRTIndirectReprojectType::SkyReprojection);
+		RTDiffuseReprojectionShader = MakeUnique<UHRTIndirectReprojectionShader>(GraphicInterface, "RTDiffuseReprojectionShader", UHRTIndirectReprojectType::DiffuseReprojection);
 	}
 
 #if WITH_EDITOR
@@ -595,7 +603,8 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 	LightCullingShader->BindParameters();
 
 	// ------------------------------------------------ Lighting pass descriptor update
-	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTShadow);
+	LightPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTShadow
+		, bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
 	ReflectionPassShader->BindParameters(bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTReflection
 		, bEnableRayTracing && ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
 
@@ -662,6 +671,7 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 
 		RTShadowShader->BindParameters();
 		RTReflectionShader->BindParameters();
+		RTSkyLightShader->BindParameters();
 		RTIndirectLightShader->BindParameters();
 		CollectPointLightShader->BindParameters();
 		CollectSpotLightShader->BindParameters();
@@ -752,6 +762,8 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 	UH_SAFE_RELEASE(ToneMapShader);
 	UH_SAFE_RELEASE(GaussianFilterHShader);
 	UH_SAFE_RELEASE(GaussianFilterVShader);
+	UH_SAFE_RELEASE(BilateralFilterHShader);
+	UH_SAFE_RELEASE(BilateralFilterVShader);
 	UH_SAFE_RELEASE(UpsampleNearest2x2Shader);
 	UH_SAFE_RELEASE(UpsampleNearest4x4Shader);
 	UH_SAFE_RELEASE(UpsampleNearestHShader);
@@ -774,7 +786,10 @@ void UHDeferredShadingRenderer::ReleaseShaders()
 		UH_SAFE_RELEASE(RTMinimalHitGroupShader);
 		UH_SAFE_RELEASE(RTShadowShader);
 		UH_SAFE_RELEASE(RTReflectionShader);
+		UH_SAFE_RELEASE(RTSkyLightShader);
 		UH_SAFE_RELEASE(RTIndirectLightShader);
+		UH_SAFE_RELEASE(RTSkyReprojectionShader);
+		UH_SAFE_RELEASE(RTDiffuseReprojectionShader);
 		UH_SAFE_RELEASE(RTMeshInstanceTable);
 		UH_SAFE_RELEASE(RTMaterialDataTable);
 		UH_SAFE_RELEASE(CollectPointLightShader);
@@ -828,9 +843,13 @@ void UHDeferredShadingRenderer::CreateRenderingBuffers()
 
 	// motion vector buffer
 	GMotionVectorRT = GraphicInterface->RequestRenderTexture("MotionVectorRT", RenderResolution, MotionFormat);
-
-	// realtime AO result
-	GRealtimeAOResult = GraphicInterface->RequestRenderTexture("Realtime AO", RenderResolution, MaskFormat, RenderTextureSettings);
+	
+	// create history depth/normal when necessary
+	if (NeedDepthNormalHistory())
+	{
+		GHistoryDepth = GraphicInterface->RequestRenderTexture("HistoryDepth", RenderResolution, DepthFormat);
+		GHistoryNormal = GraphicInterface->RequestRenderTexture("HistoryNormal", RenderResolution, NormalFormat);
+	}
 
 	// rt buffers
 	ResizeRayTracingBuffers(false);
@@ -870,7 +889,8 @@ void UHDeferredShadingRenderer::RelaseRenderingBuffers()
 	UH_SAFE_RELEASE_TEX(GPreviousSceneResult);
 	UH_SAFE_RELEASE_TEX(GOpaqueSceneResult);
 	UH_SAFE_RELEASE_TEX(GMotionVectorRT);
-	UH_SAFE_RELEASE_TEX(GRealtimeAOResult);
+	UH_SAFE_RELEASE_TEX(GHistoryDepth);
+	UH_SAFE_RELEASE_TEX(GHistoryNormal);
 
 	ReleaseRayTracingBuffers();
 
@@ -1795,6 +1815,7 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 
 	UH_SAFE_RELEASE(RTShadowShader);
 	UH_SAFE_RELEASE(RTReflectionShader);
+	UH_SAFE_RELEASE(RTSkyLightShader);
 	UH_SAFE_RELEASE(RTIndirectLightShader);
 
 	// merge default and minimal hitgroup shader, the layout works as the follow:
@@ -1825,6 +1846,11 @@ void UHDeferredShadingRenderer::RecreateRTShaders(std::vector<UHMaterial*> InMat
 		, Layouts);
 
 	RTReflectionShader = MakeUnique<UHRTReflectionShader>(GraphicInterface, "RTReflectionShader"
+		, ClosestHits
+		, AnyHits
+		, Layouts);
+
+	RTSkyLightShader = MakeUnique<UHRTSkyLightShader>(GraphicInterface, "RTSkyLightShader"
 		, ClosestHits
 		, AnyHits
 		, Layouts);

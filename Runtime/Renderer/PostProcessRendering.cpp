@@ -54,6 +54,33 @@ void UHDeferredShadingRenderer::Dispatch2DEffect(UHShaderClass* InShader, UHRend
 	PostProcessIdx = 1 - PostProcessIdx;
 }
 
+void UHDeferredShadingRenderer::CopyDepthNormalHistory(UHRenderBuilder& RenderBuilder)
+{
+	if (!RTParams.bNeedDepthNormalHistory)
+	{
+		return;
+	}
+
+	// copy depth/normal to history
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneDepth, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneNormal, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GHistoryDepth, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	RenderBuilder.PushResourceBarrier(UHImageBarrier(GHistoryNormal, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+	RenderBuilder.FlushResourceBarrier();
+
+	RenderBuilder.CopyTexture(GSceneDepth, GHistoryDepth);
+	RenderBuilder.CopyTexture(GSceneNormal, GHistoryNormal);
+
+#if WITH_EDITOR
+	if (DebugViewIndex != UHINDEXNONE)
+	{
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GSceneNormal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+		RenderBuilder.FlushResourceBarrier();
+	}
+#endif
+}
+
 void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuilder)
 {
 	UHGameTimerScope Scope("RenderPostProcessing", false);
@@ -94,6 +121,8 @@ void UHDeferredShadingRenderer::RenderPostProcessing(UHRenderBuilder& RenderBuil
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
 		RenderBuilder.FlushResourceBarrier();
 		RenderBuilder.Blit(PostProcessResults[1 - CurrentPostProcessRTIndex], GPreviousSceneResult);
+
+		CopyDepthNormalHistory(RenderBuilder);
 
 		RenderBuilder.ResourceBarrier(PostProcessResults[1 - CurrentPostProcessRTIndex], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 		GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());

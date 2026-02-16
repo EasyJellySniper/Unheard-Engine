@@ -44,7 +44,7 @@ void HorizontalFilterCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupT
         GColorCache[GTid.x + 2 * Constants.BlurRadius] = InputTexture[int2(x, PixelCoord.y)];
     }
     
-    // start the color cache
+    // store the color cache
     GColorCache[GTid.x + Constants.BlurRadius] = InputTexture[PixelCoord.xy];
     GroupMemoryBarrierWithGroupSync();
     
@@ -79,7 +79,7 @@ void VerticalFilterCS(uint3 DTid : SV_DispatchThreadID, uint3 GTid : SV_GroupThr
         GColorCache[GTid.y + 2 * Constants.BlurRadius] = InputTexture[int2(PixelCoord.x, y)];
     }
     
-    // start the color cache
+    // store the color cache
     GColorCache[GTid.y + Constants.BlurRadius] = InputTexture[PixelCoord.xy];
     GroupMemoryBarrierWithGroupSync();
     

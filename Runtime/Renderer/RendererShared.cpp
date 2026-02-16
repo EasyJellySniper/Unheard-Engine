@@ -41,11 +41,16 @@ UniquePtr<UHAccelerationStructure> GTopLevelAS[GMaxFrameInFlight];
 // for refraction use
 UHRenderTexture* GOpaqueSceneResult;
 
+// depth/normal history
+UHRenderTexture* GHistoryDepth;
+UHRenderTexture* GHistoryNormal;
+
 UHTextureCube* GSkyLightCube;
 
 UHSampler* GPointClampedSampler;
 UHSampler* GLinearClampedSampler;
 UHSampler* GSkyCubeSampler;
+UHSampler* GPointClamped3DSampler;
 UHSampler* GLinearClamped3DSampler;
 UniquePtr<UHRenderBuffer<UHSphericalHarmonicData>> GSH9Data;
 
@@ -68,9 +73,12 @@ std::vector<UniquePtr<UHRenderBuffer<UHMeshShaderData>>> GMotionTranslucentShade
 UniquePtr<UHRenderBuffer<UHRendererInstance>> GRendererInstanceBuffer;
 
 // indirect lighting
-UHRenderTexture* GRTIndirectDiffuse[GNumOfIndirectLightFrames];
-UHRenderTexture* GRTIndirectOcclusion[GNumOfIndirectLightFrames];
-UHRenderTexture* GRealtimeAOResult;
+UHRenderTexture* GRTIndirectDiffuse;
+UHRenderTexture* GRTIndirectDiffuseHistory;
+UHRenderTexture* GRTIndirectOcclusion;
+UHRenderTexture* GRTIndirectOcclusionHistory;
+UHRenderTexture* GRTSkyData;
+UHRenderTexture* GRTSkyDiscoverAngle;
 
 VkClearColorValue GBlackClearColor = { 0.0f,0.0f,0.0f,1.0f };
 VkClearColorValue GWhiteClearColor = { 1.0f,1.0f,1.0f,1.0f };

@@ -104,7 +104,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RTParams.bIsSwapChainReset = bIsSwapChainResetGT;
 	RTParams.bEnableAsyncCompute = RenderingSettings.bEnableAsyncCompute;
 	RTParams.bEnableRendering = CurrentScene->GetMainCamera() && CurrentScene->GetMainCamera()->IsEnabled();
-	RTParams.bEnableSkyLight = GetCurrentSkyCube() != nullptr;
+	RTParams.bEnableSkyLight = CurrentScene->GetSkyLight() && CurrentScene->GetSkyLight()->IsEnabled();
 	RTParams.bNeedRefraction = bHasRefractionMaterialGT;
 	RTParams.bEnableHDR = GraphicInterface->IsHDRAvailable();
 	RTParams.RTCullingDistance = RenderingSettings.RTCullingRadius;
@@ -123,10 +123,11 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RTParams.bEnableRTDenoise = RenderingSettings.bDenoiseRayTracing;
 	RTParams.FrameNumber = GFrameNumber;
 	RTParams.bNeedGenerateSH9 = bNeedGenerateSH9;
-	bNeedGenerateSH9 = false;
+	RTParams.bNeedDepthNormalHistory = NeedDepthNormalHistory();
 
 	// make sure upload data worker is done before rendering
 	WorkerThreads[0]->WaitTask();
+	bNeedGenerateSH9 = false;
 
 	// wake render thread
 	RenderThread->WakeThread();
@@ -167,8 +168,7 @@ enum class UHDebugViewMode
 	RTShadow6,
 	RTShadow7,
 	RTReflection,
-	RTIndirectLight1,
-	RTIndirectLight2,
+	RTIndirectLight,
 	IndirectOcclusion
 };
 
@@ -205,10 +205,14 @@ void UHDeferredShadingRenderer::SetDebugViewIndex(int32_t Idx)
 			, GRTSoftShadow
 			, GRTSoftShadow
 			, GRTReflectionResult
-			, GRTIndirectDiffuse[0]
-			, GRTIndirectDiffuse[1]
-			, GRealtimeAOResult
+			, GRTIndirectDiffuse
+			, GRTIndirectOcclusion
 		};
+
+		// transition to shader read
+		UHRenderBuilder RenderBuilder(GraphicInterface, GraphicInterface->BeginOneTimeCmd());
+		RenderBuilder.ResourceBarrier(Buffers[DebugViewIndex], Buffers[DebugViewIndex]->GetImageLayout(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		GraphicInterface->EndOneTimeCmd(RenderBuilder.GetCmdList());
 
 		if (Buffers[DebugViewIndex] != nullptr)
 		{
@@ -307,6 +311,13 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 		SystemConstantsCPU.JitterScaleMin = Offset.z;
 		SystemConstantsCPU.JitterScaleFactor = Offset.w;
 	}
+	else
+	{
+		SystemConstantsCPU.JitterOffsetX = 0;
+		SystemConstantsCPU.JitterOffsetY = 0;
+		SystemConstantsCPU.JitterScaleMin = 0;
+		SystemConstantsCPU.JitterScaleFactor = 1;
+	}
 
 	// set sky light data
 	UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
@@ -318,18 +329,17 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.ShadowResolution.z = 1.0f / SystemConstantsCPU.ShadowResolution.x;
 	SystemConstantsCPU.ShadowResolution.w = 1.0f / SystemConstantsCPU.ShadowResolution.y;
 
-	UHTextureCube* SkyCube = GetCurrentSkyCube();
-
 	SystemConstantsCPU.NumRTInstances = RTInstanceCount;
 	SystemConstantsCPU.FrameNumber = GFrameNumber;
 
+	const bool bSkyLightEnabled = CurrentScene->GetSkyLight() && CurrentScene->GetSkyLight()->IsEnabled();
+
 	// pack system rendering feature data
 	uint32_t FeatureData = 0;
-	FeatureData |= (SkyCube != nullptr) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
+	FeatureData |= (bSkyLightEnabled) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
 	FeatureData |= RenderingSettings.bDenoiseRayTracing ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureUseSmoothNormalForRaytracing) : 0;
-	FeatureData |= (RenderingSettings.bEnableRayTracing && RenderingSettings.bEnableRTIndirectLighting)
-		? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTIndirectLight) : 0;
+	FeatureData |= (RenderingSettings.bEnableRayTracing && RenderingSettings.bEnableRTIndirectLighting) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTIndirectLight) : 0;
 	SystemConstantsCPU.SystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.DirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
@@ -340,7 +350,10 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.RTReflectionRayTMax = RenderingSettings.RTReflectionTMax;
 	SystemConstantsCPU.RTReflectionSmoothCutoff = RenderingSettings.RTReflectionSmoothCutoff;
 	SystemConstantsCPU.FinalReflectionStrength = RenderingSettings.FinalReflectionStrength;
+
+	const UHTextureCube* SkyCube = GetCurrentSkyCube();
 	SystemConstantsCPU.EnvCubeMipMapCount = (SkyCube != nullptr) ? static_cast<float>(SkyCube->GetMipMapCount()) : 0;
+
 	SystemConstantsCPU.OpaqueSceneTextureIndex = OpaqueSceneTextureIndex;
 	SystemConstantsCPU.DefaultAnisoSamplerIndex = DefaultSamplerIndex;
 	SystemConstantsCPU.NearPlane = CurrentCamera->GetNearPlane();
@@ -353,6 +366,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.SceneCenter = SceneBound.Center;
 	SystemConstantsCPU.SceneExtent = SceneBound.Extents;
 	SystemConstantsCPU.RTReflectionMipCount = UHRTReflectionShader::ReflectionMipsCount;
+	SystemConstantsCPU.FarPlane = CurrentCamera->GetCullingDistance();
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
@@ -482,10 +496,10 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			ILConstant.IndirectLightScale = RenderingSettings.RTIndirectLightScale;
 			ILConstant.IndirectLightFadeDistance = RenderingSettings.RTIndirectLightFadeDistance;
 			ILConstant.IndirectLightMaxTraceDist = RenderingSettings.RTIndirectTMax;
-			ILConstant.OcclusionStartDistance = RenderingSettings.OcclusionStartDistance;
-			ILConstant.OcclusionEndDistance = RenderingSettings.OcclusionEndDistance;
+			ILConstant.MaxSkyConeAngle = RenderingSettings.MaxSkyConeAngle;
+			ILConstant.MinSkyConeAngle = RenderingSettings.MinSkyConeAngle;
 			ILConstant.IndirectDownsampleFactor = RenderResolution.width / RTIndirectLightExtent.width;
-			ILConstant.IndirectRayOffsetScale = RenderingSettings.IndirectRayOffsetScale;
+			ILConstant.IndirectRayAngle = RenderingSettings.IndirectRayAngle;
 			RTIndirectLightShader->GetConstants(CurrentFrameGT)->UploadData(&ILConstant, 0);
 		}
 
@@ -810,6 +824,14 @@ UHTextureCube* UHDeferredShadingRenderer::GetCurrentSkyCube() const
 	return CurrSkyCube;
 }
 
+bool UHDeferredShadingRenderer::NeedDepthNormalHistory() const
+{
+	return GIsEditor || 
+		(ConfigInterface
+		&& ConfigInterface->RenderingSetting().bEnableRayTracing
+		&& ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
+}
+
 void UHDeferredShadingRenderer::RenderThreadLoop()
 {
 	/** Render steps **/
@@ -870,6 +892,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 					BuildTopLevelAS(AsyncComputeBuilder);
 					CollectLightPass(AsyncComputeBuilder);
 					GenerateSH9Pass(AsyncComputeBuilder);
+					DispatchRaySkyLightPass(AsyncComputeBuilder);
 				}
 
 				GraphicInterface->EndCmdDebug(AsyncComputeBuilder.GetCmdList());
@@ -895,6 +918,14 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 					SceneRenderBuilder.ResourceBarrier(GOpaqueSceneResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				}
 
+				// transition history depth/normal to shader read
+				if (RTParams.bNeedDepthNormalHistory)
+				{
+					SceneRenderBuilder.PushResourceBarrier(UHImageBarrier(GHistoryDepth, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+					SceneRenderBuilder.PushResourceBarrier(UHImageBarrier(GHistoryNormal, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+					SceneRenderBuilder.FlushResourceBarrier();
+				}
+
 				if (bIsPresentedPreviously)
 				{
 					ResolveOcclusionResult(SceneRenderBuilder);
@@ -909,6 +940,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 					BuildTopLevelAS(SceneRenderBuilder);
 					CollectLightPass(SceneRenderBuilder);
 					GenerateSH9Pass(SceneRenderBuilder);
+					DispatchRaySkyLightPass(SceneRenderBuilder);
 				}
 
 				DispatchLightCulling(SceneRenderBuilder);

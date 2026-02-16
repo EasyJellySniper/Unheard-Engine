@@ -7,11 +7,11 @@ struct UHRTIndirectLightConstants
 	float IndirectLightScale;
 	float IndirectLightFadeDistance;
 	float IndirectLightMaxTraceDist;
-	float OcclusionEndDistance;
+	float MinSkyConeAngle;
 
-	float OcclusionStartDistance;
+	float MaxSkyConeAngle;
 	int32_t IndirectDownsampleFactor;
-	float IndirectRayOffsetScale;
+	float IndirectRayAngle;
 };
 
 class UHRTIndirectLightShader : public UHShaderClass
@@ -35,4 +35,30 @@ private:
 	std::vector<uint32_t> AnyHitIDs;
 
 	UniquePtr<UHRenderBuffer<UHRTIndirectLightConstants>> RTIndirectLightConstants[GMaxFrameInFlight];
+};
+
+// shader to reprojection RTIL
+enum class UHRTIndirectReprojectType
+{
+	SkyReprojection,
+	DiffuseReprojection
+};
+
+struct UHRTIndirectReprojectionConstants
+{
+	uint32_t Resolution[2];
+	float AlphaMin;
+	float AlphaMax;
+};
+
+class UHRTIndirectReprojectionShader : public UHShaderClass
+{
+public:
+	UHRTIndirectReprojectionShader(UHGraphic* InGfx, std::string Name, UHRTIndirectReprojectType InType);
+	virtual void OnCompile() override;
+
+	void BindParameters(UHRenderBuilder& RenderBuilder, UHTexture* Input, UHTexture* Output, const int32_t FrameIdx);
+
+private:
+	UHRTIndirectReprojectType ReprojectionType;
 };

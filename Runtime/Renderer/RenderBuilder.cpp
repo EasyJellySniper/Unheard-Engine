@@ -1,8 +1,5 @@
 #include "RenderBuilder.h"
 
-std::unordered_map<VkImageLayout, VkPipelineStageFlags> UHRenderBuilder::LayoutToStageFlags;
-std::unordered_map<VkImageLayout, VkAccessFlags> UHRenderBuilder::LayoutToAccessFlags;
-
 UHRenderBuilder::UHRenderBuilder(UHGraphic* InGraphic, VkCommandBuffer InCommandBuffer, bool bIsComputeBuilder)
 	: Gfx(InGraphic)
 	, CmdList(InCommandBuffer)

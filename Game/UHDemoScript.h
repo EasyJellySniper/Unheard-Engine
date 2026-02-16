@@ -38,6 +38,7 @@ private:
 
 	UHSkyLightComponent* DefaultSkyLight;
 	UHMeshRendererComponent* Geo364Renderer;
+	UHMeshRendererComponent* Door3363Renderer;
 
 	XMFLOAT3 Geo364OriginPos;
 	float TimeCounter;

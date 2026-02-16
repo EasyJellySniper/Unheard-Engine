@@ -144,8 +144,7 @@ void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
         , ID_RTSHADOWS_SOFTSHADOW6
         , ID_RTSHADOWS_SOFTSHADOW7
         , ID_VIEWMODE_RTREFLECTION
-        , ID_RTINDIRECT_INDIRECT1
-        , ID_RTINDIRECT_INDIRECT2
+        , ID_VIEWMODE_RTINDIRECTLIGHT32826
         , ID_RTINDIRECTOCCLUSION };
 
     for (size_t Idx = 0; Idx < ViewModeMenuIDs.size(); Idx++)

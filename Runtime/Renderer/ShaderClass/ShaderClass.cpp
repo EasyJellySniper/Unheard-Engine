@@ -209,6 +209,11 @@ void UHShaderClass::BindImage(const std::vector<UHTexture*> InImages, const int3
 void UHShaderClass::PushImage(const UHTexture* InImage, const int32_t DstBinding
 	, const bool bIsReadWrite, const int32_t MipIdx, const int32_t LayerIdx, bool bUavAsSrv)
 {
+	if (InImage == nullptr)
+	{
+		return;
+	}
+
 	VkDescriptorImageInfo ImageInfo{};
 	ImageInfo.imageLayout = bIsReadWrite || bUavAsSrv ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 

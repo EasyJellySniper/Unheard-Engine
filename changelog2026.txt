@@ -38,3 +38,56 @@ Next I will still try the world position storage instead. That was a nice attemp
 Carry on RTIL cache experiments. Further reduced payload size.
 Massively changed the hit groups structure and allowed multiple miss shaders.
 So that the shadow ray tracing will be as lightweight as possible. This also changed how I access the SBT.
+
+29-01-2026:
+Trying a separated sky light pass to tell whether a pixel should receive sky light.
+Storing in 3D doesn't seem to be a good idea. I will try tiled-based tracing.
+
+30-01-2026:
+WIP sky light visibility tracing. Also introduced cone sampling instead of my weird bullshit.
+
+03-02-2026:
+WIP sky light visibility tracing. This time I will store the possible leaking direction (AKA bent sky direction) first.
+And then in the detailed RTIL pass, shoot the ray toward the leaking direction. This will work better than random rays!
+
+04-02-2026:
+WIP sky light visibility tracing. Get a huge progression!
+Corrected both discovery and sky data sampling pass. Applied normal dot sky direction to reject incorrect light leak.
+But there are still many artifacts to solve.
+
+06-02-2026:
+WIP sky light visibility tracing. Improved sky discovery rays by a margin!
+A voxel can basically know where the escaped rays are, even failed it will do accumulated search.
+Also applied more voxel ray skipping for the performance in the discover pass.
+
+10-02-2026:
+WIP sky light visibility tracing. Looks much better now and can really react to the door gap.
+But it's still some works to do, especially for those noises. 
+I blame insufficient rays for that but I will figure out any method that is not increasing rays first.
+
+11-02-2026:
+WIP sky light visibility tracing. I've reached the Monte Carlo limit and have to consider temporal filtering solutions.
+It sucks but I will try anything before the temporal filters.
+
+12-02-2026:
+Big improvements! Noises are much less comparing to yesterday.
+The result looks promising now but I only need to alternate the test kawase blur method.
+As it didn't consider depth difference at all and will over-spreading the result.
+
+13-02-2026:
+Applied Bilateral filter to the sky visibility! It looks better than the kawase blur now.
+But I'm also seeing ghosting. Next is to introduce depth/normal rejection for sky tracing pass too.
+Also use linear sampling instead of load for voxels, as the grid-pattern artifacts is too obvious.
+
+14-02-2026:
+Implemented trilinear sampling for SampleSkyData, looks promising and the transition between voxels are much smoother!
+Next is to add sky visibility temporal pass for the ghosting.
+And convert indirect diffuse implementation for 1 ray per-frame also.
+
+15-02-2026:
+Implemented temporal accumulation for the sky occlusion!
+With depth/normal rejection applied the result looks much better.
+
+16-02-2026:
+Applied temporal tracing method for indirect diffuse too.
+Next is to check why indirect diffuse is still noisy with temporal + bilateral.

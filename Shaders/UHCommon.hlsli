@@ -8,6 +8,7 @@
 // inverse PI = 1.0f / PI
 #define UH_INVERSE_PI 0.3183098861837f
 #define UH_RAD_TO_DEG 57.29577866f
+#define UH_DEG_TO_RAD 0.0174533f
 
 struct UHRendererInstance
 {
@@ -205,6 +206,30 @@ float CoordinateToHash(float2 InCoord)
     return frac(sin(T) * 43758.0f);
 }
 
+// Not from a single paper or API, but a function that evolved over years
+// Thanks to Inigo Quilez and Dave Hoskins
+float CoordinateToHash(float3 InCoord)
+{
+    InCoord = frac(InCoord * 0.3183099f + 0.1f);
+    InCoord *= 17.0f;
+    return frac(InCoord.x * InCoord.y * InCoord.z * (InCoord.x + InCoord.y + InCoord.z));
+}
+
+float3 CoordinateToHash3(uint2 Pixel, uint Frame)
+{
+    uint H =
+        // Numerical Recipes / MSVC / ANSI C LCGs.
+        Pixel.x * 1664525u +
+        Pixel.y * 1013904223u +
+        Frame * 69069u;
+
+    return frac(float3(
+        H,
+        // Park¡VMiller / Lehmer multipliers
+        H * 16807u,
+        H * 48271u) / 65535.0);
+}
+
 float3 EncodeNormal(float3 N)
 {
     return N * 0.5f + 0.5f;
@@ -248,8 +273,56 @@ float3 ConvertUVToSpherePos(float2 UV)
 	Pos.y = SinTheta * sin(UV.x * Phi);
 	Pos.z = CosTheta;
 
-	// flip the result to matach hardward implementation
+	// flip the result to match hardward implementation
 	return float3(Pos.y, Pos.z, -Pos.x);
+}
+
+float3 ConvertUVToHemispherePos(float2 UV)
+{
+	// convert to sphere coordinate based on https://en.wikipedia.org/wiki/Spherical_coordinate_system definition
+	// x = sin(theta * v) * cos(phi * u)
+	// y = sin(theta * v) * sin(phi * u)
+	// z = cos(theta * v)
+	// theta = [0, PI], and phi = [0, 2PI]
+    float Theta = UH_PI;
+    float Phi = UH_PI * 2.0f;
+
+	// CosTheta is different than full sphere
+    float CosTheta = UV.y;
+    float SinTheta = sqrt(1.0f - CosTheta * CosTheta);
+
+    float3 Pos;
+    Pos.x = SinTheta * cos(UV.x * Phi);
+    Pos.y = SinTheta * sin(UV.x * Phi);
+    Pos.z = CosTheta;
+
+	// flip the result to match hardware coordinate
+    return float3(Pos.y, Pos.z, -Pos.x);
+}
+
+float3 ConvertUVToConePos(float2 UV, float MaxAngle)
+{
+    // similar as the sphere function but lerp with a max angle
+    float Theta = UH_PI;
+    float Phi = UH_PI * 2.0f;
+    
+    float CosTheta = lerp(cos(MaxAngle), 1.0f, UV.y);
+    float SinTheta = sqrt(1.0f - CosTheta * CosTheta);
+
+    float3 Pos;
+    Pos.x = SinTheta * cos(UV.x * Phi);
+    Pos.y = SinTheta * sin(UV.x * Phi);
+    Pos.z = CosTheta;
+
+	// flip the result to match hardware coordinate
+    return float3(Pos.y, -Pos.x, Pos.z);
+}
+
+void BuildTBNFromNormal(float3 N, out float3 T, out float3 B)
+{
+    float3 Up = abs(N.z) < 0.999f ? float3(0, 0, 1) : float3(1, 0, 0);
+    T = normalize(cross(Up, N));
+    B = cross(N, T);
 }
 
 bool IsUVInsideScreen(float2 UV, float Tolerance = 0.0f)
@@ -438,14 +511,66 @@ float3 SrgbToLinear(float3 InColor)
     return Result;
 }
 
-float2 CalculateScreenUV(float3 InWorldPos, out bool bInsideScreen)
+float2 CalculateScreenUV(float3 InWorldPos, out bool bInsideScreen, float Tolerance = 0.0f)
 {
     float4 ClipPos = mul(float4(InWorldPos, 1.0f), GViewProj);
     ClipPos /= ClipPos.w;
 	
     float2 ScreenUV = ClipPos.xy * 0.5f + 0.5f;
-    bInsideScreen = IsUVInsideScreen(ScreenUV) && (ClipPos.z > 0.0f);
+    bInsideScreen = IsUVInsideScreen(ScreenUV, Tolerance) && (ClipPos.z > 0.0f);
     return ScreenUV;
+}
+
+// build axis-angle rotation matrix
+// https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle
+float3x3 CreateAxisAngleRotationMatrix(float3 Axis, float Angle)
+{
+    // input axis must be normalized
+    float S = sin(Angle);
+    float C = cos(Angle);
+    float T = 1.0f - C;
+
+    float X = Axis.x;
+    float Y = Axis.y;
+    float Z = Axis.z;
+
+    return float3x3(
+        T * X * X + C, T * X * Y - S * Z, T * X * Z + S * Y,
+        T * X * Y + S * Z, T * Y * Y + C, T * Y * Z - S * X,
+        T * X * Z - S * Y, T * Y * Z + S * X, T * Z * Z + C
+    );
+}
+
+// rotate vector by axis angle, lower ALU ops than matrix
+float3 RotateVectorByAxisAngle(float3 V, float3 Axis, float Angle)
+{
+    float S = sin(Angle);
+    float C = cos(Angle);
+
+    return V * C + cross(Axis, V) * S + Axis * dot(Axis, V) * (1.0f - C);
+}
+
+// Hammersley sampling
+float RadicalInverse(uint Bits)
+{
+    Bits = (Bits << 16) | (Bits >> 16);
+    Bits = ((Bits & 0x55555555u) << 1) | ((Bits & 0xAAAAAAAAu) >> 1);
+    Bits = ((Bits & 0x33333333u) << 2) | ((Bits & 0xCCCCCCCCu) >> 2);
+    Bits = ((Bits & 0x0F0F0F0Fu) << 4) | ((Bits & 0xF0F0F0F0u) >> 4);
+    Bits = ((Bits & 0x00FF00FFu) << 8) | ((Bits & 0xFF00FF00u) >> 8);
+    return float(Bits) * 2.3283064365386963e-10; // / 2^32
+}
+
+float2 Hammersley(uint Index, uint Samples)
+{
+    return float2(float(Index) / float(Samples), RadicalInverse(Index));
+}
+
+float LinearDepth(float RawDepth)
+{
+    // NDC
+    float Z = RawDepth * 2.0f - 1.0f;
+    return (2.0f * GNearPlane * GFarPlane) / (GFarPlane + GNearPlane - Z * (GFarPlane - GNearPlane));
 }
 
 #endif
