@@ -159,13 +159,15 @@ bool TraceDiretionalShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         HitDist = Payload.HitT;
-        Atten = 1 - Payload.HitAlpha;
     }
     else
     {
         HitDist = 0.0f;
-        Atten = 1.0f;
     }
+    
+    // set attenuation as 1 - HitAlpha regardless if it's hitting
+    // as the any hit shader can still have translucent instances hit and HitAlpha stored
+    Atten = 1 - Payload.HitAlpha;
     
     return true;
 }
@@ -214,13 +216,15 @@ bool TracePointShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         HitDist = Payload.HitT;
-        Atten = 1 - Payload.HitAlpha;
     }
     else
     {
         HitDist = 0.0f;
-        Atten = 1.0f;
     }
+    
+    // set attenuation as 1 - HitAlpha regardless if it's hitting
+    // as the any hit shader can still have translucent instances hit and HitAlpha stored
+    Atten = 1 - Payload.HitAlpha;
     
     return true;
 }
@@ -270,13 +274,15 @@ bool TraceSpotShadow(RaytracingAccelerationStructure TLAS
     if (Payload.IsHit())
     {
         HitDist = Payload.HitT;
-        Atten = 1 - Payload.HitAlpha;
     }
     else
     {
         HitDist = 0.0f;
-        Atten = 1.0f;
     }
+    
+    // set attenuation as 1 - HitAlpha regardless if it's hitting
+    // as the any hit shader can still have translucent instances hit and HitAlpha stored
+    Atten = 1 - Payload.HitAlpha;
     
     return true;
 }
