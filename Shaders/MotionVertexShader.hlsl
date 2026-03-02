@@ -23,11 +23,6 @@ MotionVertexOutput MotionObjectVS(float3 Position : POSITION, uint Vid : SV_Vert
 	Vout.Position = mul(Vout.Position, JitterMatrix);
 	Vout.UV0 = UV0Buffer[Vid];
 	
-#if TRANSLUCENT
-	Vout.Normal = LocalToWorldNormal(NormalBuffer[Vid]);
-	Vout.InstanceIndex = GInstanceIndex;
-#endif
-	
 #if TANGENT_SPACE && TRANSLUCENT
 	// calculate world TBN if normal map is used
     Vout.WorldTBN = CreateTBN(Vout.Normal, TangentBuffer[Vid]);

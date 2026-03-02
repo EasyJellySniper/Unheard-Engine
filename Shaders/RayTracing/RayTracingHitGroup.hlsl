@@ -11,7 +11,7 @@ RaytracingAccelerationStructure TLAS : register(t1);
 Texture2D UHTextureTable[] : register(t0, space1);
 SamplerState UHSamplerTable[] : register(t0, space2);
 
-// mesh instance data, access it with InstanceIndex() first, then use the info stored for other indexing or condition
+// mesh instance data, access it with SAFE_INSTANCE_INDEX first, then use the info stored for other indexing or condition
 StructuredBuffer<UHRendererInstance> UHRendererInstances : register(t0, space3);
 
 // VB & IB data, access them with UHRendererInstance.MeshIndex
@@ -20,8 +20,11 @@ StructuredBuffer<float3> UHNormalTable[] : register(t0, space5);
 StructuredBuffer<float4> UHTangentTable[] : register(t0, space6);
 ByteAddressBuffer UHIndicesTable[] : register(t0, space7);
 
+#define SAFE_INSTANCE_ID NonUniformResourceIndex(InstanceID())
+#define SAFE_INSTANCE_INDEX NonUniformResourceIndex(InstanceIndex())
+
 // another descriptor array for matching, since Vulkan doesn't implement local descriptor yet, I need this to fetch data
-// access via InstanceID()[0] first, the data will be filled by the systtem on C++ side
+// access via SAFE_INSTANCE_ID[0] first, the data will be filled by the systtem on C++ side
 struct MaterialData
 {
     uint Data[RT_MATERIALDATA_SLOT];
@@ -54,7 +57,7 @@ void UnpackMaterialData(MaterialData MatData, inout MaterialUsage Usages)
 // get material input, the simple version that has opacity only
 UHMaterialInputs GetMaterialOpacity(float2 UV0, float MipLevel, out MaterialUsage Usages)
 {
-    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
+    MaterialData MatData = UHMaterialDataTable[SAFE_INSTANCE_ID][0];
     UnpackMaterialData(MatData, Usages);
 	
 	// TextureIndexStart in TextureNode.cpp decides where the first index of texture will start in MaterialData.Data[]
@@ -66,7 +69,7 @@ UHMaterialInputs GetMaterialOpacity(float2 UV0, float MipLevel, out MaterialUsag
 // get only the bump normal from the material
 UHMaterialInputs GetMaterialBumpNormal(float2 UV0, float MipLevel, out MaterialUsage Usages)
 {
-    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
+    MaterialData MatData = UHMaterialDataTable[SAFE_INSTANCE_ID][0];
     UnpackMaterialData(MatData, Usages);
     
     // material input code will be generated in C++ side
@@ -76,7 +79,7 @@ UHMaterialInputs GetMaterialBumpNormal(float2 UV0, float MipLevel, out MaterialU
 // get material input fully
 UHMaterialInputs GetMaterialInput(float2 UV0, float MipLevel, out MaterialUsage Usages)
 {
-    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
+    MaterialData MatData = UHMaterialDataTable[SAFE_INSTANCE_ID][0];
     UnpackMaterialData(MatData, Usages);
     
     // material input code will be generated in C++ side
@@ -85,7 +88,7 @@ UHMaterialInputs GetMaterialInput(float2 UV0, float MipLevel, out MaterialUsage 
 
 UHMaterialInputs GetMaterialSmoothness(float2 UV0, float MipLevel, out MaterialUsage Usages)
 {
-    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
+    MaterialData MatData = UHMaterialDataTable[SAFE_INSTANCE_ID][0];
     UnpackMaterialData(MatData, Usages);
     
     // material input code will be generated in C++ side
@@ -94,7 +97,7 @@ UHMaterialInputs GetMaterialSmoothness(float2 UV0, float MipLevel, out MaterialU
 
 uint3 GetIndex(in uint PrimIndex)
 {
-    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
+    UHRendererInstance RendererInstances = UHRendererInstances[SAFE_INSTANCE_INDEX];
     ByteAddressBuffer Indices = UHIndicesTable[RendererInstances.MeshIndex];
 	
     // get index data based on indice type, it can be 16 or 32 bit
@@ -134,7 +137,7 @@ uint3 GetIndex(in uint PrimIndex)
 
 float2 GetHitUV0(uint3 PrimIndices, Attribute Attr)
 {
-    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
+    UHRendererInstance RendererInstances = UHRendererInstances[SAFE_INSTANCE_INDEX];
 
     StructuredBuffer<float2> UV0 = UHUV0Table[RendererInstances.MeshIndex];
 	float2 OutUV = 0;
@@ -148,7 +151,7 @@ float2 GetHitUV0(uint3 PrimIndices, Attribute Attr)
 
 float3 GetHitVertexNormal(uint3 PrimIndices, Attribute Attr)
 {
-    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
+    UHRendererInstance RendererInstances = UHRendererInstances[SAFE_INSTANCE_INDEX];
     
     StructuredBuffer<float3> Normal = UHNormalTable[RendererInstances.MeshIndex];
     float3 OutNormal = float3(0, 0, 1);
@@ -161,7 +164,7 @@ float3 GetHitVertexNormal(uint3 PrimIndices, Attribute Attr)
 
 float4 GetHitTangent(uint3 PrimIndices, Attribute Attr)
 {
-    UHRendererInstance RendererInstances = UHRendererInstances[InstanceIndex()];
+    UHRendererInstance RendererInstances = UHRendererInstances[SAFE_INSTANCE_INDEX];
     
     StructuredBuffer<float4> Tangent = UHTangentTable[RendererInstances.MeshIndex];
     float4 OutTangent = float4(1, 0, 0, 1);
@@ -192,7 +195,7 @@ float3 CalculateBumpNormal(float3 InBump, float3 VertexNormal, in Attribute Attr
 
 void CalculateMaterial(inout UHDefaultPayload Payload, float3 WorldPos, in Attribute Attr, bool bMergeDiffuseEmissive = false)
 {    
-    MaterialData MatData = UHMaterialDataTable[InstanceID()][0];
+    MaterialData MatData = UHMaterialDataTable[SAFE_INSTANCE_ID][0];
     bool bIsOpaque = MatData.Data[1] <= UH_ISMASKED;
 	
 	// fetch material data

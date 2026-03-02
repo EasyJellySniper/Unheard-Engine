@@ -225,10 +225,9 @@ float3 CalculateIndirectLighting(in UHDefaultPayload OldPayload
     IndirectLightInfo.AttenNoise = GetAttenuationNoise(HitPixelCoord.xy) * 0.1f;
     IndirectLightInfo.Normal = OldPayload.HitVertexNormal;
     
-    // calc indirect atten = inverse square distance atten x (1 - smoothness) x final scale
+    // calc indirect atten = distance atten x (1 - smoothness) x final scale
     // as high smoothness surfaces will reflect more than indirect diffuse
     float IndirectAtten = saturate((GIndirectLightFadeDistance - OldPayload.HitT) / GIndirectLightFadeDistance);
-    IndirectAtten *= IndirectAtten;
     IndirectAtten *= (1.0f - SceneSmoothness);
     IndirectAtten *= GIndirectLightScale;
     
