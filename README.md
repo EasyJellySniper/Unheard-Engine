@@ -2,7 +2,7 @@
  Vulkan API based engine project for graphic/rendering experiments and practices. <br>
  Including work on mesh shader–based rendering pipelines and real-time ray tracing. <br><br>
  Full project download link: https://mega.nz/folder/stgwzQib#ct2EQZm5_w_M53RizRlGHw <br>
- <br> (Only UnheardEngine.zip is needed) <br>
+ (Only UnheardEngine.zip is needed) <br>
  If you have hard time running this project, check the SDK Dependency.txt and install necessary SDKs. <br>
  Recommended to use the full project link, as there are a few test assets. <br>
 
