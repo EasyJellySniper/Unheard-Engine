@@ -586,6 +586,9 @@ bool UHGraphic::CreateLogicalDevice()
 		bSupportMeshShader = MeshShaderFeatures.meshShader;
 		MeshShaderFeatures.multiviewMeshShader = false;
 		MeshShaderFeatures.primitiveFragmentShadingRateMeshShader = false;
+
+		// enable v2 synchronization
+		VK13Features.synchronization2 = true;
 	}
 
 	// get RT feature props

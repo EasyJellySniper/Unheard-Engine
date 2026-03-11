@@ -19,11 +19,6 @@ groupshared uint GLightCount;
 [numthreads(1, UHTHREAD_GROUP2D_Y * UHTHREAD_GROUP2D_Y, 1)]
 void CollectPointLightCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GIndex : SV_GroupIndex)
 {
-    if (GNumPointLights == 0 || DTid.y >= GNumPointLights)
-    {
-        return;
-    }
-
     uint InstanceID = Gid.x;
     uint LightIndex = DTid.y;
     
@@ -32,6 +27,11 @@ void CollectPointLightCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupI
         GLightCount = 0;
     }
     GroupMemoryBarrierWithGroupSync();
+
+    if (GNumPointLights == 0 || DTid.y >= GNumPointLights)
+    {
+        return;
+    }
 
     ObjectConstants Obj = UHObjects[InstanceID];
     UHPointLight Light = UHPointLights[LightIndex];
@@ -65,11 +65,6 @@ void CollectPointLightCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupI
 [numthreads(1, UHTHREAD_GROUP2D_Y * UHTHREAD_GROUP2D_Y, 1)]
 void CollectSpotLightCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID, uint GIndex : SV_GroupIndex)
 {
-    if (GNumSpotLights == 0 || DTid.y >= GNumSpotLights)
-    {
-        return;
-    }
-
     uint InstanceID = Gid.x;
     uint LightIndex = DTid.y;
     
@@ -78,6 +73,11 @@ void CollectSpotLightCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID
         GLightCount = 0;
     }
     GroupMemoryBarrierWithGroupSync();
+
+    if (GNumSpotLights == 0 || DTid.y >= GNumSpotLights)
+    {
+        return;
+    }
 
     ObjectConstants Obj = UHObjects[InstanceID];
     UHSpotLight Light = UHSpotLights[LightIndex];

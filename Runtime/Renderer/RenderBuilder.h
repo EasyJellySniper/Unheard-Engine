@@ -106,7 +106,7 @@ public:
 
 	// transition buffer
 	void ResourceBarrier(VkBuffer InBuffer, const uint64_t BufferSize
-		, VkAccessFlagBits SrcAccess, VkAccessFlagBits DstAccess, VkPipelineStageFlagBits SrcStage, VkPipelineStageFlagBits DstStage);
+		, VkAccessFlagBits SrcAccess, VkAccessFlagBits DstAccess, VkPipelineStageFlags SrcStage, VkPipelineStageFlags DstStage);
 
 	void PushResourceBarrier(const UHImageBarrier InBarrier);
 	void FlushResourceBarrier();

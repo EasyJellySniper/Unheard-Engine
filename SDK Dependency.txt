@@ -4,7 +4,7 @@ C++ version: C++17
 Windows SDK Version: 10.0.26100.0
 Platform Toolset: v143
 NVIDIA Driver: 566.36
-
+Vulkan SDK: 1.3.283.0
 
 <<Dependencies that are integrated in the ThirdParty folder>>
 Vulkan version: 1.3.283.0

@@ -486,7 +486,7 @@ void UHRenderBuilder::ResourceBarrier(std::vector<UHTexture*> InTextures, VkImag
 }
 
 void UHRenderBuilder::ResourceBarrier(VkBuffer InBuffer, const uint64_t BufferSize
-	, VkAccessFlagBits SrcAccess, VkAccessFlagBits DstAccess, VkPipelineStageFlagBits SrcStage, VkPipelineStageFlagBits DstStage)
+	, VkAccessFlagBits SrcAccess, VkAccessFlagBits DstAccess, VkPipelineStageFlags SrcStage, VkPipelineStageFlags DstStage)
 {
 	VkBufferMemoryBarrier Barrier{};
 	Barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;

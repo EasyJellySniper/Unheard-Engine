@@ -935,7 +935,25 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 				RenderOcclusionPass(SceneRenderBuilder);
 				RenderMotionPass(SceneRenderBuilder);
 
-				if (!RTParams.bEnableAsyncCompute)
+				if (RTParams.bEnableAsyncCompute)
+				{
+					// transition structured buffer used in async compute queue to SRV
+					if (RTParams.bNeedGenerateSH9)
+					{
+						VkPipelineStageFlags SH9Stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+						SceneRenderBuilder.ResourceBarrier(GSH9Data->GetBuffer(), GSH9Data->GetBufferSize()
+							, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT
+							, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, SH9Stages);
+					}
+
+					if (CurrentScene->GetPointLightCount() > 0 || CurrentScene->GetSpotLightCount() > 0)
+					{
+						SceneRenderBuilder.ResourceBarrier(GInstanceLightsBuffer[CurrentFrameRT]->GetBuffer(), GInstanceLightsBuffer[CurrentFrameRT]->GetBufferSize()
+							, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT
+							, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR);
+					}
+				}
+				else
 				{
 					BuildTopLevelAS(SceneRenderBuilder);
 					CollectLightPass(SceneRenderBuilder);
