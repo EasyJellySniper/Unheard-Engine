@@ -327,7 +327,7 @@ void UHShaderImporter::CompileHLSL(UHShader* InShader)
 		+ " -HV 2018 "
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
-		+ " -fspv-target-env=vulkan1.1spirv1.4 ";
+		+ " -fspv-target-env=vulkan1.2 ";
 
 	// mesh shader extension
 	if (UHUtilities::StringFind(InShader->GetProfileName(), "as_") || UHUtilities::StringFind(InShader->GetProfileName(), "ms_"))
@@ -437,7 +437,7 @@ std::filesystem::path UHShaderImporter::TranslateHLSL(UHShader* InShader, UHMate
 		+ " -HV 2018 "
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
-		+ " -fspv-target-env=vulkan1.1spirv1.4 ";
+		+ " -fspv-target-env=vulkan1.2 ";
 
 	// mesh shader extension
 	if (UHUtilities::StringFind(InShader->GetProfileName(), "as_") || UHUtilities::StringFind(InShader->GetProfileName(), "ms_"))

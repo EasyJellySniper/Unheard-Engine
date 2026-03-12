@@ -47,10 +47,32 @@ void CollectPointLightCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupI
         return;
     }
 
-    if (BoxIntersectsSphere(Obj.GWorldPos - Obj.GBoundExtent, Obj.GWorldPos + Obj.GBoundExtent, Light.Position, Light.Radius))
+    bool bIntersected = BoxIntersectsSphere(Obj.GWorldPos - Obj.GBoundExtent, Obj.GWorldPos + Obj.GBoundExtent, Light.Position, Light.Radius);
+
+#if LIGHT_COLLECT_WAVE
+    uint Count = WaveActiveCountBits(bIntersected);
+
+    // wave-based accumulation
+    uint BaseIdx = 0;
+    if (Count > 0)
     {
-        uint StoreIdx;
+        if (WaveIsFirstLane())
+        {
+            InterlockedAdd(GLightCount, Count, BaseIdx);
+        }
+        BaseIdx = WaveReadLaneFirst(BaseIdx);
+    }
+#endif
+
+    if (bIntersected)
+    {
+#if LIGHT_COLLECT_WAVE
+        uint LaneOffset = WavePrefixCountBits(bIntersected);
+        uint StoreIdx = BaseIdx + LaneOffset;
+#else
+        uint StoreIdx = 0;
         InterlockedAdd(GLightCount, 1, StoreIdx);
+#endif
         
         if (StoreIdx < GMaxPointSpotLightPerInstance)
         {
@@ -110,10 +132,32 @@ void CollectSpotLightCS(uint3 DTid : SV_DispatchThreadID, uint3 Gid : SV_GroupID
     }
     
     // box-cone test
-    if (BoxIntersectsConeFrustum(BoxMin, BoxMax, Light.Radius, Light.Angle))
+    bool bIntersected = BoxIntersectsConeFrustum(BoxMin, BoxMax, Light.Radius, Light.Angle);
+
+#if LIGHT_COLLECT_WAVE
+    uint Count = WaveActiveCountBits(bIntersected);
+
+    // wave-based accumulation
+    uint BaseIdx = 0;
+    if (Count > 0)
     {
-        uint StoreIdx;
+        if (WaveIsFirstLane())
+        {
+            InterlockedAdd(GLightCount, Count, BaseIdx);
+        }
+        BaseIdx = WaveReadLaneFirst(BaseIdx);
+    }
+#endif
+
+    if (bIntersected)
+    {
+#if LIGHT_COLLECT_WAVE
+        uint LaneOffset = WavePrefixCountBits(bIntersected);
+        uint StoreIdx = BaseIdx + LaneOffset;
+#else
+        uint StoreIdx = 0;
         InterlockedAdd(GLightCount, 1, StoreIdx);
+#endif
         
         if (StoreIdx < GMaxPointSpotLightPerInstance)
         {

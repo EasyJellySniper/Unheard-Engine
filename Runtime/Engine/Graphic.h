@@ -247,6 +247,7 @@ public:
 	bool IsHDRAvailable() const;
 	bool Is24BitDepthSupported() const;
 	bool IsMeshShaderSupported() const;
+	bool IsWaveOperationSupported() const;
 
 	// get all samplers
 	std::vector<UHSampler*> GetSamplers() const;
@@ -391,6 +392,7 @@ private:
 	bool bSupportHDR;
 	bool bSupport24BitDepth;
 	bool bSupportMeshShader;
+	bool bSupportWaveOperation;
 	std::mutex Mutex;
 
 protected:

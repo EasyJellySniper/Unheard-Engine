@@ -26,6 +26,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, bSupportHDR(false)
 	, bSupport24BitDepth(true)
 	, bSupportMeshShader(false)
+	, bSupportWaveOperation(false)
 	, MeshBufferSharedMemory(nullptr)
 	, ImageSharedMemory(nullptr)
 	, GPUTimeStampPeriod(0.0f)
@@ -55,7 +56,8 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_push_descriptor"
 		, "VK_EXT_conditional_rendering"
 		, "VK_EXT_descriptor_indexing"
-		, "VK_EXT_mesh_shader" };
+		, "VK_EXT_mesh_shader"
+		, "VK_KHR_shader_subgroup_extended_types" };
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -587,6 +589,9 @@ bool UHGraphic::CreateLogicalDevice()
 		MeshShaderFeatures.multiviewMeshShader = false;
 		MeshShaderFeatures.primitiveFragmentShadingRateMeshShader = false;
 
+		// enable wave operation
+		Vk12Features.shaderSubgroupExtendedTypes = true;
+
 		// enable v2 synchronization
 		VK13Features.synchronization2 = true;
 	}
@@ -600,13 +605,19 @@ bool UHGraphic::CreateLogicalDevice()
 	MeshPropsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT;
 	RTPropsFeatures.pNext = &MeshPropsFeatures;
 
+	// get wave operation props
+	VkPhysicalDeviceSubgroupProperties SubgroupProps{};
+	SubgroupProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+	SubgroupProps.pNext = &RTPropsFeatures;
+
 	VkPhysicalDeviceProperties2 Props2{};
 	Props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	Props2.pNext = &RTPropsFeatures;
+	Props2.pNext = &SubgroupProps;
 
 	vkGetPhysicalDeviceProperties2(PhysicalDevice, &Props2);
 	ShaderRecordSize = RTPropsFeatures.shaderGroupHandleSize;
 	GPUTimeStampPeriod = Props2.properties.limits.timestampPeriod;
+	bSupportWaveOperation = (SubgroupProps.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) && (SubgroupProps.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT);
 
 	// device create info, pass raytracing feature to pNext of create info
 	VkDeviceCreateInfo CreateInfo{};
@@ -1614,6 +1625,11 @@ bool UHGraphic::Is24BitDepthSupported() const
 bool UHGraphic::IsMeshShaderSupported() const
 {
 	return bSupportMeshShader;
+}
+
+bool UHGraphic::IsWaveOperationSupported() const
+{
+	return bSupportWaveOperation;
 }
 
 std::vector<UHSampler*> UHGraphic::GetSamplers() const

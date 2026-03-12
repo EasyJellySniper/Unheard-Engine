@@ -545,6 +545,7 @@
     <None Include="Shaders\UHMaterialCommon.hlsli" />
     <None Include="Shaders\UHMeshShaderCommon.hlsli" />
     <None Include="Shaders\UHSphericalHamonricCommon.hlsli" />
+    <None Include="Shaders\UHWaveCommon.hlsli" />
     <None Include="ThirdParty\ImGui\backends\vulkan\generate_spv.sh" />
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.frag" />
     <None Include="ThirdParty\ImGui\backends\vulkan\glsl_shader.vert" />

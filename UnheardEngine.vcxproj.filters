@@ -933,5 +933,6 @@
     <None Include="Shaders\RayTracing\RayTracingSkyLight.hlsl" />
     <None Include="Shaders\PostProcessing\BilateralFilterComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RTIndirectLightReprojection.hlsl" />
+    <None Include="Shaders\UHWaveCommon.hlsli" />
   </ItemGroup>
 </Project>

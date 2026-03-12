@@ -19,6 +19,12 @@ UHCollectLightShader::UHCollectLightShader(UHGraphic* InGfx, std::string Name, b
 void UHCollectLightShader::OnCompile()
 {
 	std::vector<std::string> Defines;
+	if (Gfx->IsWaveOperationSupported())
+	{
+		// prefer wave operation if supported
+		Defines.push_back("LIGHT_COLLECT_WAVE");
+	}
+
 	if (bCollectPointLight)
 	{
 		Defines.push_back("COLLECT_POINTLIGHT");

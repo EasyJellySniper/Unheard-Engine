@@ -125,14 +125,24 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     }
     GroupMemoryBarrierWithGroupSync();
     
-    // find min-max depth
+    // wave-based min/max depth
     if (Depth > 0.0f)
     {
         uint DepthUInt = asuint(Depth);
+#if LIGHT_CULLING_WAVE
+        uint WaveDepthMin = WaveActiveMin(DepthUInt);
+        uint WaveDepthMax = WaveActiveMax(DepthUInt);
+        if (WaveIsFirstLane())
+        {
+            InterlockedMin(GMinDepth, WaveDepthMin);
+            InterlockedMax(GMaxDepth, WaveDepthMax);
+        }
+#else
         InterlockedMin(GMinDepth, DepthUInt);
         InterlockedMax(GMaxDepth, DepthUInt);
+#endif
     }
-	GroupMemoryBarrierWithGroupSync();
+    GroupMemoryBarrierWithGroupSync();
     
     uint TileIdx = Gid.x + Gid.y * GLightTileCountX;
     uint TileOffset = GetPointLightOffset(TileIdx);
@@ -170,10 +180,31 @@ void CullPointLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
         float3 PointLightViewPos = WorldToViewPos(PointLight.Position);
         
         // sphere-frustum test
-        if (SphereIntersectsFrustum(float4(PointLightViewPos, PointLight.Radius), TileFrustum))
+        bool bIntersected = SphereIntersectsFrustum(float4(PointLightViewPos, PointLight.Radius), TileFrustum);
+#if LIGHT_CULLING_WAVE
+        uint Count = WaveActiveCountBits(bIntersected);
+        
+        // wave-based accumulation
+        uint BaseIdx = 0;
+        if (Count > 0)
         {
+            if (WaveIsFirstLane())
+            {
+                InterlockedAdd(GTileLightCount, Count, BaseIdx);
+            }
+            BaseIdx = WaveReadLaneFirst(BaseIdx);
+        }
+#endif
+        
+        if (bIntersected)
+        {
+#if LIGHT_CULLING_WAVE
+            uint LaneOffset = WavePrefixCountBits(bIntersected);
+            uint StoreIdx = BaseIdx + LaneOffset;
+#else
             uint StoreIdx = 0;
             InterlockedAdd(GTileLightCount, 1, StoreIdx);
+#endif
             
             // discard the result that exceeds the max point light per tile
             if (StoreIdx < GMaxPointLightPerTile)
@@ -217,12 +248,22 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
     }
     GroupMemoryBarrierWithGroupSync();
     
-    // find min-max depth
+    // wave-based min/max depth
     if (Depth > 0.0f)
     {
         uint DepthUInt = asuint(Depth);
+#if LIGHT_CULLING_WAVE
+        uint WaveDepthMin = WaveActiveMin(DepthUInt);
+        uint WaveDepthMax = WaveActiveMax(DepthUInt);
+        if (WaveIsFirstLane())
+        {
+            InterlockedMin(GMinDepth, WaveDepthMin);
+            InterlockedMax(GMaxDepth, WaveDepthMax);
+        }
+#else
         InterlockedMin(GMinDepth, DepthUInt);
         InterlockedMax(GMaxDepth, DepthUInt);
+#endif
     }
     GroupMemoryBarrierWithGroupSync();
     
@@ -260,10 +301,34 @@ void CullSpotLight(uint3 Gid, uint GIndex, float Depth, bool bForTranslucent)
         
         // transform the tile center to light space, no need to do this for corners as the frustum won't change
         float3 TileCenterLightSpace = mul(float4(FrustumSphere.xyz, 1.0f), SpotLight.WorldToLight).xyz;
-        if (SphereIntersectsConeFrustum(float4(TileCenterLightSpace, FrustumSphere.w), SpotLight.Radius, SpotLight.Angle))
+        
+        // sphere - cone test
+        bool bIntersected = SphereIntersectsConeFrustum(float4(TileCenterLightSpace, FrustumSphere.w), SpotLight.Radius, SpotLight.Angle);
+        
+#if LIGHT_CULLING_WAVE
+        uint Count = WaveActiveCountBits(bIntersected);
+        
+        // wave-based accumulation
+        uint BaseIdx = 0;
+        if (Count > 0)
         {
+            if (WaveIsFirstLane())
+            {
+                InterlockedAdd(GTileLightCount, Count, BaseIdx);
+            }
+            BaseIdx = WaveReadLaneFirst(BaseIdx);
+        }
+#endif
+        
+        if (bIntersected)
+        {
+#if LIGHT_CULLING_WAVE
+            uint LaneOffset = WavePrefixCountBits(bIntersected);
+            uint StoreIdx = BaseIdx + LaneOffset;
+#else
             uint StoreIdx = 0;
             InterlockedAdd(GTileLightCount, 1, StoreIdx);
+#endif
             
             // discard the result that exceeds the max point light per tile
             if (StoreIdx < GMaxSpotLightPerTile)

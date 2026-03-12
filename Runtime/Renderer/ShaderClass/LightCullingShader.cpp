@@ -21,7 +21,14 @@ UHLightCullingShader::UHLightCullingShader(UHGraphic* InGfx, std::string Name)
 
 void UHLightCullingShader::OnCompile()
 {
-	ShaderCS = Gfx->RequestShader("LightCullingComputeShader", "Shaders/LightCullingComputeShader.hlsl", "LightCullingCS", "cs_6_0");
+	std::vector<std::string> Defines;
+	if (Gfx->IsWaveOperationSupported())
+	{
+		// prefer wave operation if supported
+		Defines.push_back("LIGHT_CULLING_WAVE");
+	}
+
+	ShaderCS = Gfx->RequestShader("LightCullingComputeShader", "Shaders/LightCullingComputeShader.hlsl", "LightCullingCS", "cs_6_0", Defines);
 
 	// state
 	UHComputePassInfo Info(PipelineLayout);

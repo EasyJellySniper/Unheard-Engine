@@ -91,3 +91,10 @@ With depth/normal rejection applied the result looks much better.
 16-02-2026:
 Applied temporal tracing method for indirect diffuse too.
 Next is to check why indirect diffuse is still noisy with temporal + bilateral.
+
+11-03-2026:
+Enhanced the safety of some structured buffer usages between async compute <--> graphic queues.
+
+12-03-2026:
+Applied wave implementation for light culling/collection.
+Updated DXC tool and compiling commands (vulkan1.2) for this purpose.
