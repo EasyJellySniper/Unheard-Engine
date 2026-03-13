@@ -996,13 +996,15 @@ UHRenderPassObject UHGraphic::CreateRenderPass(std::vector<UHRenderTexture*> InT
 	return ResultRenderPass;
 }
 
-VkFramebuffer UHGraphic::CreateFrameBuffer(UHRenderTexture* InRT, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
+VkFramebuffer UHGraphic::CreateFrameBuffer(UHRenderTexture* InRT, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers
+	, int32_t MipIdx) const
 {
 	std::vector<UHRenderTexture*> RTs{ InRT };
-	return CreateFrameBuffer(RTs, InRenderPass, InExtent, Layers);
+	return CreateFrameBuffer(RTs, InRenderPass, InExtent, Layers, MipIdx);
 }
 
-VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers) const
+VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers
+	, int32_t MipIdx) const
 {
 	VkFramebuffer NewFrameBuffer = nullptr;
 
@@ -1016,7 +1018,7 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, 
 	std::vector<VkImageView> Views(InRTs.size());
 	for (size_t Idx = 0; Idx < InRTs.size(); Idx++)
 	{
-		Views[Idx] = InRTs[Idx]->GetImageView();
+		Views[Idx] = (MipIdx == UHINDEXNONE) ? InRTs[Idx]->GetImageView() : InRTs[Idx]->GetImageViewPerMip(MipIdx);
 		DebugName += "_" + InRTs[Idx]->GetName();
 	}
 
@@ -1937,7 +1939,6 @@ bool UHGraphic::CreateSwapChain()
 	Win32FullScreenInfo.hmonitor = MonitorFromWindow(WindowCache, MONITOR_DEFAULTTOPRIMARY);
 
 	// prepare fullscreen stuff, set to VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT and let the driver do the work
-	// at the beginning it was controlled by app, but it could cause initialization failed for 4070 Ti 
 	VkSurfaceFullScreenExclusiveInfoEXT FullScreenInfo{};
 	FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
 	FullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;

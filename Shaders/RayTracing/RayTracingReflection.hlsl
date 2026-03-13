@@ -280,6 +280,8 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
             * Occlusion * Fresnel;
     }
     
+    // NaN guard
+    Result = -min(-Result, 0.0f);
     return float4(Result, Payload.HitAlpha);
 }
 

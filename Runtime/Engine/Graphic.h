@@ -128,8 +128,8 @@ public:
 	UHRenderPassObject CreateRenderPass(std::vector<UHRenderTexture*> InTexes, UHTransitionInfo InTransitionInfo, UHRenderTexture* InDepth = nullptr) const;
 
 	// create frame buffer, single/multiple
-	VkFramebuffer CreateFrameBuffer(UHRenderTexture* InRT, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
-	VkFramebuffer CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1) const;
+	VkFramebuffer CreateFrameBuffer(UHRenderTexture* InRT, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1, int32_t MipIdx = UHINDEXNONE) const;
+	VkFramebuffer CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, VkRenderPass InRenderPass, VkExtent2D InExtent, int32_t Layers = 1, int32_t MipIdx = UHINDEXNONE) const;
 
 	// create query pool
 	UHGPUQuery* RequestGPUQuery(uint32_t Count, VkQueryType QueueType);

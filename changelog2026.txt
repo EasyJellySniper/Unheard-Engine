@@ -98,3 +98,9 @@ Enhanced the safety of some structured buffer usages between async compute <--> 
 12-03-2026:
 Applied wave implementation for light culling/collection.
 Updated DXC tool and compiling commands (vulkan1.2) for this purpose.
+
+13-03-2026:
+Did HDR implementation correctness. Now the pipeline does contrast->ACE->Rec709To2020->ST2084 properly.
+Previous HDR was incomplete and made the scene over-saturated.
+Fixed EXR image import as well, I shouldn't do any extra re-scaling but just preserve the original value with sanity check (inf/nan).
+Set RT reflection buffer as 16-bit float format for the best result.

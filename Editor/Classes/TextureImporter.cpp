@@ -19,6 +19,21 @@ UHTextureImporter::UHTextureImporter(UHGraphic* InGraphic)
 
 }
 
+float SanitizeFloat(float InValue)
+{
+	if (std::isnan(InValue))
+	{
+		return 0.0f;
+	}
+
+	if (std::isinf(InValue))
+	{
+		return 65504.0f;
+	}
+
+	return std::clamp(InValue, 0.0f, 65504.0f);
+}
+
 std::vector<uint8_t> UHTextureImporter::LoadTexture(std::filesystem::path Filename, uint32_t& Width, uint32_t& Height)
 {
 	std::vector<uint8_t> Texture;
@@ -37,57 +52,18 @@ std::vector<uint8_t> UHTextureImporter::LoadTexture(std::filesystem::path Filena
 		File.setFrameBuffer(&Pixels[0][0], 1, Width);
 		File.readPixels(Dimension.min.y, Dimension.max.y);
 
-		// check the float value, and relatively scale down with the max value searched
-		float HalfMax = 65504.0f;
-		float MaxValueR = 0.0f;
-		float MaxValueG = 0.0f;
-		float MaxValueB = 0.0f;
-
+		const float HalfMax = 65504.0f;
 		for (uint32_t X = 0; X < Width; X++)
 		{
 			for (uint32_t Y = 0; Y < Height; Y++)
 			{
 				Imf::Rgba& Color = Pixels[X][Y];
-				UHColorRGB ColorF(Color.r, Color.g, Color.b);
-				if (isinf(ColorF.R))
-				{
-					ColorF.R = HalfMax;
-					Color.r = ColorF.R;
-				}
 
-				if (isinf(ColorF.G))
-				{
-					ColorF.G = HalfMax;
-					Color.g = ColorF.G;
-				}
-
-				if (isinf(ColorF.B))
-				{
-					ColorF.B = HalfMax;
-					Color.b = ColorF.B;
-				}
-
-				MaxValueR = (std::max)(MaxValueR, ColorF.R);
-				MaxValueG = (std::max)(MaxValueG, ColorF.G);
-				MaxValueB = (std::max)(MaxValueB, ColorF.B);
-			}
-		}
-
-		// scale down if max value of color exceed the desired max value
-		const float DesiredMaxValue = 32767.0f;
-		if (MaxValueR > DesiredMaxValue || MaxValueG > DesiredMaxValue || MaxValueB > DesiredMaxValue)
-		{
-			for (uint32_t X = 0; X < Width; X++)
-			{
-				for (uint32_t Y = 0; Y < Height; Y++)
-				{
-					Imf::Rgba& Color = Pixels[X][Y];
-					UHColorRGB ColorF(Color.r, Color.g, Color.b);
-
-					Color.r = ColorF.R / MaxValueR * DesiredMaxValue;
-					Color.g = ColorF.G / MaxValueG * DesiredMaxValue;
-					Color.b = ColorF.B / MaxValueB * DesiredMaxValue;
-				}
+				// erase invalid values
+				Color.r = SanitizeFloat(Color.r);
+				Color.g = SanitizeFloat(Color.g);
+				Color.b = SanitizeFloat(Color.b);
+				Color.a = 1.0f;
 			}
 		}
 

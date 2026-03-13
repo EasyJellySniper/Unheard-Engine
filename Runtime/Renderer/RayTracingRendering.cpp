@@ -56,7 +56,7 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 		// reflection buffer setup, the size is the same as rendering resolution regardless the quality setting
 		// as there are some filter passes for reflections
 		RenderTextureSetting.bUseMipmap = true;
-		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTReflectionResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA8_UNORM, RenderTextureSetting);
+		GRTReflectionResult = GraphicInterface->RequestRenderTexture("RTReflectionResult", RenderResolution, UHTextureFormat::UH_FORMAT_RGBA16F, RenderTextureSetting);
 		RenderTextureSetting.bUseMipmap = false;
 
 		// refined normal at half size

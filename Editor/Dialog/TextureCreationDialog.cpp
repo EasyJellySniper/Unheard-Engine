@@ -383,7 +383,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 MipExtent.height >>= MipIdx;
 
                 UHRenderPassObject SphereToCubemapRenderPass = Gfx->CreateRenderPass(CubemapRT[Idx], UHTransitionInfo(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_IMAGE_LAYOUT_GENERAL));
-                VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx], SphereToCubemapRenderPass.RenderPass, MipExtent);
+                VkFramebuffer SphereToCubemapFrameBuffer = Gfx->CreateFrameBuffer(CubemapRT[Idx], SphereToCubemapRenderPass.RenderPass, MipExtent, 1, MipIdx);
                 SphereToCubemapRenderPass.FrameBuffer = SphereToCubemapFrameBuffer;
 
                 // setup shader
