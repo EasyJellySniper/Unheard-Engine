@@ -21,6 +21,7 @@ extern thread_local std::thread::id GCurrentThreadID;
 
 extern bool GIsEditor;
 extern bool GIsShipping;
+extern bool GIsWindowsPlatform;
 
 extern bool IsInGameThread();
 extern bool IsInRenderThread();

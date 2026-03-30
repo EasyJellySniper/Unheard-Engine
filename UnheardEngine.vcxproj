@@ -264,6 +264,7 @@
     <ClInclude Include="Editor\Dialog\TextureDialog.h" />
     <ClInclude Include="Editor\Dialog\WorldDialog.h" />
     <ClInclude Include="Editor\Editor\PreviewScene.h" />
+    <ClInclude Include="Runtime\Application.h" />
     <ClInclude Include="Runtime\Classes\AsyncTask.h" />
     <ClInclude Include="Runtime\Classes\GraphNode\GraphNode.h" />
     <ClInclude Include="Editor\Classes\GraphNodeGUI.h" />
@@ -296,6 +297,7 @@
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
     <ClInclude Include="Runtime\Engine\GraphicFunction.h" />
+    <ClInclude Include="Runtime\Platform\Platform.h" />
     <ClInclude Include="Runtime\Renderer\DescriptorHelper.h" />
     <ClInclude Include="Runtime\Components\Light.h" />
     <ClInclude Include="Runtime\Components\Camera.h" />
@@ -409,6 +411,7 @@
     <ClCompile Include="Editor\Dialog\TextureDialog.cpp" />
     <ClCompile Include="Editor\Dialog\WorldDialog.cpp" />
     <ClCompile Include="Editor\Editor\PreviewScene.cpp" />
+    <ClCompile Include="Runtime\Application.cpp" />
     <ClCompile Include="Runtime\Classes\GraphNode\GraphNode.cpp" />
     <ClCompile Include="Editor\Classes\GraphNodeGUI.cpp" />
     <ClCompile Include="Runtime\Classes\GraphNode\GraphPin.cpp" />
@@ -440,6 +443,8 @@
     <ClCompile Include="Runtime\Classes\Utility.cpp" />
     <ClCompile Include="Runtime\Components\GameScript.cpp" />
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
+    <ClCompile Include="Runtime\Platform\PlatformLinux.cpp" />
+    <ClCompile Include="Runtime\Platform\PlatformWindows.cpp" />
     <ClCompile Include="Runtime\Renderer\FilterPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\DescriptorHelper.cpp" />

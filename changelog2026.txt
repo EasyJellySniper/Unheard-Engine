@@ -104,3 +104,8 @@ Did HDR implementation correctness. Now the pipeline does contrast->ACE->Rec709T
 Previous HDR was incomplete and made the scene over-saturated.
 Fixed EXR image import as well, I shouldn't do any extra re-scaling but just preserve the original value with sanity check (inf/nan).
 Set RT reflection buffer as 16-bit float format for the best result.
+
+30-03-2026:
+Started multiple platform works, I plan to add Linux support first.
+Implemented and separated Windows/Linux initialization logic.
+Learned how to setup CMake and test on WSL2 first.

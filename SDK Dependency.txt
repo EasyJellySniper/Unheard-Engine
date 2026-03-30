@@ -12,6 +12,13 @@ FBX version: 2020.0.1
 DXC Compiler: v1.9.2602 Release
 ImGui: v1.89.9, the dock branch
 
+<<Linux Dependencies - Optional only for Linux build testing!>>
+Distro: Ubuntu-22.04
+CMake: 3.22.1
+gcc: (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+g++: (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+GNU Make: 4.3
+
 
 Viking Huts is downloaded from CGTrader:
 https://www.cgtrader.com/free-3d-models/exterior/house/viking-hut
