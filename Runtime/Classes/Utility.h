@@ -1,6 +1,4 @@
 #pragma once
-#define VK_USE_PLATFORM_WIN32_KHR
-#include <vulkan/vulkan.h>
 #include <vector>
 #include <algorithm>
 #include <fstream>
@@ -8,7 +6,6 @@
 #include <filesystem>
 #include <string>
 #include <sstream>
-#include "Types.h"
 #include <unordered_map>
 
 // a header for utilities
@@ -140,9 +137,9 @@ namespace UHUtilities
 
 	// remove by index
 	template<class T>
-	inline void RemoveByIndex(std::vector<T>& InVector, const int32_t InIndex, const int32_t InLast = UHINDEXNONE)
+	inline void RemoveByIndex(std::vector<T>& InVector, const int32_t InIndex, const int32_t InLast = -1)
 	{
-		if (InLast == UHINDEXNONE)
+		if (InLast == -1)
 		{
 			InVector.erase(InVector.begin() + InIndex);
 		}

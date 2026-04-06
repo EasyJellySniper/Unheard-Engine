@@ -36,7 +36,7 @@
     <ClInclude Include="Runtime\Engine\Graphic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Runtime\Engine\Input.h">
+    <ClInclude Include="Runtime\Platform\PlatformInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Runtime\Engine\GameTimer.h">
@@ -453,6 +453,15 @@
     <ClInclude Include="Runtime\Platform\Platform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Runtime\Platform\Client.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Platform\PlatformVulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Runtime\Classes\Math.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="UnheardEngine.cpp">
@@ -464,7 +473,7 @@
     <ClCompile Include="Runtime\Engine\Graphic.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Engine\Input.cpp">
+    <ClCompile Include="Runtime\Platform\PlatformInputWindows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Engine\GameTimer.cpp">
@@ -875,7 +884,13 @@
     <ClCompile Include="Runtime\Platform\PlatformWindows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Platform\PlatformLinux.cpp">
+    <ClCompile Include="Runtime\Platform\ClientWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Platform\PlatformInputShared.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Runtime\Classes\Math.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -949,5 +964,14 @@
     <None Include="Shaders\PostProcessing\BilateralFilterComputeShader.hlsl" />
     <None Include="Shaders\RayTracing\RTIndirectLightReprojection.hlsl" />
     <None Include="Shaders\UHWaveCommon.hlsli" />
+    <None Include="Runtime\Platform\PlatformLinux.cpp">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="Runtime\Platform\ClientLinux.cpp">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="Runtime\Platform\PlatformInputLinux.cpp">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

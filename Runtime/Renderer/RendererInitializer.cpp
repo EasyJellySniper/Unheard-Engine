@@ -685,10 +685,10 @@ void UHDeferredShadingRenderer::UpdateDescriptors()
 		|| (GraphicInterface->IsMeshShaderSupported() && MeshInstanceCount > 0))
 	{
 		// bind VB/IB table for RT or mesh shader use
-		std::vector<UHRenderBuffer<XMFLOAT3>*> Positions;
-		std::vector<UHRenderBuffer<XMFLOAT2>*> UVs;
-		std::vector<UHRenderBuffer<XMFLOAT3>*> Normals;
-		std::vector<UHRenderBuffer<XMFLOAT4>*> Tangents;
+		std::vector<UHRenderBuffer<UHVector3>*> Positions;
+		std::vector<UHRenderBuffer<UHVector2>*> UVs;
+		std::vector<UHRenderBuffer<UHVector3>*> Normals;
+		std::vector<UHRenderBuffer<UHVector4>*> Tangents;
 		std::vector<VkDescriptorBufferInfo> IndicesInfo;
 		std::vector<UHRenderBuffer<UHMeshlet>*> Meshlets;
 

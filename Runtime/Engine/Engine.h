@@ -3,7 +3,7 @@
 #include "../Classes/Settings.h"
 #include "Config.h"
 #include "Graphic.h"
-#include "Input.h"
+#include "Runtime/Platform/PlatformInput.h"
 #include "GameTimer.h"
 #include "Asset.h"
 #include "../Renderer/DeferredShadingRenderer.h"
@@ -27,6 +27,8 @@ enum class UHEngineResizeReason
 	NewResolution
 };
 
+class UHClient;
+
 // Unheard engine class
 class UHEngine
 {
@@ -34,7 +36,7 @@ public:
 	UHEngine();
 
 	// init engine
-	bool InitEngine(HINSTANCE Instance, HWND EngineWindow);
+	bool InitEngine(UHClient* InClient);
 
 	// Release engine
 	void ReleaseEngine();
@@ -61,7 +63,7 @@ public:
 	void SetResizeReason(UHEngineResizeReason InFlag);
 
 	// UH interface getters
-	UHRawInput* GetRawInput() const;
+	UHPlatformInput* GetRawInput() const;
 	UHGraphic* GetGfx() const;
 	UHGameTimer* GetGameTimer() const;
 	UHAssetManager* GetAssetManager() const;
@@ -89,17 +91,14 @@ private:
 	// engine resize
 	void ResizeEngine();
 
-	// cache of main window
-	HWND UHEngineWindow;
-
-	// cache of HInstance
-	HINSTANCE UHWindowInstance;
+	// cache the client
+	UHClient* UHEClient;
 
 	// graphic class
 	UniquePtr<UHGraphic> UHEGraphic;
 
 	// input class
-	UniquePtr<UHRawInput> UHERawInput;
+	UniquePtr<UHPlatformInput> UHERawInput;
 
 	// game timer class
 	UniquePtr<UHGameTimer> UHEGameTimer;
@@ -116,7 +115,7 @@ private:
 #if WITH_EDITOR
 	// editor class
 	UniquePtr<UHEditor> UHEEditor;
-	std::wstring WindowCaption;
+	std::string WindowCaption;
 #endif
 
 	// profiler class

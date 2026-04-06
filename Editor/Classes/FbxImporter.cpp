@@ -241,9 +241,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			// diffuse
 			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Diffuse;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->DiffuseFactor;
-			MatProps.Diffuse.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
-			MatProps.Diffuse.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
-			MatProps.Diffuse.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
+			MatProps.Diffuse.X = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Diffuse.Y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Diffuse.Z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// opacity
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->TransparencyFactor;
@@ -252,9 +252,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			// emissive
 			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Emissive;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->EmissiveFactor;
-			MatProps.Emissive.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
-			MatProps.Emissive.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
-			MatProps.Emissive.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
+			MatProps.Emissive.X = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Emissive.Y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Emissive.Z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// roughness
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->Shininess;
@@ -262,9 +262,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 
 			// specular color
 			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Specular;
-			MatProps.Specular.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
-			MatProps.Specular.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
-			MatProps.Specular.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
+			MatProps.Specular.X = static_cast<float>(FbxDoubleVec3.Get()[0]);
+			MatProps.Specular.Y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+			MatProps.Specular.Z = static_cast<float>(FbxDoubleVec3.Get()[2]);
 
 			// bump scale
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->BumpFactor;
@@ -275,9 +275,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			// diffuse
 			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Diffuse;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->DiffuseFactor;
-			MatProps.Diffuse.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
-			MatProps.Diffuse.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
-			MatProps.Diffuse.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
+			MatProps.Diffuse.X = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Diffuse.Y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Diffuse.Z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// opacity
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->TransparencyFactor;
@@ -286,9 +286,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			// emissive
 			FbxDoubleVec3 = ((FbxSurfacePhong*)Mat)->Emissive;
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->EmissiveFactor;
-			MatProps.Emissive.x = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
-			MatProps.Emissive.y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
-			MatProps.Emissive.z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
+			MatProps.Emissive.X = static_cast<float>(FbxDoubleVec3.Get()[0] * FbxDouble1);
+			MatProps.Emissive.Y = static_cast<float>(FbxDoubleVec3.Get()[1] * FbxDouble1);
+			MatProps.Emissive.Z = static_cast<float>(FbxDoubleVec3.Get()[2] * FbxDouble1);
 
 			// bump scale
 			FbxDouble1 = ((FbxSurfacePhong*)Mat)->BumpFactor;
@@ -305,9 +305,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			if (FbxProp.IsValid())
 			{
 				FbxDoubleVec3 = FbxProp;
-				MatProps.Diffuse.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
-				MatProps.Diffuse.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
-				MatProps.Diffuse.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
+				MatProps.Diffuse.X = static_cast<float>(FbxDoubleVec3.Get()[0]);
+				MatProps.Diffuse.Y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+				MatProps.Diffuse.Z = static_cast<float>(FbxDoubleVec3.Get()[2]);
 			}
 
 			// opacity
@@ -323,9 +323,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			if (FbxProp.IsValid())
 			{
 				FbxDoubleVec3 = FbxProp;
-				MatProps.Emissive.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
-				MatProps.Emissive.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
-				MatProps.Emissive.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
+				MatProps.Emissive.X = static_cast<float>(FbxDoubleVec3.Get()[0]);
+				MatProps.Emissive.Y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+				MatProps.Emissive.Z = static_cast<float>(FbxDoubleVec3.Get()[2]);
 			}
 
 			// roughness
@@ -342,9 +342,9 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 			if (FbxProp.IsValid())
 			{
 				FbxDoubleVec3 = FbxProp;
-				MatProps.Specular.x = static_cast<float>(FbxDoubleVec3.Get()[0]);
-				MatProps.Specular.y = static_cast<float>(FbxDoubleVec3.Get()[1]);
-				MatProps.Specular.z = static_cast<float>(FbxDoubleVec3.Get()[2]);
+				MatProps.Specular.X = static_cast<float>(FbxDoubleVec3.Get()[0]);
+				MatProps.Specular.Y = static_cast<float>(FbxDoubleVec3.Get()[1]);
+				MatProps.Specular.Z = static_cast<float>(FbxDoubleVec3.Get()[2]);
 			}
 
 			// bump factor
@@ -425,10 +425,10 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 
 	// start adding mesh infors
 	std::vector<uint32_t> MeshIndices;
-	std::vector<XMFLOAT3> MeshVertices(OutputVertexCount);
-	std::vector<XMFLOAT2> MeshUVs(OutputVertexCount);
-	std::vector<XMFLOAT3> MeshNormals(OutputVertexCount);
-	std::vector<XMFLOAT4> MeshTangents(OutputVertexCount);
+	std::vector<UHVector3> MeshVertices(OutputVertexCount);
+	std::vector<UHVector2> MeshUVs(OutputVertexCount);
+	std::vector<UHVector3> MeshNormals(OutputVertexCount);
+	std::vector<UHVector4> MeshTangents(OutputVertexCount);
 
 	// get source vertices
 	FbxVector4* MeshPos = InMesh->GetControlPoints();
@@ -472,18 +472,18 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 
 			// vertices
 			{
-				XMFLOAT3 Pos;
-				Pos.x = static_cast<float>(MeshPos[ControlIndex][0]);
-				Pos.y = static_cast<float>(MeshPos[ControlIndex][1]);
-				Pos.z = static_cast<float>(MeshPos[ControlIndex][2]);
+				UHVector3 Pos;
+				Pos.X = static_cast<float>(MeshPos[ControlIndex][0]);
+				Pos.Y = static_cast<float>(MeshPos[ControlIndex][1]);
+				Pos.Z = static_cast<float>(MeshPos[ControlIndex][2]);
 				MeshVertices[OutputIndex] = Pos;
 			}
 
 			// UVs
 			{
 				FbxVector2 UVValue = UVElement->GetDirectArray().GetAt(UVIndex);
-				MeshUVs[OutputIndex].x = static_cast<float>(UVValue[0]);
-				MeshUVs[OutputIndex].y = 1.0f - static_cast<float>(UVValue[1]);
+				MeshUVs[OutputIndex].X = static_cast<float>(UVValue[0]);
+				MeshUVs[OutputIndex].Y = 1.0f - static_cast<float>(UVValue[1]);
 			}
 
 			// Normals
@@ -505,9 +505,9 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 				}
 
 				FbxVector4 NormalValue = NormalElement->GetDirectArray().GetAt(NormalIndex);
-				MeshNormals[OutputIndex].x = static_cast<float>(NormalValue[0]);
-				MeshNormals[OutputIndex].y = static_cast<float>(NormalValue[1]);
-				MeshNormals[OutputIndex].z = static_cast<float>(NormalValue[2]);
+				MeshNormals[OutputIndex].X = static_cast<float>(NormalValue[0]);
+				MeshNormals[OutputIndex].Y = static_cast<float>(NormalValue[1]);
+				MeshNormals[OutputIndex].Z = static_cast<float>(NormalValue[2]);
 			}
 
 			// Tangents
@@ -529,10 +529,10 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 				}
 
 				FbxVector4 TangentValue = TangentElement->GetDirectArray().GetAt(TangentIndex);
-				MeshTangents[OutputIndex].x = static_cast<float>(TangentValue[0]);
-				MeshTangents[OutputIndex].y = static_cast<float>(TangentValue[1]);
-				MeshTangents[OutputIndex].z = static_cast<float>(TangentValue[2]);
-				MeshTangents[OutputIndex].w = static_cast<float>(TangentValue[3]);
+				MeshTangents[OutputIndex].X = static_cast<float>(TangentValue[0]);
+				MeshTangents[OutputIndex].Y = static_cast<float>(TangentValue[1]);
+				MeshTangents[OutputIndex].Z = static_cast<float>(TangentValue[2]);
+				MeshTangents[OutputIndex].W = static_cast<float>(TangentValue[3]);
 			}
 
 			VertexId++;
@@ -542,27 +542,27 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 	NewMesh->SetIndicesData(MeshIndices);
 
 	// get normal, and ensure it's not zero vector
-	for (XMFLOAT3& N : MeshNormals)
+	for (UHVector3& N : MeshNormals)
 	{
-		if (MathHelpers::IsVectorNearlyZero(N))
+		if (UHMathHelpers::IsVectorNearlyZero(N))
 		{
-			N = XMFLOAT3(0.0001f, 0.0001f, 0.0001f);
+			N = UHVector3(0.0001f, 0.0001f, 0.0001f);
 		}
 	}
 
 	// get tangent
-	for (XMFLOAT4& T : MeshTangents)
+	for (UHVector4& T : MeshTangents)
 	{
-		if (MathHelpers::IsVectorNearlyZero(T))
+		if (UHMathHelpers::IsVectorNearlyZero(T))
 		{
-			T = XMFLOAT4(0.0001f, 0.0001f, 0.0001f, 0.0001f);
+			T = UHVector4(0.0001f, 0.0001f, 0.0001f, 0.0001f);
 		}
 	}
 
 	// setup imported transform at the end
-	XMFLOAT3 Pos = XMFLOAT3(static_cast<float>(FinalPos[0]), static_cast<float>(FinalPos[1]), static_cast<float>(FinalPos[2]));
-	XMFLOAT3 Rot = XMFLOAT3(static_cast<float>(FinalRot[0]), static_cast<float>(FinalRot[1]), static_cast<float>(FinalRot[2]));
-	XMFLOAT3 Scale = XMFLOAT3(static_cast<float>(FinalScale[0]), static_cast<float>(FinalScale[1]), static_cast<float>(FinalScale[2]));
+	UHVector3 Pos = UHVector3(static_cast<float>(FinalPos[0]), static_cast<float>(FinalPos[1]), static_cast<float>(FinalPos[2]));
+	UHVector3 Rot = UHVector3(static_cast<float>(FinalRot[0]), static_cast<float>(FinalRot[1]), static_cast<float>(FinalRot[2]));
+	UHVector3 Scale = UHVector3(static_cast<float>(FinalScale[0]), static_cast<float>(FinalScale[1]), static_cast<float>(FinalScale[2]));
 	NewMesh->SetImportedTransform(Pos, Rot, Scale);
 
 	// set data to UHMesh class
@@ -611,13 +611,13 @@ void UHFbxImporter::ImportCameras(FbxNode* InNode, std::vector<UHFbxCameraData>&
 	FbxVector4 CameraPos = CameraMatrix.GetT();
 	FbxVector4 CameraRot = CameraMatrix.GetR();
 
-	NewCameraData.Position = XMFLOAT3(
+	NewCameraData.Position = UHVector3(
 		static_cast<float>(CameraPos[0])
 		, static_cast<float>(CameraPos[1])
 		, static_cast<float>(CameraPos[2]));
 
 	// discard camera pitch and roll for good
-	NewCameraData.Rotation = XMFLOAT3(
+	NewCameraData.Rotation = UHVector3(
 		0.0f
 		, static_cast<float>(CameraRot[1])
 		, 0.0f);
@@ -661,7 +661,7 @@ void UHFbxImporter::ImportLights(FbxNode* InNode, std::vector<UHFbxLightData>& I
 		return;
 	}
 
-	NewLightData.LightColor = XMFLOAT3(
+	NewLightData.LightColor = UHVector3(
 		static_cast<float>(LightColor[0]),
 		static_cast<float>(LightColor[1]),
 		static_cast<float>(LightColor[2])
@@ -672,12 +672,12 @@ void UHFbxImporter::ImportLights(FbxNode* InNode, std::vector<UHFbxLightData>& I
 	NewLightData.Radius = std::max(static_cast<float>(InLight->FarAttenuationEnd.Get()), 10.0f);
 	NewLightData.SpotAngle = static_cast<float>(InLight->OuterAngle.Get());
 
-	NewLightData.Position = XMFLOAT3(
+	NewLightData.Position = UHVector3(
 		static_cast<float>(LightPos[0])
 		, static_cast<float>(LightPos[1])
 		, static_cast<float>(LightPos[2]));
 
-	NewLightData.Rotation = XMFLOAT3(
+	NewLightData.Rotation = UHVector3(
 		static_cast<float>(LightRot[0])
 		, static_cast<float>(LightRot[1])
 		, static_cast<float>(LightRot[2]));

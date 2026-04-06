@@ -19,13 +19,13 @@ public:
 	virtual ~UHLightBase() {}
 	virtual void OnActivityChanged() override;
 
-	virtual void SetLightColor(XMFLOAT3 InLightColor);
+	virtual void SetLightColor(UHVector3 InLightColor);
 	virtual void SetIntensity(float InIntensity);
 
 	UHLightType GetLightType() const;
 
 protected:
-	XMFLOAT3 LightColor;
+	UHVector3 LightColor;
 	float Intensity;
 	UHLightType LightType;
 };
@@ -43,7 +43,7 @@ public:
 	UHDirectionalLightConstants GetConstants() const;
 #if WITH_EDITOR
 	virtual void OnGenerateDetailView() override;
-	virtual void SetLightColor(XMFLOAT3 InLightColor) override;
+	virtual void SetLightColor(UHVector3 InLightColor) override;
 	virtual void SetIntensity(float InIntensity) override;
 #endif
 };
@@ -66,7 +66,7 @@ public:
 #if WITH_EDITOR
 	virtual UHDebugBoundConstant GetDebugBoundConst() const override;
 	virtual void OnGenerateDetailView() override;
-	virtual void SetLightColor(XMFLOAT3 InLightColor) override;
+	virtual void SetLightColor(UHVector3 InLightColor) override;
 	virtual void SetIntensity(float InIntensity) override;
 #endif
 
@@ -95,7 +95,7 @@ public:
 #if WITH_EDITOR
 	virtual UHDebugBoundConstant GetDebugBoundConst() const override;
 	virtual void OnGenerateDetailView() override;
-	virtual void SetLightColor(XMFLOAT3 InLightColor) override;
+	virtual void SetLightColor(UHVector3 InLightColor) override;
 	virtual void SetIntensity(float InIntensity) override;
 #endif
 

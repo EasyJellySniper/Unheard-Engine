@@ -19,14 +19,14 @@ public:
 
 	void SetMesh(UHMesh* InMesh);
 	void SetMaterial(UHMaterial* InMaterial);
-	void CalculateSquareDistanceToCamera(const XMFLOAT3 Position);
+	void CalculateSquareDistanceToCamera(const UHVector3 Position);
 
 	UHMesh* GetMesh() const;
 	UHMaterial* GetMaterial() const;
 	UHObjectConstants GetConstants() const;
-	BoundingBox GetRendererBound() const;
+	UHBoundingBox GetRendererBound() const;
 	float GetSquareDistanceToMainCam() const;
-	XMFLOAT4X4 GetWorldBoundMatrix() const;
+	UHMatrix4x4 GetWorldBoundMatrix() const;
 
 	void SetVisible(bool bVisible);
 	bool IsVisible() const;
@@ -51,10 +51,10 @@ private:
 	bool bIsVisible;
 	bool bIsMoveable;
 	bool bIsCameraInsideBound;
-	BoundingBox RendererBound;
+	UHBoundingBox RendererBound;
 	float SquareDistanceToMainCam;
 
-	XMFLOAT4X4 WorldBoundMatrix;
+	UHMatrix4x4 WorldBoundMatrix;
 
 #if WITH_EDITOR
 	bool bIsVisibleEditor;

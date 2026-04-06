@@ -1,4 +1,6 @@
 #include "GUIControl.h"
+
+#if WITH_EDITOR
 #include <winuser.h>
 #include "../Dialog/Dialog.h"
 #include "Runtime/Classes/Utility.h"
@@ -260,3 +262,5 @@ void UHGUIControlBase::InternalInit(HWND InControl, UHGUIProperty InProperties)
 	GetClientRect(ParentControl, &InitParentRect);
 	ShowWindow(ControlObj, SW_SHOW);
 }
+
+#endif

@@ -591,7 +591,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		case UHGraphNodeType::Float2Node:
 		{
 			CopyAddressPadding(BufferAddress, sizeof(float) * 2);
-			XMFLOAT2 Val = ((UHFloat2Node*)InputNode)->GetValue();
+			UHVector2 Val = ((UHFloat2Node*)InputNode)->GetValue();
 			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 2, &Val, sizeof(float) * 2);
 			BufferAddress += sizeof(float) * 2;
 			break;
@@ -599,7 +599,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		case UHGraphNodeType::Float3Node:
 		{
 			CopyAddressPadding(BufferAddress, sizeof(float) * 3);
-			XMFLOAT3 Val = ((UHFloat3Node*)InputNode)->GetValue();
+			UHVector3 Val = ((UHFloat3Node*)InputNode)->GetValue();
 			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 3, &Val, sizeof(float) * 3);
 			BufferAddress += sizeof(float) * 3;
 			break;
@@ -607,7 +607,7 @@ void CopyParameterInternal(const UHGraphPin* Pin, std::vector<uint8_t>& Material
 		case UHGraphNodeType::Float4Node:
 		{
 			CopyAddressPadding(BufferAddress, sizeof(float) * 4);
-			XMFLOAT4 Val = ((UHFloat4Node*)InputNode)->GetValue();
+			UHVector4 Val = ((UHFloat4Node*)InputNode)->GetValue();
 			memcpy_s(MaterialData.data() + BufferAddress, sizeof(float) * 4, &Val, sizeof(float) * 4);
 			BufferAddress += sizeof(float) * 4;
 			break;
@@ -657,21 +657,21 @@ void CopyRTParameterInternal(const UHGraphPin* Pin, UHRTMaterialData& MaterialDa
 		}
 		case UHGraphNodeType::Float2Node:
 		{
-			XMFLOAT2 Val = ((UHFloat2Node*)InputNode)->GetValue();
+			UHVector2 Val = ((UHFloat2Node*)InputNode)->GetValue();
 			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 2, &Val, sizeof(float) * 2);
 			DstIndex += 2;
 			break;
 		}
 		case UHGraphNodeType::Float3Node:
 		{
-			XMFLOAT3 Val = ((UHFloat3Node*)InputNode)->GetValue();
+			UHVector3 Val = ((UHFloat3Node*)InputNode)->GetValue();
 			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 3, &Val, sizeof(float) * 3);
 			DstIndex += 3;
 			break;
 		}
 		case UHGraphNodeType::Float4Node:
 		{
-			XMFLOAT4 Val = ((UHFloat4Node*)InputNode)->GetValue();
+			UHVector4 Val = ((UHFloat4Node*)InputNode)->GetValue();
 			memcpy_s(&MaterialData.Data[DstIndex], sizeof(float) * 4, &Val, sizeof(float) * 4);
 			DstIndex += 4;
 			break;

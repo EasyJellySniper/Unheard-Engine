@@ -3,7 +3,13 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+
+// platform-based UUID
+#if _WIN32
 #include <Rpc.h>
+#elif __linux__
+#include <uuid/uuid.h>
+#endif
 
 // UH base object define
 class UHAssetManager;
@@ -22,7 +28,7 @@ public:
 
 	std::vector<UHObject*> GetReferenceObjects() const;
 	uint32_t GetId() const;
-	UUID GetRuntimeGuid() const;
+	uuid_t GetRuntimeGuid() const;
 	std::string GetName() const;
 	uint32_t GetObjectClassId() const;
 
@@ -30,7 +36,7 @@ public:
 
 protected:
 	// runtime GUID, this will always be generated when an object is created
-	UUID RuntimeGuid;
+	uuid_t RuntimeGuid;
 	std::string Name;
 
 	// for file versioning

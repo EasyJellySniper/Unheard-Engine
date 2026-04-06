@@ -14,6 +14,7 @@
 #include <optional>
 
 // for drawing lines
+#include <wincodec.h>
 #include <gdiplus.h>
 using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")

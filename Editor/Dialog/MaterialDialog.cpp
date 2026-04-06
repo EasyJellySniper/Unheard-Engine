@@ -571,7 +571,7 @@ void UHMaterialDialog::TryMoveNodes()
 
     // function for move GUI
     HWND WorkArea = WorkAreaGUI->GetHwnd();
-    auto MoveGUI = [WorkArea](HWND GUIToMove, uint32_t Dx, uint32_t Dy)
+    auto MoveGUI = [WorkArea](HWND GUIToMove, int32_t Dx, int32_t Dy)
     {
         RECT R;
         UHEditorUtil::GetWindowSize(GUIToMove, R, WorkArea);
@@ -579,8 +579,8 @@ void UHMaterialDialog::TryMoveNodes()
     };
 
     // cache mouse movement before doing any operations
-    uint32_t MouseDeltaX;
-    uint32_t MouseDeltaY;
+    int32_t MouseDeltaX;
+    int32_t MouseDeltaY;
     RawInput.GetMouseDelta(MouseDeltaX, MouseDeltaY);
 
     if (WorkAreaGUI->IsPointInside(MousePos))

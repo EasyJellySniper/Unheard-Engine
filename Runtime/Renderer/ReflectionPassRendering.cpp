@@ -38,8 +38,8 @@ void UHDeferredShadingRenderer::DispatchReflectionPass(UHRenderBuilder& RenderBu
 		RenderBuilder.BindDescriptorSetCompute(ReflectionPassShader->GetPipelineLayout(), ReflectionPassShader->GetDescriptorSet(CurrentFrameRT));
 
 		// dispatch
-		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
-			, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
+		RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+			, UHMathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y), 1);
 	}
 	GraphicInterface->EndCmdDebug(RenderBuilder.GetCmdList());
 }

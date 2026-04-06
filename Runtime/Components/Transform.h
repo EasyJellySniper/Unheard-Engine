@@ -1,14 +1,11 @@
 #pragma once
 #include "Component.h"
-#include "../Classes/Types.h"
+#include "../Classes/Math.h"
 #include <optional>
 
-const XMFLOAT3 GWorldRight = { 1.0f, 0.0f, 0.0f };
-const XMFLOAT3 GWorldUp = { 0.0f, 1.0f, 0.0f };
-const XMFLOAT3 GWorldForward = { 0.0f, 0.0f, 1.0f };
-static std::optional<XMVECTOR> GWorldRightVec;
-static std::optional<XMVECTOR> GWorldUpVec;
-static std::optional<XMVECTOR> GWorldForwardVec;
+const UHVector3 GWorldRight = { 1.0f, 0.0f, 0.0f };
+const UHVector3 GWorldUp = { 0.0f, 1.0f, 0.0f };
+const UHVector3 GWorldForward = { 0.0f, 0.0f, 1.0f };
 
 enum class UHTransformSpace
 {
@@ -31,23 +28,23 @@ public:
 	virtual void OnSave(std::ofstream& OutStream) override;
 	virtual void OnLoad(std::ifstream& InStream) override;
 
-	void Translate(XMFLOAT3 InDelta, UHTransformSpace InSpace = UHTransformSpace::Local);
-	void Rotate(XMFLOAT3 InDelta, UHTransformSpace InSpace = UHTransformSpace::Local);
+	void Translate(UHVector3 InDelta, UHTransformSpace InSpace = UHTransformSpace::Local);
+	void Rotate(UHVector3 InDelta, UHTransformSpace InSpace = UHTransformSpace::Local);
 
-	void SetScale(XMFLOAT3 InScale);
-	void SetPosition(XMFLOAT3 InPos);
-	void SetRotation(XMFLOAT3 InEulerRot);
+	void SetScale(UHVector3 InScale);
+	void SetPosition(UHVector3 InPos);
+	void SetRotation(UHVector3 InEulerRot);
 
-	XMFLOAT4X4 GetWorldMatrix() const;
-	XMFLOAT4X4 GetPrevWorldMatrix() const;
-	XMFLOAT4X4 GetWorldMatrixIT() const;
-	XMFLOAT4X4 GetRotationMatrix() const;
-	XMFLOAT3 GetRight() const;
-	XMFLOAT3 GetUp() const;
-	XMFLOAT3 GetForward() const;
-	XMFLOAT3 GetPosition() const;
-	XMFLOAT3 GetScale() const;
-	XMFLOAT3 GetRotationEuler();
+	UHMatrix4x4 GetWorldMatrix() const;
+	UHMatrix4x4 GetPrevWorldMatrix() const;
+	UHMatrix4x4 GetWorldMatrixIT() const;
+	UHMatrix4x4 GetRotationMatrix() const;
+	UHVector3 GetRight() const;
+	UHVector3 GetUp() const;
+	UHVector3 GetForward() const;
+	UHVector3 GetPosition() const;
+	UHVector3 GetScale() const;
+	UHVector3 GetRotationEuler();
 
 	// is transform changed
 	bool IsWorldDirty() const;
@@ -58,14 +55,14 @@ public:
 #endif
 
 protected:
-	XMFLOAT3 Scale;
-	XMFLOAT3 Position;
-	XMFLOAT3 RotationEuler;
+	UHVector3 Scale;
+	UHVector3 Position;
+	UHVector3 RotationEuler;
 
 	// direction vectors
-	XMFLOAT3 Right;
-	XMFLOAT3 Up;
-	XMFLOAT3 Forward;
+	UHVector3 Right;
+	UHVector3 Up;
+	UHVector3 Forward;
 
 	bool bTransformChanged;
 
@@ -74,12 +71,12 @@ protected:
 	bool bIsFirstFrame;
 
 	// rotation only matrix
-	XMFLOAT4X4 RotationMatrix;
+	UHMatrix4x4 RotationMatrix;
 private:
 	// world matrix, also store previous frame's world matrix
-	XMFLOAT4X4 WorldMatrix;
-	XMFLOAT4X4 PrevWorldMatrix;
+	UHMatrix4x4 WorldMatrix;
+	UHMatrix4x4 PrevWorldMatrix;
 
 	// world matrix IT
-	XMFLOAT4X4 WorldMatrixIT;
+	UHMatrix4x4 WorldMatrixIT;
 };

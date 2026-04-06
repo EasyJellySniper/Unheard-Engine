@@ -2,7 +2,7 @@
 #include "../Engine/Graphic.h"
 #include "../Engine/Asset.h"
 #include "../Engine/Config.h"
-#include "../Engine/Input.h"
+#include "Runtime/Platform/PlatformInput.h"
 #include "../Engine/GameTimer.h"
 #include "../Engine/Engine.h"
 #include "../Components/GameScript.h"
@@ -409,7 +409,7 @@ UHSkyLightComponent* UHScene::GetSkyLight() const
 	return CurrentSkyLight;
 }
 
-const BoundingBox& UHScene::GetSceneBound() const
+const UHBoundingBox& UHScene::GetSceneBound() const
 {
 	return SceneBound;
 }
@@ -433,41 +433,44 @@ void UHScene::UpdateCamera()
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().ForwardKey))
 	{
-		MainCamera->Translate(XMFLOAT3(0, 0, DefaultCameraMoveSpeed));
+		MainCamera->Translate(UHVector3(0, 0, DefaultCameraMoveSpeed));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().BackKey))
 	{
-		MainCamera->Translate(XMFLOAT3(0, 0, -DefaultCameraMoveSpeed));
+		MainCamera->Translate(UHVector3(0, 0, -DefaultCameraMoveSpeed));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().LeftKey))
 	{
-		MainCamera->Translate(XMFLOAT3(-DefaultCameraMoveSpeed, 0, 0));
+		MainCamera->Translate(UHVector3(-DefaultCameraMoveSpeed, 0, 0));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().RightKey))
 	{
-		MainCamera->Translate(XMFLOAT3(DefaultCameraMoveSpeed, 0, 0));
+		MainCamera->Translate(UHVector3(DefaultCameraMoveSpeed, 0, 0));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().UpKey))
 	{
-		MainCamera->Translate(XMFLOAT3(0, DefaultCameraMoveSpeed, 0));
+		MainCamera->Translate(UHVector3(0, DefaultCameraMoveSpeed, 0));
 	}
 
 	if (Input->IsKeyHold(ConfigCache->EngineSetting().DownKey))
 	{
-		MainCamera->Translate(XMFLOAT3(0, -DefaultCameraMoveSpeed, 0));
+		MainCamera->Translate(UHVector3(0, -DefaultCameraMoveSpeed, 0));
 	}
 
 	if (Input->IsRightMouseHold())
 	{
-		float X = static_cast<float>(Input->GetMouseData().lLastX) * MouseRotSpeed;
-		float Y = static_cast<float>(Input->GetMouseData().lLastY) * MouseRotSpeed;
+		int32_t MouseMoveX, MouseMoveY;
+		Input->GetMouseMovement(MouseMoveX, MouseMoveY);
 
-		MainCamera->Rotate(XMFLOAT3(Y, 0, 0));
-		MainCamera->Rotate(XMFLOAT3(0, X, 0), UHTransformSpace::World);
+		float X = static_cast<float>(MouseMoveX) * MouseRotSpeed;
+		float Y = static_cast<float>(MouseMoveY) * MouseRotSpeed;
+
+		MainCamera->Rotate(UHVector3(Y, 0, 0));
+		MainCamera->Rotate(UHVector3(0, X, 0), UHTransformSpace::World);
 	}
 
 	MainCamera->Update();
@@ -476,10 +479,10 @@ void UHScene::UpdateCamera()
 void UHScene::CalculateSceneBound()
 {
 	// calculate scene bound based on renderer bounds
-	SceneBound = BoundingBox(XMFLOAT3(0, 0, 0), XMFLOAT3(0, 0, 0));
+	SceneBound = UHBoundingBox(UHVector3(0, 0, 0), UHVector3(0, 0, 0));
 	for (const UHMeshRendererComponent* Renderer : Renderers)
 	{
-		const BoundingBox& RendererBound = Renderer->GetRendererBound();
-		BoundingBox::CreateMerged(SceneBound, SceneBound, RendererBound);
+		const UHBoundingBox& RendererBound = Renderer->GetRendererBound();
+		UHBoundingBox::CreateMerged(SceneBound, SceneBound, RendererBound);
 	}
 }

@@ -1,94 +1,10 @@
 #pragma once
 
-// UHE uses DX math library, it's not only a mature library but also well-optimized (with SSE instructions for example)
 #include <cmath>
-#include <DirectXMath.h>
-#include <DirectXCollision.h>
 #include <limits>
 #include <algorithm>
 #include <vector>
 #include <memory>
-using namespace DirectX;
-
-static float GEpsilon = std::numeric_limits<float>::epsilon();
-static float GWorldMax = static_cast<float>(1 << 20);
-
-template <typename T>
-using UniquePtr = std::unique_ptr<T>;
-
-#define MakeUnique std::make_unique
-#define StdBind std::bind
-#define UHINDEXNONE -1
-
-namespace MathHelpers
-{
-    bool IsValidVector(XMFLOAT3 InVector);
-
-    bool IsVectorNearlyZero(XMFLOAT3 InVector);
-
-    bool IsVectorNearlyZero(XMFLOAT4 InVector);
-
-    bool IsVectorEqual(XMFLOAT2 InA, XMFLOAT2 InB);
-
-    bool IsVectorEqual(XMFLOAT3 InA, XMFLOAT3 InB);
-
-    bool IsVectorEqual(XMFLOAT4 InA, XMFLOAT4 InB);
-
-    DirectX::XMFLOAT4X4 Identity4x4();
-
-    DirectX::XMFLOAT3X4 MatrixTo3x4(XMFLOAT4X4 InMatrix);
-
-    DirectX::XMFLOAT3X4 Identity3x4();
-
-    // Returns random float in [0, 1).
-    float RandFloat();
-
-    // matrix to pitch yaw roll, use for display only!
-    void MatrixToPitchYawRoll(XMFLOAT4X4 InMat, float& Pitch, float& Yaw, float& Roll);
-
-    XMFLOAT3 MinVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
-
-    XMFLOAT3 MaxVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
-
-    float Halton(int32_t Index, int32_t Base);
-
-    float Lerp(const float& InVal1, const float& InVal2, const float& T);
-    XMFLOAT3 LerpVector(const XMFLOAT3& InVector, const XMFLOAT3& InVector2, const float& T);
-
-    float VectorDistanceSqr(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
-
-    template <typename T>
-    T CubicInterpolate(const std::vector<T>& InData, const float InWeight);
-
-    template <typename T>
-    T BicubicInterpolate(const std::vector<T>& InData, const float InWeight1, const float InWeight2);
-
-    float RoundUpToClosestPowerOfTwo(float InVal);
-
-    template <typename T>
-    T RoundUpDivide(const T& InVal, const T& Divisor)
-    {
-        if (Divisor == 0)
-        {
-            return InVal;
-        }
-
-        return (InVal + Divisor) / Divisor;
-    }
-
-    float RoundUpToMultiple(float InVal, float InMultiple);
-}
-
-// operator for XMFLOAT3 multipication
-XMFLOAT3 operator*(const XMFLOAT3& InVector, float InFloat);
-
-// operator for XMFLOAT3 addition
-XMFLOAT3 operator+(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
-
-// operator for XMFLOAT3 subtraction
-XMFLOAT3 operator-(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
-
-bool operator==(const XMFLOAT3& InVector, const XMFLOAT3& InVector2);
 
 struct UHColorRGB
 {

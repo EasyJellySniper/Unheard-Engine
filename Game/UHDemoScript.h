@@ -29,9 +29,9 @@ private:
 	UHDirectionalLightComponent* DefaultDirectionalLight;
 	UHDirectionalLightComponent* SecondDirectionalLight;
 	std::vector<UHPointLightComponent*> TestPointLights;
-	std::vector<XMFLOAT3> TestPointLightOrigin;
+	std::vector<UHVector3> TestPointLightOrigin;
 	std::vector<UHPointLightComponent*> TestPointLights2;
-	std::vector<XMFLOAT3> TestPointLightOrigin2;
+	std::vector<UHVector3> TestPointLightOrigin2;
 
 	std::vector<UHSpotLightComponent*> TestSpotLights;
 	std::vector<UHSpotLightComponent*> TestSpotLights2;
@@ -40,7 +40,7 @@ private:
 	UHMeshRendererComponent* Geo364Renderer;
 	UHMeshRendererComponent* Door3363Renderer;
 
-	XMFLOAT3 Geo364OriginPos;
+	UHVector3 Geo364OriginPos;
 	float TimeCounter;
 	float TimeSign;
 	UHDemoType TestType;

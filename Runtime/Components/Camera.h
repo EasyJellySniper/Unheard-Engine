@@ -19,20 +19,20 @@ public:
 	void SetResolution(int32_t RenderWidth, int32_t RenderHeight);
 	void SetCullingDistance(float InDistance);
 
-	XMFLOAT4X4 GetViewMatrix() const;
-	XMFLOAT4X4 GetProjectionMatrix() const;
-	XMFLOAT4X4 GetProjectionMatrixNonJittered() const;
-	XMFLOAT4X4 GetViewProjMatrix() const;
-	XMFLOAT4X4 GetViewProjMatrixNonJittered() const;
-	XMFLOAT4X4 GetPrevViewProjMatrixNonJittered() const;
-	XMFLOAT4X4 GetInvViewProjMatrix() const;
-	XMFLOAT4X4 GetInvViewProjMatrixNonJittered() const;
-	XMFLOAT4X4 GetInvProjMatrix() const;
-	XMFLOAT4X4 GetInvProjMatrixNonJittered() const;
-	XMFLOAT4 GetJitterOffset() const;
-	BoundingFrustum GetBoundingFrustum() const;
-	XMFLOAT3 GetScreenPos(XMFLOAT3 InWorld) const;
-	BoundingBox GetScreenBound(BoundingBox InWorldBound) const;
+	UHMatrix4x4 GetViewMatrix() const;
+	UHMatrix4x4 GetProjectionMatrix() const;
+	UHMatrix4x4 GetProjectionMatrixNonJittered() const;
+	UHMatrix4x4 GetViewProjMatrix() const;
+	UHMatrix4x4 GetViewProjMatrixNonJittered() const;
+	UHMatrix4x4 GetPrevViewProjMatrixNonJittered() const;
+	UHMatrix4x4 GetInvViewProjMatrix() const;
+	UHMatrix4x4 GetInvViewProjMatrixNonJittered() const;
+	UHMatrix4x4 GetInvProjMatrix() const;
+	UHMatrix4x4 GetInvProjMatrixNonJittered() const;
+	UHVector4 GetJitterOffset() const;
+	UHBoundingFrustum GetBoundingFrustum() const;
+	UHVector3 GetScreenPos(UHVector3 InWorld) const;
+	UHBoundingBox GetScreenBound(UHBoundingBox InWorldBound) const;
 	float GetCullingDistance() const;
 	float GetNearPlane() const;
 
@@ -51,26 +51,26 @@ private:
 	float FovYDeg;
 #endif
 
-	XMFLOAT4X4 ViewMatrix;
-	XMFLOAT4X4 ProjectionMatrix;
-	XMFLOAT4X4 ProjectionMatrix_NonJittered;
-	XMFLOAT4X4 ViewProjMatrix;
-	XMFLOAT4X4 ViewProjMatrix_NonJittered;
-	XMFLOAT4X4 PrevViewProjMatrix_NonJittered;
-	XMFLOAT4X4 InvViewProjMatrix;
-	XMFLOAT4X4 InvViewProjMatrix_NonJittered;
-	XMFLOAT4X4 InvProjMatrix;
-	XMFLOAT4X4 InvProjMatrix_NonJittered;
+	UHMatrix4x4 ViewMatrix;
+	UHMatrix4x4 ProjectionMatrix;
+	UHMatrix4x4 ProjectionMatrix_NonJittered;
+	UHMatrix4x4 ViewProjMatrix;
+	UHMatrix4x4 ViewProjMatrix_NonJittered;
+	UHMatrix4x4 PrevViewProjMatrix_NonJittered;
+	UHMatrix4x4 InvViewProjMatrix;
+	UHMatrix4x4 InvViewProjMatrix_NonJittered;
+	UHMatrix4x4 InvProjMatrix;
+	UHMatrix4x4 InvProjMatrix_NonJittered;
 
 	// for temporal effects
 	bool bUseJitterOffset;
 	int32_t Width;
 	int32_t Height;
-	XMFLOAT2 JitterOffset;
+	UHVector2 JitterOffset;
 	float JitterScaleMin;
 	float JitterScaleMax;
 	float JitterEndDistance;
 
-	BoundingFrustum CameraFrustum;
+	UHBoundingFrustum CameraFrustum;
 	float CullingDistance;
 };

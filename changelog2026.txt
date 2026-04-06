@@ -109,3 +109,17 @@ Set RT reflection buffer as 16-bit float format for the best result.
 Started multiple platform works, I plan to add Linux support first.
 Implemented and separated Windows/Linux initialization logic.
 Learned how to setup CMake and test on WSL2 first.
+
+03-04-2026:
+WIP platform abstraction works. I separated game loop logic from platform to application.
+Also started adding client classes for different window implementaion.
+
+05-04-2026:
+WIP cross platform works. I further separated hard-code win32 window usages and moved them to ClientWindows.cpp!
+Also implemented ClientLinux.cpp for use. Moved input class to platform folder and refactored the Windows input code.
+Next is to implement Linux counterpart.
+
+06-04-2026:
+WIP cross platform works. I've implemented Linux counterpart for mouse/keyboard inputs!
+Also defined my own vector/matrix classes, which was a painful refactoring!
+Next I can try working on cross-platform math library.

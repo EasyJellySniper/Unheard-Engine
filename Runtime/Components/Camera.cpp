@@ -4,22 +4,22 @@
 UHCameraComponent::UHCameraComponent()
 	: NearPlane(0.1f)
 	, Aspect(1.7778f)
-	, FovY(XMConvertToRadians(60.0f))
-	, ViewMatrix(MathHelpers::Identity4x4())
-	, ProjectionMatrix(MathHelpers::Identity4x4())
-	, ViewProjMatrix(MathHelpers::Identity4x4())
-	, InvViewProjMatrix(MathHelpers::Identity4x4())
-	, ProjectionMatrix_NonJittered(MathHelpers::Identity4x4())
-	, ViewProjMatrix_NonJittered(MathHelpers::Identity4x4())
-	, PrevViewProjMatrix_NonJittered(MathHelpers::Identity4x4())
-	, InvViewProjMatrix_NonJittered(MathHelpers::Identity4x4())
-	, InvProjMatrix(MathHelpers::Identity4x4())
-	, InvProjMatrix_NonJittered(MathHelpers::Identity4x4())
+	, FovY(UHMathHelpers::ToRadians(60.0f))
+	, ViewMatrix(UHMathHelpers::Identity4x4())
+	, ProjectionMatrix(UHMathHelpers::Identity4x4())
+	, ViewProjMatrix(UHMathHelpers::Identity4x4())
+	, InvViewProjMatrix(UHMathHelpers::Identity4x4())
+	, ProjectionMatrix_NonJittered(UHMathHelpers::Identity4x4())
+	, ViewProjMatrix_NonJittered(UHMathHelpers::Identity4x4())
+	, PrevViewProjMatrix_NonJittered(UHMathHelpers::Identity4x4())
+	, InvViewProjMatrix_NonJittered(UHMathHelpers::Identity4x4())
+	, InvProjMatrix(UHMathHelpers::Identity4x4())
+	, InvProjMatrix_NonJittered(UHMathHelpers::Identity4x4())
 	, bUseJitterOffset(false)
-	, JitterOffset(XMFLOAT2())
+	, JitterOffset(UHVector2())
 	, Width(1)
 	, Height(1)
-	, CameraFrustum(BoundingFrustum())
+	, CameraFrustum(UHBoundingFrustum())
 	, CullingDistance(1000.0f)
 	, JitterScaleMin(0.01f)
 	, JitterScaleMax(1.0f)
@@ -46,45 +46,45 @@ void UHCameraComponent::Update()
 	BuildViewMatrix();
 	BuildProjectionMatrix();
 
-	// update ViewProj and inverse of it
-	const XMMATRIX View = XMLoadFloat4x4(&ViewMatrix);
-	const XMMATRIX Proj = XMLoadFloat4x4(&ProjectionMatrix);
-	const XMMATRIX Proj_NonJittered = XMLoadFloat4x4(&ProjectionMatrix_NonJittered);
-	const XMMATRIX ViewProj = XMMatrixTranspose(Proj) * XMMatrixTranspose(View);
-	const XMMATRIX ViewProj_NonJittered = XMMatrixTranspose(Proj_NonJittered) * XMMatrixTranspose(View);
+	// update ViewProj and transpose of it
+	const UHMatrix4x4 View = ViewMatrix;
+	const UHMatrix4x4 Proj = ProjectionMatrix;
+	const UHMatrix4x4 Proj_NonJittered = ProjectionMatrix_NonJittered;
+	const UHMatrix4x4 ViewProj = UHMathHelpers::UHMatrixTranspose(Proj) * UHMathHelpers::UHMatrixTranspose(View);
+	const UHMatrix4x4 ViewProj_NonJittered = UHMathHelpers::UHMatrixTranspose(Proj_NonJittered) * UHMathHelpers::UHMatrixTranspose(View);
 
 	// return transposed view proj matrix, also stores previous view proj before update
 	PrevViewProjMatrix_NonJittered = ViewProjMatrix_NonJittered;
-	XMStoreFloat4x4(&ViewProjMatrix, ViewProj);
-	XMStoreFloat4x4(&ViewProjMatrix_NonJittered, ViewProj_NonJittered);
+	ViewProjMatrix = ViewProj;
+	ViewProjMatrix_NonJittered = ViewProj_NonJittered;
 
-	XMVECTOR Det = XMMatrixDeterminant(ViewProj);
-	XMMATRIX InvViewProj = XMMatrixInverse(&Det, ViewProj);
-	XMStoreFloat4x4(&InvViewProjMatrix, InvViewProj);
+	// inv view-proj calculation
+	UHVector4 Det = UHMathHelpers::UHMatrixDeterminant(ViewProj);
+	UHMatrix4x4 InvViewProj = UHMathHelpers::UHMatrixInverse(Det, ViewProj);
+	InvViewProjMatrix = InvViewProj;
 
 	// non-jittered inv VP
-	Det = XMMatrixDeterminant(ViewProj_NonJittered);
-	InvViewProj = XMMatrixInverse(&Det, ViewProj_NonJittered);
-	XMStoreFloat4x4(&InvViewProjMatrix_NonJittered, InvViewProj);
+	Det = UHMathHelpers::UHMatrixDeterminant(ViewProj_NonJittered);
+	InvViewProj = UHMathHelpers::UHMatrixInverse(Det, ViewProj_NonJittered);
+	InvViewProjMatrix_NonJittered = InvViewProj;
 
 	// inv proj
-	Det = XMMatrixDeterminant(Proj);
-	XMMATRIX InvProj = XMMatrixInverse(&Det, Proj);
-	XMStoreFloat4x4(&InvProjMatrix, InvProj);
+	Det = UHMathHelpers::UHMatrixDeterminant(Proj);
+	UHMatrix4x4 InvProj = UHMathHelpers::UHMatrixInverse(Det, Proj);
+	InvProjMatrix = InvProj;
 
-	Det = XMMatrixDeterminant(Proj_NonJittered);
-	XMMATRIX InvProj_NonJittered = XMMatrixInverse(&Det, Proj_NonJittered);
-	XMStoreFloat4x4(&InvProjMatrix_NonJittered, InvProj_NonJittered);
+	Det = UHMathHelpers::UHMatrixDeterminant(Proj_NonJittered);
+	UHMatrix4x4 InvProj_NonJittered = UHMathHelpers::UHMatrixInverse(Det, Proj_NonJittered);
+	InvProjMatrix_NonJittered = InvProj_NonJittered;
 
 	// update camera frustum, note that this is a bit different than rendering matrix
 	// in UHE, +X/+Y/+Z is used, so it needs to be left hand for culling
-	const XMMATRIX CullingProj = XMMatrixPerspectiveFovLH(FovY, Aspect, NearPlane, CullingDistance);
-	BoundingFrustum::CreateFromMatrix(CameraFrustum, CullingProj);
+	const UHMatrix4x4 CullingProj = UHMathHelpers::UHMatrixPerspectiveFovLH(FovY, Aspect, NearPlane, CullingDistance);
+	UHBoundingFrustum::CreateFromMatrix(CameraFrustum, CullingProj);
 
 	// let frustum be in world space
-	const XMFLOAT4X4& World = GetWorldMatrix();
-	const XMMATRIX W = XMLoadFloat4x4(&World);
-	CameraFrustum.Transform(CameraFrustum, XMMatrixTranspose(W));
+	const UHMatrix4x4& World = GetWorldMatrix();
+	CameraFrustum.Transform(CameraFrustum, UHMathHelpers::UHMatrixTranspose(World));
 }
 
 void UHCameraComponent::OnSave(std::ofstream& OutStream)
@@ -134,7 +134,7 @@ void UHCameraComponent::SetAspect(float InAspect)
 void UHCameraComponent::SetFov(float InFov)
 {
 	// store fov as radian
-	FovY = XMConvertToRadians(InFov);
+	FovY = UHMathHelpers::ToRadians(InFov);
 #if WITH_EDITOR
 	FovYDeg = InFov;
 #endif
@@ -156,110 +156,105 @@ void UHCameraComponent::SetCullingDistance(float InDistance)
 	CullingDistance = InDistance;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetViewMatrix() const
+UHMatrix4x4 UHCameraComponent::GetViewMatrix() const
 {
 	return ViewMatrix;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetProjectionMatrix() const
+UHMatrix4x4 UHCameraComponent::GetProjectionMatrix() const
 {
 	return ProjectionMatrix;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetProjectionMatrixNonJittered() const
+UHMatrix4x4 UHCameraComponent::GetProjectionMatrixNonJittered() const
 {
 	return ProjectionMatrix_NonJittered;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetViewProjMatrix() const
+UHMatrix4x4 UHCameraComponent::GetViewProjMatrix() const
 {	
 	return ViewProjMatrix;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetViewProjMatrixNonJittered() const
+UHMatrix4x4 UHCameraComponent::GetViewProjMatrixNonJittered() const
 {
 	return ViewProjMatrix_NonJittered;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetPrevViewProjMatrixNonJittered() const
+UHMatrix4x4 UHCameraComponent::GetPrevViewProjMatrixNonJittered() const
 {
 	return PrevViewProjMatrix_NonJittered;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetInvViewProjMatrix() const
+UHMatrix4x4 UHCameraComponent::GetInvViewProjMatrix() const
 {
 	return InvViewProjMatrix;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetInvViewProjMatrixNonJittered() const
+UHMatrix4x4 UHCameraComponent::GetInvViewProjMatrixNonJittered() const
 {
 	return InvViewProjMatrix_NonJittered;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetInvProjMatrix() const
+UHMatrix4x4 UHCameraComponent::GetInvProjMatrix() const
 {
 	return InvProjMatrix;
 }
 
-XMFLOAT4X4 UHCameraComponent::GetInvProjMatrixNonJittered() const
+UHMatrix4x4 UHCameraComponent::GetInvProjMatrixNonJittered() const
 {
 	return InvProjMatrix_NonJittered;
 }
 
-XMFLOAT4 UHCameraComponent::GetJitterOffset() const
+UHVector4 UHCameraComponent::GetJitterOffset() const
 {
-	XMFLOAT4 Offset;
-	Offset.x = JitterOffset.x;
-	Offset.y = JitterOffset.y;
-	Offset.z = JitterScaleMin;
-	Offset.w = 1.0f / JitterEndDistance;
+	UHVector4 Offset;
+	Offset.X = JitterOffset.X;
+	Offset.Y = JitterOffset.Y;
+	Offset.Z = JitterScaleMin;
+	Offset.W = 1.0f / JitterEndDistance;
 
 	return Offset;
 }
 
-BoundingFrustum UHCameraComponent::GetBoundingFrustum() const
+UHBoundingFrustum UHCameraComponent::GetBoundingFrustum() const
 {
 	return CameraFrustum;
 }
 
-XMFLOAT3 UHCameraComponent::GetScreenPos(XMFLOAT3 InWorld) const
+UHVector3 UHCameraComponent::GetScreenPos(UHVector3 InWorld) const
 {
-	XMVECTOR P = XMLoadFloat3(&InWorld);
-	XMMATRIX VP = XMLoadFloat4x4(&ViewProjMatrix_NonJittered);
-
 	// convert to clip pos
-	P = XMVector3Transform(P, VP);
+	UHVector4 ClipPos = UHMathHelpers::UHVector3Transform(InWorld, ViewProjMatrix_NonJittered);
 
 	// perspective divide
-	P /= P.m128_f32[3];
+	ClipPos /= ClipPos.W;
 
 	// [-1,1] to [0,1] and to screen pos
-	P.m128_f32[0] = (P.m128_f32[0] * 0.5f + 0.5f) * static_cast<float>(Width);
-	P.m128_f32[1] = (P.m128_f32[1] * 0.5f + 0.5f) * static_cast<float>(Height);
+	ClipPos.X = (ClipPos.X * 0.5f + 0.5f) * static_cast<float>(Width);
+	ClipPos.Y = (ClipPos.Y * 0.5f + 0.5f) * static_cast<float>(Height);
 
-	XMFLOAT3 Result;
-	XMStoreFloat3(&Result, P);
-	return Result;
+	return UHVector3(ClipPos.X, ClipPos.Y, ClipPos.Z);
 }
 
-BoundingBox UHCameraComponent::GetScreenBound(BoundingBox InWorldBound) const
+UHBoundingBox UHCameraComponent::GetScreenBound(UHBoundingBox InWorldBound) const
 {
 	// return screen space bound
-	XMFLOAT3 P[8];
+	UHVector3 P[8];
 	InWorldBound.GetCorners(P);
 
 	constexpr float Inf = std::numeric_limits<float>::infinity();
-	XMFLOAT3 MinPoint = XMFLOAT3(Inf, Inf, Inf);
-	XMFLOAT3 MaxPoint = XMFLOAT3(-Inf, -Inf, -Inf);
+	UHVector3 MinPoint = UHVector3(Inf, Inf, Inf);
+	UHVector3 MaxPoint = UHVector3(-Inf, -Inf, -Inf);
 
 	for (int32_t Idx = 0; Idx < 8; Idx++)
 	{
 		P[Idx] = GetScreenPos(P[Idx]);
-		MinPoint = MathHelpers::MinVector(P[Idx], MinPoint);
-		MaxPoint = MathHelpers::MaxVector(P[Idx], MaxPoint);
+		MinPoint = UHMathHelpers::MinVector(P[Idx], MinPoint);
+		MaxPoint = UHMathHelpers::MaxVector(P[Idx], MaxPoint);
 	}
 
-	BoundingBox Result;
+	UHBoundingBox Result;
 	Result.Center = (MinPoint + MaxPoint) * 0.5f;
 	Result.Extents = (MaxPoint - MinPoint) * 0.5f;
 	return Result;
@@ -312,35 +307,30 @@ void UHCameraComponent::OnGenerateDetailView()
 void UHCameraComponent::BuildViewMatrix()
 {
 	// flip up vector since Vulkan want +Y down, but UH uses +Y up
-	const XMVECTOR U = -XMLoadFloat3(&Up);
-	const XMVECTOR F = XMLoadFloat3(&Forward);
-	const XMVECTOR P = XMLoadFloat3(&Position);
-
-	const XMMATRIX View = XMMatrixLookToRH(P, F, U);
-	XMStoreFloat4x4(&ViewMatrix, View);
+	ViewMatrix = UHMathHelpers::UHMatrixLookToRH(Position, Forward, Up * -1);
 }
 
 void UHCameraComponent::BuildProjectionMatrix()
 {
 	// based on right handed system
 	// far z value doesn't matter here, since I'll use infinte far plane
-	const XMMATRIX P = XMMatrixPerspectiveFovRH(FovY, Aspect, NearPlane + 1, NearPlane);
-	XMStoreFloat4x4(&ProjectionMatrix_NonJittered, P);
-	XMStoreFloat4x4(&ProjectionMatrix, P);
+	const UHMatrix4x4 P = UHMathHelpers::UHMatrixPerspectiveFovRH(FovY, Aspect, NearPlane + 1, NearPlane);
+	ProjectionMatrix_NonJittered = P;
+	ProjectionMatrix = P;
 
 	// apply jitter offset if it's enabled
 	if (bUseJitterOffset)
 	{
-		const XMFLOAT2 Offset = XMFLOAT2(MathHelpers::Halton(GFrameNumber & 511, 2), MathHelpers::Halton(GFrameNumber & 511, 3));
-		JitterOffset.x = Offset.x / Width;
-		JitterOffset.y = Offset.y / Height;
+		const UHVector2 Offset = UHVector2(UHMathHelpers::Halton(GFrameNumber & 511, 2), UHMathHelpers::Halton(GFrameNumber & 511, 3));
+		JitterOffset.X = Offset.X / Width;
+		JitterOffset.Y = Offset.Y / Height;
 
 		// when standing still, use lower jitter offset scale to prevent flickering
-		JitterOffset.x *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
-		JitterOffset.y *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
+		JitterOffset.X *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
+		JitterOffset.Y *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
 
-		const XMMATRIX JitterMatrix = XMMatrixTranslation(JitterOffset.x, JitterOffset.y, 0);
-		XMStoreFloat4x4(&ProjectionMatrix, P * JitterMatrix);
+		const UHMatrix4x4 JitterMatrix = UHMathHelpers::UHMatrixTranslation(UHVector3(JitterOffset.X, JitterOffset.Y, 0));
+		ProjectionMatrix = P * JitterMatrix;
 	}
 
 	// adjust matrix value for infinite far plane

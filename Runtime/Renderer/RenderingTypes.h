@@ -1,4 +1,5 @@
 #pragma once
+#include "../Classes/Math.h"
 #include "../Classes/Types.h"
 #include "../Classes/MaterialLayout.h"
 #include "../Classes/Shader.h"
@@ -33,29 +34,28 @@ const uint32_t GRayGenTableSlot = 0;
 const uint32_t GMissTableSlot = 1;
 const uint32_t GHitGroupTableSlot = 2;
 const uint32_t GHitGroupShaderPerSlot = 2;
-const float G_PI = 3.141592653589793f;
 
 struct UHSystemConstants
 {
-	XMFLOAT4X4 ViewProj;
-	XMFLOAT4X4 ViewProjInv;
-	XMFLOAT4X4 ViewProj_NonJittered;
-	XMFLOAT4X4 ViewProjInv_NonJittered;
-	XMFLOAT4X4 PrevViewProj_NonJittered;
-	XMFLOAT4X4 ProjInv;
-	XMFLOAT4X4 ProjInv_NonJittered;
-	XMFLOAT4X4 View;
-	XMFLOAT4 Resolution;
-	XMFLOAT4 ShadowResolution;
-	XMFLOAT3 CameraPos;
+	UHMatrix4x4 ViewProj;
+	UHMatrix4x4 ViewProjInv;
+	UHMatrix4x4 ViewProj_NonJittered;
+	UHMatrix4x4 ViewProjInv_NonJittered;
+	UHMatrix4x4 PrevViewProj_NonJittered;
+	UHMatrix4x4 ProjInv;
+	UHMatrix4x4 ProjInv_NonJittered;
+	UHMatrix4x4 View;
+	UHVector4 Resolution;
+	UHVector4 ShadowResolution;
+	UHVector3 CameraPos;
 	uint32_t NumDirLights;
 
-	XMFLOAT3 AmbientSky;
+	UHVector3 AmbientSky;
 	float JitterOffsetX;
-	XMFLOAT3 AmbientGround;
+	UHVector3 AmbientGround;
 	float JitterOffsetY;
 
-	XMFLOAT3 CameraDir;
+	UHVector3 CameraDir;
 	uint32_t NumRTInstances;
 
 	float JitterScaleMin;
@@ -84,10 +84,10 @@ struct UHSystemConstants
 	uint32_t OpaqueSceneTextureIndex;
 	float FinalReflectionStrength;
 
-	XMFLOAT3 SceneCenter;
+	UHVector3 SceneCenter;
 	float NearPlane;
 
-	XMFLOAT3 SceneExtent;
+	UHVector3 SceneExtent;
 	float RTCullingDistance;
 
 	uint32_t MaxReflectionRecursion;
@@ -98,12 +98,12 @@ struct UHSystemConstants
 
 struct UHObjectConstants
 {
-	XMFLOAT4X4 GWorld;
-	XMFLOAT4X4 GWorldIT;
-	XMFLOAT4X4 GPrevWorld;
+	UHMatrix4x4 GWorld;
+	UHMatrix4x4 GWorldIT;
+	UHMatrix4x4 GPrevWorld;
 	uint32_t InstanceIndex;
-	XMFLOAT3 WorldPos;
-	XMFLOAT3 BoundExtent;
+	UHVector3 WorldPos;
+	UHVector3 BoundExtent;
 	
 	// align to 256 bytes
 	float CPUPadding[9];
@@ -112,42 +112,42 @@ struct UHObjectConstants
 struct UHDirectionalLightConstants
 {
 	// intensity is multiplied to Color before sending to GPU
-	XMFLOAT4 Color = XMFLOAT4();
-	XMFLOAT3 Dir = XMFLOAT3();
+	UHVector4 Color = UHVector4();
+	UHVector3 Dir = UHVector3();
 	int32_t IsEnabled = 1;
 };
 
 struct UHPointLightConstants
 {
 	// intensity is multiplied to Color before sending to GPU
-	XMFLOAT4 Color = XMFLOAT4();
+	UHVector4 Color = UHVector4();
 	float Radius = 0.0f;
-	XMFLOAT3 Position = XMFLOAT3();
+	UHVector3 Position = UHVector3();
 	int32_t IsEnabled = 1;
 };
 
 struct UHSpotLightConstants
 {
-	XMFLOAT4X4 WorldToLight = XMFLOAT4X4();
+	UHMatrix4x4 WorldToLight = UHMatrix4x4();
 	// intensity is multiplied to Color before sending to GPU
-	XMFLOAT4 Color = XMFLOAT4();
-	XMFLOAT3 Dir = XMFLOAT3();
+	UHVector4 Color = UHVector4();
+	UHVector3 Dir = UHVector3();
 	float Radius = 0.0f;
 	float Angle = 0.0f;
-	XMFLOAT3 Position = XMFLOAT3();
+	UHVector3 Position = UHVector3();
 	float InnerAngle = 0.0f;
 	int32_t IsEnabled = 1;
 };
 
 struct UHSphericalHarmonicData
 {
-	XMFLOAT4 cAr;
-	XMFLOAT4 cAg;
-	XMFLOAT4 cAb;
-	XMFLOAT4 cBr;
-	XMFLOAT4 cBg;
-	XMFLOAT4 cBb;
-	XMFLOAT4 cC;
+	UHVector4 cAr;
+	UHVector4 cAg;
+	UHVector4 cAb;
+	UHVector4 cBr;
+	UHVector4 cBg;
+	UHVector4 cBb;
+	UHVector4 cC;
 };
 
 struct UHSphericalHarmonicConstants
@@ -316,21 +316,21 @@ enum class UHDebugBoundType
 
 struct UHDebugBoundConstant
 {
-	XMFLOAT3 Position;
+	UHVector3 Position;
 	UHDebugBoundType BoundType;
 
-	XMFLOAT3 Extent;
+	UHVector3 Extent;
 	float Radius;
 
-	XMFLOAT3 Color;
+	UHVector3 Color;
 	float Angle;
-	XMFLOAT3 Dir;
+	UHVector3 Dir;
 	float Padding;
 
-	XMFLOAT3 Right;
+	UHVector3 Right;
 	float Padding2;
 
-	XMFLOAT3 Up;
+	UHVector3 Up;
 };
 #endif
 

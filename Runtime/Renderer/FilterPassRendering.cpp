@@ -81,7 +81,7 @@ void UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBu
 			GaussianFilterHShader->BindParameters(RenderBuilder, GaussianFilterTempRT1, GaussianFilterTempRT0);
 
 			// dispatch compute
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(FilterResolution.width, GThreadGroup1D), FilterResolution.height, 1);
+			RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(FilterResolution.width, GThreadGroup1D), FilterResolution.height, 1);
 		}
 
 		// Vertical pass from temp horizontal blur result to output
@@ -96,7 +96,7 @@ void UHDeferredShadingRenderer::DispatchGaussianFilter(UHRenderBuilder& RenderBu
 			GaussianFilterVShader->BindParameters(RenderBuilder, GaussianFilterTempRT0, GaussianFilterTempRT1);
 
 			// dispatch compute
-			RenderBuilder.Dispatch(FilterResolution.width, MathHelpers::RoundUpDivide(FilterResolution.height, GThreadGroup1D), 1);
+			RenderBuilder.Dispatch(FilterResolution.width, UHMathHelpers::RoundUpDivide(FilterResolution.height, GThreadGroup1D), 1);
 		}
 	}
 
@@ -155,7 +155,7 @@ void UHDeferredShadingRenderer::DispatchBilateralFilter(UHRenderBuilder& RenderB
 			BilateralFilterHShader->BindParameters(RenderBuilder, FilterTempRT1, FilterTempRT0, CurrentFrameRT);
 
 			// dispatch compute
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(FilterResolution.width, GThreadGroup1D), FilterResolution.height, 1);
+			RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(FilterResolution.width, GThreadGroup1D), FilterResolution.height, 1);
 		}
 
 		// Vertical pass from temp horizontal blur result to output
@@ -170,7 +170,7 @@ void UHDeferredShadingRenderer::DispatchBilateralFilter(UHRenderBuilder& RenderB
 			BilateralFilterVShader->BindParameters(RenderBuilder, FilterTempRT0, FilterTempRT1, CurrentFrameRT);
 
 			// dispatch compute
-			RenderBuilder.Dispatch(FilterResolution.width, MathHelpers::RoundUpDivide(FilterResolution.height, GThreadGroup1D), 1);
+			RenderBuilder.Dispatch(FilterResolution.width, UHMathHelpers::RoundUpDivide(FilterResolution.height, GThreadGroup1D), 1);
 		}
 	}
 
@@ -237,8 +237,8 @@ void UHDeferredShadingRenderer::DispatchKawaseBlur(UHRenderBuilder& RenderBuilde
 			, InputMip, OutputMip);
 
 		// dispatch compute
-		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(KawaseExtent.width, GThreadGroup2D_X)
-			, MathHelpers::RoundUpDivide(KawaseExtent.height, GThreadGroup2D_Y), 1);
+		RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(KawaseExtent.width, GThreadGroup2D_X)
+			, UHMathHelpers::RoundUpDivide(KawaseExtent.height, GThreadGroup2D_Y), 1);
 	}
 
 	// N upsample passes
@@ -281,8 +281,8 @@ void UHDeferredShadingRenderer::DispatchKawaseBlur(UHRenderBuilder& RenderBuilde
 				, InputMip, OutputMip);
 
 			// dispatch compute
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(KawaseExtent.width, GThreadGroup2D_X)
-				, MathHelpers::RoundUpDivide(KawaseExtent.height, GThreadGroup2D_Y), 1);
+			RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(KawaseExtent.width, GThreadGroup2D_X)
+				, UHMathHelpers::RoundUpDivide(KawaseExtent.height, GThreadGroup2D_Y), 1);
 		}
 	}
 

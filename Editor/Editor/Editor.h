@@ -19,14 +19,15 @@ class UHEngine;
 class UHGraphic;
 class UHConfigManager;
 class UHDeferredShadingRenderer;
-class UHRawInput;
+class UHPlatformInput;
 class UHProfiler;
 class UHAssetManager;
+class UHClient;
 
 class UHEditor
 {
 public:
-	UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHProfiler* InProfile);
+	UHEditor(UHClient* InClient, UHEngine* InEngine, UHProfiler* InProfile);
 
 	void OnEditorUpdate();
 	void OnEditorMove();
@@ -40,12 +41,11 @@ private:
 	void OnSaveScene();
 	void OnLoadScene();
 
-	HINSTANCE HInstance;
-	HWND HWnd;
+	UHClient* Client;
 	UHEngine* Engine;
 	UHConfigManager* Config;
 	UHDeferredShadingRenderer* DeferredRenderer;
-	UHRawInput* Input;
+	UHPlatformInput* Input;
 	UHProfiler* Profile;
 	UHAssetManager* AssetManager;
 	UHGraphic* Gfx;

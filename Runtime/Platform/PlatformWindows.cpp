@@ -1,33 +1,33 @@
 #include "Platform.h"
 
+// Windows platform
+#ifdef _WIN32
+
 #include "UnheardEngine.h"
 #include "framework.h"
 #include "resource.h"
 #include "Runtime/Engine/Engine.h"
-#include "Runtime/Engine/Input.h"
-#include "Editor/Dialog/StatusDialog.h"
+#include "Runtime/Platform/PlatformInput.h"
+#include "Runtime/Platform/Client.h"
+#include "../Application.h"
+#include <objbase.h>
 
 #define MAX_LOADSTRING 100
 
 // Global Variables:
-HINSTANCE hInstance;                                // current instance
+HINSTANCE hInstance;                            // current instance
 HWND UHEngineWindow;                            // engine window
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE);
+BOOL                InitInstance(HINSTANCE, UHApplication* InApp);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-// Unheard Engine Instance
-UniquePtr<UHEngine> GUnheardEngine = nullptr;
-bool GIsMinimized = false;
-
-int UHPlatform::PlatformRun()
+bool UHPlatform::Initialize(UHApplication* InApp)
 {
-    GIsWindowsPlatform = true;
     if (GIsEditor)
     {
         _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -41,95 +41,26 @@ int UHPlatform::PlatformRun()
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
-    if (!InitInstance(hInstance))
+    if (!InitInstance(hInstance, InApp))
     {
-        return FALSE;
+        return false;
     }
-
-    // setup rand seed
-    srand((unsigned int)time(NULL));
 
     // Create engine instance and initialize with config settings
     CoInitialize(nullptr);
 
-    {
-        UHStatusDialogScope StatusDialog("Loading...");
-        GUnheardEngine = MakeUnique<UHEngine>();
-        GUnheardEngine->LoadConfig();
-
-        if (!GUnheardEngine->InitEngine(hInstance, UHEngineWindow))
-        {
-            UHE_LOG(L"Engine creation failed!\n");
-            GUnheardEngine->ReleaseEngine();
-            GUnheardEngine.reset();
-            return FALSE;
-        }
-    }
-
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_UNHEARDENGINE));
 
-    MSG msg = {};
+    Client = MakeUnique<UHClient>();
+    Client->SetClientInstance(hInstance);
+    Client->SetClientWindow(UHEngineWindow);
 
-    // Main message loop, use peek message instead of get message. Otherwise it will pause when there is no message and drop FPS
-    while (msg.message != WM_QUIT)
-    {
-        if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-        else
-        {
-            // call the game loop
-            if (GUnheardEngine)
-            {
-                GUnheardEngine->BeginFPSLimiter();
-#if WITH_EDITOR
-                GUnheardEngine->BeginProfile();
-                ImGui_ImplVulkan_NewFrame();
-                ImGui_ImplWin32_NewFrame();
-                ImGui::NewFrame();
+    return true;
+}
 
-                // profile does not contain editor update time
-                GUnheardEngine->GetEditor()->OnEditorUpdate();
-#endif
-
-                // update anyway, could consider adding a setting to decide wheter to pause update when it's minimized
-                GUnheardEngine->Update();
-
-#if WITH_EDITOR
-                ImGui::Render();
-#endif
-
-                // only call render loop when it's not minimized
-                if (!GIsMinimized)
-                {
-                    GUnheardEngine->RenderLoop();
-                }
-
-#if WITH_EDITOR               
-                // tricky workaround for HDR toggling, when the platform window of ImGui is outside the main window
-                // the window needs to be re-created to match the swapchain format
-                static bool bIsHDRAvailablePrev = GUnheardEngine->GetGfx()->IsHDRAvailable();
-                ImGui::UpdatePlatformWindows(bIsHDRAvailablePrev != GUnheardEngine->GetGfx()->IsHDRAvailable());
-                bIsHDRAvailablePrev = GUnheardEngine->GetGfx()->IsHDRAvailable();
-
-                // assume multi-view is always enabled
-                ImGui_Vulkan_CustomData CustomData{};
-                CustomData.Pipeline = GUnheardEngine->GetGfx()->GetImGuiPipeline();
-                ImGui::RenderPlatformWindowsDefault(nullptr, &CustomData);
-#endif
-
-                GUnheardEngine->EndFPSLimiter();
-#if WITH_EDITOR
-                GUnheardEngine->EndProfile();
-#endif
-            }
-        }
-    }
+void UHPlatform::Shutdown()
+{
     CoUninitialize();
-
-    return (int)msg.wParam;
 }
 
 //
@@ -139,7 +70,7 @@ int UHPlatform::PlatformRun()
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-    WNDCLASSEXW wcex;
+    WNDCLASSEXW wcex = {};
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
@@ -162,10 +93,10 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-BOOL InitInstance(HINSTANCE hInstance)
+BOOL InitInstance(HINSTANCE hInstance, UHApplication* InApp)
 {
     UHEngineWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, InApp);
 
     if (!UHEngineWindow)
     {
@@ -192,13 +123,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 #endif
 
+    UHApplication* UHEApp = (UHApplication*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    UHEngine* Engine = (UHEApp != nullptr) ? UHEApp->GetEngine() : nullptr;
+
     switch (message)
     {
+    case WM_NCCREATE:
+    {
+        CREATESTRUCT* CS = (CREATESTRUCT*)lParam;
+        UHApplication* App = (UHApplication*)CS->lpCreateParams;
+
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)App);
+        return TRUE;
+    }
+
     case WM_COMMAND:
     {
         int wmId = LOWORD(wParam);
 #if WITH_EDITOR
-        GUnheardEngine->GetEditor()->OnMenuSelection(wmId);
+        if (Engine)
+        {
+            Engine->GetEditor()->OnMenuSelection(wmId);
+        }
 #endif
 
         // Parse the menu selections:
@@ -217,14 +163,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     break;
 
     case WM_DESTROY:
-        // save config and release engine when destroy
-        if (GUnheardEngine)
-        {
-            GUnheardEngine->SaveConfig();
-            GUnheardEngine->ReleaseEngine();
-            GUnheardEngine.reset();
-        }
-
         PostQuitMessage(0);
         break;
 
@@ -232,39 +170,37 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // deal with minimize cases
         if (wParam == SIZE_MINIMIZED)
         {
-            GIsMinimized = true;
         }
         else
         {
-            GIsMinimized = false;
-            if (GUnheardEngine)
+            if (Engine)
             {
-                GUnheardEngine->SetResizeReason(UHEngineResizeReason::FromWndMessage);
+                Engine->SetResizeReason(UHEngineResizeReason::FromWndMessage);
             }
         }
 #if WITH_EDITOR
-        if (GUnheardEngine && GUnheardEngine->GetEditor())
+        if (Engine && Engine->GetEditor())
         {
-            GUnheardEngine->GetEditor()->OnEditorResize();
+            Engine->GetEditor()->OnEditorResize();
         }
 #endif
         break;
 
     case WM_INPUT:
-        if (GUnheardEngine)
+        if (Engine)
         {
-            if (UHRawInput* RawInput = GUnheardEngine->GetRawInput())
+            if (UHPlatformInput* RawInput = Engine->GetRawInput())
             {
-                RawInput->ParseInputData(lParam);
+                RawInput->ParseInputData((void*)lParam);
             }
         }
         break;
 
     case WM_MOVE:
 #if WITH_EDITOR
-        if (GUnheardEngine && GUnheardEngine->GetEditor())
+        if (Engine && Engine->GetEditor())
         {
-            GUnheardEngine->GetEditor()->OnEditorMove();
+            Engine->GetEditor()->OnEditorMove();
         }
 #endif
         break;
@@ -294,3 +230,4 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return (INT_PTR)FALSE;
 }
+#endif

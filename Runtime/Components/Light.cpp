@@ -2,7 +2,7 @@
 
 // ************************************** Light Base ************************************** //
 UHLightBase::UHLightBase()
-	: LightColor(XMFLOAT3(1, 1, 1))
+	: LightColor(UHVector3(1, 1, 1))
 	, Intensity(1.0f)
 	, LightType(UHLightType::Max)
 {
@@ -14,7 +14,7 @@ void UHLightBase::OnActivityChanged()
 	SetRenderDirties(true);
 }
 
-void UHLightBase::SetLightColor(XMFLOAT3 InLightColor)
+void UHLightBase::SetLightColor(UHVector3 InLightColor)
 {
 	LightColor = InLightColor;
 	SetRenderDirties(true);
@@ -81,15 +81,15 @@ UHDirectionalLightConstants UHDirectionalLightComponent::GetConstants() const
 		return Consts;
 	}
 
-	Consts.Color.x = LightColor.x;
-	Consts.Color.y = LightColor.y;
-	Consts.Color.z = LightColor.z;
+	Consts.Color.X = LightColor.X;
+	Consts.Color.Y = LightColor.Y;
+	Consts.Color.Z = LightColor.Z;
 	Consts.Dir = Forward;
 
-	Consts.Color.x *= Intensity;
-	Consts.Color.y *= Intensity;
-	Consts.Color.z *= Intensity;
-	Consts.Color.w = Intensity;
+	Consts.Color.X *= Intensity;
+	Consts.Color.Y *= Intensity;
+	Consts.Color.Z *= Intensity;
+	Consts.Color.W = Intensity;
 
 	return Consts;
 }
@@ -111,7 +111,7 @@ void UHDirectionalLightComponent::OnGenerateDetailView()
 	}
 }
 
-void UHDirectionalLightComponent::SetLightColor(XMFLOAT3 InLightColor)
+void UHDirectionalLightComponent::SetLightColor(UHVector3 InLightColor)
 {
 	UHLightBase::SetLightColor(InLightColor);
 }
@@ -184,15 +184,15 @@ UHPointLightConstants UHPointLightComponent::GetConstants() const
 		return Consts;
 	}
 
-	Consts.Color.x = LightColor.x;
-	Consts.Color.y = LightColor.y;
-	Consts.Color.z = LightColor.z;
+	Consts.Color.X = LightColor.X;
+	Consts.Color.Y = LightColor.Y;
+	Consts.Color.Z = LightColor.Z;
 	Consts.Radius = Radius;
 
-	Consts.Color.x *= Intensity;
-	Consts.Color.y *= Intensity;
-	Consts.Color.z *= Intensity;
-	Consts.Color.w = Intensity;
+	Consts.Color.X *= Intensity;
+	Consts.Color.Y *= Intensity;
+	Consts.Color.Z *= Intensity;
+	Consts.Color.W = Intensity;
 
 	Consts.Position = Position;
 
@@ -206,7 +206,7 @@ UHDebugBoundConstant UHPointLightComponent::GetDebugBoundConst() const
 	BoundConst.BoundType = UHDebugBoundType::DebugSphere;
 	BoundConst.Position = GetPosition();
 	BoundConst.Radius = GetRadius();
-	BoundConst.Color = XMFLOAT3(1, 1, 0);
+	BoundConst.Color = UHVector3(1, 1, 0);
 
 	return BoundConst;
 }
@@ -228,7 +228,7 @@ void UHPointLightComponent::OnGenerateDetailView()
 	}
 }
 
-void UHPointLightComponent::SetLightColor(XMFLOAT3 InLightColor)
+void UHPointLightComponent::SetLightColor(UHVector3 InLightColor)
 {
 	UHLightBase::SetLightColor(InLightColor);
 }
@@ -319,30 +319,30 @@ UHSpotLightConstants UHSpotLightComponent::GetConstants() const
 		return Consts;
 	}
 
-	Consts.Color.x = LightColor.x;
-	Consts.Color.y = LightColor.y;
-	Consts.Color.z = LightColor.z;
+	Consts.Color.X = LightColor.X;
+	Consts.Color.Y = LightColor.Y;
+	Consts.Color.Z = LightColor.Z;
 	Consts.Radius = Radius;
 
 	// half the angle when sending to GPU
-	Consts.Angle = XMConvertToRadians(Angle * 0.5f);
-	Consts.InnerAngle = XMConvertToRadians(InnerAngle * 0.5f);
+	Consts.Angle = UHMathHelpers::ToRadians(Angle * 0.5f);
+	Consts.InnerAngle = UHMathHelpers::ToRadians(InnerAngle * 0.5f);
 
-	Consts.Color.x *= Intensity;
-	Consts.Color.y *= Intensity;
-	Consts.Color.z *= Intensity;
-	Consts.Color.w = Intensity;
+	Consts.Color.X *= Intensity;
+	Consts.Color.Y *= Intensity;
+	Consts.Color.Z *= Intensity;
+	Consts.Color.W = Intensity;
 
 	Consts.Dir = Forward;
 	Consts.Position = Position;
 
 	// calculate world to light matrix without scale
-	XMMATRIX InvW = XMMatrixTranspose(XMMatrixTranslation(Position.x, Position.y, Position.z))
-		* XMMatrixTranspose(XMLoadFloat4x4(&RotationMatrix));
+	UHMatrix4x4 InvW = UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixTranslation(Position))
+		* UHMathHelpers::UHMatrixTranspose(RotationMatrix);
 
-	XMVECTOR Det = XMMatrixDeterminant(InvW);
-	InvW = XMMatrixInverse(&Det, InvW);
-	XMStoreFloat4x4(&Consts.WorldToLight, InvW);
+	UHVector4 Det = UHMathHelpers::UHMatrixDeterminant(InvW);
+	InvW = UHMathHelpers::UHMatrixInverse(Det, InvW);
+	Consts.WorldToLight = InvW;
 
 	return Consts;
 }
@@ -354,11 +354,11 @@ UHDebugBoundConstant UHSpotLightComponent::GetDebugBoundConst() const
 	BoundConst.BoundType = UHDebugBoundType::DebugCone;
 	BoundConst.Position = GetPosition();
 	BoundConst.Radius = GetRadius();
-	BoundConst.Color = XMFLOAT3(1, 1, 0);
+	BoundConst.Color = UHVector3(1, 1, 0);
 	BoundConst.Dir = Forward;
 	BoundConst.Right = Right;
 	BoundConst.Up = Up;
-	BoundConst.Angle = XMConvertToRadians(Angle * 0.5f);
+	BoundConst.Angle = UHMathHelpers::ToRadians(Angle * 0.5f);
 
 	return BoundConst;
 }
@@ -382,7 +382,7 @@ void UHSpotLightComponent::OnGenerateDetailView()
 	}
 }
 
-void UHSpotLightComponent::SetLightColor(XMFLOAT3 InLightColor)
+void UHSpotLightComponent::SetLightColor(UHVector3 InLightColor)
 {
 	UHLightBase::SetLightColor(InLightColor);
 }

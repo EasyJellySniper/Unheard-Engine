@@ -1,6 +1,12 @@
 #include "Utility.h"
 #include <unordered_map>
 
+#if _WIN32
+#include <Windows.h>
+#elif __linux__
+#include <iconv.h>
+#endif
+
 namespace UHUtilities
 {
 	std::unordered_map<size_t, size_t> IniSectionCache;
@@ -66,14 +72,86 @@ namespace UHUtilities
 
 	std::string ToStringA(const std::wstring& InStringW)
 	{
-		return std::filesystem::path(InStringW).string();
+		// platform-based string conversion
+
+#if _WIN32
+
+		const int32_t AStringsize = WideCharToMultiByte(CP_UTF8, 0, &InStringW[0], (int32_t)InStringW.size(), nullptr, 0, nullptr, nullptr);
+		std::string AString(AStringsize, 0);
+		WideCharToMultiByte(CP_UTF8, 0, &InStringW[0], (int32_t)InStringW.size(), &AString[0], AStringsize, nullptr, nullptr);
+
+#elif __linux__
+
+		iconv_t Conv = iconv_open("UTF-8", "WCHAR_T");
+		char* InBuff = reinterpret_cast<char*>(const_cast<wchar_t*>(InStringW.data()));
+		size_t InBytes = InStringW.size() * sizeof(wchar_t);
+
+		std::vector<char> OutBuff(InStringW.size() * 4); // worst-case UTF-8 expansion
+		char* OutPtr = OutBuff.data();
+		size_t OutBytes = OutBuff.size();
+
+		size_t Res = iconv(Conv, &InBuff, &InBytes, &OutPtr, &OutBytes);
+		iconv_close(Conv);
+
+		if (Res == (size_t)-1)
+		{
+			// could be E2BIG or EILSEQ or EINVAL
+			// deal with those cases afterward if necessary
+			return "";
+		}
+
+		const size_t BytesWritten = OutBuff.size() - OutBytes;
+		std::string AString(OutBuff.data(), BytesWritten);
+#else
+		// just a fallback for unknown platform
+		// this is not a good solution, better to identify the platform and implement corresponding conversion
+		std::string AString(InStringW.begin(), InStringW.end());
+#endif
+
+		return AString;
 	}
 
 	std::wstring ToStringW(const std::string& InStringA)
 	{
-		const int32_t WStringSize = MultiByteToWideChar(CP_UTF8, 0, &InStringA[0], (int32_t)InStringA.size(), NULL, 0);
+		// platform-based string conversion
+
+#if _WIN32
+
+		const int32_t WStringSize = MultiByteToWideChar(CP_UTF8, 0, &InStringA[0], (int32_t)InStringA.size(), nullptr, 0);
 		std::wstring WString(WStringSize, 0);
 		MultiByteToWideChar(CP_UTF8, 0, &InStringA[0], (int32_t)InStringA.size(), &WString[0], WStringSize);
+
+#elif __linux__
+
+		iconv_t Conv = iconv_open("WCHAR_T", "UTF-8");
+		char* InBuff = const_cast<char*>(InStringA.data());
+		size_t InBytes = InStringA.size();
+
+		std::vector<wchar_t> OutBuff(InStringA.size() * 2);
+		char* OutPtr = reinterpret_cast<char*>(OutBuff.data());
+		size_t OutBytes = OutBuff.size() * sizeof(wchar_t);
+
+		size_t Res = iconv(Conv, &InBuff, &InBytes, &OutPtr, &OutBytes);
+		iconv_close(Conv);
+
+		if (Res == (size_t)-1)
+		{
+			// could be E2BIG or EILSEQ or EINVAL
+			// deal with those cases afterward if necessary
+			return L"";
+		}
+
+		const size_t BytesWritten = OutBuff.size() * sizeof(wchar_t) - OutBytes;
+		const size_t WCharCount = BytesWritten / sizeof(wchar_t);
+		
+		// output
+		std::wstring WString(OutBuff.data(), WCharCount);
+
+#else
+		// just a fallback for unknown platform
+		// this is not a good solution, better to identify the platform and implement corresponding conversion
+		std::wstring WString(InStringA.begin(), InStringA.end());
+#endif
 
 		return WString;
 	}

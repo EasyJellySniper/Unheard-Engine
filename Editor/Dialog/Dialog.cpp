@@ -1,5 +1,6 @@
 #include "Dialog.h"
 
+#if WITH_EDITOR
 std::unordered_map<int32_t, UHDialog*> GActiveDialogTable;
 std::unordered_map<HWND, UHGUIControlBase*> GControlGUITable;
 
@@ -269,3 +270,5 @@ INT_PTR CALLBACK GDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPar
 
     return (INT_PTR)FALSE;
 }
+
+#endif

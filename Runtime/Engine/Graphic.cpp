@@ -5,6 +5,7 @@
 #include <algorithm> // for clamp
 #include "../Classes/Utility.h"
 #include "../Classes/AssetPath.h"
+#include "Runtime/Platform/Client.h"
 
 UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	: GraphicsQueue(nullptr)
@@ -16,7 +17,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 	, PhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties())
 	, SwapChain(nullptr)
 	, VulkanInstance(nullptr)
-	, WindowCache(nullptr)
+	, ClientCache(nullptr)
 	, bIsFullScreen(false)
 	, bUseValidationLayers(false)
 	, AssetManagerInterface(InAssetManager)
@@ -40,10 +41,16 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 {
 	// extension defines, hard code for now
 	InstanceExtensions = { "VK_KHR_surface"
-		, "VK_KHR_win32_surface"
 		, "VK_KHR_get_surface_capabilities2"
 		, "VK_KHR_get_physical_device_properties2"
 		, "VK_EXT_swapchain_colorspace" };
+
+	// platform-based extensions
+#if _WIN32
+	InstanceExtensions.push_back("VK_KHR_win32_surface");
+#elif __linux__
+	InstanceExtensions.push_back("VK_KHR_xcb_surface");
+#endif
 
 	DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		, "VK_EXT_full_screen_exclusive"
@@ -76,12 +83,10 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 }
 
 // init graphics
-bool UHGraphic::InitGraphics(HWND Hwnd)
+bool UHGraphic::InitGraphics(UHClient* InClient)
 {
 	bUseValidationLayers = ConfigInterface->RenderingSetting().bEnableLayerValidation && GIsEditor;
-
-	// variable setting
-	WindowCache = Hwnd;
+	ClientCache = InClient;
 
 	bool bInitSuccess = CreateInstance()
 		&& CreatePhysicalDevice()
@@ -126,13 +131,7 @@ void UHGraphic::Release()
 	// wait device to finish before release
 	WaitGPU();
 
-	if (bIsFullScreen)
-	{
-		GLeaveFullScreenCallback(LogicalDevice, SwapChain);
-		bIsFullScreen = false;
-	}
-
-	WindowCache = nullptr;
+	ClientCache = nullptr;
 	GraphicsQueue = nullptr;
 
 	// release all shaders
@@ -672,16 +671,27 @@ bool UHGraphic::CreateLogicalDevice()
 bool UHGraphic::CreateWindowSurface()
 {
 	// pass window handle and create surface
+#if _WIN32
 	VkWin32SurfaceCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	CreateInfo.hwnd = WindowCache;
-	CreateInfo.hinstance = GetModuleHandle(nullptr);
+	CreateInfo.hwnd = (HWND)ClientCache->GetNativeWindow();
+	CreateInfo.hinstance = (HINSTANCE)ClientCache->GetNativeInstance();
 
 	if (vkCreateWin32SurfaceKHR(VulkanInstance, &CreateInfo, nullptr, &MainSurface) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to create window surface!.\n");
 		return false;
 	}
+#elif __linux__
+	// @TODO: Make this work for Linux
+	/*VkXcbSurfaceCreateInfoKHR CreateInfo{};
+	CreateInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+	Display* display = glfwGetX11Display();
+	xcb_connection_t* connection = XGetXCBConnection(display);
+	CreateInfo.connection = glfwGetX11Display();
+	// glfwGetX11Window()
+	CreateInfo.window = (xcb_window_t)ClientCache->GetNativeWindow();*/
+#endif
 
 	return true;
 }
@@ -694,16 +704,18 @@ UHSwapChainDetails UHGraphic::QuerySwapChainSupport(VkPhysicalDevice InDevice) c
 	VkSurfaceFullScreenExclusiveInfoEXT FullScreenInfo{};
 	FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
 
-	// prepare win32 full screen for capabilities
-	VkSurfaceFullScreenExclusiveWin32InfoEXT Win32FullScreenInfo{};
-	Win32FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
-	Win32FullScreenInfo.hmonitor = MonitorFromWindow(WindowCache, MONITOR_DEFAULTTOPRIMARY);
-
 	// try to get surface 2
 	VkPhysicalDeviceSurfaceInfo2KHR Surface2Info{};
 	Surface2Info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
 	Surface2Info.surface = MainSurface;
+
+#if _WIN32
+	// Windows only exclusive fullscreen setup
+	VkSurfaceFullScreenExclusiveWin32InfoEXT Win32FullScreenInfo{};
+	Win32FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
+	Win32FullScreenInfo.hmonitor = MonitorFromWindow((HWND)ClientCache->GetNativeWindow(), MONITOR_DEFAULTTOPRIMARY);
 	Surface2Info.pNext = &Win32FullScreenInfo;
+#endif
 	
 	Details.Capabilities2.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
 	vkGetPhysicalDeviceSurfaceCapabilities2KHR(InDevice, &Surface2Info, &Details.Capabilities2);
@@ -789,7 +801,7 @@ VkPresentModeKHR ChooseSwapChainMode(const UHSwapChainDetails& Details, bool bUs
 	return VK_PRESENT_MODE_IMMEDIATE_KHR;
 }
 
-VkExtent2D ChooseSwapChainExtent(const UHSwapChainDetails& Details, HWND WindowCache)
+VkExtent2D ChooseSwapChainExtent(const UHSwapChainDetails& Details, const UHClient* InClient)
 {
 	// return size directly if it's already acquired by Vulkan
 	if (Details.Capabilities2.surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
@@ -797,15 +809,9 @@ VkExtent2D ChooseSwapChainExtent(const UHSwapChainDetails& Details, HWND WindowC
 		return Details.Capabilities2.surfaceCapabilities.currentExtent;
 	}
 
-	RECT Rect;
 	int32_t Width = 0;
 	int32_t Height = 0;
-
-	if (GetWindowRect(WindowCache, &Rect))
-	{
-		Width = Rect.right - Rect.left;
-		Height = Rect.bottom - Rect.top;
-	}
+	InClient->GetWindowSize(Width, Height);
 
 	// ensure to clamp the resolution size
 	VkExtent2D ActualExtent = { static_cast<uint32_t>(Width), static_cast<uint32_t>(Height) };
@@ -1830,7 +1836,7 @@ bool UHGraphic::RecreateImGui()
 	}
 
 	// Setup Platform/Renderer backends
-	bImGuiSucceed &= ImGui_ImplWin32_Init(WindowCache);
+	bImGuiSucceed &= ImGui_ImplWin32_Init(ClientCache->GetNativeWindow());
 
 	InitInfo.Instance = GetInstance();
 	InitInfo.PhysicalDevice = GetPhysicalDevice();
@@ -1893,7 +1899,7 @@ bool UHGraphic::CreateSwapChain()
 
 	VkSurfaceFormatKHR Format = ChooseSwapChainFormat(SwapChainSupport, ConfigInterface->RenderingSetting().bEnableHDR, bSupportHDR);
 	VkPresentModeKHR PresentMode = ChooseSwapChainMode(SwapChainSupport, ConfigInterface->PresentationSetting().bVsync);
-	VkExtent2D Extent = ChooseSwapChainExtent(SwapChainSupport, WindowCache);
+	VkExtent2D Extent = ChooseSwapChainExtent(SwapChainSupport, ClientCache);
 
 	// Follow GMaxFrameInFlight for image counts
 	uint32_t ImageCount = GMaxFrameInFlight;
@@ -1933,16 +1939,19 @@ bool UHGraphic::CreateSwapChain()
 	CreateInfo.clipped = VK_TRUE;
 	CreateInfo.oldSwapchain = nullptr;
 
-	// prepare win32 fullscreen ext
-	VkSurfaceFullScreenExclusiveWin32InfoEXT Win32FullScreenInfo{};
-	Win32FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
-	Win32FullScreenInfo.hmonitor = MonitorFromWindow(WindowCache, MONITOR_DEFAULTTOPRIMARY);
-
 	// prepare fullscreen stuff, set to VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT and let the driver do the work
 	VkSurfaceFullScreenExclusiveInfoEXT FullScreenInfo{};
 	FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
 	FullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+
+#if _WIN32
+	// Windows only exclusive fullscreen setup
+	VkSurfaceFullScreenExclusiveWin32InfoEXT Win32FullScreenInfo{};
+	Win32FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
+	Win32FullScreenInfo.hmonitor = MonitorFromWindow((HWND)ClientCache->GetNativeWindow(), MONITOR_DEFAULTTOPRIMARY);
 	FullScreenInfo.pNext = &Win32FullScreenInfo;
+#endif
+
 	CreateInfo.pNext = &FullScreenInfo;
 
 	if (vkCreateSwapchainKHR(LogicalDevice, &CreateInfo, nullptr, &SwapChain) != VK_SUCCESS)

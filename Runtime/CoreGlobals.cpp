@@ -11,9 +11,6 @@ bool GIsEditor = false;
 bool GIsShipping = true;
 #endif
 
-// platform parameters, will be initialized based on implementations
-bool GIsWindowsPlatform = false;
-
 // the starting core of threads
 const uint32_t GMainThreadAffinity = 0;
 const uint32_t GRenderThreadAffinity = 1;
@@ -24,6 +21,9 @@ std::thread::id GMainThreadID;
 std::thread::id GRenderThreadID;
 std::vector<std::thread::id> GWorkerThreadIDs;
 thread_local std::thread::id GCurrentThreadID;
+
+float GEpsilon = std::numeric_limits<float>::epsilon();
+float GWorldMax = static_cast<float>(1 << 20);
 
 bool IsInGameThread()
 {

@@ -291,13 +291,16 @@
     <ClInclude Include="Runtime\Classes\GPUMemory.h" />
     <ClInclude Include="Runtime\Classes\GPUQuery.h" />
     <ClInclude Include="Runtime\Classes\IniManager.h" />
+    <ClInclude Include="Runtime\Classes\Math.h" />
     <ClInclude Include="Runtime\Classes\TextureCompressor.h" />
     <ClInclude Include="Runtime\Classes\TextureFormat.h" />
     <ClInclude Include="Runtime\Classes\Thread.h" />
     <ClInclude Include="Runtime\Components\GameScript.h" />
     <ClInclude Include="Runtime\CoreGlobals.h" />
     <ClInclude Include="Runtime\Engine\GraphicFunction.h" />
+    <ClInclude Include="Runtime\Platform\Client.h" />
     <ClInclude Include="Runtime\Platform\Platform.h" />
+    <ClInclude Include="Runtime\Platform\PlatformVulkan.h" />
     <ClInclude Include="Runtime\Renderer\DescriptorHelper.h" />
     <ClInclude Include="Runtime\Components\Light.h" />
     <ClInclude Include="Runtime\Components\Camera.h" />
@@ -374,7 +377,7 @@
     <ClInclude Include="Runtime\Renderer\ShaderClass\SkyPassShader.h" />
     <ClInclude Include="Runtime\Renderer\ShaderClass\TranslucentPassShader.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="Runtime\Engine\Input.h" />
+    <ClInclude Include="Runtime\Platform\PlatformInput.h" />
     <ClInclude Include="Editor\Classes\FbxImporter.h" />
     <ClInclude Include="Runtime\Components\Transform.h" />
     <ClInclude Include="Runtime\Classes\Texture2D.h" />
@@ -435,6 +438,7 @@
     <ClCompile Include="Runtime\Classes\GPUMemory.cpp" />
     <ClCompile Include="Runtime\Classes\GPUQuery.cpp" />
     <ClCompile Include="Runtime\Classes\IniManager.cpp" />
+    <ClCompile Include="Runtime\Classes\Math.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCompressor.cpp" />
     <ClCompile Include="Runtime\Classes\TextureCube.cpp" />
     <ClCompile Include="Runtime\Classes\TextureFormat.cpp" />
@@ -443,7 +447,11 @@
     <ClCompile Include="Runtime\Classes\Utility.cpp" />
     <ClCompile Include="Runtime\Components\GameScript.cpp" />
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
-    <ClCompile Include="Runtime\Platform\PlatformLinux.cpp" />
+    <None Include="Runtime\Platform\PlatformLinux.cpp" />
+    <None Include="Runtime\Platform\ClientLinux.cpp" />
+    <ClCompile Include="Runtime\Platform\ClientWindow.cpp" />
+    <None Include="Runtime\Platform\PlatformInputLinux.cpp" />
+    <ClCompile Include="Runtime\Platform\PlatformInputShared.cpp" />
     <ClCompile Include="Runtime\Platform\PlatformWindows.cpp" />
     <ClCompile Include="Runtime\Renderer\FilterPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\DepthPassRendering.cpp" />
@@ -466,7 +474,7 @@
     <ClCompile Include="Runtime\Engine\GameTimer.cpp" />
     <ClCompile Include="Runtime\Engine\Graphic.cpp" />
     <ClCompile Include="Runtime\Engine\Engine.cpp" />
-    <ClCompile Include="Runtime\Engine\Input.cpp" />
+    <ClCompile Include="Runtime\Platform\PlatformInputWindows.cpp" />
     <ClCompile Include="Editor\Classes\FbxImporter.cpp" />
     <ClCompile Include="Runtime\Renderer\OcclusionPassRendering.cpp" />
     <ClCompile Include="Runtime\Renderer\ReflectionPassRendering.cpp" />

@@ -5,6 +5,7 @@
 #include "../../framework.h"
 #include "../../UnheardEngine.h"
 #include "../CoreGlobals.h"
+#include "Runtime/Platform/Client.h"
 
 // wrapper for Set/GetUHESetting
 #define SET_UHE_SETTING(x,y) SetUHESetting(#x, #y, x.y)
@@ -170,7 +171,7 @@ void UHConfigManager::ApplyConfig()
 }
 
 // save config
-void UHConfigManager::SaveConfig(HWND InWindow)
+void UHConfigManager::SaveConfig()
 {
 	ApplyConfig();
 
@@ -192,69 +193,27 @@ void UHConfigManager::SaveConfig(HWND InWindow)
 	FileOut.close();
 }
 
-void UHConfigManager::ApplyPresentationSettings(HWND InWindow)
+void UHConfigManager::ApplyPresentationSettings(UHClient* InClient)
 {
 	if (PresentationSettings.WindowWidth != 0 && PresentationSettings.WindowHeight != 0)
 	{
-		SetWindowPos(InWindow, nullptr, 0, 0, PresentationSettings.WindowWidth, PresentationSettings.WindowHeight, 0);
+		InClient->SetWindowPosition(PresentationSettings.WindowWidth, PresentationSettings.WindowHeight);
 	}
 	else
 	{
-		UpdateWindowSize(InWindow);
+		UpdateWindowSize(InClient);
 	}
 }
 
-void UHConfigManager::UpdateWindowSize(HWND InWindow)
+void UHConfigManager::UpdateWindowSize(UHClient* InClient)
 {
-	// calc window size if it's first time launch
-	RECT Rect;
-	if (GetWindowRect(InWindow, &Rect))
-	{
-		PresentationSettings.WindowWidth = Rect.right - Rect.left;
-		PresentationSettings.WindowHeight = Rect.bottom - Rect.top;
-	}
+	InClient->GetWindowSize(PresentationSettings.WindowWidth, PresentationSettings.WindowHeight);
 }
 
-void UHConfigManager::ApplyWindowStyle(HINSTANCE InInstance, HWND InWindow)
+void UHConfigManager::ApplyWindowStyle(UHClient* InClient)
 {
 	// apply window style depending on full screen flag
-	if (PresentationSettings.bFullScreen)
-	{
-		// simply use desktop size as fullscreen size
-		HWND DesktopWindow = GetDesktopWindow();
-		RECT Rect;
-		int32_t DesktopWidth = 0;
-		int32_t DesktopHeight = 0;
-
-		if (GetWindowRect(DesktopWindow, &Rect))
-		{
-			DesktopWidth = Rect.right - Rect.left;
-			DesktopHeight = Rect.bottom - Rect.top;
-		}
-
-		SetWindowLongPtr(InWindow, GWL_STYLE, WS_POPUP);
-		SetWindowPos(InWindow, nullptr, 0, 0, DesktopWidth, DesktopHeight, 0);
-		SetMenu(InWindow, nullptr);
-		ShowWindow(InWindow, SW_SHOW);
-	}
-	else
-	{
-		// recover to window
-		SetWindowLongPtr(InWindow, GWL_STYLE, WS_OVERLAPPEDWINDOW);
-		SetWindowPos(InWindow, nullptr, 0, 0, PresentationSettings.WindowWidth, PresentationSettings.WindowHeight, 0);
-
-		if (GIsEditor)
-		{
-			// recover menu and icon with debug mode only
-			HICON Icon = LoadIcon(InInstance, MAKEINTRESOURCE(IDI_UNHEARDENGINE));
-			SendMessage(InWindow, WM_SETICON, ICON_SMALL, (LPARAM)Icon);
-
-			HMENU Menu = LoadMenu(InInstance, MAKEINTRESOURCE(IDC_UNHEARDENGINE));
-			SetMenu(InWindow, Menu);
-		}
-
-		ShowWindow(InWindow, SW_SHOW);
-	}
+	InClient->SetWindowStyle(PresentationSettings.bFullScreen, PresentationSettings.WindowWidth, PresentationSettings.WindowHeight);
 }
 
 // toggle TAA

@@ -18,7 +18,7 @@ UHMesh::UHMesh(std::string InName)
 	, ImportedMaterialName("NONE")
 	, VertexCount(0)
 	, IndiceCount(0)
-	, MeshCenter(XMFLOAT3(0, 0, 0))
+	, MeshCenter(UHVector3(0, 0, 0))
 	, PositionBuffer(nullptr)
 	, UV0Buffer(nullptr)
 	, NormalBuffer(nullptr)
@@ -28,7 +28,7 @@ UHMesh::UHMesh(std::string InName)
 	, BottomLevelAS(nullptr)
 	, HighestIndex(-1)
 	, bIndexBuffer32Bit(false)
-	, MeshBound(BoundingBox())
+	, MeshBound(UHBoundingBox())
 	, bHasInitialized(false)
 	, NumMeshlets(0)
 {
@@ -62,10 +62,10 @@ void UHMesh::CreateGPUBuffers(UHGraphic* InGfx)
 
 	UHGPUMemory* SharedMemory = InGfx->GetMeshSharedMemory();
 
-	PositionBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, Name + "_Position", SharedMemory);
-	UV0Buffer = InGfx->RequestRenderBuffer<XMFLOAT2>(VertexCount, VBFlags, Name + "_UV0", SharedMemory);
-	NormalBuffer = InGfx->RequestRenderBuffer<XMFLOAT3>(VertexCount, VBFlags, Name + "_Normal", SharedMemory);
-	TangentBuffer = InGfx->RequestRenderBuffer<XMFLOAT4>(VertexCount, VBFlags, Name + "_Tangent", SharedMemory);
+	PositionBuffer = InGfx->RequestRenderBuffer<UHVector3>(VertexCount, VBFlags, Name + "_Position", SharedMemory);
+	UV0Buffer = InGfx->RequestRenderBuffer<UHVector2>(VertexCount, VBFlags, Name + "_UV0", SharedMemory);
+	NormalBuffer = InGfx->RequestRenderBuffer<UHVector3>(VertexCount, VBFlags, Name + "_Normal", SharedMemory);
+	TangentBuffer = InGfx->RequestRenderBuffer<UHVector4>(VertexCount, VBFlags, Name + "_Tangent", SharedMemory);
 
 	// consider 32 or 16 bit index buffer
 	if (bIndexBuffer32Bit)
@@ -179,23 +179,23 @@ void UHMesh::Release()
 	bHasInitialized = false;
 }
 
-void UHMesh::SetPositionData(std::vector<XMFLOAT3> InData)
+void UHMesh::SetPositionData(std::vector<UHVector3> InData)
 {
 	PositionData = InData;
 	VertexCount = static_cast<uint32_t>(PositionData.size());
 }
 
-void UHMesh::SetUV0Data(std::vector<XMFLOAT2> InData)
+void UHMesh::SetUV0Data(std::vector<UHVector2> InData)
 {
 	UV0Data = InData;
 }
 
-void UHMesh::SetNormalData(std::vector<XMFLOAT3> InData)
+void UHMesh::SetNormalData(std::vector<UHVector3> InData)
 {
 	NormalData = InData;
 }
 
-void UHMesh::SetTangentData(std::vector<XMFLOAT4> InData)
+void UHMesh::SetTangentData(std::vector<UHVector4> InData)
 {
 	TangentData = InData;
 }
@@ -252,47 +252,47 @@ std::string UHMesh::GetImportedMaterialName() const
 	return ImportedMaterialName;
 }
 
-XMFLOAT3 UHMesh::GetImportedTranslation() const
+UHVector3 UHMesh::GetImportedTranslation() const
 {
 	return ImportedTranslation;
 }
 
-XMFLOAT3 UHMesh::GetImportedRotation() const
+UHVector3 UHMesh::GetImportedRotation() const
 {
 	return ImportedRotation;
 }
 
-XMFLOAT3 UHMesh::GetImportedScale() const
+UHVector3 UHMesh::GetImportedScale() const
 {
 	return ImportedScale;
 }
 
-XMFLOAT3 UHMesh::GetMeshCenter() const
+UHVector3 UHMesh::GetMeshCenter() const
 {
 	return MeshCenter;
 }
 
-BoundingBox UHMesh::GetMeshBound() const
+UHBoundingBox UHMesh::GetMeshBound() const
 {
 	return MeshBound;
 }
 
-UHRenderBuffer<XMFLOAT3>* UHMesh::GetPositionBuffer() const
+UHRenderBuffer<UHVector3>* UHMesh::GetPositionBuffer() const
 {
 	return PositionBuffer.get();
 }
 
-UHRenderBuffer<XMFLOAT2>* UHMesh::GetUV0Buffer() const
+UHRenderBuffer<UHVector2>* UHMesh::GetUV0Buffer() const
 {
 	return UV0Buffer.get();
 }
 
-UHRenderBuffer<XMFLOAT3>* UHMesh::GetNormalBuffer() const
+UHRenderBuffer<UHVector3>* UHMesh::GetNormalBuffer() const
 {
 	return NormalBuffer.get();
 }
 
-UHRenderBuffer<XMFLOAT4>* UHMesh::GetTangentBuffer() const
+UHRenderBuffer<UHVector4>* UHMesh::GetTangentBuffer() const
 {
 	return TangentBuffer.get();
 }
@@ -326,18 +326,18 @@ void UHMesh::RecalculateMeshBound()
 {
 	// calc the mesh center and mesh bound
 	constexpr float Inf = std::numeric_limits<float>::infinity();
-	XMFLOAT3 MinPoint = XMFLOAT3(Inf, Inf, Inf);
-	XMFLOAT3 MaxPoint = XMFLOAT3(-Inf, -Inf, -Inf);
+	UHVector3 MinPoint = UHVector3(Inf, Inf, Inf);
+	UHVector3 MaxPoint = UHVector3(-Inf, -Inf, -Inf);
 
-	for (const XMFLOAT3& P : PositionData)
+	for (const UHVector3& P : PositionData)
 	{
-		MinPoint = MathHelpers::MinVector(P, MinPoint);
-		MaxPoint = MathHelpers::MaxVector(P, MaxPoint);
+		MinPoint = UHMathHelpers::MinVector(P, MinPoint);
+		MaxPoint = UHMathHelpers::MaxVector(P, MaxPoint);
 	}
 
 	MeshCenter = (MinPoint + MaxPoint) * 0.5f;
-	XMFLOAT3 MeshExtent = (MaxPoint - MinPoint) * 0.5f;
-	MeshBound = BoundingBox(MeshCenter, MeshExtent);
+	UHVector3 MeshExtent = (MaxPoint - MinPoint) * 0.5f;
+	MeshBound = UHBoundingBox(MeshCenter, MeshExtent);
 }
 
 // function for importing UHAsset
@@ -392,26 +392,26 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 }
 
 #if WITH_EDITOR
-void UHMesh::SetImportedTransform(XMFLOAT3 InTranslation, XMFLOAT3 InRotation, XMFLOAT3 InScale)
+void UHMesh::SetImportedTransform(UHVector3 InTranslation, UHVector3 InRotation, UHVector3 InScale)
 {
 	ImportedTranslation = InTranslation;
 	ImportedRotation = InRotation;
 	ImportedScale = InScale;
 
 	// check invalid data
-	if (!MathHelpers::IsValidVector(ImportedTranslation))
+	if (!UHMathHelpers::IsValidVector(ImportedTranslation))
 	{
-		ImportedTranslation = XMFLOAT3(0, 0, 0);
+		ImportedTranslation = UHVector3(0, 0, 0);
 	}
 
-	if (!MathHelpers::IsValidVector(ImportedRotation))
+	if (!UHMathHelpers::IsValidVector(ImportedRotation))
 	{
-		ImportedRotation = XMFLOAT3(0, 0, 0);
+		ImportedRotation = UHVector3(0, 0, 0);
 	}
 
-	if (!MathHelpers::IsValidVector(ImportedScale) || MathHelpers::IsVectorNearlyZero(ImportedScale))
+	if (!UHMathHelpers::IsValidVector(ImportedScale) || UHMathHelpers::IsVectorNearlyZero(ImportedScale))
 	{
-		ImportedScale = XMFLOAT3(1, 1, 1);
+		ImportedScale = UHVector3(1, 1, 1);
 	}
 }
 
@@ -523,7 +523,7 @@ void UHMesh::CheckAndConvertToIndices16()
 void UHMesh::CreateMeshlets(UHGraphic* InGfx)
 {
 	// calculate number of meshlets by indices count and round up
-	NumMeshlets = MathHelpers::RoundUpDivide(IndiceCount, MaxVertexPerMeshlet);
+	NumMeshlets = UHMathHelpers::RoundUpDivide(IndiceCount, MaxVertexPerMeshlet);
 
 	int32_t LocalIndiceCount = IndiceCount;
 	for (uint32_t Idx = 0; Idx < NumMeshlets; Idx++)

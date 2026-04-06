@@ -1,6 +1,8 @@
 #pragma once
 #include "../../UnheardEngine.h"
+
 // a header that store graphic API function callback
+#include "Runtime/Platform/PlatformVulkan.h"
 
 // Vulkan callback functions
 inline PFN_vkAcquireFullScreenExclusiveModeEXT GEnterFullScreenCallback;

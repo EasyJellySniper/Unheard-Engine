@@ -6,8 +6,8 @@
 #endif
 
 UHSkyLightComponent::UHSkyLightComponent()
-	: AmbientSkyColor(XMFLOAT3())
-	, AmbientGroundColor(XMFLOAT3())
+	: AmbientSkyColor(UHVector3())
+	, AmbientGroundColor(UHVector3())
 	, SkyIntensity(1.0f)
 	, GroundIntensity(1.0f)
 	, CubemapCache(nullptr)
@@ -63,12 +63,12 @@ void UHSkyLightComponent::OnActivityChanged()
 #endif
 }
 
-void UHSkyLightComponent::SetSkyColor(XMFLOAT3 InColor)
+void UHSkyLightComponent::SetSkyColor(UHVector3 InColor)
 {
 	AmbientSkyColor = InColor;
 }
 
-void UHSkyLightComponent::SetGroundColor(XMFLOAT3 InColor)
+void UHSkyLightComponent::SetGroundColor(UHVector3 InColor)
 {
 	AmbientGroundColor = InColor;
 }
@@ -83,12 +83,12 @@ void UHSkyLightComponent::SetGroundIntensity(float InIntensity)
 	GroundIntensity = InIntensity;
 }
 
-XMFLOAT3 UHSkyLightComponent::GetSkyColor() const
+UHVector3 UHSkyLightComponent::GetSkyColor() const
 {
 	return AmbientSkyColor;
 }
 
-XMFLOAT3 UHSkyLightComponent::GetGroundColor() const
+UHVector3 UHSkyLightComponent::GetGroundColor() const
 {
 	return AmbientGroundColor;
 }

@@ -2,6 +2,7 @@
 #include "../Classes/EditorUtils.h"
 #include "../../resource.h"
 
+#if WITH_EDITOR
 UHStatusDialogScope::UHStatusDialogScope(std::string InMsg)
 	: UHDialog(nullptr, nullptr)
 {
@@ -15,3 +16,4 @@ UHStatusDialogScope::~UHStatusDialogScope()
 {
 	DestroyWindow(Dialog);
 }
+#endif

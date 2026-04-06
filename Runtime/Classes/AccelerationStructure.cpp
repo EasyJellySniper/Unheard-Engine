@@ -3,7 +3,7 @@
 #include "Mesh.h"
 #include "../Engine/Graphic.h"
 #include "../Components/MeshRenderer.h"
-#include "Types.h"
+#include "Math.h"
 
 UHAccelerationStructure::UHAccelerationStructure()
     : AccelerationStructureBuffer(nullptr)
@@ -152,8 +152,8 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		InstanceKHR.accelerationStructureReference = GetDeviceAddress(BottomLevelAS);
 
 		// copy transform3x4
-		XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(InRenderers[Idx]->GetWorldMatrix());
-		std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHR.transform.matrix[0][0]);
+		UHMatrix3x4 Transform3x4 = UHMathHelpers::MatrixTo3x4(InRenderers[Idx]->GetWorldMatrix());
+		std::copy(&Transform3x4.M[0][0], &Transform3x4.M[0][0] + 12, &InstanceKHR.transform.matrix[0][0]);
 
 		// cull mode flag, in DXR system, it's default cull back, here just to check the other two modes
 		if (Mat->GetCullMode() == UHCullMode::CullNone)
@@ -273,8 +273,8 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 		// copy transform3x4 when it's dirty
 		if (Renderer->IsTransformChanged())
 		{
-			XMFLOAT3X4 Transform3x4 = MathHelpers::MatrixTo3x4(Renderer->GetWorldMatrix());
-			std::copy(&Transform3x4.m[0][0], &Transform3x4.m[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
+			UHMatrix3x4 Transform3x4 = UHMathHelpers::MatrixTo3x4(Renderer->GetWorldMatrix());
+			std::copy(&Transform3x4.M[0][0], &Transform3x4.M[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
 
 			// refresh bottom level address
 			VkAccelerationStructureKHR BottomLevelAS = Renderer->GetMesh()->GetBottomLevelAS()->GetAS();

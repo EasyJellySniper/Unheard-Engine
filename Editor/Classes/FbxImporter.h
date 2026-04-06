@@ -6,6 +6,8 @@
 #include <memory>
 #include <fbxsdk.h>
 #include <filesystem>	// for list all files under a directory and subdirectory, C++17 feature
+#include "Runtime/Classes/Math.h"
+#include "Runtime/Classes/Types.h"
 
 class UHMesh;
 class UHMaterial;
@@ -20,8 +22,8 @@ public:
 	float NearPlane;
 	float CullingDistance;
 	float Fov;
-	XMFLOAT3 Position;
-	XMFLOAT3 Rotation;	// pitch yaw roll
+	UHVector3 Position;
+	UHVector3 Rotation;	// pitch yaw roll
 };
 
 struct UHFbxLightData
@@ -29,12 +31,12 @@ struct UHFbxLightData
 public:
 	std::string Name;
 	UHLightType Type;
-	XMFLOAT3 LightColor;
+	UHVector3 LightColor;
 	float Intensity;
 	float Radius;
 	float SpotAngle;
-	XMFLOAT3 Position;
-	XMFLOAT3 Rotation;	// pitch yaw roll
+	UHVector3 Position;
+	UHVector3 Rotation;	// pitch yaw roll
 };
 
 struct UHFbxImportedData

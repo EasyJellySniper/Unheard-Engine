@@ -1,5 +1,6 @@
 #include "Thread.h"
 #include "../../UnheardEngine.h"
+#include <assert.h>
 
 UHThread::UHThread()
 	: bIsThreadDoneTask(true)

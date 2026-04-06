@@ -3,6 +3,7 @@
 #include "../../resource.h"
 #include <functional>
 
+#if WITH_EDITOR
 enum class UHAutoSizeMethod
 {
 	AutoSizeNone,
@@ -103,3 +104,5 @@ private:
 	RECT InitRelativeRect;
 	RECT InitParentRect;
 };
+
+#endif

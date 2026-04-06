@@ -12,7 +12,12 @@ UHObject::UHObject()
 	GObjectTable[GetId()] = this;
 	Name = ENGINE_NAME_NONE;
 
+#if _WIN32
 	UuidCreate(&RuntimeGuid);
+#elif __linux__
+	uuid_generate(RuntimeGuid);
+#endif
+	
 	Version = 0;
 	ObjectClassIdInternal = 0;
 }
@@ -91,7 +96,7 @@ uint32_t UHObject::GetId() const
 	return RuntimeId;
 }
 
-UUID UHObject::GetRuntimeGuid() const
+uuid_t UHObject::GetRuntimeGuid() const
 {
 	return RuntimeGuid;
 }

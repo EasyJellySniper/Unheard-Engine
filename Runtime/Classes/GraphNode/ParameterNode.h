@@ -1,6 +1,7 @@
 #pragma once
 #include "UnheardEngine.h"
 #include "GraphNode.h"
+#include "../Math.h"
 #include "../Types.h"
 #include "../MaterialLayout.h"
 
@@ -103,26 +104,26 @@ public:
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
 };
 
-class UHFloat2Node : public UHParameterNode<XMFLOAT2>
+class UHFloat2Node : public UHParameterNode<UHVector2>
 {
 public:
-	UHFloat2Node(XMFLOAT2 Default = XMFLOAT2());
+	UHFloat2Node(UHVector2 Default = UHVector2());
 	virtual std::string EvalDefinition() override;
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
 };
 
-class UHFloat3Node : public UHParameterNode<XMFLOAT3>
+class UHFloat3Node : public UHParameterNode<UHVector3>
 {
 public:
-	UHFloat3Node(XMFLOAT3 Default = XMFLOAT3());
+	UHFloat3Node(UHVector3 Default = UHVector3());
 	virtual std::string EvalDefinition() override;
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
 };
 
-class UHFloat4Node : public UHParameterNode<XMFLOAT4>
+class UHFloat4Node : public UHParameterNode<UHVector4>
 {
 public:
-	UHFloat4Node(XMFLOAT4 Default = XMFLOAT4());
+	UHFloat4Node(UHVector4 Default = UHVector4());
 	virtual std::string EvalDefinition() override;
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
 };

@@ -50,7 +50,7 @@ VkPipelineVertexInputStateCreateInfo GetVertexInputInfo(VkVertexInputBindingDesc
 	// in UHE, it uses only position in Input Assembly stage
 	// for other attribute such as UV, Normal, Tangent are stored in another buffer, and access via SV
 	OutBindingDesc.binding = 0;
-	OutBindingDesc.stride = sizeof(XMFLOAT3);
+	OutBindingDesc.stride = sizeof(UHVector3);
 	OutBindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	OutAttributeDesc = VkVertexInputAttributeDescription{};

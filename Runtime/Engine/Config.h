@@ -23,6 +23,8 @@ struct UHESettingIndex
 	size_t KeyIndex;
 };
 
+class UHClient;
+
 class UHConfigManager
 {
 public:
@@ -35,14 +37,14 @@ public:
 	void ApplyConfig();
 
 	// save config
-	void SaveConfig(HWND InWindow);
+	void SaveConfig();
 
 	// apply presentation settings
-	void ApplyPresentationSettings(HWND InWindow);
-	void UpdateWindowSize(HWND InWindow);
+	void ApplyPresentationSettings(UHClient* InClient);
+	void UpdateWindowSize(UHClient* InClient);
 
 	// apply window style
-	void ApplyWindowStyle(HINSTANCE InInstance, HWND InWindow);
+	void ApplyWindowStyle(UHClient* InClient);
 
 	// toggle settings
 	void ToggleTAA();

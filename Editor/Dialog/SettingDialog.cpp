@@ -154,7 +154,7 @@ void UHSettingDialog::Update(bool& bIsDialogActive)
     if (ImGui::SliderFloat("HDR Whitepaper Nits", &RenderingSettings.HDRWhitePaperNits, 100.0f, 1000.0f, "%.1f"))
     {
         // align to a multiple of 10
-        RenderingSettings.HDRWhitePaperNits = MathHelpers::RoundUpToMultiple(RenderingSettings.HDRWhitePaperNits, 10.0f);
+        RenderingSettings.HDRWhitePaperNits = UHMathHelpers::RoundUpToMultiple(RenderingSettings.HDRWhitePaperNits, 10.0f);
     }
 
     ImGui::SliderFloat("HDR Contrast", &RenderingSettings.HDRContrast, 0.5f, 2.5f, "%.1f");

@@ -15,13 +15,13 @@ public:
 	virtual void OnPostLoad(UHAssetManager* InAssetMgr) override;
 	virtual void OnActivityChanged() override;
 
-	void SetSkyColor(XMFLOAT3 InColor);
-	void SetGroundColor(XMFLOAT3 InColor);
+	void SetSkyColor(UHVector3 InColor);
+	void SetGroundColor(UHVector3 InColor);
 	void SetSkyIntensity(float InIntensity);
 	void SetGroundIntensity(float InIntensity);
 
-	XMFLOAT3 GetSkyColor() const;
-	XMFLOAT3 GetGroundColor() const;
+	UHVector3 GetSkyColor() const;
+	UHVector3 GetGroundColor() const;
 	float GetSkyIntensity() const;
 	float GetGroundIntensity() const;
 
@@ -34,8 +34,8 @@ public:
 
 private:
 	// simply provides ambient sky/ground color for now, will consider SH method in the future
-	XMFLOAT3 AmbientSkyColor;
-	XMFLOAT3 AmbientGroundColor;
+	UHVector3 AmbientSkyColor;
+	UHVector3 AmbientGroundColor;
 	float SkyIntensity;
 	float GroundIntensity;
 	UHTextureCube* CubemapCache;

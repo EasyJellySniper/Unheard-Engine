@@ -12,7 +12,7 @@
 class UHAssetManager;
 class UHGraphic;
 class UHConfigManager;
-class UHRawInput;
+class UHPlatformInput;
 class UHGameTimer;
 class UHEngine;
 
@@ -56,7 +56,7 @@ public:
 	const std::vector<UHMaterial*>& GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight() const;
-	const BoundingBox& GetSceneBound() const;
+	const UHBoundingBox& GetSceneBound() const;
 
 	void AddMeshRenderer(UHMeshRendererComponent* InRenderer);
 private:
@@ -67,7 +67,7 @@ private:
 	void CalculateSceneBound();
 
 	UHConfigManager* ConfigCache;
-	UHRawInput* Input;
+	UHPlatformInput* Input;
 	UHGameTimer* Timer;
 	UHCameraComponent* MainCamera;
 	UHSkyLightComponent* CurrentSkyLight;
@@ -81,7 +81,7 @@ private:
 	std::vector<UHSpotLightComponent*> SpotLights;
 
 	std::vector<UniquePtr<UHComponent>> ComponentPools;
-	BoundingBox SceneBound;
+	UHBoundingBox SceneBound;
 
 #if WITH_EDITOR
 	UHComponent* CurrentSelectedComp;

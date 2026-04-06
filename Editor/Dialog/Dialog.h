@@ -1,8 +1,10 @@
 #pragma once
+
 #include "../../UnheardEngine.h"
 #include <unordered_map>
+#if WITH_EDITOR
 #include "../Controls/GUIControl.h"
-#include "../../Runtime/Engine/Input.h"
+#include "Runtime/Platform/PlatformInput.h"
 
 // UH shared Dialog class, needs to implement ShowDialog in child class
 class UHDialog
@@ -24,7 +26,7 @@ public:
 	std::vector<std::function<void()>> OnMoved;
 	std::vector<std::function<void(HDC)>> OnPaint;
 
-	UHRawInput RawInput;
+	UHPlatformInput RawInput;
 
 protected:
 	HINSTANCE Instance;
@@ -48,3 +50,4 @@ inline bool IsDialogActive(int32_t Id)
 {
 	return GActiveDialogTable.find(Id) != GActiveDialogTable.end();
 }
+#endif

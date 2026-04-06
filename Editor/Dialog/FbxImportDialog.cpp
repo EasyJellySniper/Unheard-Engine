@@ -307,8 +307,8 @@ void UHFbxImportDialog::OnImport()
 		if (Scene->GetMainCamera() == nullptr)
 		{
 			UHCameraComponent* DefaultCamera = (UHCameraComponent*)Scene->RequestComponent(UHCameraComponent::ClassId);
-			DefaultCamera->SetPosition(XMFLOAT3(0, 2, -15));
-			DefaultCamera->SetRotation(XMFLOAT3(0, -70, 0));
+			DefaultCamera->SetPosition(UHVector3(0, 2, -15));
+			DefaultCamera->SetRotation(UHVector3(0, -70, 0));
 			DefaultCamera->SetCullingDistance(1000.0f);
 		}
 
@@ -317,16 +317,16 @@ void UHFbxImportDialog::OnImport()
 			&& Scene->GetSpotLightCount() == 0)
 		{
 			UHDirectionalLightComponent* DefaultLight = (UHDirectionalLightComponent*)Scene->RequestComponent(UHDirectionalLightComponent::ClassId);
-			DefaultLight->SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
+			DefaultLight->SetLightColor(UHVector3(0.95f, 0.91f, 0.6f));
 			DefaultLight->SetIntensity(3.0f);
-			DefaultLight->SetRotation(XMFLOAT3(45, -120, 0));
+			DefaultLight->SetRotation(UHVector3(45, -120, 0));
 		}
 
 		if (Scene->GetSkyLight() == nullptr)
 		{
 			UHSkyLightComponent* DefaultSkyLight = (UHSkyLightComponent*)Scene->RequestComponent(UHSkyLightComponent::ClassId);
-			DefaultSkyLight->SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
-			DefaultSkyLight->SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
+			DefaultSkyLight->SetSkyColor(UHVector3(0.8f, 0.8f, 0.8f));
+			DefaultSkyLight->SetGroundColor(UHVector3(0.3f, 0.3f, 0.3f));
 			DefaultSkyLight->SetSkyIntensity(0.5f);
 			DefaultSkyLight->SetGroundIntensity(0.3f);
 

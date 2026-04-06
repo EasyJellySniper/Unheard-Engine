@@ -177,11 +177,11 @@ void UHWorldDialog::ControlSceneObjectDoubleClick()
 				// when it's a renderer component, it needs to use the center of bound instead
 				if (const UHMeshRendererComponent* MeshComp = dynamic_cast<const UHMeshRendererComponent*>(Comp))
 				{
-					Camera->SetPosition(MeshComp->GetRendererBound().Center - Camera->GetForward() * 10.0f + XMFLOAT3(0, 1, 0));
+					Camera->SetPosition(MeshComp->GetRendererBound().Center - Camera->GetForward() * 10.0f + UHVector3(0, 1, 0));
 				}
 				else
 				{
-					Camera->SetPosition(Comp->GetPosition() - Camera->GetForward() * 10.0f + XMFLOAT3(0, 1, 0));
+					Camera->SetPosition(Comp->GetPosition() - Camera->GetForward() * 10.0f + UHVector3(0, 1, 0));
 				}
 			}
 		}

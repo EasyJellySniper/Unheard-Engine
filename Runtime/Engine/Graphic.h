@@ -99,6 +99,7 @@ struct UHTransitionInfo
 
 class UHEngine;
 class UHPreviewScene;
+class UHClient;
 
 // Unheard engine graphics class, mainly for device creation
 class UHGraphic
@@ -107,7 +108,7 @@ public:
 	UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig);
 
 	// function to init graphics
-	bool InitGraphics(HWND Hwnd);
+	bool InitGraphics(UHClient* InClient);
 
 	// function to release graphics
 	void Release();
@@ -322,8 +323,8 @@ private:
 
 	/** ====================================================== Variables ====================================================== **/
 
-	// window cache
-	HWND WindowCache;
+	// client cache
+	UHClient* ClientCache;
 
 	// vulkan instance define
 	VkInstance VulkanInstance;

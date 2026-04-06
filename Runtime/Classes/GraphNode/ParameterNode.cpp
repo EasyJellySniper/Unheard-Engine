@@ -14,8 +14,8 @@ UHFloatNode::UHFloatNode(float Default)
 	Outputs[0] = MakeUnique<UHGraphPin>("Result", this, UHGraphPinType::FloatPin);
 }
 
-UHFloat2Node::UHFloat2Node(XMFLOAT2 Default)
-	: UHParameterNode<XMFLOAT2>(Default)
+UHFloat2Node::UHFloat2Node(UHVector2 Default)
+	: UHParameterNode<UHVector2>(Default)
 {
 	Name = "Float2";
 	NodeType = UHGraphNodeType::Float2Node;
@@ -31,8 +31,8 @@ UHFloat2Node::UHFloat2Node(XMFLOAT2 Default)
 	Outputs[2] = MakeUnique<UHGraphPin>("Y", this, UHGraphPinType::FloatPin);
 }
 
-UHFloat3Node::UHFloat3Node(XMFLOAT3 Default)
-	: UHParameterNode<XMFLOAT3>(Default)
+UHFloat3Node::UHFloat3Node(UHVector3 Default)
+	: UHParameterNode<UHVector3>(Default)
 {
 	Name = "Float3";
 	NodeType = UHGraphNodeType::Float3Node;
@@ -50,8 +50,8 @@ UHFloat3Node::UHFloat3Node(XMFLOAT3 Default)
 	Outputs[3] = MakeUnique<UHGraphPin>("Z", this, UHGraphPinType::FloatPin);
 }
 
-UHFloat4Node::UHFloat4Node(XMFLOAT4 Default)
-	: UHParameterNode<XMFLOAT4>(Default)
+UHFloat4Node::UHFloat4Node(UHVector4 Default)
+	: UHParameterNode<UHVector4>(Default)
 {
 	Name = "Float4";
 	NodeType = UHGraphNodeType::Float4Node;
@@ -160,7 +160,7 @@ bool UHFloat2Node::IsEqual(const UHGraphNode* InNode)
 {
 	if (const UHFloat2Node* Float2Pin = dynamic_cast<const UHFloat2Node*>(InNode))
 	{
-		return MathHelpers::IsVectorEqual(GetValue(), Float2Pin->GetValue());
+		return UHMathHelpers::IsVectorEqual(GetValue(), Float2Pin->GetValue());
 	}
 	return false;
 }
@@ -169,7 +169,7 @@ bool UHFloat3Node::IsEqual(const UHGraphNode* InNode)
 {
 	if (const UHFloat3Node* Float3Pin = dynamic_cast<const UHFloat3Node*>(InNode))
 	{
-		return MathHelpers::IsVectorEqual(GetValue(), Float3Pin->GetValue());
+		return UHMathHelpers::IsVectorEqual(GetValue(), Float3Pin->GetValue());
 	}
 	return false;
 }
@@ -178,7 +178,7 @@ bool UHFloat4Node::IsEqual(const UHGraphNode* InNode)
 {
 	if (const UHFloat4Node* Float4Pin = dynamic_cast<const UHFloat4Node*>(InNode))
 	{
-		return MathHelpers::IsVectorEqual(GetValue(), Float4Pin->GetValue());
+		return UHMathHelpers::IsVectorEqual(GetValue(), Float4Pin->GetValue());
 	}
 	return false;
 }

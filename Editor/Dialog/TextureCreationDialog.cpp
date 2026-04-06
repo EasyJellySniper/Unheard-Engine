@@ -456,7 +456,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
             RenderBuilder.BindComputeState(SmoothCubemap->GetComputeState());
             RenderBuilder.BindDescriptorSetCompute(SmoothCubemap->GetPipelineLayout(), SmoothCubemap->GetDescriptorSet(0));
-            RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(GThreadGroup2D_X, Size), 1, 1);
+            RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(GThreadGroup2D_X, Size), 1, 1);
 
             Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
             UH_SAFE_RELEASE(ShaderData);
@@ -616,7 +616,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
             RenderBuilder.BindComputeState(SmoothCubemap->GetComputeState());
             RenderBuilder.BindDescriptorSetCompute(SmoothCubemap->GetPipelineLayout(), SmoothCubemap->GetDescriptorSet(0));
-            RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(GThreadGroup2D_X, Size), 1, 1);
+            RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(GThreadGroup2D_X, Size), 1, 1);
 
             Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
             UH_SAFE_RELEASE(ShaderData);

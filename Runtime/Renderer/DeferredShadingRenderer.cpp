@@ -287,10 +287,10 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.ProjInv = CurrentCamera->GetInvProjMatrix();
 	SystemConstantsCPU.ProjInv_NonJittered = CurrentCamera->GetInvProjMatrixNonJittered();
 
-	SystemConstantsCPU.Resolution.x = static_cast<float>(RenderResolution.width);
-	SystemConstantsCPU.Resolution.y = static_cast<float>(RenderResolution.height);
-	SystemConstantsCPU.Resolution.z = 1.0f / SystemConstantsCPU.Resolution.x;
-	SystemConstantsCPU.Resolution.w = 1.0f / SystemConstantsCPU.Resolution.y;
+	SystemConstantsCPU.Resolution.X = static_cast<float>(RenderResolution.width);
+	SystemConstantsCPU.Resolution.Y = static_cast<float>(RenderResolution.height);
+	SystemConstantsCPU.Resolution.Z = 1.0f / SystemConstantsCPU.Resolution.X;
+	SystemConstantsCPU.Resolution.W = 1.0f / SystemConstantsCPU.Resolution.Y;
 
 	SystemConstantsCPU.CameraPos = CurrentCamera->GetPosition();
 	SystemConstantsCPU.CameraDir = CurrentCamera->GetForward();
@@ -305,11 +305,11 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	if (RenderingSettings.bTemporalAA)
 	{
-		XMFLOAT4 Offset = CurrentCamera->GetJitterOffset();
-		SystemConstantsCPU.JitterOffsetX = Offset.x;
-		SystemConstantsCPU.JitterOffsetY = Offset.y;
-		SystemConstantsCPU.JitterScaleMin = Offset.z;
-		SystemConstantsCPU.JitterScaleFactor = Offset.w;
+		UHVector4 Offset = CurrentCamera->GetJitterOffset();
+		SystemConstantsCPU.JitterOffsetX = Offset.X;
+		SystemConstantsCPU.JitterOffsetY = Offset.Y;
+		SystemConstantsCPU.JitterScaleMin = Offset.Z;
+		SystemConstantsCPU.JitterScaleFactor = Offset.W;
 	}
 	else
 	{
@@ -321,13 +321,13 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	// set sky light data
 	UHSkyLightComponent* SkyLight = CurrentScene->GetSkyLight();
-	SystemConstantsCPU.AmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : XMFLOAT3();
-	SystemConstantsCPU.AmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : XMFLOAT3();
+	SystemConstantsCPU.AmbientSky = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetSkyColor() * SkyLight->GetSkyIntensity() : UHVector3();
+	SystemConstantsCPU.AmbientGround = (SkyLight && SkyLight->IsEnabled()) ? SkyLight->GetGroundColor() * SkyLight->GetGroundIntensity() : UHVector3();
 
-	SystemConstantsCPU.ShadowResolution.x = static_cast<float>(RTShadowExtent.width);
-	SystemConstantsCPU.ShadowResolution.y = static_cast<float>(RTShadowExtent.height);
-	SystemConstantsCPU.ShadowResolution.z = 1.0f / SystemConstantsCPU.ShadowResolution.x;
-	SystemConstantsCPU.ShadowResolution.w = 1.0f / SystemConstantsCPU.ShadowResolution.y;
+	SystemConstantsCPU.ShadowResolution.X = static_cast<float>(RTShadowExtent.width);
+	SystemConstantsCPU.ShadowResolution.Y = static_cast<float>(RTShadowExtent.height);
+	SystemConstantsCPU.ShadowResolution.Z = 1.0f / SystemConstantsCPU.ShadowResolution.X;
+	SystemConstantsCPU.ShadowResolution.W = 1.0f / SystemConstantsCPU.ShadowResolution.Y;
 
 	SystemConstantsCPU.NumRTInstances = RTInstanceCount;
 	SystemConstantsCPU.FrameNumber = GFrameNumber;
@@ -360,9 +360,9 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.RTCullingDistance = RenderingSettings.RTCullingRadius;
 	SystemConstantsCPU.MaxReflectionRecursion = UHRTReflectionShader::MaxReflectionRecursion;
 	SystemConstantsCPU.ScreenMipCount = std::floorf(
-		std::log2f(std::max(SystemConstantsCPU.Resolution.x, SystemConstantsCPU.Resolution.y)));
+		std::log2f(std::max(SystemConstantsCPU.Resolution.X, SystemConstantsCPU.Resolution.Y)));
 
-	const BoundingBox& SceneBound = CurrentScene->GetSceneBound();
+	const UHBoundingBox& SceneBound = CurrentScene->GetSceneBound();
 	SystemConstantsCPU.SceneCenter = SceneBound.Center;
 	SystemConstantsCPU.SceneExtent = SceneBound.Extents;
 	SystemConstantsCPU.RTReflectionMipCount = UHRTReflectionShader::ReflectionMipsCount;
@@ -545,9 +545,9 @@ void UHDeferredShadingRenderer::FrustumCulling()
 		virtual void DoTask(const int32_t ThreadIdx) override
 		{
 			const UHCameraComponent* CurrentCamera = CurrentScene->GetMainCamera();
-			const BoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
+			const UHBoundingFrustum& CameraFrustum = CurrentCamera->GetBoundingFrustum();
 			const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-			const XMFLOAT3 CameraPos = CurrentCamera->GetPosition();
+			const UHVector3 CameraPos = CurrentCamera->GetPosition();
 
 			const int32_t MaxCount = static_cast<int32_t>(Renderers.size());
 			const int32_t RendererCount = (MaxCount + NumWorkerThreads) / NumWorkerThreads;
@@ -558,8 +558,8 @@ void UHDeferredShadingRenderer::FrustumCulling()
 			{
 				UHMeshRendererComponent* Renderer = Renderers[Idx];
 
-				const BoundingBox& RendererBound = Renderer->GetRendererBound();
-				const bool bVisible = (CameraFrustum.Contains(RendererBound) != DirectX::DISJOINT);
+				const UHBoundingBox& RendererBound = Renderer->GetRendererBound();
+				const bool bVisible = CameraFrustum.Contains(RendererBound);
 				Renderer->SetVisible(bVisible);
 
 				if (bVisible)

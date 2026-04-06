@@ -131,12 +131,12 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 		// sky visibility data, stored in volume based on the scene bound
 		if (CurrentScene != nullptr)
 		{
-			const BoundingBox& SceneBound = CurrentScene->GetSceneBound();
+			const UHBoundingBox& SceneBound = CurrentScene->GetSceneBound();
 
 			VkExtent2D VolumeSize;
-			VolumeSize.width = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.x * 2.0f));
-			VolumeSize.height = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.y * 2.0f));
-			const uint32_t VolumeSlices = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.z * 2.0f));
+			VolumeSize.width = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.X * 2.0f));
+			VolumeSize.height = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.Y * 2.0f));
+			const uint32_t VolumeSlices = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.Z * 2.0f));
 
 			RenderTextureSetting.bIsVolume = true;
 			RenderTextureSetting.NumSlices = VolumeSlices;
@@ -211,7 +211,7 @@ void UHDeferredShadingRenderer::CollectLightPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.BindDescriptorSetCompute(CollectPointLightShader->GetPipelineLayout(), CollectPointLightShader->GetDescriptorSet(CurrentFrameRT));
 
 		// refactor this if there is a chance that RTInstanceCount > 64K
-		const uint32_t Gy = MathHelpers::RoundUpDivide(static_cast<uint32_t>(CurrentScene->GetPointLightCount()), GThreadGroup1D);
+		const uint32_t Gy = UHMathHelpers::RoundUpDivide(static_cast<uint32_t>(CurrentScene->GetPointLightCount()), GThreadGroup1D);
 		RenderBuilder.Dispatch(RTInstanceCount, Gy, 1);
 	}
 
@@ -226,7 +226,7 @@ void UHDeferredShadingRenderer::CollectLightPass(UHRenderBuilder& RenderBuilder)
 		RenderBuilder.BindDescriptorSetCompute(CollectSpotLightShader->GetPipelineLayout(), CollectSpotLightShader->GetDescriptorSet(CurrentFrameRT));
 
 		// refactor this if there is a chance that RTInstanceCount > 64K
-		const uint32_t Gy = MathHelpers::RoundUpDivide(static_cast<uint32_t>(CurrentScene->GetSpotLightCount()), GThreadGroup1D);
+		const uint32_t Gy = UHMathHelpers::RoundUpDivide(static_cast<uint32_t>(CurrentScene->GetSpotLightCount()), GThreadGroup1D);
 		RenderBuilder.Dispatch(RTInstanceCount, Gy, 1);
 	}
 
@@ -276,8 +276,8 @@ void UHDeferredShadingRenderer::DispatchRayShadowPass(UHRenderBuilder& RenderBui
 		RenderBuilder.BindComputeState(RTSoftShadowShader->GetComputeState());
 		RenderBuilder.BindDescriptorSetCompute(RTSoftShadowShader->GetPipelineLayout(), RTSoftShadowShader->GetDescriptorSet(CurrentFrameRT));
 
-		RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(ShadowResultExtent.width, GThreadGroup2D_X)
-			, MathHelpers::RoundUpDivide(ShadowResultExtent.height, GThreadGroup2D_Y)
+		RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(ShadowResultExtent.width, GThreadGroup2D_X)
+			, UHMathHelpers::RoundUpDivide(ShadowResultExtent.height, GThreadGroup2D_Y)
 			, 1);
 
 		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSoftShadow, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
@@ -308,12 +308,12 @@ void UHDeferredShadingRenderer::DispatchSmoothSceneNormalPass(UHRenderBuilder& R
 	UHComputeState* State = RTSmoothSceneNormalHShader->GetComputeState();
 	RenderBuilder.BindComputeState(State);
 	RenderBuilder.BindDescriptorSetCompute(RTSmoothSceneNormalHShader->GetPipelineLayout(), RTSmoothSceneNormalHShader->GetDescriptorSet(CurrentFrameRT));
-	RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(HalfRes.width, GThreadGroup1D), HalfRes.height, 1);
+	RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(HalfRes.width, GThreadGroup1D), HalfRes.height, 1);
 
 	State = RTSmoothSceneNormalVShader->GetComputeState();
 	RenderBuilder.BindComputeState(State);
 	RenderBuilder.BindDescriptorSetCompute(RTSmoothSceneNormalVShader->GetPipelineLayout(), RTSmoothSceneNormalVShader->GetDescriptorSet(CurrentFrameRT));
-	RenderBuilder.Dispatch(HalfRes.width, MathHelpers::RoundUpDivide(HalfRes.height, GThreadGroup1D), 1);
+	RenderBuilder.Dispatch(HalfRes.width, UHMathHelpers::RoundUpDivide(HalfRes.height, GThreadGroup1D), 1);
 
 	RenderBuilder.ResourceBarrier(GSmoothSceneNormal, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -394,8 +394,8 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 
 			// trigger a UAV barrier transition (RayGen -> Compute) and dispatch
 			RenderBuilder.ResourceBarrier(GRTIndirectDiffuse, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RTIndirectLightExtent.width, GThreadGroup2D_X)
-				, MathHelpers::RoundUpDivide(RTIndirectLightExtent.height, GThreadGroup2D_Y)
+			RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(RTIndirectLightExtent.width, GThreadGroup2D_X)
+				, UHMathHelpers::RoundUpDivide(RTIndirectLightExtent.height, GThreadGroup2D_Y)
 				, 1);
 
 			// bilateral filtering for RT indirect diffuse
@@ -419,8 +419,8 @@ void UHDeferredShadingRenderer::DispatchRayIndirectLightPass(UHRenderBuilder& Re
 
 			// trigger a UAV barrier transition (RayGen -> Compute) and dispatch
 			RenderBuilder.ResourceBarrier(GRTIndirectOcclusion, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RTIndirectLightExtent.width, GThreadGroup2D_X)
-				, MathHelpers::RoundUpDivide(RTIndirectLightExtent.height, GThreadGroup2D_Y)
+			RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(RTIndirectLightExtent.width, GThreadGroup2D_X)
+				, UHMathHelpers::RoundUpDivide(RTIndirectLightExtent.height, GThreadGroup2D_Y)
 				, 1);
 
 			// bilateral filtering for RT indirect occlusion
@@ -487,8 +487,8 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 
 			// trigger a UAV barrier transition (RayGen -> Compute)
 			RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
-				, MathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
+			RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(RenderResolution.width, GThreadGroup2D_X)
+				, UHMathHelpers::RoundUpDivide(RenderResolution.height, GThreadGroup2D_Y)
 				, 1);
 		}
 		else
@@ -523,7 +523,7 @@ void UHDeferredShadingRenderer::DispatchRayReflectionPass(UHRenderBuilder& Rende
 			RTReflectionMipmapShader->BindTextures(RenderBuilder, GRTReflectionResult, GRTReflectionResult, Mdx, CurrentFrameRT);
 
 			RenderBuilder.ResourceBarrier(GRTReflectionResult, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, Mdx);
-			RenderBuilder.Dispatch(MathHelpers::RoundUpDivide(MipExtent.width, GThreadGroup2D_X), MathHelpers::RoundUpDivide(MipExtent.height, GThreadGroup2D_Y), 1);
+			RenderBuilder.Dispatch(UHMathHelpers::RoundUpDivide(MipExtent.width, GThreadGroup2D_X), UHMathHelpers::RoundUpDivide(MipExtent.height, GThreadGroup2D_Y), 1);
 		}
 
 		// Kawase blur all mips after the mip2

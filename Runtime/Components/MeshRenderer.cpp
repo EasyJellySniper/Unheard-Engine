@@ -15,7 +15,7 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 	, MaterialCache(InMaterial)
 	, bIsVisible(true)
 	, bIsMoveable(false)
-	, RendererBound(BoundingBox())
+	, RendererBound(UHBoundingBox())
 #if WITH_EDITOR
 	, bIsVisibleEditor(true)
 #endif
@@ -46,15 +46,13 @@ void UHMeshRendererComponent::Update()
 		SetMotionDirties(true);
 
 		// update renderer bound as well
-		const BoundingBox& MeshBound = MeshCache->GetMeshBound();
-		const XMFLOAT4X4& World = GetWorldMatrix();
-		XMMATRIX W = XMLoadFloat4x4(&World);
-		MeshBound.Transform(RendererBound, XMMatrixTranspose(W));
+		const UHBoundingBox& MeshBound = MeshCache->GetMeshBound();
+		const UHMatrix4x4& World = GetWorldMatrix();
+		MeshBound.Transform(RendererBound, UHMathHelpers::UHMatrixTranspose(World));
 
 		// calculate world bound matrix, this matrix is mainly for bounding box rendering (e.g. occlusion test), rotation isn't needed
-		W = XMMatrixTranspose(XMMatrixTranslation(RendererBound.Center.x, RendererBound.Center.y, RendererBound.Center.z))
-			* XMMatrixTranspose(XMMatrixScaling(RendererBound.Extents.x * 2.0f, RendererBound.Extents.y * 2.0f, RendererBound.Extents.z * 2.0f));
-		XMStoreFloat4x4(&WorldBoundMatrix, W);
+		WorldBoundMatrix = UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixTranslation(RendererBound.Center))
+			* UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixScaling(RendererBound.Extents * 2.0f));
 	}
 }
 
@@ -133,15 +131,15 @@ void UHMeshRendererComponent::SetMaterial(UHMaterial* InMaterial)
 	}
 }
 
-void UHMeshRendererComponent::CalculateSquareDistanceToCamera(const XMFLOAT3 Position)
+void UHMeshRendererComponent::CalculateSquareDistanceToCamera(const UHVector3 Position)
 {
 	// this roughly does the calculation with the center point of a bound
 	// to have more precise result, find the closest point on a bound first
-	const XMFLOAT3 Center = GetRendererBound().Center;
-	SquareDistanceToMainCam = MathHelpers::VectorDistanceSqr(Center, Position);
+	const UHVector3 Center = GetRendererBound().Center;
+	SquareDistanceToMainCam = UHMathHelpers::VectorDistanceSqr(Center, Position);
 
 	// check if the camera is inside this renderer bound
-	bIsCameraInsideBound = RendererBound.Contains(XMLoadFloat3(&Position));
+	bIsCameraInsideBound = RendererBound.Contains(Position);
 }
 
 UHMesh* UHMeshRendererComponent::GetMesh() const
@@ -168,7 +166,7 @@ UHObjectConstants UHMeshRendererComponent::GetConstants() const
 	return CB;
 }
 
-BoundingBox UHMeshRendererComponent::GetRendererBound() const
+UHBoundingBox UHMeshRendererComponent::GetRendererBound() const
 {
 	return RendererBound;
 }
@@ -178,7 +176,7 @@ float UHMeshRendererComponent::GetSquareDistanceToMainCam() const
 	return SquareDistanceToMainCam;
 }
 
-XMFLOAT4X4 UHMeshRendererComponent::GetWorldBoundMatrix() const
+UHMatrix4x4 UHMeshRendererComponent::GetWorldBoundMatrix() const
 {
 	return WorldBoundMatrix;
 }
@@ -219,7 +217,7 @@ UHDebugBoundConstant UHMeshRendererComponent::GetDebugBoundConst() const
 	BoundConst.BoundType = UHDebugBoundType::DebugBox;
 	BoundConst.Position = GetRendererBound().Center;
 	BoundConst.Extent = GetRendererBound().Extents;
-	BoundConst.Color = XMFLOAT3(1, 1, 0);
+	BoundConst.Color = UHVector3(1, 1, 0);
 
 	return BoundConst;
 }

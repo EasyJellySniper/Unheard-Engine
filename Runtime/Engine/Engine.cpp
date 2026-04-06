@@ -3,6 +3,7 @@
 #include <string>
 #include "../CoreGlobals.h"
 #include "../Components/GameScript.h"
+#include "Runtime/Platform/Client.h"
 
 #if WITH_EDITOR
 #include <sstream>
@@ -10,8 +11,7 @@
 #endif
 
 UHEngine::UHEngine()
-	: UHEngineWindow(nullptr)
-	, UHWindowInstance(nullptr)
+	: UHEClient(nullptr)
 	, bIsInitialized(false)
 	, EngineResizeReason(UHEngineResizeReason::NotResizing)
 	, FrameBeginTime(0)
@@ -22,7 +22,7 @@ UHEngine::UHEngine()
 #if WITH_EDITOR
 	, UHEEditor(nullptr)
 	, UHEProfiler(nullptr)
-	, WindowCaption(ENGINE_NAMEW)
+	, WindowCaption(ENGINE_NAME)
 #endif
 {
 	// config manager needs to be initialze as early as possible
@@ -38,7 +38,7 @@ void UHEngine::LoadConfig()
 // function to save settings to config file
 void UHEngine::SaveConfig()
 {
-	UHEConfig->SaveConfig(UHEngineWindow);
+	UHEConfig->SaveConfig();
 }
 
 // NTSC frequencies fixup
@@ -56,7 +56,7 @@ float FixupNTSCFrequency(DWORD InFrequency)
 	return static_cast<float>(InFrequency);
 }
 
-bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
+bool UHEngine::InitEngine(UHClient* InClient)
 {
 	// set affinity of current thread (main thread)
 	// it's confirmed that the affinity setting might introduce stuttering for render/worker threads in UHE
@@ -76,11 +76,10 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 	// init graphic 
 	const UHPresentationSettings PresentationSettings = UHEConfig->PresentationSetting();
-	UHEngineWindow = EngineWindow;
-	UHWindowInstance = Instance;
+	UHEClient = InClient;
 
 	UHEGraphic = MakeUnique<UHGraphic>(UHEAsset.get(), UHEConfig.get());
-	if (!UHEGraphic->InitGraphics(UHEngineWindow))
+	if (!UHEGraphic->InitGraphics(UHEClient))
 	{
 		UHE_LOG(L"Can't initialize graphic class!\n");
 		return false;
@@ -96,8 +95,8 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 #endif
 
 	// init input 
-	UHERawInput = MakeUnique<UHRawInput>();
-	if (!UHERawInput->InitRawInput())
+	UHERawInput = MakeUnique<UHPlatformInput>(UHEClient);
+	if (!UHERawInput->InitInput())
 	{
 		// print a log to remind users that inputs aren't available, and it's okay to proceed
 		UHE_LOG(L"Can't initialize input devices, input won't work!\n");
@@ -127,7 +126,7 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 
 #if WITH_EDITOR
 	// init editor instance
-	UHEEditor = MakeUnique<UHEditor>(UHWindowInstance, UHEngineWindow, this, &UHEProfiler);
+	UHEEditor = MakeUnique<UHEditor>(UHEClient, this, &UHEProfiler);
 #endif
 
 	bIsInitialized = true;
@@ -137,8 +136,8 @@ bool UHEngine::InitEngine(HINSTANCE Instance, HWND EngineWindow)
 	}
 
 	// show window at the end of initialization
-	UHEConfig->ApplyPresentationSettings(UHEngineWindow);
-	UHEConfig->ApplyWindowStyle(UHWindowInstance, UHEngineWindow);
+	UHEConfig->ApplyPresentationSettings(UHEClient);
+	UHEConfig->ApplyWindowStyle(UHEClient);
 
 	FramerateLimitThread = MakeUnique<UHThread>();
 	FramerateLimitThread->BeginThread(std::thread(&UHEngine::LimitFramerate, this));
@@ -238,7 +237,7 @@ void UHEngine::Update()
 		// GFX needs to be reset also
 		UHERenderer->Release();
 		UHEGraphic->Release();
-		UHEGraphic->InitGraphics(UHEngineWindow);
+		UHEGraphic->InitGraphics(UHEClient);
 		UHERenderer->Reset();
 	}
 
@@ -276,13 +275,13 @@ void UHEngine::ResizeEngine()
 	if (EngineResizeReason == UHEngineResizeReason::FromWndMessage
 		&& !UHEConfig->PresentationSetting().bFullScreen)
 	{
-		UHEConfig->UpdateWindowSize(UHEngineWindow);
+		UHEConfig->UpdateWindowSize(UHEClient);
 	}
 }
 
 void UHEngine::ToggleFullScreen()
 {
-	UHEConfig->ApplyWindowStyle(UHWindowInstance, UHEngineWindow);
+	UHEConfig->ApplyWindowStyle(UHEClient);
 	UHEGraphic->ToggleFullScreen(UHEConfig->PresentationSetting().bFullScreen);
 }
 
@@ -291,7 +290,7 @@ void UHEngine::SetResizeReason(UHEngineResizeReason InFlag)
 	EngineResizeReason = InFlag;
 }
 
-UHRawInput* UHEngine::GetRawInput() const
+UHPlatformInput* UHEngine::GetRawInput() const
 {
 	if (UHERawInput)
 	{
@@ -502,14 +501,14 @@ void UHEngine::EndProfile()
 	// calc fps from total time, only do this once a second
 	static float TimeElasped = 0.0f;
 	float GameTime = UHEGameTimer->GetTotalTime();
-	if (GameTime - TimeElasped > 1.0f)
+	if (UHEClient != nullptr && (GameTime - TimeElasped) > 1.0f)
 	{
 		float FPS = 1000.0f / Stats.TotalTime;
-		std::wstringstream FPSStream;
+		std::stringstream FPSStream;
 		FPSStream << std::fixed << std::setprecision(2) << FPS;
 
-		std::wstring NewCaption = WindowCaption + L" - " + FPSStream.str() + L" FPS";
-		SetWindowText(UHEngineWindow, NewCaption.c_str());
+		std::string NewCaption = WindowCaption + " - " + FPSStream.str() + " FPS";
+		UHEClient->SetWindowCaption(NewCaption);
 		TimeElasped = GameTime;
 		Stats.FPS = FPS;
 	}

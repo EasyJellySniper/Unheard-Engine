@@ -1,5 +1,6 @@
 #pragma once
 #include "../../UnheardEngine.h"
+#include "Runtime/Platform/PlatformVulkan.h"
 
 // high-level definition of the texture format in UHE
 // these should be translated to low-level formats

@@ -6,15 +6,15 @@
 #include "Runtime/Engine/Engine.h"
 #include "Runtime/Engine/Config.h"
 #include "Runtime/Renderer/DeferredShadingRenderer.h"
-#include "../../Runtime/Engine/Input.h"
+#include "Runtime/Platform/PlatformInput.h"
 #include "Profiler.h"
 #include "../Classes/EditorUtils.h"
 #include "Runtime/Classes/AssetPath.h"
 #include "../Dialog/StatusDialog.h"
+#include "Runtime/Platform/Client.h"
 
-UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHProfiler* InProfile)
-	: HInstance(InInstance)
-    , HWnd(InHwnd)
+UHEditor::UHEditor(UHClient* InClient, UHEngine* InEngine, UHProfiler* InProfile)
+	: Client(InClient)
     , Engine(InEngine)
     , Config(InEngine->GetConfigManager())
 	, DeferredRenderer(InEngine->GetSceneRenderer())
@@ -24,6 +24,9 @@ UHEditor::UHEditor(HINSTANCE InInstance, HWND InHwnd, UHEngine* InEngine, UHProf
     , Gfx(InEngine->GetGfx())
     , ViewModeMenuItem(ID_VIEWMODE_FULLLIT)
 {
+    HWND HWnd = (HWND)InClient->GetNativeWindow();
+    HINSTANCE HInstance = (HINSTANCE)InClient->GetNativeInstance();
+
     ProfileTimer.Reset();
     SettingDialog = MakeUnique<UHSettingDialog>(Config, Engine, DeferredRenderer);
     ProfileDialog = MakeUnique<UHProfileDialog>();
@@ -154,9 +157,13 @@ void UHEditor::SelectDebugViewModeMenu(int32_t WmId)
             // update debug view index and menu checked state
             DeferredRenderer->SetDebugViewIndex(static_cast<int32_t>(Idx));
 
-            UHEditorUtil::SetMenuItemChecked(HWnd, ViewModeMenuIDs[Idx], MFS_CHECKED);
-            UHEditorUtil::SetMenuItemChecked(HWnd, ViewModeMenuItem, MFS_UNCHECKED);
-            ViewModeMenuItem = ViewModeMenuIDs[Idx];
+            if (Client != nullptr)
+            {
+                HWND HWnd = (HWND)Client->GetNativeWindow();
+                UHEditorUtil::SetMenuItemChecked(HWnd, ViewModeMenuIDs[Idx], MFS_CHECKED);
+                UHEditorUtil::SetMenuItemChecked(HWnd, ViewModeMenuItem, MFS_UNCHECKED);
+                ViewModeMenuItem = ViewModeMenuIDs[Idx];
+            }
 
             break;
         }

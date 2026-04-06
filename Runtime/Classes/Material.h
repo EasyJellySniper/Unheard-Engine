@@ -23,38 +23,38 @@ struct UHMaterialProperty
 {
 	UHMaterialProperty()
 	{
-		Diffuse = XMFLOAT3(0.8f, 0.8f, 0.8f);
+		Diffuse = UHVector3(0.8f, 0.8f, 0.8f);
 		Opacity = 1.0f;
-		Emissive = XMFLOAT3(0, 0, 0);
+		Emissive = UHVector3(0, 0, 0);
 		EmissiveIntensity = 1.0f;
 
 		Occlusion = 1.0f;
 		Metallic = 0.0f;
 		Roughness = 1.0f;
-		Specular = XMFLOAT3(0.5f, 0.5f, 0.5f);
+		Specular = UHVector3(0.5f, 0.5f, 0.5f);
 		BumpScale = 1.0f;
 		FresnelFactor = 0.0f;
 	}
 
 	bool operator==(const UHMaterialProperty& InProp)
 	{
-		return MathHelpers::IsVectorEqual(InProp.Diffuse, Diffuse)
+		return UHMathHelpers::IsVectorEqual(InProp.Diffuse, Diffuse)
 			&& InProp.Occlusion == Occlusion
-			&& MathHelpers::IsVectorEqual(InProp.Emissive, Emissive)
+			&& UHMathHelpers::IsVectorEqual(InProp.Emissive, Emissive)
 			&& InProp.Metallic == Metallic
 			&& InProp.Roughness == Roughness
-			&& MathHelpers::IsVectorEqual(InProp.Specular, Specular)
+			&& UHMathHelpers::IsVectorEqual(InProp.Specular, Specular)
 			&& InProp.Opacity == Opacity
 			&& InProp.EmissiveIntensity == EmissiveIntensity
 			&& InProp.BumpScale == BumpScale
 			&& InProp.FresnelFactor == FresnelFactor;
 	}
 
-	XMFLOAT3 Diffuse;
+	UHVector3 Diffuse;
 	float Opacity;
-	XMFLOAT3 Emissive;
+	UHVector3 Emissive;
 	float EmissiveIntensity;
-	XMFLOAT3 Specular;
+	UHVector3 Specular;
 	float Occlusion;
 	float Metallic;
 	float Roughness;

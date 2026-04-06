@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <wrl.h>
+#include <wincodec.h>
 #include "../../Runtime/Classes/Texture2D.h"
 using namespace Microsoft::WRL;
 

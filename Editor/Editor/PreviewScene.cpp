@@ -72,7 +72,7 @@ void UHPreviewScene::Render(bool bIsActive)
 		MeshPreviewShader = MakeUnique<UHMeshPreviewShader>(Gfx, "MeshPreviewShader", PreviewRenderPass.RenderPass);
 	}
 
-	XMFLOAT4X4 ViewProj = PreviewCamera->GetViewProjMatrixNonJittered();
+	UHMatrix4x4 ViewProj = PreviewCamera->GetViewProjMatrixNonJittered();
 	MeshPreviewData->UploadData(&ViewProj, 0);
 	MeshPreviewShader->BindConstant(MeshPreviewData, 0, 0, 0);
 
@@ -111,7 +111,7 @@ void UHPreviewScene::SetMesh(UHMesh* InMesh)
 	CurrentMesh->CreateGPUBuffers(Gfx);
 
 	// make camera in front of mesh's center
-	PreviewCamera->SetRotation(XMFLOAT3(0, 0, 0));
+	PreviewCamera->SetRotation(UHVector3(0, 0, 0));
 	PreviewCamera->SetPosition(CurrentMesh->GetMeshCenter() - PreviewCamera->GetForward() * 5);
 }
 
@@ -129,32 +129,32 @@ void UHPreviewScene::UpdateCamera()
 
 	if (ImGui::IsKeyDown(ImGuiKey_W))
 	{
-		PreviewCamera->Translate(XMFLOAT3(0, 0, CameraMoveSpd));
+		PreviewCamera->Translate(UHVector3(0, 0, CameraMoveSpd));
 	}
 
 	if (ImGui::IsKeyDown(ImGuiKey_S))
 	{
-		PreviewCamera->Translate(XMFLOAT3(0, 0, -CameraMoveSpd));
+		PreviewCamera->Translate(UHVector3(0, 0, -CameraMoveSpd));
 	}
 
 	if (ImGui::IsKeyDown(ImGuiKey_A))
 	{
-		PreviewCamera->Translate(XMFLOAT3(-CameraMoveSpd, 0, 0));
+		PreviewCamera->Translate(UHVector3(-CameraMoveSpd, 0, 0));
 	}
 
 	if (ImGui::IsKeyDown(ImGuiKey_D))
 	{
-		PreviewCamera->Translate(XMFLOAT3(CameraMoveSpd, 0, 0));
+		PreviewCamera->Translate(UHVector3(CameraMoveSpd, 0, 0));
 	}
 
 	if (ImGui::IsKeyDown(ImGuiKey_E))
 	{
-		PreviewCamera->Translate(XMFLOAT3(0, CameraMoveSpd, 0));
+		PreviewCamera->Translate(UHVector3(0, CameraMoveSpd, 0));
 	}
 
 	if (ImGui::IsKeyDown(ImGuiKey_Q))
 	{
-		PreviewCamera->Translate(XMFLOAT3(0, -CameraMoveSpd, 0));
+		PreviewCamera->Translate(UHVector3(0, -CameraMoveSpd, 0));
 	}
 
 	if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
@@ -162,8 +162,8 @@ void UHPreviewScene::UpdateCamera()
 		const float X = static_cast<float>(CurrentMousePos.x - LastMousePos.x) * MouseRotSpeed;
 		const float Y = static_cast<float>(CurrentMousePos.y - LastMousePos.y) * MouseRotSpeed;
 
-		PreviewCamera->Rotate(XMFLOAT3(Y, 0, 0));
-		PreviewCamera->Rotate(XMFLOAT3(0, X, 0), UHTransformSpace::World);
+		PreviewCamera->Rotate(UHVector3(Y, 0, 0));
+		PreviewCamera->Rotate(UHVector3(0, X, 0), UHTransformSpace::World);
 	}
 
 	PreviewCamera->Update();

@@ -2,14 +2,14 @@
 #include "../Runtime/Classes/Scene.h"
 #include "../Runtime/Engine/GameTimer.h"
 #include "../Runtime/Engine/Engine.h"
-#include "../Runtime/Engine/Input.h"
+#include "Runtime/Platform/PlatformInput.h"
 #include <cmath>
 
 UHDemoScript DemoScript;
 
 UHDemoScript::UHDemoScript()
 	: Geo364Renderer(nullptr)
-	, Geo364OriginPos(XMFLOAT3())
+	, Geo364OriginPos(UHVector3())
 	, TimeCounter(0)
 	, TimeSign(1)
 	, TestType(UHDemoType::DayTest)
@@ -57,10 +57,10 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 	if (Door3363Renderer)
 	{
 		// rotate door's Y between two angle
-		XMFLOAT3 DoorRot = Door3363Renderer->GetRotationEuler();
+		UHVector3 DoorRot = Door3363Renderer->GetRotationEuler();
 		float Time = EngineCache->GetGameTimer()->GetTotalTime();
 		float T = abs(fract(Time * 0.2f) * 2.0f - 1.0f);
-		DoorRot.y = MathHelpers::Lerp(1.0f, 85.0f, T);
+		DoorRot.Y = UHMathHelpers::Lerp(1.0f, 85.0f, T);
 		Door3363Renderer->SetRotation(DoorRot);
 	}
 
@@ -71,16 +71,16 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		{
 			DefaultDirectionalLight = EngineCache->GetScene()->GetDirLights()[0];
 		}
-		//DefaultDirectionalLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+		//DefaultDirectionalLight->Rotate(UHVector3(0, LightRotSpd, 0), UHTransformSpace::World);
 	}
 
 	// move geo364
 	if (Geo364Renderer)
 	{
 		float MoveTime = 3.0f;
-		XMFLOAT3 Pos1 = Geo364OriginPos + XMFLOAT3(-1, 0, 0);
-		XMFLOAT3 Pos2 = Geo364OriginPos + XMFLOAT3(1, 0, 0);
-		XMFLOAT3 NewPos = MathHelpers::LerpVector(Pos1, Pos2, TimeCounter / MoveTime);
+		UHVector3 Pos1 = Geo364OriginPos + UHVector3(-1, 0, 0);
+		UHVector3 Pos2 = Geo364OriginPos + UHVector3(1, 0, 0);
+		UHVector3 NewPos = UHMathHelpers::LerpVector(Pos1, Pos2, TimeCounter / MoveTime);
 
 		TimeCounter += DeltaTime * TimeSign;
 		if (TimeCounter >= MoveTime)
@@ -103,16 +103,16 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		float MaxRadius = 15.0f;
 		for (int32_t Idx = 0; Idx < TestPointLights.size(); Idx++)
 		{
-			float NewIntensity = MathHelpers::Lerp(4.0f, 3.0f, PointLightTimeCounter);
+			float NewIntensity = UHMathHelpers::Lerp(4.0f, 3.0f, PointLightTimeCounter);
 			TestPointLights[Idx]->SetIntensity(NewIntensity);
 			//TestPointLights2[Idx]->SetIntensity(NewIntensity);
 
-			XMFLOAT3 Pos = TestPointLightOrigin[Idx];
-			Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
+			UHVector3 Pos = TestPointLightOrigin[Idx];
+			Pos = UHMathHelpers::LerpVector(Pos, Pos + UHVector3(0, -0.05f, 0), PointLightTimeCounter);
 			TestPointLights[Idx]->SetPosition(Pos);
 
 			//Pos = TestPointLightOrigin2[Idx];
-			//Pos = MathHelpers::LerpVector(Pos, Pos + XMFLOAT3(0, -0.05f, 0), PointLightTimeCounter);
+			//Pos = UHMathHelpers::LerpVector(Pos, Pos + UHVector3(0, -0.05f, 0), PointLightTimeCounter);
 			//TestPointLights2[Idx]->SetPosition(Pos);
 		}
 
@@ -128,16 +128,16 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		LightRotSpd = 45.0f * DeltaTime;
 		for (UHSpotLightComponent* SpotLight : TestSpotLights)
 		{
-			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+			SpotLight->Rotate(UHVector3(0, LightRotSpd, 0), UHTransformSpace::World);
 		}
 
 		for (UHSpotLightComponent* SpotLight : TestSpotLights2)
 		{
-			SpotLight->Rotate(XMFLOAT3(0, LightRotSpd, 0), UHTransformSpace::World);
+			SpotLight->Rotate(UHVector3(0, LightRotSpd, 0), UHTransformSpace::World);
 		}
 	}
 
-	const UHRawInput* Input = EngineCache->GetRawInput();
+	const UHPlatformInput* Input = EngineCache->GetRawInput();
 	if (Input->IsKeyHold(VK_CONTROL))
 	{
 		if (Input->IsKeyUp('1'))
@@ -224,14 +224,14 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 
 	// setup default light
 	DefaultDirectionalLight = (UHDirectionalLightComponent*)InScene->RequestComponent(UHDirectionalLightComponent::ClassId);
-	DefaultDirectionalLight->SetLightColor(XMFLOAT3(0.95f, 0.91f, 0.6f));
+	DefaultDirectionalLight->SetLightColor(UHVector3(0.95f, 0.91f, 0.6f));
 	DefaultDirectionalLight->SetIntensity(TestType != UHDemoType::DayTest ? 0.2f : 4.5f);
-	DefaultDirectionalLight->SetRotation(XMFLOAT3(45, -120, 0));
+	DefaultDirectionalLight->SetRotation(UHVector3(45, -120, 0));
 
 	// setup default sky light
 	DefaultSkyLight = (UHSkyLightComponent*)InScene->RequestComponent(UHSkyLightComponent::ClassId);
-	DefaultSkyLight->SetSkyColor(XMFLOAT3(0.8f, 0.8f, 0.8f));
-	DefaultSkyLight->SetGroundColor(XMFLOAT3(0.3f, 0.3f, 0.3f));
+	DefaultSkyLight->SetSkyColor(UHVector3(0.8f, 0.8f, 0.8f));
+	DefaultSkyLight->SetGroundColor(UHVector3(0.3f, 0.3f, 0.3f));
 	DefaultSkyLight->SetSkyIntensity(TestType != UHDemoType::DayTest ? 0.15f : 2.0f);
 	DefaultSkyLight->SetGroundIntensity(TestType != UHDemoType::DayTest ? 0.5f : 1.5f);
 
@@ -245,16 +245,16 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 	}
 
 	// setup default camera
-	InScene->GetMainCamera()->SetPosition(XMFLOAT3(0, 2, -15));
-	InScene->GetMainCamera()->SetPosition(XMFLOAT3(138, 9, -25));
-	InScene->GetMainCamera()->SetRotation(XMFLOAT3(0, -70, 0));
+	InScene->GetMainCamera()->SetPosition(UHVector3(0, 2, -15));
+	InScene->GetMainCamera()->SetPosition(UHVector3(138, 9, -25));
+	InScene->GetMainCamera()->SetRotation(UHVector3(0, -70, 0));
 	InScene->GetMainCamera()->SetCullingDistance(1000.0f);
 
 	// secondary light test
 	SecondDirectionalLight = (UHDirectionalLightComponent*)InScene->RequestComponent(UHDirectionalLightComponent::ClassId);
-	SecondDirectionalLight->SetLightColor(XMFLOAT3(1.0f, 0.55f, 0.0f));
+	SecondDirectionalLight->SetLightColor(UHVector3(1.0f, 0.55f, 0.0f));
 	SecondDirectionalLight->SetIntensity(2.5f);
-	SecondDirectionalLight->SetRotation(XMFLOAT3(45, -30, 0));
+	SecondDirectionalLight->SetRotation(UHVector3(45, -30, 0));
 	SecondDirectionalLight->SetIsEnabled(false);
 
 	// add mesh renderer for all loaded meshes
@@ -282,7 +282,7 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 			NewRenderer->SetPosition(LoadedMeshes[Idx]->GetImportedTranslation());
 			NewRenderer->SetRotation(LoadedMeshes[Idx]->GetImportedRotation());
 			NewRenderer->SetScale(LoadedMeshes[Idx]->GetImportedScale());
-			NewRenderer->Translate(XMFLOAT3(MarginX * OffsetX[Offset], 0, MarginZ * OffsetZ[Offset]), UHTransformSpace::World);
+			NewRenderer->Translate(UHVector3(MarginX * OffsetX[Offset], 0, MarginZ * OffsetZ[Offset]), UHTransformSpace::World);
 		}
 	}
 
@@ -303,8 +303,8 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 				TestPointLights[LightIndex] = (UHPointLightComponent*)InScene->RequestComponent(UHPointLightComponent::ClassId);
 				TestPointLights[LightIndex]->SetIntensity(1.5f);
 				TestPointLights[LightIndex]->SetRadius(10.0f);
-				TestPointLights[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
-				TestPointLights[LightIndex]->SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
+				TestPointLights[LightIndex]->SetLightColor(UHVector3(UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor));
+				TestPointLights[LightIndex]->SetPosition(UHVector3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
 				TestPointLightOrigin[LightIndex] = TestPointLights[LightIndex]->GetPosition();
 			}
 		}
@@ -322,8 +322,8 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 				TestPointLights2[LightIndex] = (UHPointLightComponent*)InScene->RequestComponent(UHPointLightComponent::ClassId);
 				TestPointLights2[LightIndex]->SetIntensity(1.5f);
 				TestPointLights2[LightIndex]->SetRadius(10.0f);
-				TestPointLights2[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
-				TestPointLights2[LightIndex]->SetPosition(XMFLOAT3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
+				TestPointLights2[LightIndex]->SetLightColor(UHVector3(UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor));
+				TestPointLights2[LightIndex]->SetPosition(UHVector3(PointLightStartX + Jdx * 25.0f, 1.0f, PointLightStartZ + Idx * 25.0f));
 				TestPointLightOrigin2[LightIndex] = TestPointLights2[LightIndex]->GetPosition();
 			}
 		}
@@ -345,12 +345,12 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 				TestSpotLights[LightIndex] = (UHSpotLightComponent*)InScene->RequestComponent(UHSpotLightComponent::ClassId);
 				TestSpotLights[LightIndex]->SetIntensity(4.0f);
 				TestSpotLights[LightIndex]->SetRadius(20.0f);
-				TestSpotLights[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
-				TestSpotLights[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
-				TestSpotLights[LightIndex]->SetPosition(XMFLOAT3(SpotLightStartX + Jdx * 25.0f, 5.0f, SpotLightStartZ + Idx * 25.0f));
+				TestSpotLights[LightIndex]->SetAngle(UHMathHelpers::RandFloat() * 30.0f + 30.0f);
+				TestSpotLights[LightIndex]->SetLightColor(UHVector3(UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor));
+				TestSpotLights[LightIndex]->SetPosition(UHVector3(SpotLightStartX + Jdx * 25.0f, 5.0f, SpotLightStartZ + Idx * 25.0f));
 
-				const float RandX = MathHelpers::Lerp(-30.0f, 30.0f, MathHelpers::RandFloat());
-				TestSpotLights[LightIndex]->SetRotation(XMFLOAT3(90.0f + RandX, 0.0f, 0.0f));
+				const float RandX = UHMathHelpers::Lerp(-30.0f, 30.0f, UHMathHelpers::RandFloat());
+				TestSpotLights[LightIndex]->SetRotation(UHVector3(90.0f + RandX, 0.0f, 0.0f));
 			}
 		}
 
@@ -367,12 +367,12 @@ void UHDemoScript::ObsoleteInitialization(UHScene* InScene, UHAssetManager* InAs
 				TestSpotLights2[LightIndex] = (UHSpotLightComponent*)InScene->RequestComponent(UHSpotLightComponent::ClassId);
 				TestSpotLights2[LightIndex]->SetIntensity(4.0f);
 				TestSpotLights2[LightIndex]->SetRadius(20.0f);
-				TestSpotLights2[LightIndex]->SetAngle(MathHelpers::RandFloat() * 30.0f + 30.0f);
-				TestSpotLights2[LightIndex]->SetLightColor(XMFLOAT3(MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor, MathHelpers::RandFloat() + MinColor));
-				TestSpotLights2[LightIndex]->SetPosition(XMFLOAT3(SpotLightStartX + Jdx * 25.0f, 5.0f, SpotLightStartZ + Idx * 25.0f));
+				TestSpotLights2[LightIndex]->SetAngle(UHMathHelpers::RandFloat() * 30.0f + 30.0f);
+				TestSpotLights2[LightIndex]->SetLightColor(UHVector3(UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor, UHMathHelpers::RandFloat() + MinColor));
+				TestSpotLights2[LightIndex]->SetPosition(UHVector3(SpotLightStartX + Jdx * 25.0f, 5.0f, SpotLightStartZ + Idx * 25.0f));
 
-				const float RandX = MathHelpers::Lerp(-30.0f, 30.0f, MathHelpers::RandFloat());
-				TestSpotLights2[LightIndex]->SetRotation(XMFLOAT3(90.0f + RandX, 0.0f, 0.0f));
+				const float RandX = UHMathHelpers::Lerp(-30.0f, 30.0f, UHMathHelpers::RandFloat());
+				TestSpotLights2[LightIndex]->SetRotation(UHVector3(90.0f + RandX, 0.0f, 0.0f));
 			}
 		}
 	}
