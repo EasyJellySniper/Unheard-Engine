@@ -59,6 +59,18 @@ struct UHVector4
     float W;
 };
 
+const UHVector4 GBoxOffset[8] =
+{
+    UHVector4{ -1.0f, -1.0f,  1.0f, 0.0f },
+    UHVector4{  1.0f, -1.0f,  1.0f, 0.0f },
+    UHVector4{  1.0f,  1.0f,  1.0f, 0.0f },
+    UHVector4{ -1.0f,  1.0f,  1.0f, 0.0f },
+    UHVector4{ -1.0f, -1.0f, -1.0f, 0.0f },
+    UHVector4{  1.0f, -1.0f, -1.0f, 0.0f },
+    UHVector4{  1.0f,  1.0f, -1.0f, 0.0f },
+    UHVector4{ -1.0f,  1.0f, -1.0f, 0.0f }
+};
+
 // matrix 4x4
 struct UHMatrix4x4
 {
@@ -79,6 +91,8 @@ struct UHMatrix4x4
         _31(m20), _32(m21), _33(m22), _34(m23),
         _41(m30), _42(m31), _43(m32), _44(m33) {
     }
+
+    static void CreateFromVector(UHMatrix4x4& OutM, const UHVector4& R0, const UHVector4& R1, const UHVector4& R2, const UHVector4& R3) noexcept;
 
     float  operator() (size_t Row, size_t Column) const noexcept { return M[Row][Column]; }
     float& operator() (size_t Row, size_t Column) noexcept { return M[Row][Column]; }
@@ -150,6 +164,8 @@ struct UHBoundingBox
 
     // functions
     bool Contains(UHVector3 Point) const noexcept;
+    bool ContainedBy(UHVector4 Plane0, UHVector4 Plane1, UHVector4 Plane2,
+        UHVector4 Plane3, UHVector4 Plane4, UHVector4 Plane5) const noexcept;
     void Transform(UHBoundingBox& Out, UHMatrix4x4 M) const noexcept;
     void GetCorners(UHVector3* Corners) const noexcept;
     static void CreateMerged(UHBoundingBox& Out, const UHBoundingBox& b1, const UHBoundingBox& b2) noexcept;
@@ -255,17 +271,40 @@ namespace UHMathHelpers
     UHMatrix4x4 UHMatrixTranspose(UHMatrix4x4 M);
     UHMatrix4x4 UHMatrixTranslation(UHVector3 V);
     UHMatrix4x4 UHMatrixScaling(UHVector3 V);
-    UHMatrix4x4 UHMatrixPerspectiveFovLH(float FovAngleY, float AspectRatio, float NearZ, float FarZ);
-    UHMatrix4x4 UHMatrixPerspectiveFovRH(float FovAngleY, float AspectRatio, float NearZ, float FarZ);
+    UHMatrix4x4 UHMatrixPerspectiveFovLH(float FovAngleY, float Width, float Height, float NearZ, float FarZ);
+    UHMatrix4x4 UHMatrixPerspectiveFovRH(float FovAngleY, float Width, float Height, float NearZ, float FarZ);
     UHMatrix4x4 UHMatrixLookToRH(UHVector3 Position, UHVector3 Forward, UHVector3 Up);
-    UHVector4 UHMatrixDeterminant(UHMatrix4x4 M);
-    UHMatrix4x4 UHMatrixInverse(UHVector4 Det, UHMatrix4x4 M);
+    UHMatrix4x4 UHMatrixInverse(UHMatrix4x4 M);
     UHMatrix4x4 UHMatrixRotationRollPitchYaw(float Pitch, float Yaw, float Roll) noexcept;
     UHMatrix4x4 UHMatrixRotationAxis(UHVector3 Axis, float Angle);
 
     // vector functions
     UHVector4 UHVector3Transform(UHVector3 V, UHMatrix4x4 M);
     UHVector3 UHVector3TransformNormal(UHVector3 V, UHMatrix4x4 M);
+    bool UHVector3InBound(UHVector3 V, UHVector3 E);
+    UHVector3 UHVector3Round(UHVector3 V);
+    UHVector4 UHVector3Normalize(UHVector4 V);
+    UHVector3 UHVector3Normalize(UHVector3 V);
+    UHVector4 UHQuaternionRotationMatrix(UHMatrix4x4 M);
+    UHVector4 UHQuaternionMultiply(UHVector4 Q1, UHVector4 Q2);
+    float UHVector3Dot(UHVector4 V1, UHVector4 V2);
+    float UHVector3Dot(UHVector3 V1, UHVector3 V2);
+    UHVector4 UHVector4Transform(UHVector4 V, UHMatrix4x4 M);
+    UHVector4 UHVector4Multiply(UHVector4 V1, UHVector4 V2);
+    UHVector4 UHVector4SplatZ(UHVector4 V);
+    UHVector4 UHVector4SplatW(UHVector4 V);
+    UHVector4 UHVector4Reciprocal(UHVector4 V);
+    UHVector3 UHVector3Rotate(UHVector4 V, UHVector4 Q);
+    float UHVector4Dot(UHVector4 V1, UHVector4 V2);
+    UHVector3 UHVector3Abs(UHVector3 V);
+
+    // plane functions
+    UHVector4 UHPlaneTransform(UHVector4 Plane, UHVector4 Rotation, UHVector3 Translation);
+    UHVector4 UHPlaneNormalize(UHVector4 Plane);
+
+    // intersection
+    void FastIntersectAxisAlignedBoxPlane(UHVector4 Center, UHVector3 Extents, UHVector4 Plane,
+        bool& Outside, bool& Inside) noexcept;
 
     // degrees
     float ToRadians(float InDegrees);

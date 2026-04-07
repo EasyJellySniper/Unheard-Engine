@@ -192,6 +192,12 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 		TestType = UHDemoType::PointLightNight;
 	}
 
+	DefaultCamera = nullptr;
+	DefaultDirectionalLight = nullptr;
+	SecondDirectionalLight = nullptr;
+	DefaultSkyLight = nullptr;
+	Geo364Renderer = nullptr;
+	Door3363Renderer = nullptr;
 	for (const UniquePtr<UHComponent>& Comp : SceneComponents)
 	{
 		if (Comp->GetObjectClassId() == UHMeshRendererComponent::ClassId)

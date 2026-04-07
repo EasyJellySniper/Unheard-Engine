@@ -59,27 +59,18 @@ void UHCameraComponent::Update()
 	ViewProjMatrix_NonJittered = ViewProj_NonJittered;
 
 	// inv view-proj calculation
-	UHVector4 Det = UHMathHelpers::UHMatrixDeterminant(ViewProj);
-	UHMatrix4x4 InvViewProj = UHMathHelpers::UHMatrixInverse(Det, ViewProj);
-	InvViewProjMatrix = InvViewProj;
+	InvViewProjMatrix = UHMathHelpers::UHMatrixInverse(ViewProj);
 
 	// non-jittered inv VP
-	Det = UHMathHelpers::UHMatrixDeterminant(ViewProj_NonJittered);
-	InvViewProj = UHMathHelpers::UHMatrixInverse(Det, ViewProj_NonJittered);
-	InvViewProjMatrix_NonJittered = InvViewProj;
+	InvViewProjMatrix_NonJittered = UHMathHelpers::UHMatrixInverse(ViewProj_NonJittered);
 
 	// inv proj
-	Det = UHMathHelpers::UHMatrixDeterminant(Proj);
-	UHMatrix4x4 InvProj = UHMathHelpers::UHMatrixInverse(Det, Proj);
-	InvProjMatrix = InvProj;
-
-	Det = UHMathHelpers::UHMatrixDeterminant(Proj_NonJittered);
-	UHMatrix4x4 InvProj_NonJittered = UHMathHelpers::UHMatrixInverse(Det, Proj_NonJittered);
-	InvProjMatrix_NonJittered = InvProj_NonJittered;
+	InvProjMatrix = UHMathHelpers::UHMatrixInverse(Proj);
+	InvProjMatrix_NonJittered = UHMathHelpers::UHMatrixInverse(Proj_NonJittered);
 
 	// update camera frustum, note that this is a bit different than rendering matrix
 	// in UHE, +X/+Y/+Z is used, so it needs to be left hand for culling
-	const UHMatrix4x4 CullingProj = UHMathHelpers::UHMatrixPerspectiveFovLH(FovY, Aspect, NearPlane, CullingDistance);
+	const UHMatrix4x4 CullingProj = UHMathHelpers::UHMatrixPerspectiveFovLH(FovY, (float)Width, (float)Height, NearPlane, CullingDistance);
 	UHBoundingFrustum::CreateFromMatrix(CameraFrustum, CullingProj);
 
 	// let frustum be in world space
@@ -314,7 +305,7 @@ void UHCameraComponent::BuildProjectionMatrix()
 {
 	// based on right handed system
 	// far z value doesn't matter here, since I'll use infinte far plane
-	const UHMatrix4x4 P = UHMathHelpers::UHMatrixPerspectiveFovRH(FovY, Aspect, NearPlane + 1, NearPlane);
+	const UHMatrix4x4 P = UHMathHelpers::UHMatrixPerspectiveFovRH(FovY, (float)Width, (float)Height, NearPlane + 1, NearPlane);
 	ProjectionMatrix_NonJittered = P;
 	ProjectionMatrix = P;
 

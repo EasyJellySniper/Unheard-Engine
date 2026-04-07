@@ -337,12 +337,10 @@ UHSpotLightConstants UHSpotLightComponent::GetConstants() const
 	Consts.Position = Position;
 
 	// calculate world to light matrix without scale
-	UHMatrix4x4 InvW = UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixTranslation(Position))
+	UHMatrix4x4 WorldNoScale = UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixTranslation(Position))
 		* UHMathHelpers::UHMatrixTranspose(RotationMatrix);
 
-	UHVector4 Det = UHMathHelpers::UHMatrixDeterminant(InvW);
-	InvW = UHMathHelpers::UHMatrixInverse(Det, InvW);
-	Consts.WorldToLight = InvW;
+	Consts.WorldToLight = UHMathHelpers::UHMatrixInverse(WorldNoScale);
 
 	return Consts;
 }

@@ -11,6 +11,7 @@ Vulkan version: 1.3.283.0
 FBX version: 2020.0.1
 DXC Compiler: v1.9.2602 Release
 ImGui: v1.89.9, the dock branch
+GLM: 1.0.3
 
 <<Linux Dependencies - Optional only for Linux build testing!>>
 Distro: Ubuntu-22.04

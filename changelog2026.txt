@@ -123,3 +123,10 @@ Next is to implement Linux counterpart.
 WIP cross platform works. I've implemented Linux counterpart for mouse/keyboard inputs!
 Also defined my own vector/matrix classes, which was a painful refactoring!
 Next I can try working on cross-platform math library.
+
+07-04-2026:
+WIP cross platform works. I've started replacing DirectXMath by GLM.
+Fixed the volume size inconsistency caused by the float-point number precision.
+Also safe-rounding the scene boundary before it's sent to GPU!
+Did the replacement and removed DirectXMath includes! Big milestone for cross-platform.
+Fixed a thread issue between culling and uploading. Fixed dangling pointers in demo script.

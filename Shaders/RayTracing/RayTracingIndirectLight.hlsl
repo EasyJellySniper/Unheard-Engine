@@ -68,7 +68,7 @@ uint GetJitterPhase2D(uint2 PixelCoord)
 float4 SampleSkyData(float3 WorldPos, float3 Normal, uint2 PixelCoord, bool bCenterVoxelOnly)
 {
     float3 SceneBoundMin = GSceneCenter - GSceneExtent;
-    float3 BaseVolumeUV = (WorldPos - SceneBoundMin) / (2.0f * GSceneExtent);
+    float3 BaseVolumeUV = (WorldPos - SceneBoundMin - 0.5f) / (2.0f * GSceneExtent);
     float3 VoxelSize = 1.0f / (2.0f * GSceneExtent);
     
     uint Phase = (GFrameNumber + PixelCoord.x * 13 + PixelCoord.y * 17) % 8;

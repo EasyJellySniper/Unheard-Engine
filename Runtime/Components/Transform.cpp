@@ -33,8 +33,7 @@ void UHTransformComponent::Update()
 		WorldMatrix = W;
 
 		// store inverse transposed world as well
-		UHVector4 Det = UHMathHelpers::UHMatrixDeterminant(W);
-		W = UHMathHelpers::UHMatrixInverse(Det, W);
+		W = UHMathHelpers::UHMatrixInverse(W);
 		WorldMatrixIT = UHMathHelpers::UHMatrixTranspose(W);
 
 		bIsWorldDirty = false;

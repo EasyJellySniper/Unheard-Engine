@@ -17,7 +17,6 @@ public:
 private:
 	UHDeferredShadingRenderer* Renderer = nullptr;
 };
-UHUploadDataAsyncTask GUploadDataAsyncTask;
 
 UHScene* UHDeferredShadingRenderer::GetCurrentScene() const
 {
@@ -78,14 +77,18 @@ void UHDeferredShadingRenderer::Update()
 		return;
 	}
 
-	// kick off upload data worker asap
-	GUploadDataAsyncTask.Init(this);
-	WorkerThreads[0]->ScheduleTask(&GUploadDataAsyncTask);
+	FrustumCulling();
+
+	// kick off UploadDataAsyncTask and collect visible renderer/meshshader instance in parallel
+	static UHUploadDataAsyncTask UploadDataAsyncTask;
+	UploadDataAsyncTask.Init(this);
+	WorkerThreads[0]->ScheduleTask(&UploadDataAsyncTask);
 	WorkerThreads[0]->WakeThread();
 
-	FrustumCulling();
 	CollectVisibleRenderer();
 	CollectMeshShaderInstance();
+
+	WorkerThreads[0]->WaitTask();
 }
 
 void UHDeferredShadingRenderer::NotifyRenderThread()
@@ -125,8 +128,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RTParams.bNeedGenerateSH9 = bNeedGenerateSH9;
 	RTParams.bNeedDepthNormalHistory = NeedDepthNormalHistory();
 
-	// make sure upload data worker is done before rendering
-	WorkerThreads[0]->WaitTask();
+	// reset states
 	bNeedGenerateSH9 = false;
 
 	// wake render thread
@@ -362,7 +364,11 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.ScreenMipCount = std::floorf(
 		std::log2f(std::max(SystemConstantsCPU.Resolution.X, SystemConstantsCPU.Resolution.Y)));
 
-	const UHBoundingBox& SceneBound = CurrentScene->GetSceneBound();
+	UHBoundingBox SceneBound = CurrentScene->GetSceneBound();
+	// IMPORTANT! Safe rounding scene boundary before sending to GPU, this is for the rendering consistency between debug/release build
+	SceneBound.Center = UHMathHelpers::UHVector3Round(SceneBound.Center);
+	SceneBound.Extents = UHMathHelpers::UHVector3Round(SceneBound.Extents);
+
 	SystemConstantsCPU.SceneCenter = SceneBound.Center;
 	SystemConstantsCPU.SceneExtent = SceneBound.Extents;
 	SystemConstantsCPU.RTReflectionMipCount = UHRTReflectionShader::ReflectionMipsCount;

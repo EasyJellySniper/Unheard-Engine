@@ -166,7 +166,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;WITH_EDITOR;FBXSDK_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\include;$(SolutionDir)ThirdParty\Vulkan\1.3.283.0\Include;$(SolutionDir)ThirdParty\OpenEXR\cmake;$(SolutionDir)ThirdParty\OpenEXR\Iex;$(SolutionDir)ThirdParty\OpenEXR\IlmThread;$(SolutionDir)ThirdParty\OpenEXR\Imath;$(SolutionDir)ThirdParty\OpenEXR\OpenEXR;$(SolutionDir)ThirdParty\OpenEXR\OpenEXRCore;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\;$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\include;$(SolutionDir)ThirdParty\Vulkan\1.3.283.0\Include;$(SolutionDir)ThirdParty\OpenEXR\cmake;$(SolutionDir)ThirdParty\OpenEXR\Iex;$(SolutionDir)ThirdParty\OpenEXR\IlmThread;$(SolutionDir)ThirdParty\OpenEXR\Imath;$(SolutionDir)ThirdParty\OpenEXR\OpenEXR;$(SolutionDir)ThirdParty\OpenEXR\OpenEXRCore;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <Optimization>Disabled</Optimization>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -197,7 +197,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;WITH_RELEASE;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\Vulkan\1.3.283.0\Include;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\;$(SolutionDir)ThirdParty\Vulkan\1.3.283.0\Include;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <FloatingPointModel>Fast</FloatingPointModel>
@@ -222,7 +222,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;WITH_EDITOR;FBXSDK_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\include;$(SolutionDir)ThirdParty\Vulkan\1.3.283.0\Include;$(SolutionDir)ThirdParty\OpenEXR\cmake;$(SolutionDir)ThirdParty\OpenEXR\Iex;$(SolutionDir)ThirdParty\OpenEXR\IlmThread;$(SolutionDir)ThirdParty\OpenEXR\Imath;$(SolutionDir)ThirdParty\OpenEXR\OpenEXR;$(SolutionDir)ThirdParty\OpenEXR\OpenEXRCore;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)ThirdParty\FBX SDK\2020.0.1\include;$(SolutionDir)ThirdParty\Vulkan\1.3.283.0\Include;$(SolutionDir)ThirdParty\OpenEXR\cmake;$(SolutionDir)ThirdParty\OpenEXR\Iex;$(SolutionDir)ThirdParty\OpenEXR\IlmThread;$(SolutionDir)ThirdParty\OpenEXR\Imath;$(SolutionDir)ThirdParty\OpenEXR\OpenEXR;$(SolutionDir)ThirdParty\OpenEXR\OpenEXRCore;$(SolutionDir)ThirdParty\;$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <StructMemberAlignment>Default</StructMemberAlignment>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>

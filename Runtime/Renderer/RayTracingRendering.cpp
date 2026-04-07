@@ -134,9 +134,9 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 			const UHBoundingBox& SceneBound = CurrentScene->GetSceneBound();
 
 			VkExtent2D VolumeSize;
-			VolumeSize.width = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.X * 2.0f));
-			VolumeSize.height = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.Y * 2.0f));
-			const uint32_t VolumeSlices = static_cast<uint32_t>(std::ceilf(SceneBound.Extents.Z * 2.0f));
+			VolumeSize.width = static_cast<uint32_t>(std::roundf(SceneBound.Extents.X * 2.0f));
+			VolumeSize.height = static_cast<uint32_t>(std::roundf(SceneBound.Extents.Y * 2.0f));
+			const uint32_t VolumeSlices = static_cast<uint32_t>(std::roundf(SceneBound.Extents.Z * 2.0f));
 
 			RenderTextureSetting.bIsVolume = true;
 			RenderTextureSetting.NumSlices = VolumeSlices;
