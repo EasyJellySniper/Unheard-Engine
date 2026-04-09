@@ -2,14 +2,6 @@
 #include "Runtime/CoreGlobals.h"
 #include <cmath>
 
-// GLM math library, setup for graphics API use and SIMD optimizations
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-
 glm::mat4x4 TempUHToGLMMat(UHMatrix4x4 InMat)
 {
     glm::mat4x4 OutM;
@@ -42,55 +34,34 @@ namespace UHMathHelpers
 {
     bool IsValidVector(UHVector3 InVector)
     {
-        glm::vec3 Vec(InVector.X, InVector.Y, InVector.Z);
-        glm::bvec3 Result = glm::isnan(Vec);
-
-        return !Result.x && !Result.y && !Result.z;
+        return !glm::any(glm::isnan(InVector));
     }
 
     bool IsVectorNearlyZero(UHVector3 InVector)
     {
-        glm::vec3 V1(InVector.X, InVector.Y, InVector.Z);
-        glm::vec3 V2(GEpsilon, GEpsilon, GEpsilon);
-        glm::bvec3 Result = glm::lessThanEqual(V1, V2);
-
-        return glm::all(Result);
+        static glm::vec3 V2(GEpsilon, GEpsilon, GEpsilon);
+        return glm::all(glm::lessThanEqual(InVector, V2));
     }
 
     bool IsVectorNearlyZero(UHVector4 InVector)
     {
-        glm::vec4 V1(InVector.X, InVector.Y, InVector.Z, InVector.W);
-        glm::vec4 V2(GEpsilon, GEpsilon, GEpsilon, GEpsilon);
-        glm::bvec4 Result = glm::lessThanEqual(V1, V2);
-
-        return glm::all(Result);
+        static glm::vec4 V2(GEpsilon, GEpsilon, GEpsilon, GEpsilon);
+        return glm::all(glm::lessThanEqual(InVector, V2));
     }
 
     bool IsVectorEqual(UHVector2 InA, UHVector2 InB)
     {
-        glm::vec2 V1(InA.X, InA.Y);
-        glm::vec2 V2(InB.X, InB.Y);
-        glm::bvec2 Result = glm::equal(V1, V2);
-
-        return glm::all(Result);
+        return glm::all(glm::equal(InA, InB));
     }
 
     bool IsVectorEqual(UHVector3 InA, UHVector3 InB)
     {
-        glm::vec3 V1(InA.X, InA.Y, InA.Z);
-        glm::vec3 V2(InB.X, InB.Y, InB.Z);
-        glm::bvec3 Result = glm::equal(V1, V2);
-
-        return glm::all(Result);
+        return glm::all(glm::equal(InA, InB));
     }
 
     bool IsVectorEqual(UHVector4 InA, UHVector4 InB)
     {
-        glm::vec4 V1(InA.X, InA.Y, InA.Z, InA.W);
-        glm::vec4 V2(InB.X, InB.Y, InB.Z, InB.W);
-        glm::bvec4 Result = glm::equal(V1, V2);
-
-        return glm::all(Result);
+        return glm::all(glm::equal(InA, InB));
     }
 
     UHMatrix4x4 Identity4x4()
@@ -171,20 +142,12 @@ namespace UHMathHelpers
 
     UHVector3 MinVector(const UHVector3& InVector, const UHVector3& InVector2)
     {
-        glm::vec3 V1(InVector.X, InVector.Y, InVector.Z);
-        glm::vec3 V2(InVector2.X, InVector2.Y, InVector2.Z);
-        V1 = glm::min(V1, V2);
-
-        return UHVector3(V1.x, V1.y, V1.z);
+        return glm::min(InVector, InVector2);
     }
 
     UHVector3 MaxVector(const UHVector3& InVector, const UHVector3& InVector2)
     {
-        glm::vec3 V1(InVector.X, InVector.Y, InVector.Z);
-        glm::vec3 V2(InVector2.X, InVector2.Y, InVector2.Z);
-        V1 = glm::max(V1, V2);
-
-        return UHVector3(V1.x, V1.y, V1.z);
+        return glm::max(InVector, InVector2);
     }
 
     // halton sequence generation, reference: https://en.wikipedia.org/wiki/Halton_sequence
@@ -212,19 +175,12 @@ namespace UHMathHelpers
 
     UHVector3 LerpVector(const UHVector3& InVector, const UHVector3& InVector2, const float& T)
     {
-        glm::vec3 V1(InVector.X, InVector.Y, InVector.Z);
-        glm::vec3 V2(InVector2.X, InVector2.Y, InVector2.Z);
-        V1 = glm::mix(V1, V2, T);
-
-        return UHVector3(V1.x, V1.y, V1.z);
+        return glm::mix(InVector, InVector2, T);
     }
 
     float VectorDistanceSqr(const UHVector3& InVector, const UHVector3& InVector2)
     {
-        glm::vec3 V1(InVector.X, InVector.Y, InVector.Z);
-        glm::vec3 V2(InVector2.X, InVector2.Y, InVector2.Z);
-        glm::vec3 Diff = V1 - V2;
-
+        glm::vec3 Diff = InVector - InVector2;
         return glm::dot(Diff, Diff);
     }
 
@@ -259,18 +215,16 @@ namespace UHMathHelpers
         return TempGLMToUHMat(FM);
     }
     
-    UHMatrix4x4 UHMatrixTranslation(UHVector3 V)
+    UHMatrix4x4 UHMatrixTranslation(UHVector3 Translation)
     {
-        glm::vec3 Translation(V.X, V.Y, V.Z);
         glm::mat4x4 M = glm::identity<glm::mat4x4>();
         M = glm::translate(M, Translation);
 
         return TempGLMToUHMat(M);
     }
 
-    UHMatrix4x4 UHMatrixScaling(UHVector3 V)
+    UHMatrix4x4 UHMatrixScaling(UHVector3 Scale)
     {
-        glm::vec3 Scale(V.X, V.Y, V.Z);
         glm::mat4x4 M = glm::identity<glm::mat4x4>();
         M = glm::scale(M, Scale);
 
@@ -291,11 +245,7 @@ namespace UHMathHelpers
 
     UHMatrix4x4 UHMatrixLookToRH(UHVector3 Position, UHVector3 Forward, UHVector3 Up)
     {
-        glm::vec3 Eye(Position.X, Position.Y, Position.Z);
-        glm::vec3 Center = Eye + glm::vec3(Forward.X, Forward.Y, Forward.Z);
-        glm::vec3 U(Up.X, Up.Y, Up.Z);
-        glm::mat4x4 M = glm::lookAtRH(Eye, Center, U);
-
+        glm::mat4x4 M = glm::lookAtRH(Position, Position + Forward, Up);
         return TempGLMToUHMat(M);
     }
 
@@ -316,52 +266,44 @@ namespace UHMathHelpers
 
     UHMatrix4x4 UHMatrixRotationAxis(UHVector3 Axis, float Angle)
     {
-        glm::mat4x4 Result = glm::rotate(glm::mat4(1.0f), Angle, glm::vec3(Axis.X, Axis.Y, Axis.Z));
+        glm::mat4x4 Result = glm::rotate(glm::mat4(1.0f), Angle, Axis);
         return TempGLMToUHMat(Result);
     }
 
     // vector functions
     UHVector4 UHVector3Transform(UHVector3 V, UHMatrix4x4 M)
     {
-        glm::vec4 Result = TempUHToGLMMat(M) * glm::vec4(V.X, V.Y, V.Z, 1.0f);
-        return UHVector4(Result.x, Result.y, Result.z, Result.w);
+        return TempUHToGLMMat(M) * glm::vec4(V.x, V.y, V.z, 1.0f);
     }
 
     UHVector3 UHVector3TransformNormal(UHVector3 V, UHMatrix4x4 M)
     {
-        glm::vec3 Result = glm::mat3(TempUHToGLMMat(M)) * glm::vec3(V.X, V.Y, V.Z);
-        return UHVector3(Result.x, Result.y, Result.z);
+        return glm::mat3(TempUHToGLMMat(M)) * V;
     }
 
     bool UHVector3InBound(UHVector3 Vec, UHVector3 Bounds)
     {
         // is the vector in extent? Assume the inputs are in local (relative) space already
-        return Vec.X <= Bounds.X && Vec.X >= -Bounds.X
-            && Vec.Y <= Bounds.Y && Vec.Y >= -Bounds.Y
-            && Vec.Z <= Bounds.Z && Vec.Z >= -Bounds.Z;
+        return Vec.x <= Bounds.x && Vec.x >= -Bounds.x
+            && Vec.y <= Bounds.y && Vec.y >= -Bounds.y
+            && Vec.z <= Bounds.z && Vec.z >= -Bounds.z;
     }
 
     UHVector3 UHVector3Round(UHVector3 V)
     {
-        glm::vec3 FV(V.X,V.Y,V.Z);
-        FV = glm::round(FV);
-
-        return UHVector3(FV.x, FV.y, FV.z);
+        return glm::round(V);
     }
 
     UHVector4 UHVector3Normalize(UHVector4 V)
     {
         // normalize 3d part of a vector4, the w component remains unchanged
-        UHVector3 Result = UHVector3Normalize(UHVector3(V.X, V.Y, V.Z));
-        return UHVector4(Result.X, Result.Y, Result.Z, V.W);
+        UHVector3 Result = UHVector3Normalize(UHVector3(V));
+        return UHVector4(Result.x, Result.y, Result.z, V.w);
     }
 
     UHVector3 UHVector3Normalize(UHVector3 V)
     {
-        glm::vec3 FV(V.X, V.Y, V.Z);
-        FV = glm::normalize(FV);
-
-        return UHVector3(FV.x, FV.y, FV.z);
+        return glm::normalize(V);
     }
 
     UHVector4 UHQuaternionRotationMatrix(UHMatrix4x4 M)
@@ -374,8 +316,8 @@ namespace UHMathHelpers
 
     UHVector4 UHQuaternionMultiply(UHVector4 Q1, UHVector4 Q2)
     {
-        glm::quat GQ1(Q1.W, Q1.X, Q1.Y, Q1.Z);
-        glm::quat GQ2(Q2.W, Q2.X, Q2.Y, Q2.Z);
+        glm::quat GQ1(Q1.w, Q1.x, Q1.y, Q1.z);
+        glm::quat GQ2(Q2.w, Q2.x, Q2.y, Q2.z);
         GQ1 *= GQ2;
 
         return UHVector4(GQ1.x, GQ1.y, GQ1.z, GQ1.w);
@@ -383,97 +325,73 @@ namespace UHMathHelpers
 
     float UHVector3Dot(UHVector4 V1, UHVector4 V2)
     {
-        glm::vec3 GV1(V1.X, V1.Y, V1.Z);
-        glm::vec3 GV2(V2.X, V2.Y, V2.Z);
+        glm::vec3 GV1(V1);
+        glm::vec3 GV2(V2);
 
         return glm::dot(GV1, GV2);
     }
 
     float UHVector3Dot(UHVector3 V1, UHVector3 V2)
     {
-        glm::vec3 GV1(V1.X, V1.Y, V1.Z);
-        glm::vec3 GV2(V2.X, V2.Y, V2.Z);
-
-        return glm::dot(GV1, GV2);
+        return glm::dot(V1, V2);
     }
 
     UHVector4 UHVector4Transform(UHVector4 V, UHMatrix4x4 M)
     {
-        glm::vec4 Result = TempUHToGLMMat(M) * glm::vec4(V.X, V.Y, V.Z, V.W);
-        return UHVector4(Result.x, Result.y, Result.z, Result.w);
+        return TempUHToGLMMat(M) * V;
     }
 
     UHVector4 UHVector4Multiply(UHVector4 V1, UHVector4 V2)
     {
-        glm::vec4 GV1(V1.X, V1.Y, V1.Z, V1.W);
-        glm::vec4 GV2(V2.X, V2.Y, V2.Z, V2.W);
-        GV1 *= GV2;
-
-        return UHVector4(GV1.x, GV1.y, GV1.z, GV1.w);
+        return V1 * V2;
     }
 
     UHVector4 UHVector4SplatZ(UHVector4 V)
     {
-        glm::vec4 GV(V.X, V.Y, V.Z, V.W);
-        GV = glm::splatZ(GV);
-
-        return UHVector4(GV.x, GV.y, GV.z, GV.w);
+        return glm::splatZ(V);
     }
 
     UHVector4 UHVector4SplatW(UHVector4 V)
     {
-        glm::vec4 GV(V.X, V.Y, V.Z, V.W);
-        GV = glm::splatW(GV);
-
-        return UHVector4(GV.x, GV.y, GV.z, GV.w);
+        return glm::splatW(V);
     }
 
     UHVector4 UHVector4Reciprocal(UHVector4 V)
     {
-        glm::vec4 GV(V.X, V.Y, V.Z, V.W);
-        GV = 1.0f / GV;
-
-        return UHVector4(GV.x, GV.y, GV.z, GV.w);
+        return 1.0f / V;
     }
 
     // Transform a vector using a rotation expressed as a unit quaternion
     UHVector3 UHVector3Rotate(UHVector4 V, UHVector4 Q)
     {
-        glm::vec3 GV(V.X, V.Y, V.Z);
-        glm::quat GQ(Q.W, Q.X, Q.Y, Q.Z);
-        glm::vec3 Result = GQ * GV;
+        glm::vec3 GV(V);
+        glm::quat GQ(Q.w, Q.x, Q.y, Q.z);
 
-        return UHVector3(Result.x, Result.y, Result.z);
+        return GQ * GV;
     }
 
     float UHVector4Dot(UHVector4 V1, UHVector4 V2)
     {
-        glm::vec4 GV1(V1.X, V1.Y, V1.Z, V1.W);
-        glm::vec4 GV2(V2.X, V2.Y, V2.Z, V2.W);
-
-        return glm::dot(GV1, GV2);
+        return glm::dot(V1, V2);
     }
 
     UHVector3 UHVector3Abs(UHVector3 V)
     {
-        glm::vec3 GV(V.X, V.Y, V.Z);
-        GV = glm::abs(GV);
-
-        return UHVector3(GV.x, GV.y, GV.z);
+        return glm::abs(V);
     }
 
     // plane functions
     UHVector4 UHPlaneTransform(UHVector4 Plane, UHVector4 Rotation, UHVector3 Translation)
     {
         UHVector3 VNormal = UHVector3Rotate(Plane, Rotation);
-        float Dist = Plane.W - UHVector3Dot(VNormal, Translation);
+        float Dist = Plane.w - UHVector3Dot(VNormal, Translation);
 
-        return UHVector4(VNormal.X, VNormal.Y, VNormal.Z, Dist);
+        return UHVector4(VNormal.x, VNormal.y, VNormal.z, Dist);
     }
 
     UHVector4 UHPlaneNormalize(UHVector4 Plane)
     {
-        float Length = glm::length(glm::vec3(Plane.X, Plane.Y, Plane.Z));
+        float Length = glm::length(glm::vec3(Plane));
 
         UHVector4 Result = Plane;
         Result /= Length;
@@ -491,7 +409,7 @@ namespace UHMathHelpers
         // h(u) * abs(n dot b(u))) + h(v) * abs(n dot b(v)) + h(w) * abs(n dot b(w))
         // where h(i) are extents of the box, n is the plane normal, and b(i) are the
         // axes of the box. In this case b(i) = [(1,0,0), (0,1,0), (0,0,1)].
-        float Radius = UHVector3Dot(Extents, UHVector3Abs(UHVector3(Plane.X, Plane.Y, Plane.Z)));
+        float Radius = UHVector3Dot(Extents, UHVector3Abs(UHVector3(Plane)));
 
         Outside = Dist > Radius;
         Inside = Dist < -Radius;
@@ -509,50 +427,6 @@ namespace UHMathHelpers
     }
 }
 
-// ----------------------------------------------------------- UHVector3 operators
-UHVector3 operator*(const UHVector3& InVector, float InFloat)
-{
-    glm::vec3 V(InVector.X, InVector.Y, InVector.Z);
-    V *= InFloat;
-
-    return UHVector3(V.x, V.y, V.z);
-}
-
-UHVector3 operator+(const UHVector3& InVector, const UHVector3& InVector2)
-{
-    glm::vec3 V1(InVector.X, InVector.Y, InVector.Z);
-    glm::vec3 V2(InVector2.X, InVector2.Y, InVector2.Z);
-    V1 += V2;
-
-    return UHVector3(V1.x, V1.y, V1.z);
-}
-
-UHVector3 operator-(const UHVector3& InVector, const UHVector3& InVector2)
-{
-    glm::vec3 V1(InVector.X, InVector.Y, InVector.Z);
-    glm::vec3 V2(InVector2.X, InVector2.Y, InVector2.Z);
-    V1 -= V2;
-
-    return UHVector3(V1.x, V1.y, V1.z);
-}
-
-bool operator==(const UHVector3& InVector, const UHVector3& InVector2)
-{
-    return InVector.X == InVector2.X && InVector.Y == InVector2.Y && InVector.Z == InVector2.Z;
-}
-
-// ----------------------------------------------------------- UHVector4 operators
-UHVector4 operator/=(const UHVector4& InVector, float InFloat)
-{
-    UHVector4 V = InVector;
-    V.X /= InFloat;
-    V.Y /= InFloat;
-    V.Z /= InFloat;
-    V.W /= InFloat;
-
-    return V;
-}
-
 // ----------------------------------------------------------- UHMatrix4x4 operator
 UHMatrix4x4 operator*(const UHMatrix4x4& InA, const UHMatrix4x4& InB)
 {
@@ -565,41 +439,37 @@ UHMatrix4x4 operator*(const UHMatrix4x4& InA, const UHMatrix4x4& InB)
 
 void UHMatrix4x4::CreateFromVector(UHMatrix4x4& OutM, const UHVector4& R0, const UHVector4& R1, const UHVector4& R2, const UHVector4& R3) noexcept
 {
-    OutM.M[0][0] = R0.X;
-    OutM.M[0][1] = R0.Y;
-    OutM.M[0][2] = R0.Z;
-    OutM.M[0][3] = R0.W;
+    OutM.M[0][0] = R0.x;
+    OutM.M[0][1] = R0.y;
+    OutM.M[0][2] = R0.z;
+    OutM.M[0][3] = R0.w;
 
-    OutM.M[1][0] = R1.X;
-    OutM.M[1][1] = R1.Y;
-    OutM.M[1][2] = R1.Z;
-    OutM.M[1][3] = R1.W;
+    OutM.M[1][0] = R1.x;
+    OutM.M[1][1] = R1.y;
+    OutM.M[1][2] = R1.z;
+    OutM.M[1][3] = R1.w;
 
-    OutM.M[2][0] = R2.X;
-    OutM.M[2][1] = R2.Y;
-    OutM.M[2][2] = R2.Z;
-    OutM.M[2][3] = R2.W;
+    OutM.M[2][0] = R2.x;
+    OutM.M[2][1] = R2.y;
+    OutM.M[2][2] = R2.z;
+    OutM.M[2][3] = R2.w;
 
-    OutM.M[3][0] = R3.X;
-    OutM.M[3][1] = R3.Y;
-    OutM.M[3][2] = R3.Z;
-    OutM.M[3][3] = R3.W;
+    OutM.M[3][0] = R3.x;
+    OutM.M[3][1] = R3.y;
+    OutM.M[3][2] = R3.z;
+    OutM.M[3][3] = R3.w;
 }
 
 // ----------------------------------------------------------- UHBoundingBox
 bool UHBoundingBox::Contains(UHVector3 Point) const noexcept
 {
-    glm::vec3 C(Center.X, Center.Y, Center.Z);
-    glm::vec3 E(Extents.X, Extents.Y, Extents.Z);
-    glm::vec3 V = glm::vec3(Point.X, Point.Y, Point.Z) - C;
-
-    return UHMathHelpers::UHVector3InBound(UHVector3(V.x, V.y, V.z), Extents);
+    return UHMathHelpers::UHVector3InBound(Point - Center, Extents);
 }
 
 bool UHBoundingBox::ContainedBy(UHVector4 Plane0, UHVector4 Plane1, UHVector4 Plane2,
     UHVector4 Plane3, UHVector4 Plane4, UHVector4 Plane5) const noexcept
 {
-    UHVector4 CenterWithW(Center.X, Center.Y, Center.Z, 1.0f);
+    UHVector4 CenterWithW(Center.x, Center.y, Center.z, 1.0f);
 
     bool bOutside, bInside;
     UHMathHelpers::FastIntersectAxisAlignedBoxPlane(CenterWithW, Extents, Plane0, bOutside, bInside);
@@ -646,68 +516,49 @@ bool UHBoundingBox::ContainedBy(UHVector4 Plane0, UHVector4 Plane1, UHVector4 Pl
 void UHBoundingBox::Transform(UHBoundingBox& Out, UHMatrix4x4 M) const noexcept
 {
     // Load center and extents.
-    glm::vec3 C(Center.X, Center.Y, Center.Z);
-    glm::vec3 E(Extents.X, Extents.Y, Extents.Z);
-    glm::vec3 Offset(GBoxOffset[0].X, GBoxOffset[0].Y, GBoxOffset[0].Z);
-    glm::vec3 Corner = E * Offset + C;
+    glm::vec3 Offset(GBoxOffset[0]);
+    glm::vec3 Corner = Extents * Offset + Center;
 
-    UHVector4 TransformedCorner = UHMathHelpers::UHVector3Transform(UHVector3(Corner.x, Corner.y, Corner.z), M);
-    Corner = glm::vec3(TransformedCorner.X, TransformedCorner.Y, TransformedCorner.Z);
+    UHVector4 TransformedCorner = UHMathHelpers::UHVector3Transform(Corner, M);
+    Corner = glm::vec3(TransformedCorner);
 
     glm::vec3 Min, Max;
     Min = Max = Corner;
 
     for (size_t I = 1; I < CORNER_COUNT; I++)
     {
-        Offset = glm::vec3(GBoxOffset[I].X, GBoxOffset[I].Y, GBoxOffset[I].Z);
-        Corner = E * Offset + C;
+        Offset = glm::vec3(GBoxOffset[I]);
+        Corner = Extents * Offset + Center;
 
-        TransformedCorner = UHMathHelpers::UHVector3Transform(UHVector3(Corner.x, Corner.y, Corner.z), M);
-        Corner = glm::vec3(TransformedCorner.X, TransformedCorner.Y, TransformedCorner.Z);
+        TransformedCorner = UHMathHelpers::UHVector3Transform(Corner, M);
+        Corner = glm::vec3(TransformedCorner);
 
         Min = glm::min(Min, Corner);
         Max = glm::max(Max, Corner);
     }
 
-    C = (Min + Max) * 0.5f;
-    E = (Max - Min) * 0.5f;
-    Out.Center = UHVector3(C.x, C.y, C.z);
-    Out.Extents = UHVector3(E.x, E.y, E.z);
+    Out.Center = (Min + Max) * 0.5f;
+    Out.Extents = (Max - Min) * 0.5f;
 }
 
 void UHBoundingBox::GetCorners(UHVector3* Corners) const noexcept
 {
     assert(Corners != nullptr);
 
-    // Load the box
-    glm::vec3 C(Center.X, Center.Y, Center.Z);
-    glm::vec3 E(Extents.X, Extents.Y, Extents.Z);
-
     for (size_t I = 0; I < CORNER_COUNT; I++)
     {
-        glm::vec3 Offset(GBoxOffset[I].X, GBoxOffset[I].Y, GBoxOffset[I].Z);
-        glm::vec3 TempCorner = E * Offset + C;
-
-        Corners[I] = UHVector3(TempCorner.x, TempCorner.y, TempCorner.z);
+        glm::vec3 Offset(GBoxOffset[I]);
+        Corners[I] = Extents * Offset + Center;
     }
 }
 
 void UHBoundingBox::CreateMerged(UHBoundingBox& Out, const UHBoundingBox& b1, const UHBoundingBox& b2) noexcept
 {
-    glm::vec3 C1(b1.Center.X, b1.Center.Y, b1.Center.Z);
-    glm::vec3 E1(b1.Extents.X, b1.Extents.Y, b1.Extents.Z);
+    glm::vec3 Min = glm::min(b1.Center - b1.Extents, b2.Center - b2.Extents);
+    glm::vec3 Max = glm::max(b1.Center + b1.Extents, b2.Center + b2.Extents);
 
-    glm::vec3 C2(b2.Center.X, b2.Center.Y, b2.Center.Z);
-    glm::vec3 E2(b2.Extents.X, b2.Extents.Y, b2.Extents.Z);
-
-    glm::vec3 Min = glm::min(C1 - E1, C2 - E2);
-    glm::vec3 Max = glm::max(C1 + E1, C2 + E2);
-
-    glm::vec3 NewC = (Min + Max) * 0.5f;
-    glm::vec3 NewE = (Max - Min) * 0.5f;
-
-    Out.Center = UHVector3(NewC.x, NewC.y, NewC.z);
-    Out.Extents = UHVector3(NewE.x, NewE.y, NewE.z);
+    Out.Center = (Min + Max) * 0.5f;
+    Out.Extents = (Max - Min) * 0.5f;
 }
 
 // ----------------------------------------------------------- UHBoundingFrustum
@@ -730,7 +581,7 @@ void UHBoundingFrustum::Transform(UHBoundingFrustum& Out, UHMatrix4x4 M) const n
     UHVector4 Rotation = UHMathHelpers::UHQuaternionRotationMatrix(NormalizedM);
 
     // output transformed origin and orientation
-    Out.Origin = UHVector3(TransformedOrigin.X, TransformedOrigin.Y, TransformedOrigin.Z);
+    Out.Origin = TransformedOrigin;
     Out.Orientation = UHMathHelpers::UHQuaternionMultiply(Orientation, Rotation);
 
     // slope remains the same
@@ -819,10 +670,10 @@ void UHBoundingFrustum::CreateFromMatrix(UHBoundingFrustum& Out, UHMatrix4x4 Pro
     Points[2] = UHMathHelpers::UHVector4Multiply(Points[2], UHMathHelpers::UHVector4Reciprocal(UHMathHelpers::UHVector4SplatZ(Points[2])));
     Points[3] = UHMathHelpers::UHVector4Multiply(Points[3], UHMathHelpers::UHVector4Reciprocal(UHMathHelpers::UHVector4SplatZ(Points[3])));
 
-    Out.RightSlope = Points[0].X;
-    Out.LeftSlope = Points[1].X;
-    Out.TopSlope = Points[2].Y;
-    Out.BottomSlope = Points[3].Y;
+    Out.RightSlope = Points[0].x;
+    Out.LeftSlope = Points[1].x;
+    Out.TopSlope = Points[2].y;
+    Out.BottomSlope = Points[3].y;
 
     // Compute near and far.
     Points[4] = UHMathHelpers::UHVector4Multiply(Points[4], UHMathHelpers::UHVector4Reciprocal(UHMathHelpers::UHVector4SplatW(Points[4])));
@@ -830,12 +681,12 @@ void UHBoundingFrustum::CreateFromMatrix(UHBoundingFrustum& Out, UHMatrix4x4 Pro
 
     if (rhcoords)
     {
-        Out.Near = Points[5].Z;
-        Out.Far = Points[4].Z;
+        Out.Near = Points[5].z;
+        Out.Far = Points[4].z;
     }
     else
     {
-        Out.Near = Points[4].Z;
-        Out.Far = Points[5].Z;
+        Out.Near = Points[4].z;
+        Out.Far = Points[5].z;
     }
 }

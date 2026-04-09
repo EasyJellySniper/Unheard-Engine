@@ -33,6 +33,7 @@ SamplerState PointClampped : register(s16);
 SamplerState LinearClampped : register(s17);
 
 static const float GShadowRayGap = 0.01f;
+static const float GMaxEnv = 100.0f;
 
 void ConditionalCalculatePointLight(uint TileIndex, in UHDefaultPayload Payload, UHLightInfo LightInfo
     , float MipLevel, bool bIsInsideScreen, inout float3 Result)
@@ -275,7 +276,12 @@ float4 CalculateReflectionLighting(in UHDefaultPayload Payload
         // Payload.PackedData0.a for fresnel factor from material
         float3 Fresnel = SchlickFresnel(LightInfo.Specular.rgb, lerp(0, NdotV, Payload.FresnelFactor));
      
-        Result += EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb * GAmbientSky * SpecFade * GFinalReflectionStrength
+        // env cube sampling, clamp max brightness to prevent fireflies flickering by now
+        // can improve this in the future
+        float3 Env = EnvCube.SampleLevel(EnvSampler, R, SpecMip).rgb;
+        Env = min(Env, GMaxEnv);
+        
+        Result += Env * GAmbientSky * SpecFade * GFinalReflectionStrength
             // occlusion is stored in diffuse.a
             * Occlusion * Fresnel;
     }

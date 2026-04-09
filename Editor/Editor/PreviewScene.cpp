@@ -112,7 +112,7 @@ void UHPreviewScene::SetMesh(UHMesh* InMesh)
 
 	// make camera in front of mesh's center
 	PreviewCamera->SetRotation(UHVector3(0, 0, 0));
-	PreviewCamera->SetPosition(CurrentMesh->GetMeshCenter() - PreviewCamera->GetForward() * 5);
+	PreviewCamera->SetPosition(CurrentMesh->GetMeshCenter() - PreviewCamera->GetForward() * 5.0f);
 }
 
 UHRenderTexture* UHPreviewScene::GetPreviewRT() const

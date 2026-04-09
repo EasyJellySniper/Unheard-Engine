@@ -60,7 +60,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		UHVector3 DoorRot = Door3363Renderer->GetRotationEuler();
 		float Time = EngineCache->GetGameTimer()->GetTotalTime();
 		float T = abs(fract(Time * 0.2f) * 2.0f - 1.0f);
-		DoorRot.Y = UHMathHelpers::Lerp(1.0f, 85.0f, T);
+		DoorRot.y = UHMathHelpers::Lerp(1.0f, 85.0f, T);
 		Door3363Renderer->SetRotation(DoorRot);
 	}
 

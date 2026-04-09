@@ -45,27 +45,27 @@ void UHFloatNodeGUI::SetDefaultValueFromGUI()
 void UHFloat2NodeGUI::SetDefaultValueFromGUI()
 {
 	UHVector2 Value;
-	Value.X = InputsTextFields[0]->Parse<float>();
-	Value.Y = InputsTextFields[1]->Parse<float>();
+	Value.x = InputsTextFields[0]->Parse<float>();
+	Value.y = InputsTextFields[1]->Parse<float>();
 	Node->SetValue(Value);
 }
 
 void UHFloat3NodeGUI::SetDefaultValueFromGUI()
 {
 	UHVector3 Value;
-	Value.X = InputsTextFields[0]->Parse<float>();
-	Value.Y = InputsTextFields[1]->Parse<float>();
-	Value.Z = InputsTextFields[2]->Parse<float>();
+	Value.x = InputsTextFields[0]->Parse<float>();
+	Value.y = InputsTextFields[1]->Parse<float>();
+	Value.z = InputsTextFields[2]->Parse<float>();
 	Node->SetValue(Value);
 }
 
 void UHFloat4NodeGUI::SetDefaultValueFromGUI()
 {
 	UHVector4 Value;
-	Value.X = InputsTextFields[0]->Parse<float>();
-	Value.Y = InputsTextFields[1]->Parse<float>();
-	Value.Z = InputsTextFields[2]->Parse<float>();
-	Value.W = InputsTextFields[3]->Parse<float>();
+	Value.x = InputsTextFields[0]->Parse<float>();
+	Value.y = InputsTextFields[1]->Parse<float>();
+	Value.z = InputsTextFields[2]->Parse<float>();
+	Value.w = InputsTextFields[3]->Parse<float>();
 	Node->SetValue(Value);
 }
 
@@ -201,27 +201,27 @@ void UHFloat2NodeGUI::PostAddingPins()
 {
 	// sync value to control
 	UHVector2 Value = Node->GetValue();
-	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.X));
-	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.Y));
+	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.x));
+	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.y));
 }
 
 void UHFloat3NodeGUI::PostAddingPins()
 {
 	// sync value to control
 	UHVector3 Value = Node->GetValue();
-	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.X));
-	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.Y));
-	InputsTextFields[2]->SetText(UHUtilities::FloatToWString(Value.Z));
+	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.x));
+	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.y));
+	InputsTextFields[2]->SetText(UHUtilities::FloatToWString(Value.z));
 }
 
 void UHFloat4NodeGUI::PostAddingPins()
 {
 	// sync value to control
 	UHVector4 Value = Node->GetValue();
-	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.X));
-	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.Y));
-	InputsTextFields[2]->SetText(UHUtilities::FloatToWString(Value.Z));
-	InputsTextFields[3]->SetText(UHUtilities::FloatToWString(Value.W));
+	InputsTextFields[0]->SetText(UHUtilities::FloatToWString(Value.x));
+	InputsTextFields[1]->SetText(UHUtilities::FloatToWString(Value.y));
+	InputsTextFields[2]->SetText(UHUtilities::FloatToWString(Value.z));
+	InputsTextFields[3]->SetText(UHUtilities::FloatToWString(Value.w));
 }
 
 #endif

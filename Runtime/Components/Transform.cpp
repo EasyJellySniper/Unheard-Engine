@@ -66,9 +66,9 @@ void UHTransformComponent::OnLoad(std::ifstream& InStream)
 
 void UHTransformComponent::Translate(UHVector3 InDelta, UHTransformSpace InSpace)
 {
-	const float Dx = InDelta.X;
-	const float Dy = InDelta.Y;
-	const float Dz = InDelta.Z;
+	const float Dx = InDelta.x;
+	const float Dy = InDelta.y;
+	const float Dz = InDelta.z;
 	UHVector3 P = Position;
 
 	if (InSpace == UHTransformSpace::Local)
@@ -104,9 +104,9 @@ void UHTransformComponent::Rotate(UHVector3 InDelta, UHTransformSpace InSpace)
 	if (InSpace == UHTransformSpace::Local)
 	{
 		// for local, rotation around current axis
-		const UHMatrix4x4 Rz = UHMathHelpers::UHMatrixRotationAxis(Forward, UHMathHelpers::ToRadians(InDelta.Z));
-		const UHMatrix4x4 Rx = UHMathHelpers::UHMatrixRotationAxis(Right, UHMathHelpers::ToRadians(InDelta.X));
-		const UHMatrix4x4 Ry = UHMathHelpers::UHMatrixRotationAxis(Up, UHMathHelpers::ToRadians(InDelta.Y));
+		const UHMatrix4x4 Rz = UHMathHelpers::UHMatrixRotationAxis(Forward, UHMathHelpers::ToRadians(InDelta.z));
+		const UHMatrix4x4 Rx = UHMathHelpers::UHMatrixRotationAxis(Right, UHMathHelpers::ToRadians(InDelta.x));
+		const UHMatrix4x4 Ry = UHMathHelpers::UHMatrixRotationAxis(Up, UHMathHelpers::ToRadians(InDelta.y));
 		NewRot = Rz * Rx * Ry;
 		
 		// transform vector
@@ -121,9 +121,9 @@ void UHTransformComponent::Rotate(UHVector3 InDelta, UHTransformSpace InSpace)
 	else
 	{
 		// for world space simply build matrix with delta
-		const UHMatrix4x4 R = UHMathHelpers::UHMatrixRotationAxis(GWorldForward, UHMathHelpers::ToRadians(InDelta.Z))
-			* UHMathHelpers::UHMatrixRotationAxis(GWorldRight, UHMathHelpers::ToRadians(InDelta.X))
-			* UHMathHelpers::UHMatrixRotationAxis(GWorldUp, UHMathHelpers::ToRadians(InDelta.Y));
+		const UHMatrix4x4 R = UHMathHelpers::UHMatrixRotationAxis(GWorldForward, UHMathHelpers::ToRadians(InDelta.z))
+			* UHMathHelpers::UHMatrixRotationAxis(GWorldRight, UHMathHelpers::ToRadians(InDelta.x))
+			* UHMathHelpers::UHMatrixRotationAxis(GWorldUp, UHMathHelpers::ToRadians(InDelta.y));
 
 		// transform matrix
 		NewRot = OldRot * R;
@@ -159,9 +159,9 @@ void UHTransformComponent::SetRotation(UHVector3 InEulerRot)
 	// this should be used when initialization, for other roation it's better to perform on matrix or quaternion
 	RotationEuler = InEulerRot;
 	RotationMatrix = UHMathHelpers::UHMatrixRotationRollPitchYaw(
-		UHMathHelpers::ToRadians(RotationEuler.X),
-		UHMathHelpers::ToRadians(RotationEuler.Y),
-		UHMathHelpers::ToRadians(RotationEuler.Z)
+		UHMathHelpers::ToRadians(RotationEuler.x),
+		UHMathHelpers::ToRadians(RotationEuler.y),
+		UHMathHelpers::ToRadians(RotationEuler.z)
 	);
 
 	// transform direction vectors also
@@ -221,7 +221,7 @@ UHVector3 UHTransformComponent::GetRotationEuler()
 {
 	// get euler angle from rotation matrix
 	// this function should be used for editor display and not available in runtime
-	UHMathHelpers::MatrixToPitchYawRoll(RotationMatrix, RotationEuler.X, RotationEuler.Y, RotationEuler.Z);
+	UHMathHelpers::MatrixToPitchYawRoll(RotationMatrix, RotationEuler.x, RotationEuler.y, RotationEuler.z);
 
 	return RotationEuler;
 }

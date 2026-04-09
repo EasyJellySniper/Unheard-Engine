@@ -130,3 +130,12 @@ Fixed the volume size inconsistency caused by the float-point number precision.
 Also safe-rounding the scene boundary before it's sent to GPU!
 Did the replacement and removed DirectXMath includes! Big milestone for cross-platform.
 Fixed a thread issue between culling and uploading. Fixed dangling pointers in demo script.
+
+08-04-2026:
+WIP cross platform works. Evaluated the optimizations for using glm vector/matrix directly.
+Vectors are absolutely doable. But matrices in GLM are column-major, both CPU and GPU side would need refactoring!
+I will go with temp bridging method for CPU <-> GPU matrices. Otherwise the change would be too big at this point.
+
+09-04-2026:
+WIP cross platform works. Using glm::vec as UHVector classes directly to reduce the overhead.
+Fixed a reflection flickering issue too.

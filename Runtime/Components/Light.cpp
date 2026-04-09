@@ -81,15 +81,15 @@ UHDirectionalLightConstants UHDirectionalLightComponent::GetConstants() const
 		return Consts;
 	}
 
-	Consts.Color.X = LightColor.X;
-	Consts.Color.Y = LightColor.Y;
-	Consts.Color.Z = LightColor.Z;
+	Consts.Color.x = LightColor.x;
+	Consts.Color.y = LightColor.y;
+	Consts.Color.z = LightColor.z;
 	Consts.Dir = Forward;
 
-	Consts.Color.X *= Intensity;
-	Consts.Color.Y *= Intensity;
-	Consts.Color.Z *= Intensity;
-	Consts.Color.W = Intensity;
+	Consts.Color.x *= Intensity;
+	Consts.Color.y *= Intensity;
+	Consts.Color.z *= Intensity;
+	Consts.Color.w = Intensity;
 
 	return Consts;
 }
@@ -184,15 +184,15 @@ UHPointLightConstants UHPointLightComponent::GetConstants() const
 		return Consts;
 	}
 
-	Consts.Color.X = LightColor.X;
-	Consts.Color.Y = LightColor.Y;
-	Consts.Color.Z = LightColor.Z;
+	Consts.Color.x = LightColor.x;
+	Consts.Color.y = LightColor.y;
+	Consts.Color.z = LightColor.z;
 	Consts.Radius = Radius;
 
-	Consts.Color.X *= Intensity;
-	Consts.Color.Y *= Intensity;
-	Consts.Color.Z *= Intensity;
-	Consts.Color.W = Intensity;
+	Consts.Color.x *= Intensity;
+	Consts.Color.y *= Intensity;
+	Consts.Color.z *= Intensity;
+	Consts.Color.w = Intensity;
 
 	Consts.Position = Position;
 
@@ -319,19 +319,19 @@ UHSpotLightConstants UHSpotLightComponent::GetConstants() const
 		return Consts;
 	}
 
-	Consts.Color.X = LightColor.X;
-	Consts.Color.Y = LightColor.Y;
-	Consts.Color.Z = LightColor.Z;
+	Consts.Color.x = LightColor.x;
+	Consts.Color.y = LightColor.y;
+	Consts.Color.z = LightColor.z;
 	Consts.Radius = Radius;
 
 	// half the angle when sending to GPU
 	Consts.Angle = UHMathHelpers::ToRadians(Angle * 0.5f);
 	Consts.InnerAngle = UHMathHelpers::ToRadians(InnerAngle * 0.5f);
 
-	Consts.Color.X *= Intensity;
-	Consts.Color.Y *= Intensity;
-	Consts.Color.Z *= Intensity;
-	Consts.Color.W = Intensity;
+	Consts.Color.x *= Intensity;
+	Consts.Color.y *= Intensity;
+	Consts.Color.z *= Intensity;
+	Consts.Color.w = Intensity;
 
 	Consts.Dir = Forward;
 	Consts.Position = Position;

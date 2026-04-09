@@ -1,63 +1,25 @@
 #pragma once
 #include <cstdint>
 
+// GLM math library
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 // math header used in UHE, this will contain custom types for vector and matrix
 // or any math types that are not basic c++ types
 const float G_PI = 3.141592653589793f;
 
 // 2D vector
-struct UHVector2
-{
-    UHVector2() = default;
-
-    UHVector2(const UHVector2&) = default;
-    UHVector2& operator=(const UHVector2&) = default;
-
-    UHVector2(UHVector2&&) = default;
-    UHVector2& operator=(UHVector2&&) = default;
-
-    constexpr UHVector2(float _x, float _y) noexcept : X(_x), Y(_y) {}
-
-    float X;
-    float Y;
-};
+using UHVector2 = glm::vec2;
 
 // 3D vector
-struct UHVector3
-{
-    UHVector3() = default;
-
-    UHVector3(const UHVector3&) = default;
-    UHVector3& operator=(const UHVector3&) = default;
-
-    UHVector3(UHVector3&&) = default;
-    UHVector3& operator=(UHVector3&&) = default;
-
-    constexpr UHVector3(float _x, float _y, float _z) noexcept : X(_x), Y(_y), Z(_z) {}
-
-    float X;
-    float Y;
-    float Z;
-};
+using UHVector3 = glm::vec3;
 
 // 4D vector
-struct UHVector4
-{
-    UHVector4() = default;
-
-    UHVector4(const UHVector4&) = default;
-    UHVector4& operator=(const UHVector4&) = default;
-
-    UHVector4(UHVector4&&) = default;
-    UHVector4& operator=(UHVector4&&) = default;
-
-    constexpr UHVector4(float _x, float _y, float _z, float _w) noexcept : X(_x), Y(_y), Z(_z), W(_w) {}
-
-    float X;
-    float Y;
-    float Z;
-    float W;
-};
+using UHVector4 = glm::vec4;
 
 const UHVector4 GBoxOffset[8] =
 {
@@ -310,15 +272,6 @@ namespace UHMathHelpers
     float ToRadians(float InDegrees);
     float ToDegrees(float InRadians);
 }
-
-// UHVector3 operators
-UHVector3 operator*(const UHVector3& InVector, float InFloat);
-UHVector3 operator+(const UHVector3& InVector, const UHVector3& InVector2);
-UHVector3 operator-(const UHVector3& InVector, const UHVector3& InVector2);
-bool operator==(const UHVector3& InVector, const UHVector3& InVector2);
-
-// UHVector4 operators
-UHVector4 operator/=(const UHVector4& InVector, float InFloat);
 
 // UHMatrix4x4 operators
 UHMatrix4x4 operator*(const UHMatrix4x4& InA, const UHMatrix4x4& InB);

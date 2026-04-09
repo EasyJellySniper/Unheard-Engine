@@ -200,10 +200,10 @@ UHMatrix4x4 UHCameraComponent::GetInvProjMatrixNonJittered() const
 UHVector4 UHCameraComponent::GetJitterOffset() const
 {
 	UHVector4 Offset;
-	Offset.X = JitterOffset.X;
-	Offset.Y = JitterOffset.Y;
-	Offset.Z = JitterScaleMin;
-	Offset.W = 1.0f / JitterEndDistance;
+	Offset.x = JitterOffset.x;
+	Offset.y = JitterOffset.y;
+	Offset.z = JitterScaleMin;
+	Offset.w = 1.0f / JitterEndDistance;
 
 	return Offset;
 }
@@ -219,13 +219,13 @@ UHVector3 UHCameraComponent::GetScreenPos(UHVector3 InWorld) const
 	UHVector4 ClipPos = UHMathHelpers::UHVector3Transform(InWorld, ViewProjMatrix_NonJittered);
 
 	// perspective divide
-	ClipPos /= ClipPos.W;
+	ClipPos /= ClipPos.w;
 
 	// [-1,1] to [0,1] and to screen pos
-	ClipPos.X = (ClipPos.X * 0.5f + 0.5f) * static_cast<float>(Width);
-	ClipPos.Y = (ClipPos.Y * 0.5f + 0.5f) * static_cast<float>(Height);
+	ClipPos.x = (ClipPos.x * 0.5f + 0.5f) * static_cast<float>(Width);
+	ClipPos.y = (ClipPos.y * 0.5f + 0.5f) * static_cast<float>(Height);
 
-	return UHVector3(ClipPos.X, ClipPos.Y, ClipPos.Z);
+	return UHVector3(ClipPos.x, ClipPos.y, ClipPos.z);
 }
 
 UHBoundingBox UHCameraComponent::GetScreenBound(UHBoundingBox InWorldBound) const
@@ -272,14 +272,14 @@ void UHCameraComponent::OnGenerateDetailView()
 	if (ImGui::InputFloat("NearPlane", &NearPlane))
 	{
 		// can't be zero near plane
-		NearPlane = max(NearPlane, 0.01f);
+		NearPlane = std::max(NearPlane, 0.01f);
 		SetNearPlane(NearPlane);
 	}
 
 	if (ImGui::InputFloat("FovY", &FovYDeg))
 	{
 		// can't be zero FOV
-		FovYDeg = max(FovYDeg, 1.0f);
+		FovYDeg = std::max(FovYDeg, 1.0f);
 		SetFov(FovYDeg);
 	}
 
@@ -298,7 +298,7 @@ void UHCameraComponent::OnGenerateDetailView()
 void UHCameraComponent::BuildViewMatrix()
 {
 	// flip up vector since Vulkan want +Y down, but UH uses +Y up
-	ViewMatrix = UHMathHelpers::UHMatrixLookToRH(Position, Forward, Up * -1);
+	ViewMatrix = UHMathHelpers::UHMatrixLookToRH(Position, Forward, Up * -1.0f);
 }
 
 void UHCameraComponent::BuildProjectionMatrix()
@@ -313,14 +313,14 @@ void UHCameraComponent::BuildProjectionMatrix()
 	if (bUseJitterOffset)
 	{
 		const UHVector2 Offset = UHVector2(UHMathHelpers::Halton(GFrameNumber & 511, 2), UHMathHelpers::Halton(GFrameNumber & 511, 3));
-		JitterOffset.X = Offset.X / Width;
-		JitterOffset.Y = Offset.Y / Height;
+		JitterOffset.x = Offset.x / Width;
+		JitterOffset.y = Offset.y / Height;
 
 		// when standing still, use lower jitter offset scale to prevent flickering
-		JitterOffset.X *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
-		JitterOffset.Y *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
+		JitterOffset.x *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
+		JitterOffset.y *= bIsWorldDirty ? JitterScaleMax : JitterScaleMin;
 
-		const UHMatrix4x4 JitterMatrix = UHMathHelpers::UHMatrixTranslation(UHVector3(JitterOffset.X, JitterOffset.Y, 0));
+		const UHMatrix4x4 JitterMatrix = UHMathHelpers::UHMatrixTranslation(UHVector3(JitterOffset.x, JitterOffset.y, 0));
 		ProjectionMatrix = P * JitterMatrix;
 	}
 
