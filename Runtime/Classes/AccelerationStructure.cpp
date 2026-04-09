@@ -152,7 +152,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 		InstanceKHR.accelerationStructureReference = GetDeviceAddress(BottomLevelAS);
 
 		// copy transform3x4
-		UHMatrix3x4 Transform3x4 = UHMathHelpers::MatrixTo3x4(InRenderers[Idx]->GetWorldMatrix());
+		UHGPUMatrix3x4 Transform3x4 = UHMathHelpers::MatrixTo3x4(InRenderers[Idx]->GetWorldMatrix());
 		std::copy(&Transform3x4.M[0][0], &Transform3x4.M[0][0] + 12, &InstanceKHR.transform.matrix[0][0]);
 
 		// cull mode flag, in DXR system, it's default cull back, here just to check the other two modes
@@ -273,7 +273,7 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 		// copy transform3x4 when it's dirty
 		if (Renderer->IsTransformChanged())
 		{
-			UHMatrix3x4 Transform3x4 = UHMathHelpers::MatrixTo3x4(Renderer->GetWorldMatrix());
+			UHGPUMatrix3x4 Transform3x4 = UHMathHelpers::MatrixTo3x4(Renderer->GetWorldMatrix());
 			std::copy(&Transform3x4.M[0][0], &Transform3x4.M[0][0] + 12, &InstanceKHRs[Idx].transform.matrix[0][0]);
 
 			// refresh bottom level address

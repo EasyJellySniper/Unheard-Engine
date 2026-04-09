@@ -34,76 +34,38 @@ const UHVector4 GBoxOffset[8] =
 };
 
 // matrix 4x4
-struct UHMatrix4x4
+using UHMatrix4x4 = glm::mat4x4;
+
+// GPU matrix (DX row-major style for compatibility)
+// The matrix struct that is actually used by GPU
+struct UHGPUMatrix
 {
-    UHMatrix4x4() = default;
-
-    UHMatrix4x4(const UHMatrix4x4&) = default;
-    UHMatrix4x4& operator=(const UHMatrix4x4&) = default;
-
-    UHMatrix4x4(UHMatrix4x4&&) = default;
-    UHMatrix4x4& operator=(UHMatrix4x4&&) = default;
-
-    constexpr UHMatrix4x4(float m00, float m01, float m02, float m03,
-        float m10, float m11, float m12, float m13,
-        float m20, float m21, float m22, float m23,
-        float m30, float m31, float m32, float m33) noexcept
-        : _11(m00), _12(m01), _13(m02), _14(m03),
-        _21(m10), _22(m11), _23(m12), _24(m13),
-        _31(m20), _32(m21), _33(m22), _34(m23),
-        _41(m30), _42(m31), _43(m32), _44(m33) {
+    UHGPUMatrix()
+    {
+        // identity matrix
+        memset(M, 0, sizeof M); 
+        M[0][0] = M[1][1] = M[2][2] = M[3][3] = 1.0f;
     }
 
-    static void CreateFromVector(UHMatrix4x4& OutM, const UHVector4& R0, const UHVector4& R1, const UHVector4& R2, const UHVector4& R3) noexcept;
-
-    float  operator() (size_t Row, size_t Column) const noexcept { return M[Row][Column]; }
-    float& operator() (size_t Row, size_t Column) noexcept { return M[Row][Column]; }
-
-    union
+    UHGPUMatrix(UHMatrix4x4 InMat)
     {
-        struct
+        // copy from UHMatrix4x4, this implicitly does a transpose as the UHMatrix4x4 is column-major
+        for (int32_t I = 0; I < 4; I++)
         {
-            float _11, _12, _13, _14;
-            float _21, _22, _23, _24;
-            float _31, _32, _33, _34;
-            float _41, _42, _43, _44;
-        };
-        float M[4][4];
-    };
+            for (int32_t J = 0; J < 4; J++)
+            {
+                M[I][J] = InMat[I][J];
+            }
+        }
+    }
+
+    float M[4][4];
 };
 
-// matrix 3x4
-struct UHMatrix3x4
+// matrix 3x4 (DX row-major style)
+struct UHGPUMatrix3x4
 {
-    UHMatrix3x4() = default;
-
-    UHMatrix3x4(const UHMatrix3x4&) = default;
-    UHMatrix3x4& operator=(const UHMatrix3x4&) = default;
-
-    UHMatrix3x4(UHMatrix3x4&&) = default;
-    UHMatrix3x4& operator=(UHMatrix3x4&&) = default;
-
-    constexpr UHMatrix3x4(float m00, float m01, float m02, float m03,
-        float m10, float m11, float m12, float m13,
-        float m20, float m21, float m22, float m23) noexcept
-        : _11(m00), _12(m01), _13(m02), _14(m03),
-        _21(m10), _22(m11), _23(m12), _24(m13),
-        _31(m20), _32(m21), _33(m22), _34(m23) {
-    }
-
-    float  operator() (size_t Row, size_t Column) const noexcept { return M[Row][Column]; }
-    float& operator() (size_t Row, size_t Column) noexcept { return M[Row][Column]; }
-
-    union
-    {
-        struct
-        {
-            float _11, _12, _13, _14;
-            float _21, _22, _23, _24;
-            float _31, _32, _33, _34;
-        };
-        float M[3][4];
-    };
+    float M[3][4];
 };
 
 // bounding box
@@ -193,9 +155,7 @@ namespace UHMathHelpers
 
     UHMatrix4x4 Identity4x4();
 
-    UHMatrix3x4 MatrixTo3x4(UHMatrix4x4 InMatrix);
-
-    UHMatrix3x4 Identity3x4();
+    UHGPUMatrix3x4 MatrixTo3x4(UHMatrix4x4 InMatrix);
 
     // Returns random float in [0, 1).
     float RandFloat();
@@ -239,6 +199,7 @@ namespace UHMathHelpers
     UHMatrix4x4 UHMatrixInverse(UHMatrix4x4 M);
     UHMatrix4x4 UHMatrixRotationRollPitchYaw(float Pitch, float Yaw, float Roll) noexcept;
     UHMatrix4x4 UHMatrixRotationAxis(UHVector3 Axis, float Angle);
+    void CreateFromVector(UHMatrix4x4& OutM, const UHVector4& R0, const UHVector4& R1, const UHVector4& R2, const UHVector4& R3) noexcept;
 
     // vector functions
     UHVector4 UHVector3Transform(UHVector3 V, UHMatrix4x4 M);
@@ -272,6 +233,3 @@ namespace UHMathHelpers
     float ToRadians(float InDegrees);
     float ToDegrees(float InRadians);
 }
-
-// UHMatrix4x4 operators
-UHMatrix4x4 operator*(const UHMatrix4x4& InA, const UHMatrix4x4& InB);

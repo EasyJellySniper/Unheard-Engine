@@ -115,8 +115,8 @@ private:
 #if WITH_EDITOR
 	// editor class
 	UniquePtr<UHEditor> UHEEditor;
-	std::string WindowCaption;
 #endif
+	std::string WindowCaption;
 
 	// profiler class
 	UHProfiler UHEProfiler;

@@ -25,9 +25,8 @@ void UHTransformComponent::Update()
 	if (bIsWorldDirty)
 	{
 		// update TRS matrix
-		UHMatrix4x4 W = UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixTranslation(Position))
-			* UHMathHelpers::UHMatrixTranspose(RotationMatrix)
-			* UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixScaling(Scale));
+		UHMatrix4x4 W = UHMathHelpers::UHMatrixTranslation(Position) * RotationMatrix * UHMathHelpers::UHMatrixScaling(Scale);
+		W = UHMathHelpers::UHMatrixTranspose(W);
 
 		PrevWorldMatrix = WorldMatrix;
 		WorldMatrix = W;
@@ -115,24 +114,25 @@ void UHTransformComponent::Rotate(UHVector3 InDelta, UHTransformSpace InSpace)
 		Forward = UHMathHelpers::UHVector3TransformNormal(Forward, NewRot);
 
 		// transform matrix
-		NewRot = OldRot * NewRot;
+		NewRot = NewRot * OldRot;
 		RotationMatrix = NewRot;
 	}
 	else
 	{
 		// for world space simply build matrix with delta
-		const UHMatrix4x4 R = UHMathHelpers::UHMatrixRotationAxis(GWorldForward, UHMathHelpers::ToRadians(InDelta.z))
-			* UHMathHelpers::UHMatrixRotationAxis(GWorldRight, UHMathHelpers::ToRadians(InDelta.x))
-			* UHMathHelpers::UHMatrixRotationAxis(GWorldUp, UHMathHelpers::ToRadians(InDelta.y));
-
-		// transform matrix
-		NewRot = OldRot * R;
-		RotationMatrix = NewRot;
+		const UHMatrix4x4 Rz = UHMathHelpers::UHMatrixRotationAxis(GWorldForward, UHMathHelpers::ToRadians(InDelta.z));
+		const UHMatrix4x4 Rx = UHMathHelpers::UHMatrixRotationAxis(GWorldRight, UHMathHelpers::ToRadians(InDelta.x));
+		const UHMatrix4x4 Ry = UHMathHelpers::UHMatrixRotationAxis(GWorldUp, UHMathHelpers::ToRadians(InDelta.y));
+		NewRot = Rz * Rx * Ry;
 
 		// transform vectors
-		Right = UHMathHelpers::UHVector3TransformNormal(Right, R);
-		Up = UHMathHelpers::UHVector3TransformNormal(Up, R);
-		Forward = UHMathHelpers::UHVector3TransformNormal(Forward, R);
+		Right = UHMathHelpers::UHVector3TransformNormal(Right, NewRot);
+		Up = UHMathHelpers::UHVector3TransformNormal(Up, NewRot);
+		Forward = UHMathHelpers::UHVector3TransformNormal(Forward, NewRot);
+
+		// transform matrix
+		NewRot = NewRot * OldRot;
+		RotationMatrix = NewRot;
 	}
 
 	bIsWorldDirty = true;

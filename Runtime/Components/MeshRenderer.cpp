@@ -51,8 +51,8 @@ void UHMeshRendererComponent::Update()
 		MeshBound.Transform(RendererBound, UHMathHelpers::UHMatrixTranspose(World));
 
 		// calculate world bound matrix, this matrix is mainly for bounding box rendering (e.g. occlusion test), rotation isn't needed
-		WorldBoundMatrix = UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixTranslation(RendererBound.Center))
-			* UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixScaling(RendererBound.Extents * 2.0f));
+		WorldBoundMatrix = UHMathHelpers::UHMatrixTranspose(UHMathHelpers::UHMatrixTranslation(RendererBound.Center)
+			* UHMathHelpers::UHMatrixScaling(RendererBound.Extents * 2.0f));
 	}
 }
 

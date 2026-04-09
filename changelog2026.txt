@@ -138,4 +138,5 @@ I will go with temp bridging method for CPU <-> GPU matrices. Otherwise the chan
 
 09-04-2026:
 WIP cross platform works. Using glm::vec as UHVector classes directly to reduce the overhead.
-Fixed a reflection flickering issue too.
+Fixed a reflection flickering issue too. Refactored some matrices multiplication, use less transposes as possible.
+Math library refactoring is basically done, what a milestone!

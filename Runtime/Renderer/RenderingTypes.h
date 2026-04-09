@@ -37,14 +37,14 @@ const uint32_t GHitGroupShaderPerSlot = 2;
 
 struct UHSystemConstants
 {
-	UHMatrix4x4 ViewProj;
-	UHMatrix4x4 ViewProjInv;
-	UHMatrix4x4 ViewProj_NonJittered;
-	UHMatrix4x4 ViewProjInv_NonJittered;
-	UHMatrix4x4 PrevViewProj_NonJittered;
-	UHMatrix4x4 ProjInv;
-	UHMatrix4x4 ProjInv_NonJittered;
-	UHMatrix4x4 View;
+	UHGPUMatrix ViewProj;
+	UHGPUMatrix ViewProjInv;
+	UHGPUMatrix ViewProj_NonJittered;
+	UHGPUMatrix ViewProjInv_NonJittered;
+	UHGPUMatrix PrevViewProj_NonJittered;
+	UHGPUMatrix ProjInv;
+	UHGPUMatrix ProjInv_NonJittered;
+	UHGPUMatrix View;
 	UHVector4 Resolution;
 	UHVector4 ShadowResolution;
 	UHVector3 CameraPos;
@@ -98,9 +98,9 @@ struct UHSystemConstants
 
 struct UHObjectConstants
 {
-	UHMatrix4x4 GWorld;
-	UHMatrix4x4 GWorldIT;
-	UHMatrix4x4 GPrevWorld;
+	UHGPUMatrix GWorld;
+	UHGPUMatrix GWorldIT;
+	UHGPUMatrix GPrevWorld;
 	uint32_t InstanceIndex;
 	UHVector3 WorldPos;
 	UHVector3 BoundExtent;
@@ -128,7 +128,7 @@ struct UHPointLightConstants
 
 struct UHSpotLightConstants
 {
-	UHMatrix4x4 WorldToLight = UHMatrix4x4();
+	UHGPUMatrix WorldToLight = UHGPUMatrix();
 	// intensity is multiplied to Color before sending to GPU
 	UHVector4 Color = UHVector4();
 	UHVector3 Dir = UHVector3();

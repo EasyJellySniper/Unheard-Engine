@@ -50,8 +50,8 @@ void UHCameraComponent::Update()
 	const UHMatrix4x4 View = ViewMatrix;
 	const UHMatrix4x4 Proj = ProjectionMatrix;
 	const UHMatrix4x4 Proj_NonJittered = ProjectionMatrix_NonJittered;
-	const UHMatrix4x4 ViewProj = UHMathHelpers::UHMatrixTranspose(Proj) * UHMathHelpers::UHMatrixTranspose(View);
-	const UHMatrix4x4 ViewProj_NonJittered = UHMathHelpers::UHMatrixTranspose(Proj_NonJittered) * UHMathHelpers::UHMatrixTranspose(View);
+	const UHMatrix4x4 ViewProj = UHMathHelpers::UHMatrixTranspose(Proj * View);
+	const UHMatrix4x4 ViewProj_NonJittered = UHMathHelpers::UHMatrixTranspose(Proj_NonJittered * View);
 
 	// return transposed view proj matrix, also stores previous view proj before update
 	PrevViewProjMatrix_NonJittered = ViewProjMatrix_NonJittered;
@@ -325,8 +325,8 @@ void UHCameraComponent::BuildProjectionMatrix()
 	}
 
 	// adjust matrix value for infinite far plane
-	ProjectionMatrix_NonJittered(2, 2) = 0.0f;
-	ProjectionMatrix_NonJittered(3, 2) = NearPlane;
-	ProjectionMatrix(2, 2) = 0.0f;
-	ProjectionMatrix(3, 2) = NearPlane;
+	ProjectionMatrix_NonJittered[2][2] = 0.0f;
+	ProjectionMatrix_NonJittered[3][2] = NearPlane;
+	ProjectionMatrix[2][2] = 0.0f;
+	ProjectionMatrix[3][2] = NearPlane;
 }

@@ -22,8 +22,8 @@ UHEngine::UHEngine()
 #if WITH_EDITOR
 	, UHEEditor(nullptr)
 	, UHEProfiler(nullptr)
-	, WindowCaption(ENGINE_NAME)
 #endif
+	, WindowCaption(ENGINE_NAME)
 {
 	// config manager needs to be initialze as early as possible
 	UHEConfig = MakeUnique<UHConfigManager>();
@@ -77,6 +77,7 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	// init graphic 
 	const UHPresentationSettings PresentationSettings = UHEConfig->PresentationSetting();
 	UHEClient = InClient;
+	UHEClient->SetWindowCaption(WindowCaption);
 
 	UHEGraphic = MakeUnique<UHGraphic>(UHEAsset.get(), UHEConfig.get());
 	if (!UHEGraphic->InitGraphics(UHEClient))

@@ -2,34 +2,6 @@
 #include "Runtime/CoreGlobals.h"
 #include <cmath>
 
-glm::mat4x4 TempUHToGLMMat(UHMatrix4x4 InMat)
-{
-    glm::mat4x4 OutM;
-    for (int32_t I = 0; I < 4; I++)
-    {
-        for (int32_t J = 0; J < 4; J++)
-        {
-            OutM[I][J] = InMat.M[I][J];
-        }
-    }
-
-    return OutM;
-}
-
-UHMatrix4x4 TempGLMToUHMat(glm::mat4x4 InMat)
-{
-    UHMatrix4x4 OutM;
-    for (int32_t I = 0; I < 4; I++)
-    {
-        for (int32_t J = 0; J < 4; J++)
-        {
-            OutM.M[I][J] = InMat[I][J];
-        }
-    }
-
-    return OutM;
-}
-
 namespace UHMathHelpers
 {
     bool IsValidVector(UHVector3 InVector)
@@ -39,13 +11,13 @@ namespace UHMathHelpers
 
     bool IsVectorNearlyZero(UHVector3 InVector)
     {
-        static glm::vec3 V2(GEpsilon, GEpsilon, GEpsilon);
+        static UHVector3 V2(GEpsilon, GEpsilon, GEpsilon);
         return glm::all(glm::lessThanEqual(InVector, V2));
     }
 
     bool IsVectorNearlyZero(UHVector4 InVector)
     {
-        static glm::vec4 V2(GEpsilon, GEpsilon, GEpsilon, GEpsilon);
+        static UHVector4 V2(GEpsilon, GEpsilon, GEpsilon, GEpsilon);
         return glm::all(glm::lessThanEqual(InVector, V2));
     }
 
@@ -75,30 +47,20 @@ namespace UHMathHelpers
         return I;
     }
 
-    UHMatrix3x4 MatrixTo3x4(UHMatrix4x4 InMatrix)
+    UHGPUMatrix3x4 MatrixTo3x4(UHMatrix4x4 InMatrix)
     {
-        UHMatrix3x4 OutMatrix = UHMatrix3x4();
+        UHGPUMatrix3x4 OutMatrix;
 
-        // just ignore the 4th row in 4X4 matrix
+        // ignore the 4th row in 4X4 matrix, this also implicitly does a transpose
         for (int32_t I = 0; I < 3; I++)
         {
             for (int32_t J = 0; J < 4; J++)
             {
-                OutMatrix.M[I][J] = InMatrix.M[I][J];
+                OutMatrix.M[I][J] = InMatrix[I][J];
             }
         }
 
         return OutMatrix;
-    }
-
-    UHMatrix3x4 Identity3x4()
-    {
-        static UHMatrix3x4 I(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f);
-
-        return I;
     }
 
     float RandFloat()
@@ -111,8 +73,7 @@ namespace UHMathHelpers
     // the Y1Z2X3 case
     void MatrixToPitchYawRoll(UHMatrix4x4 InMat, float& Pitch, float& Yaw, float& Roll)
     {
-        glm::mat4x4 M = TempUHToGLMMat(InMat);
-        M = glm::transpose(M);
+        UHMatrix4x4 M = UHMatrixTranspose(InMat);
 
         if (M[0][0] == 1.0f)
         {
@@ -180,7 +141,7 @@ namespace UHMathHelpers
 
     float VectorDistanceSqr(const UHVector3& InVector, const UHVector3& InVector2)
     {
-        glm::vec3 Diff = InVector - InVector2;
+        UHVector3 Diff = InVector - InVector2;
         return glm::dot(Diff, Diff);
     }
 
@@ -209,76 +170,85 @@ namespace UHMathHelpers
     // matrix functions
     UHMatrix4x4 UHMatrixTranspose(UHMatrix4x4 M)
     {
-        glm::mat4x4 FM = TempUHToGLMMat(M);
-        FM = glm::transpose(FM);
-
-        return TempGLMToUHMat(FM);
+        return glm::transpose(M);
     }
     
     UHMatrix4x4 UHMatrixTranslation(UHVector3 Translation)
     {
-        glm::mat4x4 M = glm::identity<glm::mat4x4>();
-        M = glm::translate(M, Translation);
-
-        return TempGLMToUHMat(M);
+        return glm::translate(Identity4x4(), Translation);
     }
 
     UHMatrix4x4 UHMatrixScaling(UHVector3 Scale)
     {
-        glm::mat4x4 M = glm::identity<glm::mat4x4>();
-        M = glm::scale(M, Scale);
-
-        return TempGLMToUHMat(M);
+        return glm::scale(Identity4x4(), Scale);
     }
 
     UHMatrix4x4 UHMatrixPerspectiveFovLH(float FovAngleY, float Width, float Height, float NearZ, float FarZ)
     {
-        glm::mat4x4 M = glm::perspectiveFovLH(FovAngleY, Width, Height, NearZ, FarZ);
-        return TempGLMToUHMat(M);
+        return glm::perspectiveFovLH(FovAngleY, Width, Height, NearZ, FarZ);
     }
 
     UHMatrix4x4 UHMatrixPerspectiveFovRH(float FovAngleY, float Width, float Height, float NearZ, float FarZ)
     {
-        glm::mat4x4 M = glm::perspectiveFovRH(FovAngleY, Width, Height, NearZ, FarZ);
-        return TempGLMToUHMat(M);
+        return glm::perspectiveFovRH(FovAngleY, Width, Height, NearZ, FarZ);
     }
 
     UHMatrix4x4 UHMatrixLookToRH(UHVector3 Position, UHVector3 Forward, UHVector3 Up)
     {
-        glm::mat4x4 M = glm::lookAtRH(Position, Position + Forward, Up);
-        return TempGLMToUHMat(M);
+        return glm::lookAtRH(Position, Position + Forward, Up);
     }
 
     UHMatrix4x4 UHMatrixInverse(UHMatrix4x4 M)
     {
-        glm::mat4x4 FM = glm::inverse(TempUHToGLMMat(M));
-        return TempGLMToUHMat(FM);
+        return glm::inverse(M);
     }
 
     UHMatrix4x4 UHMatrixRotationRollPitchYaw(float Pitch, float Yaw, float Roll) noexcept
     {
-        glm::mat4 Ry = glm::rotate(glm::mat4(1.0f), Yaw, glm::vec3(0, 1, 0));
-        glm::mat4 Rx = glm::rotate(glm::mat4(1.0f), Pitch, glm::vec3(1, 0, 0));
-        glm::mat4 Rz = glm::rotate(glm::mat4(1.0f), Roll, glm::vec3(0, 0, 1));
+        UHMatrix4x4 Ry = glm::rotate(UHMatrix4x4(1.0f), Yaw, UHVector3(0, 1, 0));
+        UHMatrix4x4 Rx = glm::rotate(UHMatrix4x4(1.0f), Pitch, UHVector3(1, 0, 0));
+        UHMatrix4x4 Rz = glm::rotate(UHMatrix4x4(1.0f), Roll, UHVector3(0, 0, 1));
 
-        return TempGLMToUHMat(Ry * Rx * Rz);
+        return Ry * Rx * Rz;
     }
 
     UHMatrix4x4 UHMatrixRotationAxis(UHVector3 Axis, float Angle)
     {
-        glm::mat4x4 Result = glm::rotate(glm::mat4(1.0f), Angle, Axis);
-        return TempGLMToUHMat(Result);
+        return glm::rotate(UHMatrix4x4(1.0f), Angle, Axis);
+    }
+
+    void CreateFromVector(UHMatrix4x4& OutM, const UHVector4& R0, const UHVector4& R1, const UHVector4& R2, const UHVector4& R3) noexcept
+    {
+        OutM[0][0] = R0.x;
+        OutM[0][1] = R0.y;
+        OutM[0][2] = R0.z;
+        OutM[0][3] = R0.w;
+
+        OutM[1][0] = R1.x;
+        OutM[1][1] = R1.y;
+        OutM[1][2] = R1.z;
+        OutM[1][3] = R1.w;
+
+        OutM[2][0] = R2.x;
+        OutM[2][1] = R2.y;
+        OutM[2][2] = R2.z;
+        OutM[2][3] = R2.w;
+
+        OutM[3][0] = R3.x;
+        OutM[3][1] = R3.y;
+        OutM[3][2] = R3.z;
+        OutM[3][3] = R3.w;
     }
 
     // vector functions
     UHVector4 UHVector3Transform(UHVector3 V, UHMatrix4x4 M)
     {
-        return TempUHToGLMMat(M) * glm::vec4(V.x, V.y, V.z, 1.0f);
+        return M * UHVector4(V.x, V.y, V.z, 1.0f);
     }
 
     UHVector3 UHVector3TransformNormal(UHVector3 V, UHMatrix4x4 M)
     {
-        return glm::mat3(TempUHToGLMMat(M)) * V;
+        return glm::mat3(M) * V;
     }
 
     bool UHVector3InBound(UHVector3 Vec, UHVector3 Bounds)
@@ -308,9 +278,7 @@ namespace UHMathHelpers
 
     UHVector4 UHQuaternionRotationMatrix(UHMatrix4x4 M)
     {
-        glm::mat4x4 FM = TempUHToGLMMat(M);
-        glm::quat Q = glm::quat_cast(FM);
-        
+        glm::quat Q = glm::quat_cast(M);
         return UHVector4(Q.x, Q.y, Q.z, Q.w);
     }
 
@@ -325,8 +293,8 @@ namespace UHMathHelpers
 
     float UHVector3Dot(UHVector4 V1, UHVector4 V2)
     {
-        glm::vec3 GV1(V1);
-        glm::vec3 GV2(V2);
+        UHVector3 GV1(V1);
+        UHVector3 GV2(V2);
 
         return glm::dot(GV1, GV2);
     }
@@ -338,7 +306,7 @@ namespace UHMathHelpers
 
     UHVector4 UHVector4Transform(UHVector4 V, UHMatrix4x4 M)
     {
-        return TempUHToGLMMat(M) * V;
+        return M * V;
     }
 
     UHVector4 UHVector4Multiply(UHVector4 V1, UHVector4 V2)
@@ -364,7 +332,7 @@ namespace UHMathHelpers
     // Transform a vector using a rotation expressed as a unit quaternion
     UHVector3 UHVector3Rotate(UHVector4 V, UHVector4 Q)
     {
-        glm::vec3 GV(V);
+        UHVector3 GV(V);
         glm::quat GQ(Q.w, Q.x, Q.y, Q.z);
 
         return GQ * GV;
@@ -391,7 +359,7 @@ namespace UHMathHelpers
 
     UHVector4 UHPlaneNormalize(UHVector4 Plane)
     {
-        float Length = glm::length(glm::vec3(Plane));
+        float Length = glm::length(UHVector3(Plane));
 
         UHVector4 Result = Plane;
         Result /= Length;
@@ -425,39 +393,6 @@ namespace UHMathHelpers
     {
         return InRadians * (180.0f / G_PI);
     }
-}
-
-// ----------------------------------------------------------- UHMatrix4x4 operator
-UHMatrix4x4 operator*(const UHMatrix4x4& InA, const UHMatrix4x4& InB)
-{
-    glm::mat4x4 M1 = TempUHToGLMMat(InA);
-    glm::mat4x4 M2 = TempUHToGLMMat(InB);
-
-    // the order matters!
-    return TempGLMToUHMat(M2 * M1);
-}
-
-void UHMatrix4x4::CreateFromVector(UHMatrix4x4& OutM, const UHVector4& R0, const UHVector4& R1, const UHVector4& R2, const UHVector4& R3) noexcept
-{
-    OutM.M[0][0] = R0.x;
-    OutM.M[0][1] = R0.y;
-    OutM.M[0][2] = R0.z;
-    OutM.M[0][3] = R0.w;
-
-    OutM.M[1][0] = R1.x;
-    OutM.M[1][1] = R1.y;
-    OutM.M[1][2] = R1.z;
-    OutM.M[1][3] = R1.w;
-
-    OutM.M[2][0] = R2.x;
-    OutM.M[2][1] = R2.y;
-    OutM.M[2][2] = R2.z;
-    OutM.M[2][3] = R2.w;
-
-    OutM.M[3][0] = R3.x;
-    OutM.M[3][1] = R3.y;
-    OutM.M[3][2] = R3.z;
-    OutM.M[3][3] = R3.w;
 }
 
 // ----------------------------------------------------------- UHBoundingBox
@@ -516,22 +451,22 @@ bool UHBoundingBox::ContainedBy(UHVector4 Plane0, UHVector4 Plane1, UHVector4 Pl
 void UHBoundingBox::Transform(UHBoundingBox& Out, UHMatrix4x4 M) const noexcept
 {
     // Load center and extents.
-    glm::vec3 Offset(GBoxOffset[0]);
-    glm::vec3 Corner = Extents * Offset + Center;
+    UHVector3 Offset(GBoxOffset[0]);
+    UHVector3 Corner = Extents * Offset + Center;
 
     UHVector4 TransformedCorner = UHMathHelpers::UHVector3Transform(Corner, M);
-    Corner = glm::vec3(TransformedCorner);
+    Corner = UHVector3(TransformedCorner);
 
-    glm::vec3 Min, Max;
+    UHVector3 Min, Max;
     Min = Max = Corner;
 
     for (size_t I = 1; I < CORNER_COUNT; I++)
     {
-        Offset = glm::vec3(GBoxOffset[I]);
+        Offset = UHVector3(GBoxOffset[I]);
         Corner = Extents * Offset + Center;
 
         TransformedCorner = UHMathHelpers::UHVector3Transform(Corner, M);
-        Corner = glm::vec3(TransformedCorner);
+        Corner = UHVector3(TransformedCorner);
 
         Min = glm::min(Min, Corner);
         Max = glm::max(Max, Corner);
@@ -547,15 +482,15 @@ void UHBoundingBox::GetCorners(UHVector3* Corners) const noexcept
 
     for (size_t I = 0; I < CORNER_COUNT; I++)
     {
-        glm::vec3 Offset(GBoxOffset[I]);
+        UHVector3 Offset(GBoxOffset[I]);
         Corners[I] = Extents * Offset + Center;
     }
 }
 
 void UHBoundingBox::CreateMerged(UHBoundingBox& Out, const UHBoundingBox& b1, const UHBoundingBox& b2) noexcept
 {
-    glm::vec3 Min = glm::min(b1.Center - b1.Extents, b2.Center - b2.Extents);
-    glm::vec3 Max = glm::max(b1.Center + b1.Extents, b2.Center + b2.Extents);
+    UHVector3 Min = glm::min(b1.Center - b1.Extents, b2.Center - b2.Extents);
+    UHVector3 Max = glm::max(b1.Center + b1.Extents, b2.Center + b2.Extents);
 
     Out.Center = (Min + Max) * 0.5f;
     Out.Extents = (Max - Min) * 0.5f;
@@ -568,16 +503,16 @@ void UHBoundingFrustum::Transform(UHBoundingFrustum& Out, UHMatrix4x4 M) const n
     UHVector4 TransformedOrigin = UHMathHelpers::UHVector3Transform(Origin, M);
 
     // Composite the frustum rotation and the transform rotation
-    UHVector4 R0(M.M[0][0], M.M[0][1], M.M[0][2], M.M[0][3]);
-    UHVector4 R1(M.M[1][0], M.M[1][1], M.M[1][2], M.M[1][3]);
-    UHVector4 R2(M.M[2][0], M.M[2][1], M.M[2][2], M.M[2][3]);
+    UHVector4 R0(M[0][0], M[0][1], M[0][2], M[0][3]);
+    UHVector4 R1(M[1][0], M[1][1], M[1][2], M[1][3]);
+    UHVector4 R2(M[2][0], M[2][1], M[2][2], M[2][3]);
     UHVector4 R3(0, 0, 0, 1);
     R0 = UHMathHelpers::UHVector3Normalize(R0);
     R1 = UHMathHelpers::UHVector3Normalize(R1);
     R2 = UHMathHelpers::UHVector3Normalize(R2);
 
     UHMatrix4x4 NormalizedM;
-    UHMatrix4x4::CreateFromVector(NormalizedM, R0, R1, R2, R3);
+    UHMathHelpers::CreateFromVector(NormalizedM, R0, R1, R2, R3);
     UHVector4 Rotation = UHMathHelpers::UHQuaternionRotationMatrix(NormalizedM);
 
     // output transformed origin and orientation
@@ -627,7 +562,7 @@ bool UHBoundingFrustum::Contains(const UHBoundingBox& Box) const noexcept
     UHVector4 BottomPlane(0.0f, -1.0f, BottomSlope, 0.0f);
     BottomPlane = UHMathHelpers::UHPlaneTransform(BottomPlane, Orientation, Origin);
     BottomPlane = UHMathHelpers::UHPlaneNormalize(BottomPlane);
-
+    
     return Box.ContainedBy(NearPlane, FarPlane, RightPlane, LeftPlane, TopPlane, BottomPlane);
 }
 
