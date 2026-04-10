@@ -127,10 +127,10 @@ public:
 	UniquePtr<UHMaterialNode>& GetMaterialNode();
 	std::vector<UniquePtr<UHGraphNode>>& GetEditNodes();
 
-	void SetGUIRelativePos(std::vector<POINT> InPos);
-	std::vector<POINT>& GetGUIRelativePos();
-	void SetDefaultMaterialNodePos(POINT InPos);
-	POINT GetDefaultMaterialNodePos();
+	void SetGUIRelativePos(std::vector<UHPoint> InPos);
+	std::vector<UHPoint>& GetGUIRelativePos();
+	void SetDefaultMaterialNodePos(UHPoint InPos);
+	UHPoint GetDefaultMaterialNodePos();
 	void SetSourcePath(const std::string InPath);
 
 	bool IsMaterialNodeDirty() const;
@@ -155,10 +155,10 @@ private:
 
 	UniquePtr<UHMaterialNode> MaterialNode;
 	std::vector<UniquePtr<UHGraphNode>> EditNodes;
-	std::vector<POINT> EditGUIRelativePos;
+	std::vector<UHPoint> EditGUIRelativePos;
 
 	// GUI positions relative to material node
-	POINT DefaultMaterialNodePos;
+	UHPoint DefaultMaterialNodePos;
 	std::filesystem::path MaterialPath;
 
 	// material constant buffer, the size will be following the result of graph

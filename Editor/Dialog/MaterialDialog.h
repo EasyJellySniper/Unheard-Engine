@@ -59,7 +59,7 @@ private:
 
 	// material editing
 	void SelectMaterial(int32_t MatIndex);
-	void TryAddNodes(UHGraphNode* InputNode = nullptr, POINT GUIRelativePos = POINT());
+	void TryAddNodes(UHGraphNode* InputNode = nullptr, UHPoint GUIRelativePos = UHPoint());
 	void TryDeleteNodes();
 	void TryDisconnectPin();
 	void TryMoveNodes();
@@ -94,9 +94,9 @@ private:
 
 	HWND GUIToMove;
 
-	POINT MousePos;
-	POINT MousePosWhenRightDown;
-	POINT PrevMousePos;
+	UHPoint MousePos;
+	UHPoint MousePosWhenRightDown;
+	UHPoint PrevMousePos;
 	bool bIsUpdatingDragLine;
 	RECT DragRect;
 

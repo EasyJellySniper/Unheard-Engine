@@ -1,5 +1,6 @@
 #pragma once
 #include "../../UnheardEngine.h"
+#include "Runtime/Classes/Types.h"
 #include <windowsx.h>
 #include <vector>
 #include <regex>
@@ -21,4 +22,8 @@ namespace UHEditorUtil
 	// text size
 	SIZE GetTextSize(HWND Hwnd, std::string InText);
 	SIZE GetTextSizeW(HWND Hwnd, std::wstring InText);
+
+	// wrappers for some Win32 functions for the custom UH types
+	UHPoint UHGetCursorPos();
+	bool UHScreenToClient(HWND Hwnd, UHPoint& Point);
 }

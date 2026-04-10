@@ -11,7 +11,7 @@ UHSkyLightComponent::UHSkyLightComponent()
 	, SkyIntensity(1.0f)
 	, GroundIntensity(1.0f)
 	, CubemapCache(nullptr)
-	, CubemapId(UUID())
+	, CubemapId(UHGUID())
 {
 	SetName("SkyLightLightComponent" + std::to_string(GetId()));
 	ObjectClassIdInternal = ClassId;
@@ -28,12 +28,12 @@ void UHSkyLightComponent::OnSave(std::ofstream& OutStream)
 
 	if (CubemapCache != nullptr)
 	{
-		UUID Id = CubemapCache->GetRuntimeGuid();
+		UHGUID Id = CubemapCache->GetRuntimeGuid();
 		OutStream.write(reinterpret_cast<const char*>(&Id), sizeof(Id));
 	}
 	else
 	{
-		UUID Dummy{};
+		UHGUID Dummy{};
 		OutStream.write(reinterpret_cast<const char*>(&Dummy), sizeof(Dummy));
 	}
 }

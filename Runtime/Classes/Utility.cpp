@@ -263,7 +263,7 @@ namespace UHUtilities
 	{
 		std::for_each(InString.begin(), InString.end(), [](char& C)
 			{
-				C = std::tolower(static_cast<unsigned char>(C));
+				C = std::tolower(static_cast<uint8_t>(C));
 			});
 
 		return InString;

@@ -480,7 +480,7 @@ UHMesh* UHAssetManager::GetMesh(std::string InName) const
 	return nullptr;
 }
 
-UHObject* UHAssetManager::GetAsset(UUID InAssetUuid)
+UHObject* UHAssetManager::GetAsset(UHGUID InAssetUuid)
 {
 	for (UHAssetMap& AssetMap : AllAssetsMap)
 	{

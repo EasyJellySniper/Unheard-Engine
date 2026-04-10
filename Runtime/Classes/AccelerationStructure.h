@@ -30,9 +30,9 @@ private:
 	VkDeviceAddress GetDeviceAddress(VkBuffer InBuffer);
 	VkDeviceAddress GetDeviceAddress(VkAccelerationStructureKHR InAS);
 
-	UniquePtr<UHRenderBuffer<BYTE>> ScratchBuffer;
+	UniquePtr<UHRenderBuffer<uint8_t>> ScratchBuffer;
 	UniquePtr<UHRenderBuffer<VkAccelerationStructureInstanceKHR>> ASInstanceBuffer;
-	UniquePtr<UHRenderBuffer<BYTE>> AccelerationStructureBuffer;
+	UniquePtr<UHRenderBuffer<uint8_t>> AccelerationStructureBuffer;
 	VkAccelerationStructureKHR AccelerationStructure;
 
 	// instance KHRs and renderer cache, both should the same length

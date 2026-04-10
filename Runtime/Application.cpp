@@ -6,20 +6,15 @@
 
 UHApplication::UHApplication()
 	: Platform(nullptr)
-#if _WIN32
 	, Engine(nullptr)
-#endif
 {
 
 }
 
-// @TODO: make linux possible to run engine
-#if _WIN32
 UHEngine* UHApplication::GetEngine()
 {
 	return Engine.get();
 }
-#endif
 
 int32_t UHApplication::Run()
 {
@@ -33,12 +28,6 @@ int32_t UHApplication::Run()
 		Platform->Shutdown();
 		return 0;
 	}
-
-	// @TODO: make linux possible to run
-#ifdef __linux__
-	Platform->Shutdown();
-	return 0;
-#else
 
 	// engine initialization
 	{
@@ -60,11 +49,7 @@ int32_t UHApplication::Run()
 	UHClient* Client = Platform->GetClient();
 	while (!Client->IsQuit())
 	{
-		if (Client->ProcessEvents())
-		{
-
-		}
-		else
+		if (!Client->ProcessEvents())
 		{
 			// call the game loop
 			if (Engine)
@@ -124,5 +109,4 @@ int32_t UHApplication::Run()
 
 	Platform->Shutdown();
 	return 0;
-#endif
 }

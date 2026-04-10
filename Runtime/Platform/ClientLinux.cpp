@@ -33,6 +33,7 @@ void UHClient::SetWindowStyle(const bool bIsFullscreen, const int32_t Width, con
 			Mode->height,
 			Mode->refreshRate
 		);
+		glfwShowWindow(window);
 	}
 	else
 	{
@@ -45,6 +46,7 @@ void UHClient::SetWindowStyle(const bool bIsFullscreen, const int32_t Width, con
 			Width, Height,
 			0
 		);
+		glfwShowWindow(window);
 	}
 }
 

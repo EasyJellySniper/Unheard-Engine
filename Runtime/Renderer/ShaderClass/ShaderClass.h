@@ -6,7 +6,7 @@
 // 32 byte structure for shader table record
 struct UHShaderRecord
 {
-	BYTE Record[32];
+	uint8_t Record[32];
 };
 
 // high-level shader class, this will be actually used for rendering

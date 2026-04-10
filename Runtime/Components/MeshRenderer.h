@@ -44,9 +44,9 @@ public:
 
 private:
 	UHMesh* MeshCache;
-	UUID MeshId;
+	UHGUID MeshId;
 	UHMaterial* MaterialCache;
-	UUID MaterialId;
+	UHGUID MaterialId;
 
 	bool bIsVisible;
 	bool bIsMoveable;

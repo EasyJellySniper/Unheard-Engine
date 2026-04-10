@@ -92,7 +92,7 @@ void UHPlatformInput::GetMouseDelta(int32_t& X, int32_t& Y) const
 void UHPlatformInput::CacheKeyStates()
 {
 	// cache key states of current frame, this should be called at the end of update functions, or at least before any input checking
-	memcpy_s(bPreviousKeyState, sizeof(bool) * MaxKeyStates, bCurrentKeyState, sizeof(bool) * MaxKeyStates);
+	memcpy(bPreviousKeyState, bCurrentKeyState, sizeof(bool) * MaxKeyStates);
 	bPreviousLeftMousePressed = bIsLeftMousePressed;
 	bPreviousRightMousePressed = bIsRightMousePressed;
 

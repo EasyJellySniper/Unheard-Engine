@@ -25,8 +25,8 @@ public:
 	void Release();
 
 	// is point inside this GUI?
-	bool IsPointInside(POINT InMousePos) const;
-	UHGraphPin* GetInputPinByMousePos(POINT InMousePos, int32_t& OutIndex) const;
+	bool IsPointInside(UHPoint InMousePos) const;
+	UHGraphPin* GetInputPinByMousePos(UHPoint InMousePos, int32_t& OutIndex) const;
 
 	HWND GetHWND() const;
 	UHRadioButton* GetInputPin(int32_t InIndex) const;
@@ -59,16 +59,16 @@ struct UHPinSelectInfo
 	UHPinSelectInfo()
 		: CurrOutputPin(nullptr)
 		, RightClickedPin(nullptr)
-		, MouseDownPos(POINT())
-		, MouseUpPos(POINT())
+		, MouseDownPos(UHPoint())
+		, MouseUpPos(UHPoint())
 		, bReadyForConnect(false)
 	{
 	}
 
 	UHGraphPin* CurrOutputPin;
 	UHGraphPin* RightClickedPin;
-	POINT MouseDownPos;
-	POINT MouseUpPos;
+	UHPoint MouseDownPos;
+	UHPoint MouseUpPos;
 	bool bReadyForConnect;
 };
 

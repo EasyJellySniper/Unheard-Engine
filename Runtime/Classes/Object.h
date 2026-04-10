@@ -3,8 +3,10 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <array>
 
 // platform-based UUID
+using UHGUID = std::array<std::uint8_t, 16>;
 #if _WIN32
 #include <Rpc.h>
 #elif __linux__
@@ -28,7 +30,7 @@ public:
 
 	std::vector<UHObject*> GetReferenceObjects() const;
 	uint32_t GetId() const;
-	uuid_t GetRuntimeGuid() const;
+	UHGUID GetRuntimeGuid() const;
 	std::string GetName() const;
 	uint32_t GetObjectClassId() const;
 
@@ -36,7 +38,7 @@ public:
 
 protected:
 	// runtime GUID, this will always be generated when an object is created
-	uuid_t RuntimeGuid;
+	UHGUID RuntimeGuid;
 	std::string Name;
 
 	// for file versioning

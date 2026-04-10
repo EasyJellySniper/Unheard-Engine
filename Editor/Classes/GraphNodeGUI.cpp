@@ -27,8 +27,7 @@ UHGraphNodeGUI::~UHGraphNodeGUI()
 // Output Pin Proc callback
 INT_PTR CALLBACK NodeOutputPinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
-	POINT P;
-	GetCursorPos(&P);
+	UHPoint P = UHEditorUtil::UHGetCursorPos();
 
 	switch (message)
 	{
@@ -53,8 +52,7 @@ INT_PTR CALLBACK NodeOutputPinProc(HWND hWnd, UINT message, WPARAM wParam, LPARA
 // Input Pin Proc callback
 INT_PTR CALLBACK NodeInputPinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 {
-	POINT P;
-	GetCursorPos(&P);
+	UHPoint P = UHEditorUtil::UHGetCursorPos();
 
 	switch (message)
 	{
@@ -205,12 +203,12 @@ void UHGraphNodeGUI::Release()
 	ComboBoxItems.clear();
 }
 
-bool UHGraphNodeGUI::IsPointInside(POINT InMousePos) const
+bool UHGraphNodeGUI::IsPointInside(UHPoint InMousePos) const
 {
 	return NodeGUI->IsPointInside(InMousePos);
 }
 
-UHGraphPin* UHGraphNodeGUI::GetInputPinByMousePos(POINT InMousePos, int32_t& OutIndex) const
+UHGraphPin* UHGraphNodeGUI::GetInputPinByMousePos(UHPoint InMousePos, int32_t& OutIndex) const
 {
 	if (NodeGUI->IsPointInside(InMousePos))
 	{

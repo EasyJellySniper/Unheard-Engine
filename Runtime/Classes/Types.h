@@ -1,10 +1,9 @@
 #pragma once
-
-#include <cmath>
-#include <limits>
-#include <algorithm>
-#include <vector>
-#include <memory>
+#include <cstdint>
+#if _WIN32
+#define NOMINMAX
+#include <Windows.h>
+#endif
 
 struct UHColorRGB
 {
@@ -40,4 +39,27 @@ struct UHColorRGBInt
     uint32_t R;
     uint32_t G;
     uint32_t B;
+};
+
+// point type
+struct UHPoint
+{
+    UHPoint()
+        : x(0)
+        , y(0)
+    {
+
+    }
+
+#if _WIN32
+    UHPoint(POINT P)
+        : x(P.x)
+        , y(P.y)
+    {
+
+    }
+#endif
+
+    long x;
+    long y;
 };

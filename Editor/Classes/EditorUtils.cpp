@@ -165,4 +165,26 @@ namespace UHEditorUtil
 
         return TextSize;
     }
+
+    UHPoint UHGetCursorPos()
+    {
+        POINT P;
+        GetCursorPos(&P);
+        return P;
+    }
+
+    bool UHScreenToClient(HWND Hwnd, UHPoint& Point)
+    {
+        POINT P;
+        P.x = Point.x;
+        P.y = Point.y;
+
+        bool bResult = !!ScreenToClient(Hwnd, &P);
+        if (bResult)
+        {
+            Point = P;
+        }
+
+        return bResult;
+    }
 }

@@ -88,7 +88,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 	GVkGetAccelerationStructureBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &MaxPrimitiveCounts, &SizeInfo);
 
 	// build bottom-level AS after getting proper sizes
-	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.accelerationStructureSize
+	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<uint8_t>(SizeInfo.accelerationStructureSize
 		, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		, InMesh->GetName() + "_BottomLevelAS_Buffer");
 
@@ -109,7 +109,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 #endif
 
 	// allocate scratch buffer as well, this buffer is for initialization
-	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+	ScratchBuffer = GfxCache->RequestRenderBuffer<uint8_t>(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		, "BottomLevelAS_ScratchBuffer");
 	GeometryInfo.scratchData.deviceAddress = GetDeviceAddress(ScratchBuffer->GetBuffer());
 
@@ -219,7 +219,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 	GVkGetAccelerationStructureBuildSizesKHR(LogicalDevice, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &GeometryInfo, &InstanceCount, &SizeInfo);
 
 	// build bottom-level AS after getting proper sizes
-	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
+	AccelerationStructureBuffer = GfxCache->RequestRenderBuffer<uint8_t>(SizeInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
 		, "Scene_TopLevelAS_Buffer");
 
 	VkAccelerationStructureCreateInfoKHR CreateInfo{};
@@ -239,7 +239,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 #endif
 
 	// allocate scratch buffer as well, this buffer is for initialization
-	ScratchBuffer = GfxCache->RequestRenderBuffer<BYTE>(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+	ScratchBuffer = GfxCache->RequestRenderBuffer<uint8_t>(SizeInfo.buildScratchSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 		, "TopLevelAS_ScratchBuffer");
 	GeometryInfo.scratchData.deviceAddress = GetDeviceAddress(ScratchBuffer->GetBuffer());
 

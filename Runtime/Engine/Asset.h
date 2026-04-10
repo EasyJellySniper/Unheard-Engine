@@ -15,7 +15,7 @@ struct UHAssetMap
 {
 	UHAssetMap() 
 		: Asset(nullptr)
-		, AssetUUid(UUID())
+		, AssetUUid(UHGUID())
 	{
 	}
 
@@ -27,7 +27,7 @@ struct UHAssetMap
 
 	}
 
-	UUID AssetUUid;
+	UHGUID AssetUUid;
 	std::string FilePath;
 	UHObject* Asset;
 };
@@ -62,7 +62,7 @@ public:
 	UHMesh* GetMesh(std::string InName) const;
 
 	// general function for getting an asset, caller is responsible for type cast
-	UHObject* GetAsset(UUID InAssetUuid);
+	UHObject* GetAsset(UHGUID InAssetUuid);
 	UHObject* GetAsset(std::string InPath);
 	UHObject* AddImportedMaterial(std::filesystem::path InPath);
 

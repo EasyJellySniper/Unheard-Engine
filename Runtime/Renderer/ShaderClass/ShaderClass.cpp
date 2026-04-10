@@ -641,7 +641,7 @@ void UHShaderClass::CreateComputeState(UHComputePassInfo InInfo)
 
 void UHShaderClass::InitRayGenTable()
 {
-	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
+	std::vector<uint8_t> TempData(Gfx->GetShaderRecordSize());
 	if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GRayGenTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 	{
 		UHE_LOG(L"Failed to get ray gen group handle!\n");
@@ -654,7 +654,7 @@ void UHShaderClass::InitRayGenTable()
 
 void UHShaderClass::InitMissTable()
 {
-	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
+	std::vector<uint8_t> TempData(Gfx->GetShaderRecordSize());
 
 	// create miss shader table
 	MissTable = Gfx->RequestRenderBuffer<UHShaderRecord>(MissShaders.size(), VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -675,7 +675,7 @@ void UHShaderClass::InitMissTable()
 
 void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 {
-	std::vector<BYTE> TempData(Gfx->GetShaderRecordSize());
+	std::vector<uint8_t> TempData(Gfx->GetShaderRecordSize());
 
 	// create HG buffer
 	HitGroupTable = Gfx->RequestRenderBuffer<UHShaderRecord>(NumMaterials, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT

@@ -13,9 +13,13 @@ UHObject::UHObject()
 	Name = ENGINE_NAME_NONE;
 
 #if _WIN32
-	UuidCreate(&RuntimeGuid);
+	UUID TempGuid;
+	UuidCreate(&TempGuid);
+	memcpy(RuntimeGuid.data(), &TempGuid, sizeof(TempGuid));
 #elif __linux__
-	uuid_generate(RuntimeGuid);
+	uuid_t TempGuid;
+	uuid_generate(TempGuid);
+	memcpy(RuntimeGuid.data(), TempGuid, sizeof(TempGuid));
 #endif
 	
 	Version = 0;
@@ -96,7 +100,7 @@ uint32_t UHObject::GetId() const
 	return RuntimeId;
 }
 
-uuid_t UHObject::GetRuntimeGuid() const
+UHGUID UHObject::GetRuntimeGuid() const
 {
 	return RuntimeGuid;
 }

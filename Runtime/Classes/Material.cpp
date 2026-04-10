@@ -652,7 +652,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	UniquePtr<UHGraphNode> NewNode;
 	std::vector<UniquePtr<UHGraphPin>>& MaterialPins = MaterialNode->GetInputs();
 
-	POINT Pos{};
+	UHPoint Pos{};
 	int32_t GUIToLeft = 300;
 	int32_t GUIToFurtherLeft = 750;
 	int32_t GUIStartY = -400;
@@ -665,7 +665,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	std::vector<UHGraphNode*> ParameterNodeTable;
 
 	// add texture node function
-	auto AddTextureNode = [this, &TextureNodeTable](std::string InName, POINT InPos)
+	auto AddTextureNode = [this, &TextureNodeTable](std::string InName, UHPoint InPos)
 	{
 		size_t Hash = UHUtilities::StringToHash(InName);
 		UniquePtr<UHGraphNode> NewTexNode;
@@ -681,7 +681,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 	};
 
 	// add parameter node
-	auto AddParameterNode = [this, &ParameterNodeTable](UniquePtr<UHGraphNode> InNewNode, POINT InPos)
+	auto AddParameterNode = [this, &ParameterNodeTable](UniquePtr<UHGraphNode> InNewNode, UHPoint InPos)
 	{
 		for (UHGraphNode* Node : ParameterNodeTable)
 		{
@@ -893,22 +893,22 @@ std::vector<UniquePtr<UHGraphNode>>& UHMaterial::GetEditNodes()
 	return EditNodes;
 }
 
-void UHMaterial::SetGUIRelativePos(std::vector<POINT> InPos)
+void UHMaterial::SetGUIRelativePos(std::vector<UHPoint> InPos)
 {
 	EditGUIRelativePos = InPos;
 }
 
-std::vector<POINT>& UHMaterial::GetGUIRelativePos()
+std::vector<UHPoint>& UHMaterial::GetGUIRelativePos()
 {
 	return EditGUIRelativePos;
 }
 
-void UHMaterial::SetDefaultMaterialNodePos(POINT InPos)
+void UHMaterial::SetDefaultMaterialNodePos(UHPoint InPos)
 {
 	DefaultMaterialNodePos = InPos;
 }
 
-POINT UHMaterial::GetDefaultMaterialNodePos()
+UHPoint UHMaterial::GetDefaultMaterialNodePos()
 {
 	return DefaultMaterialNodePos;
 }

@@ -4,10 +4,7 @@
 // a header that store graphic API function callback
 #include "Runtime/Platform/PlatformVulkan.h"
 
-// Vulkan callback functions
-inline PFN_vkAcquireFullScreenExclusiveModeEXT GEnterFullScreenCallback;
-inline PFN_vkReleaseFullScreenExclusiveModeEXT GLeaveFullScreenCallback;
-inline PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT GGetSurfacePresentModes2Callback;
+// Vulkan callback functions, mainly for functions that are not a part of core Vulkan
 
 #if WITH_EDITOR
 inline PFN_vkCmdBeginDebugUtilsLabelEXT GBeginCmdDebugLabelCallback;

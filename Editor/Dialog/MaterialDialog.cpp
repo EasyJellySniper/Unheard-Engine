@@ -30,9 +30,9 @@ UHMaterialDialog::UHMaterialDialog(HINSTANCE InInstance, HWND InWindow, UHAssetM
     , AssetManager(InAssetManager)
     , Renderer(InRenderer)
     , GUIToMove(nullptr)
-    , MousePos(POINT())
-    , PrevMousePos(POINT())
-    , MousePosWhenRightDown(POINT())
+    , MousePos(UHPoint())
+    , PrevMousePos(UHPoint())
+    , MousePosWhenRightDown(UHPoint())
     , NodeToDelete(nullptr)
     , PinToDisconnect(nullptr)
     , NodeMenuAction(UH_ENUM_VALUE(UHNodeMenuAction::NoAction))
@@ -227,7 +227,7 @@ void UHMaterialDialog::Update(bool& bIsDialogActive)
     ImGui::End();
 
     // store mouse states
-    GetCursorPos(&MousePos);
+    MousePos = UHEditorUtil::UHGetCursorPos();
     if (RawInput.IsRightMouseDown())
     {
         MousePosWhenRightDown = MousePos;
@@ -341,12 +341,12 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
     EditNodeGUIs.clear();
 
     // init node GUI
-    POINT MaterialNodePos = CurrentMaterial->GetDefaultMaterialNodePos();
+    UHPoint MaterialNodePos = CurrentMaterial->GetDefaultMaterialNodePos();
     EditNodeGUIs.push_back(std::move(MakeUnique<UHMaterialNodeGUI>()));
     EditNodeGUIs[0]->Init(Instance, WorkAreaGUI->GetHwnd(), CurrentMaterial->GetMaterialNode().get(), "Material Inputs", MaterialNodePos.x, MaterialNodePos.y);
 
     const std::vector<UniquePtr<UHGraphNode>>& EditNodes = CurrentMaterial->GetEditNodes();
-    const std::vector<POINT>& GUIRelativePos = CurrentMaterial->GetGUIRelativePos();
+    const std::vector<UHPoint>& GUIRelativePos = CurrentMaterial->GetGUIRelativePos();
 
     for (size_t Idx = 0; Idx < EditNodes.size(); Idx++)
     {
@@ -379,7 +379,7 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
     bIsInitializing = false;
 }
 
-void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
+void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, UHPoint GUIRelativePos)
 {
     // Node menu action for adding could be from individual node type
     // return if it's not adding nodes, this also means AddNode needs to be put the bottom of UHNodeMenuAction
@@ -424,7 +424,7 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
     HWND WorkArea = WorkAreaGUI->GetHwnd();
     if (InputNode)
     {
-        POINT P = CurrentMaterial->GetDefaultMaterialNodePos();
+        UHPoint P = CurrentMaterial->GetDefaultMaterialNodePos();
         NewNode.reset();
         NewGUI->Init(Instance, WorkArea, InputNode, GUIName, P.x + GUIRelativePos.x, P.y + GUIRelativePos.y);
 
@@ -434,8 +434,8 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, POINT GUIRelativePos)
     {
         CurrentMaterial->GetEditNodes().push_back(std::move(NewNode));
 
-        POINT P = MousePosWhenRightDown;
-        ScreenToClient(WorkArea, &P);
+        UHPoint P = MousePosWhenRightDown;
+        UHEditorUtil::UHScreenToClient(WorkArea, P);
         NewGUI->Init(Instance, WorkArea, CurrentMaterial->GetEditNodes().back().get(), GUIName, P.x, P.y);
 
         // syc the gui relative pos as well
@@ -712,19 +712,19 @@ void UHMaterialDialog::DrawPinConnectionLine(bool bIsErasing)
     if (GPinSelectInfo->CurrOutputPin)
     {
         // draw line, point is relative to window 
-        POINT P1 = GPinSelectInfo->MouseDownPos;
-        POINT P2 = MousePos;
-        ScreenToClient(WorkArea, &P1);
-        ScreenToClient(WorkArea, &P2);
+        UHPoint P1 = GPinSelectInfo->MouseDownPos;
+        UHPoint P2 = MousePos;
+        UHEditorUtil::UHScreenToClient(WorkArea, P1);
+        UHEditorUtil::UHScreenToClient(WorkArea, P2);
 
         Graphics.DrawLine(&Pen, (int32_t)P1.x, (int32_t)P1.y, (int32_t)P2.x, (int32_t)P2.y);
 
         P1 = GPinSelectInfo->MouseDownPos;
         P2 = MousePos;
-        POINT P3 = PrevMousePos;
-        ScreenToClient(Dialog, &P1);
-        ScreenToClient(Dialog, &P2);
-        ScreenToClient(Dialog, &P3);
+        UHPoint P3 = PrevMousePos;
+        UHEditorUtil::UHScreenToClient(Dialog, P1);
+        UHEditorUtil::UHScreenToClient(Dialog, P2);
+        UHEditorUtil::UHScreenToClient(Dialog, P3);
 
         DragRect.left = std::min(P1.x, P2.x);
         DragRect.right = std::max(P1.x, P2.x);
@@ -760,20 +760,20 @@ void UHMaterialDialog::DrawPinConnectionLine(bool bIsErasing)
                 GetWindowRect(Src, &R1);
                 GetWindowRect(Dst, &R2);
 
-                POINT P1{};
-                POINT P2{};
+                UHPoint P1{};
+                UHPoint P2{};
                 P1.x = R1.right;
                 P1.y = (R1.top + R1.bottom) / 2;
                 P2.x = R2.left;
                 P2.y = (R2.top + R2.bottom) / 2;
 
-                POINT P3 = P1;
-                POINT P4 = P2;
+                UHPoint P3 = P1;
+                UHPoint P4 = P2;
 
-                ScreenToClient(WorkArea, &P1);
-                ScreenToClient(WorkArea, &P2);
-                ScreenToClient(Dialog, &P3);
-                ScreenToClient(Dialog, &P4);
+                UHEditorUtil::UHScreenToClient(WorkArea, P1);
+                UHEditorUtil::UHScreenToClient(WorkArea, P2);
+                UHEditorUtil::UHScreenToClient(Dialog, P3);
+                UHEditorUtil::UHScreenToClient(Dialog, P4);
 
                 if (!bIsErasing)
                 {
@@ -918,12 +918,12 @@ void UHMaterialDialog::ResaveMaterial(int32_t MatIndex, bool bDelayRTShaderCreat
         // GUI sync if it's the current material
         RECT Rect;
         UHEditorUtil::GetWindowSize(EditNodeGUIs[0]->GetHWND(), Rect, WorkAreaGUI->GetHwnd());
-        POINT Pos{};
+        UHPoint Pos{};
         Pos.x = Rect.left;
         Pos.y = Rect.top;
         CurrentMaterial->SetDefaultMaterialNodePos(Pos);
 
-        std::vector<POINT> EditGUIPos;
+        std::vector<UHPoint> EditGUIPos;
         for (size_t Idx = 1; Idx < EditNodeGUIs.size(); Idx++)
         {
             UHEditorUtil::GetWindowSize(EditNodeGUIs[Idx]->GetHWND(), Rect, EditNodeGUIs[0]->GetHWND());

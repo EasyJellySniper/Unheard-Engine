@@ -2,6 +2,7 @@
 #include "../../UnheardEngine.h"
 #include "../../resource.h"
 #include <functional>
+#include "Runtime/Classes/Types.h"
 
 #if WITH_EDITOR
 enum class UHAutoSizeMethod
@@ -68,7 +69,7 @@ public:
 	HWND GetHwnd() const;
 	HWND GetParentHwnd() const;
 	RECT GetCurrentRelativeRect() const;
-	bool IsPointInside(POINT P) const;
+	bool IsPointInside(UHPoint P) const;
 
 	// text functions
 	UHGUIControlBase& SetText(std::wstring InText);

@@ -4,6 +4,7 @@
 #include <winuser.h>
 #include "../Dialog/Dialog.h"
 #include "Runtime/Classes/Utility.h"
+#include "Editor/Classes/EditorUtils.h"
 
 UHGUIProperty::UHGUIProperty()
 	: AutoSize(UHAutoSizeMethod::AutoSizeNone)
@@ -198,9 +199,9 @@ RECT UHGUIControlBase::GetCurrentRelativeRect() const
 	return R;
 }
 
-bool UHGUIControlBase::IsPointInside(POINT P) const
+bool UHGUIControlBase::IsPointInside(UHPoint P) const
 {
-	if (ScreenToClient(ControlObj, &P))
+	if (UHEditorUtil::UHScreenToClient(ControlObj, P))
 	{
 		RECT R;
 		GetClientRect(ControlObj, &R);

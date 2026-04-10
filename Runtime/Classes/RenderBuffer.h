@@ -210,18 +210,20 @@ public:
 	{
         // upload buffer is mapped when initialization, simply copy it
         const int64_t CopySize = (InCopySize == 0) ? BufferSize : static_cast<int64_t>(InCopySize);
+        assert(CopySize <= BufferSize);
+
         if (bIsUploadBuffer)
         {
             // if it's constant buffer, it will be mapped on creation until destruction
             // simply copy to it without unmap
             // app must have cpu-gpu sync work flow and prevents accessing it at the same time
-            memcpy_s(&DstData[0], BufferSize, SrcData, CopySize);
+            memcpy(&DstData[0], SrcData, CopySize);
             return;
         }
 
         // for non-constant buffer, copy once and unmap it
 		vkMapMemory(LogicalDevice, BufferMemory, 0, CopySize, 0, reinterpret_cast<void**>(&DstData));
-		memcpy_s(&DstData[0], BufferSize, SrcData, CopySize);
+		memcpy(&DstData[0], SrcData, CopySize);
 		vkUnmapMemory(LogicalDevice, BufferMemory);
 	}
 
@@ -240,7 +242,7 @@ public:
         }
 
         vkMapMemory(LogicalDevice, InMemory->GetMemory(), OffsetInSharedMemory, BufferSize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy_s(&DstData[0], BufferSize, SrcData, BufferSize);
+        memcpy(&DstData[0], SrcData, BufferSize);
         vkUnmapMemory(LogicalDevice, InMemory->GetMemory());
     }
 
@@ -249,15 +251,17 @@ public:
     {
         // upload buffer is mapped when initialization, simply copy it
         const int64_t CopySize = (InCopySize == 0) ? BufferStride : static_cast<int64_t>(InCopySize);
+        assert(CopySize <= BufferSize);
+
         if (bIsUploadBuffer)
         {
-            memcpy_s(&DstData[DstOffset * BufferStride], BufferSize, SrcData, CopySize);
+            memcpy(&DstData[DstOffset * BufferStride], SrcData, CopySize);
             return;
         }
 
         // for non-upload buffer, map from start offset and copy 
         vkMapMemory(LogicalDevice, BufferMemory, DstOffset * BufferStride, CopySize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy_s(&DstData[0], BufferSize, SrcData, CopySize);
+        memcpy(&DstData[0], SrcData, CopySize);
         vkUnmapMemory(LogicalDevice, BufferMemory);
     }
 
@@ -288,12 +292,12 @@ public:
         if (bIsUploadBuffer)
         {
             // already mapped, copy directly
-            memcpy_s(OutputData.data(), BufferSize, &DstData[0], BufferSize);
+            memcpy(OutputData.data(), &DstData[0], BufferSize);
             return OutputData;
         }
 
         vkMapMemory(LogicalDevice, BufferMemory, 0, BufferSize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy_s(OutputData.data(), BufferSize, &DstData[0], BufferSize);
+        memcpy(OutputData.data(), &DstData[0], BufferSize);
         vkUnmapMemory(LogicalDevice, BufferMemory);
 
         return OutputData;
@@ -308,7 +312,7 @@ private:
 
     bool bIsUploadBuffer;
     bool bIsShaderDeviceAddress;
-    BYTE* DstData;
+    uint8_t* DstData;
 
     // for shared memory
     uint64_t OffsetInSharedMemory;

@@ -39,5 +39,5 @@ private:
 	float SkyIntensity;
 	float GroundIntensity;
 	UHTextureCube* CubemapCache;
-	UUID CubemapId;
+	UHGUID CubemapId;
 };

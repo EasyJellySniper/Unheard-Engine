@@ -19,8 +19,8 @@ UHMeshRendererComponent::UHMeshRendererComponent(UHMesh* InMesh, UHMaterial* InM
 #if WITH_EDITOR
 	, bIsVisibleEditor(true)
 #endif
-	, MeshId(UUID())
-	, MaterialId(UUID())
+	, MeshId(UHGUID())
+	, MaterialId(UHGUID())
 	, SquareDistanceToMainCam(0.0f)
 	, bIsCameraInsideBound(false)
 {
@@ -72,7 +72,7 @@ void UHMeshRendererComponent::OnSave(std::ofstream& OutStream)
 	UUID Dummy{};
 	if (MeshCache != nullptr)
 	{
-		UUID Id = MeshCache->GetRuntimeGuid();
+		UHGUID Id = MeshCache->GetRuntimeGuid();
 		OutStream.write(reinterpret_cast<const char*>(&Id), sizeof(Id));
 	}
 	else
@@ -83,7 +83,7 @@ void UHMeshRendererComponent::OnSave(std::ofstream& OutStream)
 	// material cache
 	if (MaterialCache != nullptr)
 	{
-		UUID Id = MaterialCache->GetRuntimeGuid();
+		UHGUID Id = MaterialCache->GetRuntimeGuid();
 		OutStream.write(reinterpret_cast<const char*>(&Id), sizeof(Id));
 	}
 	else

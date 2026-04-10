@@ -1,5 +1,6 @@
 #include "Types.h"
 #include "Runtime/CoreGlobals.h"
+#include <algorithm>
 
 // UHColorRGB
 UHColorRGB::UHColorRGB()

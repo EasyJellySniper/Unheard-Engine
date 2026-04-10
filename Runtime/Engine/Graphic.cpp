@@ -304,10 +304,6 @@ bool UHGraphic::CreateInstance()
 	}
 
 	// get necessary function callback after instance is created
-	GEnterFullScreenCallback = (PFN_vkAcquireFullScreenExclusiveModeEXT)vkGetInstanceProcAddr(VulkanInstance, "vkAcquireFullScreenExclusiveModeEXT");
-	GLeaveFullScreenCallback = (PFN_vkReleaseFullScreenExclusiveModeEXT)vkGetInstanceProcAddr(VulkanInstance, "vkReleaseFullScreenExclusiveModeEXT");
-	GGetSurfacePresentModes2Callback = (PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT)vkGetInstanceProcAddr(VulkanInstance, "vkGetPhysicalDeviceSurfacePresentModes2EXT");
-
 #if WITH_EDITOR
 	GBeginCmdDebugLabelCallback = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginDebugUtilsLabelEXT");
 	GEndCmdDebugLabelCallback = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndDebugUtilsLabelEXT");
@@ -679,18 +675,26 @@ bool UHGraphic::CreateWindowSurface()
 
 	if (vkCreateWin32SurfaceKHR(VulkanInstance, &CreateInfo, nullptr, &MainSurface) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create window surface!.\n");
+		UHE_LOG(L"Failed to create window surface!\n");
 		return false;
 	}
 #elif __linux__
-	// @TODO: Make this work for Linux
-	/*VkXcbSurfaceCreateInfoKHR CreateInfo{};
+	// linux window creation
+	VkXcbSurfaceCreateInfoKHR CreateInfo{};
 	CreateInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-	Display* display = glfwGetX11Display();
-	xcb_connection_t* connection = XGetXCBConnection(display);
-	CreateInfo.connection = glfwGetX11Display();
-	// glfwGetX11Window()
-	CreateInfo.window = (xcb_window_t)ClientCache->GetNativeWindow();*/
+
+	Display* Display = glfwGetX11Display();
+	xcb_connection_t* Connection = XGetXCBConnection(Display);
+
+	CreateInfo.connection = Connection;
+	GLFWwindow* Window = (GLFWwindow*)ClientCache->GetNativeWindow();
+	CreateInfo.window = glfwGetX11Window(Window);
+
+	if (vkCreateXcbSurfaceKHR(VulkanInstance, &CreateInfo, nullptr, &MainSurface) != VK_SUCCESS)
+	{
+		UHE_LOG(L"Failed to create window surface!\n");
+		return false;
+	}
 #endif
 
 	return true;
@@ -701,21 +705,10 @@ UHSwapChainDetails UHGraphic::QuerySwapChainSupport(VkPhysicalDevice InDevice) c
 	// query swap chain details from chosen physical device, so we can know what format is supported
 	UHSwapChainDetails Details;
 
-	VkSurfaceFullScreenExclusiveInfoEXT FullScreenInfo{};
-	FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-
 	// try to get surface 2
 	VkPhysicalDeviceSurfaceInfo2KHR Surface2Info{};
 	Surface2Info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
 	Surface2Info.surface = MainSurface;
-
-#if _WIN32
-	// Windows only exclusive fullscreen setup
-	VkSurfaceFullScreenExclusiveWin32InfoEXT Win32FullScreenInfo{};
-	Win32FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
-	Win32FullScreenInfo.hmonitor = MonitorFromWindow((HWND)ClientCache->GetNativeWindow(), MONITOR_DEFAULTTOPRIMARY);
-	Surface2Info.pNext = &Win32FullScreenInfo;
-#endif
 	
 	Details.Capabilities2.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
 	vkGetPhysicalDeviceSurfaceCapabilities2KHR(InDevice, &Surface2Info, &Details.Capabilities2);
@@ -737,12 +730,12 @@ UHSwapChainDetails UHGraphic::QuerySwapChainSupport(VkPhysicalDevice InDevice) c
 
 	// find present mode
 	uint32_t PresentModeCount;
-	GGetSurfacePresentModes2Callback(InDevice, &Surface2Info, &PresentModeCount, nullptr);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(InDevice, MainSurface, &PresentModeCount, nullptr);
 
 	if (PresentModeCount != 0)
 	{
 		Details.PresentModes.resize(PresentModeCount);
-		GGetSurfacePresentModes2Callback(InDevice, &Surface2Info, &PresentModeCount, Details.PresentModes.data());
+		vkGetPhysicalDeviceSurfacePresentModesKHR(InDevice, MainSurface, &PresentModeCount, Details.PresentModes.data());
 	}
 
 	return Details;
