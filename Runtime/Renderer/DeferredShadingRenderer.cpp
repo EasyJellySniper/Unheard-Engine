@@ -858,7 +858,7 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		// wait until main thread notify
 		RenderThread->WaitNotify();
 
-		if (RenderThread->IsTermindate())
+		if (RenderThread->IsTerminate())
 		{
 			break;
 		}
@@ -1053,7 +1053,7 @@ void UHDeferredShadingRenderer::WorkerThreadLoop(int32_t ThreadIdx)
 	{
 		WorkerThreads[ThreadIdx]->WaitNotify();
 
-		if (WorkerThreads[ThreadIdx]->IsTermindate())
+		if (WorkerThreads[ThreadIdx]->IsTerminate())
 		{
 			break;
 		}

@@ -6,6 +6,7 @@
 
 // Game timer based on chrono 
 // Each time is stored as milliseconds
+using UHClock = std::chrono::steady_clock;
 class UHGameTimer
 {
 public:
@@ -13,8 +14,7 @@ public:
 
 	float GetTotalTime() const;
 	float GetDeltaTime() const;
-	int64_t GetTime() const;
-	double GetSecondsPerCount() const;
+	UHClock::time_point GetTime() const;
 
 	void Reset(); // Call before message loop.
 	void Start(); // Call when unpaused.
@@ -22,14 +22,13 @@ public:
 	void Tick();  // Call every frame.
 
 private:
-	double SecondsPerCount;
 	double DeltaTime;
 
-	int64_t BaseTime;
-	int64_t PausedTime;
-	int64_t StopTime;
-	int64_t PreviousTime;
-	int64_t CurrentTime;
+	UHClock::time_point BaseTime;
+	UHClock::time_point PausedTime;
+	UHClock::time_point StopTime;
+	UHClock::time_point PreviousTime;
+	UHClock::time_point CurrentTime;
 
 	bool bStopped;
 };

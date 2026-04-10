@@ -14,10 +14,10 @@ UHEngine::UHEngine()
 	: UHEClient(nullptr)
 	, bIsInitialized(false)
 	, EngineResizeReason(UHEngineResizeReason::NotResizing)
-	, FrameBeginTime(0)
-	, FrameEndTime(0)
+	, FrameBeginTime(UHClock::time_point())
+	, FrameEndTime(UHClock::time_point())
 	, DisplayFrequency(60.0f)
-	, WaitDuration(0)
+	, WaitDuration(UHClock::duration())
 	, WaitDurationMS(0.0f)
 #if WITH_EDITOR
 	, UHEEditor(nullptr)
@@ -140,9 +140,6 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	UHEConfig->ApplyPresentationSettings(UHEClient);
 	UHEConfig->ApplyWindowStyle(UHEClient);
 
-	FramerateLimitThread = MakeUnique<UHThread>();
-	FramerateLimitThread->BeginThread(std::thread(&UHEngine::LimitFramerate, this));
-
 	return true;
 }
 
@@ -166,9 +163,6 @@ void UHEngine::ReleaseEngine()
 
 	UH_SAFE_RELEASE(UHEGraphic);
 	UHEGraphic.reset();
-
-	FramerateLimitThread->WaitTask();
-	FramerateLimitThread->EndThread();
 }
 
 bool UHEngine::IsEngineInitialized()
@@ -332,11 +326,6 @@ UHScene* UHEngine::GetScene() const
 
 void UHEngine::BeginFPSLimiter()
 {
-	if (GIsShipping)
-	{
-		FramerateLimitThread->WaitTask();
-	}
-
 	FrameBeginTime = UHEGameTimer->GetTime();
 }
 
@@ -357,56 +346,35 @@ void UHEngine::EndFPSLimiter()
 	}
 
 	FrameEndTime = UHEGameTimer->GetTime();
-	const float Duration = static_cast<float>((FrameEndTime - FrameBeginTime) * UHEGameTimer->GetSecondsPerCount());
+	const float Duration = std::chrono::duration<float>(FrameEndTime - FrameBeginTime).count();
 	const float DesiredDuration = 1.0f / FPSLimit;
 
 	if (DesiredDuration > Duration)
 	{
-		WaitDuration = static_cast<int64_t>((DesiredDuration - Duration) / UHEGameTimer->GetSecondsPerCount());
+		WaitDuration = std::chrono::duration<float>(DesiredDuration - Duration);
 		WaitDurationMS = (DesiredDuration - Duration) * 1000.0f;
 
-		FramerateLimitThread->WakeThread();
-		if (GIsEditor)
-		{
-			FramerateLimitThread->WaitTask();
-		}
-	}
-}
-
-void UHEngine::LimitFramerate()
-{
-	auto Curr = std::chrono::steady_clock::now();
-	using FPS100 = std::chrono::duration<int32_t, std::ratio<1, 100>>;
-	auto Next = Curr + FPS100{ 1 };
-	const float SleepThresholdMS = 10.0f;
-
-	while (true)
-	{
-		FramerateLimitThread->WaitNotify();
-
-		if (FramerateLimitThread->IsTermindate())
-		{
-			break;
-		}
+		auto TargetTime = FrameEndTime + WaitDuration;
 
 		// sleep if the requested MS is larger than a value
+		// this reduces the CPU burning for the busy loop below
+		const float SleepThresholdMS = 5.0f;
 		if (WaitDurationMS > SleepThresholdMS)
 		{
-			std::this_thread::sleep_until(Next);
-			Next += FPS100{ 1 };
+			std::chrono::duration<float, std::milli> SleepMS(WaitDurationMS - SleepThresholdMS);
+			std::this_thread::sleep_for(SleepMS);
 		}
 
-		// wait the remaining time
+		// wait the remaining time, busy loop is needed for the best accuracy
+		UHClock::time_point StartWaitingTime = UHEGameTimer->GetTime();
 		while (true)
 		{
 			std::this_thread::yield();
-			if (UHEGameTimer->GetTime() > WaitDuration + FrameEndTime)
+			if ((UHEGameTimer->GetTime() - StartWaitingTime) > WaitDuration)
 			{
 				break;
 			}
 		}
-
-		FramerateLimitThread->NotifyTaskDone();
 	}
 }
 

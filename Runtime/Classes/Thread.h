@@ -31,7 +31,7 @@ public:
 
 	// termination control
 	void SetTerminate(bool InFlag);
-	bool IsTermindate() const;
+	bool IsTerminate() const;
 	std::mutex& GetThreadMutex();
 
 	// async tasks

@@ -9,17 +9,14 @@ std::vector<std::pair<std::string, float>> UHGameTimerScope::RegisteredGameTime;
 
 UHGameTimer::UHGameTimer()
 	: DeltaTime(0.0)
-	, BaseTime(0)
-	, PausedTime(0)
-	, StopTime(0)
-	, PreviousTime(0)
-	, CurrentTime(0)
+	, BaseTime(UHClock::time_point())
+	, PausedTime(UHClock::time_point())
+	, StopTime(UHClock::time_point())
+	, PreviousTime(UHClock::time_point())
+	, CurrentTime(UHClock::time_point())
 	, bStopped(false)
 {
-	// this query will always success after win xp
-	int64_t CountsPerSec;
-	QueryPerformanceFrequency((LARGE_INTEGER*)&CountsPerSec);
-	SecondsPerCount = 1.0 / static_cast<double>(CountsPerSec);
+
 }
 
 // Returns the total time elapsed since Reset() was called, NOT counting any
@@ -28,10 +25,15 @@ float UHGameTimer::GetTotalTime() const
 {
 	if (bStopped)
 	{
-		return static_cast<float>(((StopTime - PausedTime) - BaseTime) * SecondsPerCount);
+		auto D0 = StopTime - PausedTime;
+		auto D1 = PausedTime - BaseTime;
+
+		return std::chrono::duration<float>(D0 + D1).count();
 	}
 
-	return static_cast<float>(((CurrentTime - PausedTime) - BaseTime) * SecondsPerCount);
+	auto D0 = CurrentTime - PausedTime;
+	auto D1 = PausedTime - BaseTime;
+	return std::chrono::duration<float>(D0 + D1).count();
 }
 
 float UHGameTimer::GetDeltaTime() const
@@ -40,23 +42,16 @@ float UHGameTimer::GetDeltaTime() const
 }
 
 // get current time, GetCurrentTime() will conflict to other function, so I name it GetTime()
-int64_t UHGameTimer::GetTime() const
+UHClock::time_point UHGameTimer::GetTime() const
 {
-	int64_t CurrTime;
-	QueryPerformanceCounter((LARGE_INTEGER*)&CurrTime);
-	return CurrTime;
-}
-
-double UHGameTimer::GetSecondsPerCount() const
-{
-	return SecondsPerCount;
+	return UHClock::now();
 }
 
 void UHGameTimer::Reset()
 {
-	QueryPerformanceCounter((LARGE_INTEGER*)&BaseTime);
+	BaseTime = UHClock::now();
 	PreviousTime = BaseTime;
-	StopTime = 0;
+	StopTime = UHClock::time_point();
 	bStopped = false;
 }
 
@@ -65,12 +60,10 @@ void UHGameTimer::Start()
 	// Accumulate the time elapsed between stop and start pairs
 	if (bStopped)
 	{
-		int64_t StartTime;
-		QueryPerformanceCounter((LARGE_INTEGER*)&StartTime);
-
+		UHClock::time_point StartTime = UHClock::now();
 		PausedTime += StartTime - StopTime;
 		PreviousTime = StartTime;
-		StopTime = 0;
+		StopTime = UHClock::time_point();
 		bStopped = false;
 	}
 }
@@ -79,7 +72,7 @@ void UHGameTimer::Stop()
 {
 	if (!bStopped)
 	{
-		QueryPerformanceCounter((LARGE_INTEGER*)&StopTime);
+		StopTime = UHClock::now();
 		bStopped = true;
 	}
 }
@@ -92,10 +85,10 @@ void UHGameTimer::Tick()
 		return;
 	}
 
-	QueryPerformanceCounter((LARGE_INTEGER*)&CurrentTime);
+	CurrentTime = UHClock::now();
 
 	// Time difference between this frame and the previous.
-	DeltaTime = static_cast<double>(CurrentTime - PreviousTime) * SecondsPerCount;
+	DeltaTime = std::chrono::duration<double>(CurrentTime - PreviousTime).count();
 
 	// Prepare for next frame.
 	PreviousTime = CurrentTime;
@@ -107,7 +100,7 @@ void UHGameTimer::Tick()
 
 	// check if the true delta time is larger than a threshold
 	// this can happen with debug breakpoint or some other pausing mechanisms, correct it to a constant rate
-	if (DeltaTime > 1.0f)
+	if (DeltaTime > 1.0)
 	{
 		// fix to 60hz should be fine for now, follow the target FPS in the future if needed
 		double DesiredDeltaTime = 0.01666666666666666666666666666667;

@@ -90,7 +90,7 @@ void UHThread::SetTerminate(bool InFlag)
 	bIsThreadTerminated = InFlag;
 }
 
-bool UHThread::IsTermindate() const
+bool UHThread::IsTerminate() const
 {
 	return bIsThreadTerminated;
 }

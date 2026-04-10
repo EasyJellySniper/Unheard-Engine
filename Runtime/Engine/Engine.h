@@ -74,7 +74,6 @@ public:
 	// FPS limiter function
 	void BeginFPSLimiter();
 	void EndFPSLimiter();
-	void LimitFramerate();
 
 	void ResetScene();
 	void OnSaveScene(std::filesystem::path OutputPath);
@@ -131,11 +130,10 @@ private:
 	// resize reason
 	UHEngineResizeReason EngineResizeReason;
 
-	int64_t FrameBeginTime;
-	int64_t FrameEndTime;
+	UHClock::time_point FrameBeginTime;
+	UHClock::time_point FrameEndTime;
 	float DisplayFrequency;
-	UniquePtr<UHThread> FramerateLimitThread;
-	int64_t WaitDuration;
+	std::chrono::duration<float> WaitDuration;
 	float WaitDurationMS;
 };
 

@@ -9,8 +9,8 @@ UHProfiler::UHProfiler(UHGameTimer* InTimer)
 	: Timer(InTimer)
 	, TimeElapsedThisFrame(0.0f)
 	, Statistics(UHStatistics())
-	, BeginTime(0)
-	, EndTime(0)
+	, BeginTime(UHClock::time_point())
+	, EndTime(UHClock::time_point())
 {
 
 }
@@ -32,7 +32,7 @@ void UHProfiler::End()
 
 float UHProfiler::GetDiff()
 {
-	return static_cast<float>((EndTime - BeginTime) * Timer->GetSecondsPerCount());
+	return std::chrono::duration<float>(EndTime - BeginTime).count();
 }
 
 UHProfilerScope::UHProfilerScope(UHProfiler* InProfiler)

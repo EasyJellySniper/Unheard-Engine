@@ -60,8 +60,8 @@ private:
 	float TimeElapsedThisFrame;
 
 	UHStatistics Statistics;
-	int64_t BeginTime;
-	int64_t EndTime;
+	UHClock::time_point BeginTime;
+	UHClock::time_point EndTime;
 };
 
 // profiler scope, kick off a profiler in ctor and finish in dtor
