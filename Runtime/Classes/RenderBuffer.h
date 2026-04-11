@@ -3,6 +3,7 @@
 #include "../Classes/Utility.h"
 #include "../../UnheardEngine.h"
 #include "GPUMemory.h"
+#include "Runtime/CoreGlobals.h"
 
 // class for managing render buffer (E.g. vertex buffer/index buffer)
 // make this template so we can decide the size dynamically
@@ -217,13 +218,13 @@ public:
             // if it's constant buffer, it will be mapped on creation until destruction
             // simply copy to it without unmap
             // app must have cpu-gpu sync work flow and prevents accessing it at the same time
-            memcpy(&DstData[0], SrcData, CopySize);
+            UHMEMCOPY(&DstData[0], SrcData, CopySize);
             return;
         }
 
         // for non-constant buffer, copy once and unmap it
 		vkMapMemory(LogicalDevice, BufferMemory, 0, CopySize, 0, reinterpret_cast<void**>(&DstData));
-		memcpy(&DstData[0], SrcData, CopySize);
+        UHMEMCOPY(&DstData[0], SrcData, CopySize);
 		vkUnmapMemory(LogicalDevice, BufferMemory);
 	}
 
@@ -242,7 +243,7 @@ public:
         }
 
         vkMapMemory(LogicalDevice, InMemory->GetMemory(), OffsetInSharedMemory, BufferSize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy(&DstData[0], SrcData, BufferSize);
+        UHMEMCOPY(&DstData[0], SrcData, BufferSize);
         vkUnmapMemory(LogicalDevice, InMemory->GetMemory());
     }
 
@@ -255,13 +256,13 @@ public:
 
         if (bIsUploadBuffer)
         {
-            memcpy(&DstData[DstOffset * BufferStride], SrcData, CopySize);
+            UHMEMCOPY(&DstData[DstOffset * BufferStride], SrcData, CopySize);
             return;
         }
 
         // for non-upload buffer, map from start offset and copy 
         vkMapMemory(LogicalDevice, BufferMemory, DstOffset * BufferStride, CopySize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy(&DstData[0], SrcData, CopySize);
+        UHMEMCOPY(&DstData[0], SrcData, CopySize);
         vkUnmapMemory(LogicalDevice, BufferMemory);
     }
 
@@ -292,12 +293,12 @@ public:
         if (bIsUploadBuffer)
         {
             // already mapped, copy directly
-            memcpy(OutputData.data(), &DstData[0], BufferSize);
+            UHMEMCOPY(OutputData.data(), &DstData[0], BufferSize);
             return OutputData;
         }
 
         vkMapMemory(LogicalDevice, BufferMemory, 0, BufferSize, 0, reinterpret_cast<void**>(&DstData));
-        memcpy(OutputData.data(), &DstData[0], BufferSize);
+        UHMEMCOPY(OutputData.data(), &DstData[0], BufferSize);
         vkUnmapMemory(LogicalDevice, BufferMemory);
 
         return OutputData;

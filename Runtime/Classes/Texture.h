@@ -187,7 +187,7 @@ private:
 
 #if WITH_EDITOR
 	// individual face image view for editor use, assume it's 15 mipmap max
-	static const int32_t CubemapImageViewCount = 90;
+	static constexpr int32_t CubemapImageViewCount = 90;
 	VkImageView CubemapImageView[CubemapImageViewCount];
 #endif
 };

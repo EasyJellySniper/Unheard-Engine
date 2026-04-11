@@ -18,7 +18,7 @@ UHThread::~UHThread()
 // begin thread, called during initialization, don't try to begin a new one every frame!
 void UHThread::BeginThread(std::thread InObj, uint32_t AffinityCore)
 {
-	ThreadObj = std::move(InObj);
+	ThreadObj = UHMOVE(InObj);
 	ThreadId = ThreadObj.get_id();
 	// modern OS should be smart enough for thread control, uncomment for test purpose
 	// I find manually setting it introduces weird stuttering in some hardwares...
@@ -36,7 +36,7 @@ void UHThread::BeginThread(std::thread InObj, uint32_t AffinityCore)
 
 void UHThread::BeginThread(std::thread InObj)
 {
-	ThreadObj = std::move(InObj);
+	ThreadObj = UHMOVE(InObj);
 }
 
 // end thread, this should force infinite wait loop to finish and terminate the thread

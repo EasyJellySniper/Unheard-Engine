@@ -69,7 +69,7 @@ void UHMeshRendererComponent::OnSave(std::ofstream& OutStream)
 #endif
 
 	// mesh cache
-	UUID Dummy{};
+	UHGUID Dummy{};
 	if (MeshCache != nullptr)
 	{
 		UHGUID Id = MeshCache->GetRuntimeGuid();

@@ -15,11 +15,11 @@ UHObject::UHObject()
 #if _WIN32
 	UUID TempGuid;
 	UuidCreate(&TempGuid);
-	memcpy(RuntimeGuid.data(), &TempGuid, sizeof(TempGuid));
+	UHMEMCOPY(RuntimeGuid.data(), &TempGuid, sizeof(TempGuid));
 #elif __linux__
 	uuid_t TempGuid;
 	uuid_generate(TempGuid);
-	memcpy(RuntimeGuid.data(), TempGuid, sizeof(TempGuid));
+	UHMEMCOPY(RuntimeGuid.data(), TempGuid, sizeof(TempGuid));
 #endif
 	
 	Version = 0;

@@ -77,14 +77,14 @@ namespace UHMathHelpers
 
         if (M[0][0] == 1.0f)
         {
-            Yaw = std::atan2f(M[0][2], M[2][3]);
+            Yaw = std::atan2(M[0][2], M[2][3]);
             Pitch = 0;
             Roll = 0;
 
         }
         else if (M[0][0] == -1.0f)
         {
-            Yaw = std::atan2f(M[0][2], M[2][3]);
+            Yaw = std::atan2(M[0][2], M[2][3]);
             Pitch = 0;
             Roll = 0;
         }
@@ -164,7 +164,7 @@ namespace UHMathHelpers
 
     float RoundUpToMultiple(float InVal, float InMultiple)
     {
-        return std::roundf(InVal / InMultiple) * InMultiple;
+        return std::round(InVal / InMultiple) * InMultiple;
     }
 
     // matrix functions
@@ -530,7 +530,7 @@ void UHBoundingFrustum::Transform(UHBoundingFrustum& Out, UHMatrix4x4 M) const n
     float DotY = UHMathHelpers::UHVector3Dot(R1, R1);
     float DotZ = UHMathHelpers::UHVector3Dot(R2, R2);
     float MaxD = std::max(DotX, std::max(DotY, DotZ));
-    float Scale = std::sqrtf(MaxD);
+    float Scale = std::sqrt(MaxD);
 
     Out.Near = Near * Scale;
     Out.Far = Far * Scale;

@@ -10,6 +10,7 @@
 #include "../Classes/Sampler.h"
 #include "../Classes/GPUQuery.h"
 #include "../Classes/Thread.h"
+#include "../Engine/GameTimer.h"
 #include "RenderingTypes.h"
 #include "RendererShared.h"
 #include "RenderBuilder.h"
@@ -53,8 +54,8 @@
 #if WITH_EDITOR
 #include "ShaderClass/PostProcessing/DebugViewShader.h"
 #include "ShaderClass/PostProcessing/DebugBoundShader.h"
-#endif
 #include "../../Editor/Editor/Profiler.h"
+#endif
 
 #define UH_SAFE_RELEASE_TEX(x) GraphicInterface->RequestReleaseRT(x); x = nullptr;
 
@@ -401,7 +402,7 @@ private:
 
 	// -------------------------------------------- Post processing Pass -------------------------------------------- //
 	// post process needs to use two textures and keep blit to each other, so the effects can be accumulated
-	static const int32_t NumOfPostProcessRT = 2;
+	static constexpr int32_t NumOfPostProcessRT = 2;
 	int32_t PostProcessResultIdx;
 	UHRenderPassObject PostProcessPassObj[NumOfPostProcessRT];
 	UHRenderTexture* PostProcessResults[NumOfPostProcessRT];
@@ -480,7 +481,7 @@ private:
 
 	// max element setting for counting sort, higher number = better result for GPU time but longer CPU time
 	// lower = better CPU time but longer GPU time, need to trade off between these.
-	static const int32_t MaxCountingElement = 4096;
+	static constexpr int32_t MaxCountingElement = 4096;
 	std::vector<UHMeshRendererComponent*> CountingRenderers[MaxCountingElement];
 
 	UHGPUQuery* OcclusionQuery[GMaxFrameInFlight];

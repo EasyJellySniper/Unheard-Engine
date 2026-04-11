@@ -1,8 +1,9 @@
 #include "PlatformInput.h"
 #include "../../framework.h"
-#include <hidusage.h>
 
 #if _WIN32
+
+#include <hidusage.h>
 
 bool UHPlatformInput::InitInput()
 {

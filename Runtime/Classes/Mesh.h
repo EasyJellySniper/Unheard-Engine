@@ -93,8 +93,8 @@ public:
 
 	// meshlet stuff, a mesh can be divided into multiple meshlets
 	// try to keep the MaxVertexPerMeshlet a multiply of 3 of MaxPrimitivePerMeshlet
-	static const uint32_t MaxVertexPerMeshlet = 126;
-	static const uint32_t MaxPrimitivePerMeshlet = 42;
+	static constexpr uint32_t MaxVertexPerMeshlet = 126;
+	static constexpr uint32_t MaxPrimitivePerMeshlet = 42;
 
 private:
 	void CheckAndConvertToIndices16();

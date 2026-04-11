@@ -84,14 +84,14 @@ VkClearColorValue GBlackClearColor = { 0.0f,0.0f,0.0f,1.0f };
 VkClearColorValue GWhiteClearColor = { 1.0f,1.0f,1.0f,1.0f };
 VkClearColorValue GTransparentClearColor = { 0.0f,0.0f,0.0f,0.0f };
 
-inline std::vector<UHTexture*> GetGBuffersSRV()
+std::vector<UHTexture*> GetGBuffersSRV()
 {
 	// get the GBuffer used in SRV
 	std::vector<UHTexture*> GBuffers = { GSceneDiffuse, GSceneNormal, GSceneMaterial, GSceneDepth };
 	return GBuffers;
 }
 
-inline UHTexture2D* CreateTexture2D(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight
+UHTexture2D* CreateTexture2D(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight
 	, UHTextureFormat InFormat, std::string InName)
 {
 	VkExtent2D Size;
@@ -106,7 +106,7 @@ inline UHTexture2D* CreateTexture2D(UHGraphic* InGfx, uint32_t InWidth, uint32_t
 	return InGfx->RequestTexture2D(Tex, false);
 }
 
-inline UHTextureCube* CreateTextureCube(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight
+UHTextureCube* CreateTextureCube(UHGraphic* InGfx, uint32_t InWidth, uint32_t InHeight
 	, UHTextureFormat InFormat, std::string InName, bool bIsReadWrite)
 {
 	VkExtent2D Size;

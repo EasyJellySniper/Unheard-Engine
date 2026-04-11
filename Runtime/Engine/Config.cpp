@@ -175,7 +175,7 @@ void UHConfigManager::SaveConfig()
 {
 	ApplyConfig();
 
-	std::ofstream FileOut(L"UHESettings.ini", std::ios::out);
+	std::ofstream FileOut("UHESettings.ini", std::ios::out);
 	if (FileOut.is_open())
 	{
 		for (size_t SectionIdx = 0; SectionIdx < UHESettings.size(); SectionIdx++)

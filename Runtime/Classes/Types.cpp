@@ -78,7 +78,7 @@ float UHColorRGB::Lumin() const
 
 float UHColorRGB::Length() const
 {
-    return sqrtf((R * R + G * G + B * B));
+    return std::sqrt((R * R + G * G + B * B));
 }
 
 UHColorRGB& UHColorRGB::operator+=(const UHColorRGB& Rhs)

@@ -250,7 +250,7 @@ UHObject* UHAssetManager::ImportMesh(std::filesystem::path InPath)
 		}
 
 		Result = LoadedMesh.get();
-		UHMeshes.push_back(std::move(LoadedMesh));
+		UHMeshes.push_back(UHMOVE(LoadedMesh));
 	}
 
 	return Result;
@@ -610,7 +610,7 @@ void UHAssetManager::AddTexture2D(UHTexture2D* InTexture2D)
 void UHAssetManager::AddImportedMesh(UniquePtr<UHMesh>& InMesh)
 {
 	UHMeshesCache.push_back(InMesh.get());
-	UHMeshes.push_back(std::move(InMesh));
+	UHMeshes.push_back(UHMOVE(InMesh));
 }
 
 UHAssetManager* UHAssetManager::GetAssetMgrEditor()

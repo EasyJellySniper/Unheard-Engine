@@ -1,9 +1,8 @@
 #include "Client.h"
 
 #if _WIN32
-#include <Windows.h>
+
 #include "Runtime/CoreGlobals.h"
-#include "resource.h"
 
 void UHClient::SetWindowPosition(const int32_t Width, const int32_t Height)
 {
@@ -79,18 +78,25 @@ bool UHClient::IsQuit()
 	return bIsQuit;
 }
 
-bool UHClient::ProcessEvents()
+void UHClient::ProcessEvents()
 {
-	bool bHasMessage = false;
-	MSG msg = {};
-	if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-		bHasMessage = true;
-	}
+	MSG Msg = {};
+	bIsQuit = false;
 
-	bIsQuit = (msg.message == WM_QUIT);
-	return bHasMessage;
+	// process all events at once
+	while (PeekMessage(&Msg, 0, 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&Msg);
+		DispatchMessage(&Msg);
+		bIsQuit |= (Msg.message == WM_QUIT);
+	}
+}
+
+int32_t UHClient::GetDisplayFrequency() const
+{
+	DEVMODE DevMode;
+	DevMode.dmSize = sizeof(DEVMODE);
+	EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &DevMode);
+	return static_cast<int32_t>(DevMode.dmDisplayFrequency);
 }
 #endif

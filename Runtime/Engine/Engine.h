@@ -14,8 +14,8 @@
 
 #if WITH_EDITOR
 #include "../../Editor/Editor/Editor.h"
-#endif
 #include "../../Editor/Editor/Profiler.h"
+#endif
 
 enum class UHEngineResizeReason
 {
@@ -114,12 +114,11 @@ private:
 #if WITH_EDITOR
 	// editor class
 	UniquePtr<UHEditor> UHEEditor;
-#endif
-	std::string WindowCaption;
-
 	// profiler class
 	UHProfiler UHEProfiler;
 	UHProfiler EngineUpdateProfile;
+#endif
+	std::string WindowCaption;
 
 	// scene define
 	UniquePtr<UHScene> CurrentScene;

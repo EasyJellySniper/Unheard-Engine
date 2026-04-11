@@ -22,9 +22,15 @@ find_package(glfw3 REQUIRED)
 target_link_libraries(UnheardEngine_Linux PRIVATE glfw)
 
 # Vulkan lib
+set(CMAKE_PREFIX_PATH $ENV{VULKAN_SDK})
 find_package(Vulkan REQUIRED)
 target_link_libraries(UnheardEngine_Linux PRIVATE Vulkan::Vulkan)
-set(CMAKE_PREFIX_PATH $ENV{VULKAN_SDK})
+
+# UUID lib
+target_link_libraries(UnheardEngine_Linux PRIVATE uuid)
+
+# X11/XCB lib
+target_link_libraries(UnheardEngine_Linux PRIVATE X11 X11-xcb xcb)
 
 # headers
 target_include_directories(UnheardEngine_Linux PRIVATE

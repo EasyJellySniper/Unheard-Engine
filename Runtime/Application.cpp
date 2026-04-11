@@ -47,55 +47,59 @@ int32_t UHApplication::Run()
 
 	// game engine loop
 	UHClient* Client = Platform->GetClient();
-	while (!Client->IsQuit())
+	while (true)
 	{
-		if (!Client->ProcessEvents())
+		// process client events
+		Client->ProcessEvents();
+		if (Client->IsQuit())
 		{
-			// call the game loop
-			if (Engine)
+			break;
+		}
+
+		// call the game loop
+		if (Engine)
+		{
+			Engine->BeginFPSLimiter();
+#if WITH_EDITOR
+			Engine->BeginProfile();
+			ImGui_ImplVulkan_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			ImGui::NewFrame();
+
+			// profile does not contain editor update time
+			Engine->GetEditor()->OnEditorUpdate();
+#endif
+
+			// update anyway, could consider adding a setting to decide wheter to pause update when it's minimized
+			Engine->Update();
+
+#if WITH_EDITOR
+			ImGui::Render();
+#endif
+
+			// only call render loop when it's not minimized
+			if (!Client->IsWindowMinimized())
 			{
-				Engine->BeginFPSLimiter();
-#if WITH_EDITOR
-				Engine->BeginProfile();
-				ImGui_ImplVulkan_NewFrame();
-				ImGui_ImplWin32_NewFrame();
-				ImGui::NewFrame();
-
-				// profile does not contain editor update time
-				Engine->GetEditor()->OnEditorUpdate();
-#endif
-
-				// update anyway, could consider adding a setting to decide wheter to pause update when it's minimized
-				Engine->Update();
-
-#if WITH_EDITOR
-				ImGui::Render();
-#endif
-
-				// only call render loop when it's not minimized
-				if (!Client->IsWindowMinimized())
-				{
-					Engine->RenderLoop();
-				}
+				Engine->RenderLoop();
+			}
 
 #if WITH_EDITOR               
-				// tricky workaround for HDR toggling, when the platform window of ImGui is outside the main window
-				// the window needs to be re-created to match the swapchain format
-				static bool bIsHDRAvailablePrev = Engine->GetGfx()->IsHDRAvailable();
-				ImGui::UpdatePlatformWindows(bIsHDRAvailablePrev != Engine->GetGfx()->IsHDRAvailable());
-				bIsHDRAvailablePrev = Engine->GetGfx()->IsHDRAvailable();
+			// tricky workaround for HDR toggling, when the platform window of ImGui is outside the main window
+			// the window needs to be re-created to match the swapchain format
+			static bool bIsHDRAvailablePrev = Engine->GetGfx()->IsHDRAvailable();
+			ImGui::UpdatePlatformWindows(bIsHDRAvailablePrev != Engine->GetGfx()->IsHDRAvailable());
+			bIsHDRAvailablePrev = Engine->GetGfx()->IsHDRAvailable();
 
-				// assume multi-view is always enabled
-				ImGui_Vulkan_CustomData CustomData{};
-				CustomData.Pipeline = Engine->GetGfx()->GetImGuiPipeline();
-				ImGui::RenderPlatformWindowsDefault(nullptr, &CustomData);
+			// assume multi-view is always enabled
+			ImGui_Vulkan_CustomData CustomData{};
+			CustomData.Pipeline = Engine->GetGfx()->GetImGuiPipeline();
+			ImGui::RenderPlatformWindowsDefault(nullptr, &CustomData);
 #endif
 
-				Engine->EndFPSLimiter();
+			Engine->EndFPSLimiter();
 #if WITH_EDITOR
-				Engine->EndProfile();
+			Engine->EndProfile();
 #endif
-			}
 		}
 	}
 

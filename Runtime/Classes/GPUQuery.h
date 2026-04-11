@@ -49,11 +49,11 @@ public:
 	UHGPUTimeQueryScope(VkCommandBuffer InCmd, UHGPUQuery* InQuery, std::string InName);
 	~UHGPUTimeQueryScope();
 
+#if WITH_EDITOR
 	static const std::vector<UHGPUQuery*>& GetResiteredGPUTime();
 	static void ClearRegisteredGPUTime();
 
 private:
-#if WITH_EDITOR
 	UHGPUQuery* GPUTimeQuery;
 	VkCommandBuffer Cmd;
 

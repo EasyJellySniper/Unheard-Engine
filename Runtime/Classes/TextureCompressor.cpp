@@ -284,7 +284,7 @@ namespace UHTextureCompressor
 		for (size_t Idx = 0; Idx < RGBInt.size(); Idx++)
 		{
 			Imf::Rgba RGBAHalf{};
-			memcpy_s(&RGBAHalf, Stride, Input.data() + Idx * Stride, Stride);
+			UHMEMCOPY(&RGBAHalf, Input.data() + Idx * Stride, Stride);
 
 			RGBInt[Idx].R = RGBAHalf.r.bits();
 			RGBInt[Idx].G = RGBAHalf.g.bits();

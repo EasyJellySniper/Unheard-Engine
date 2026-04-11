@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cmath>
 #if _WIN32
 #define NOMINMAX
 #include <Windows.h>

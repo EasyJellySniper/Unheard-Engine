@@ -584,10 +584,10 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 	if (!UHUtilities::FindByElement(ImportedMaterialNames, NewMat->GetSourcePath()))
 	{
 		ImportedMaterialNames.push_back(NewMat->GetSourcePath());
-		ImportedMaterial.push_back(std::move(NewMat));
+		ImportedMaterial.push_back(UHMOVE(NewMat));
 	}
 
-	ImportedMesh.push_back(std::move(NewMesh));
+	ImportedMesh.push_back(UHMOVE(NewMesh));
 }
 
 void UHFbxImporter::ImportCameras(FbxNode* InNode, std::vector<UHFbxCameraData>& ImportedCameraData)

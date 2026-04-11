@@ -140,7 +140,7 @@ void UHGraphNodeGUI::Init(HINSTANCE InInstance, HWND InParent, UHGraphNode* InNo
 
 				Inputs[Idx]->SetPinGUI(NewPin.get());
 				ShowWindow(NewPin->GetHwnd(), SW_SHOW);
-				InputsButton.push_back(std::move(NewPin));
+				InputsButton.push_back(UHMOVE(NewPin));
 			}
 
 			// add edit control if it's requested
@@ -154,7 +154,7 @@ void UHGraphNodeGUI::Init(HINSTANCE InInstance, HWND InParent, UHGraphNode* InNo
 
 				MaxWidth = (std::max)(MaxWidth, (int32_t)TextSize.cx + 40 + InputTextFieldLength);
 				ShowWindow(NewEdit->GetHwnd(), SW_SHOW);
-				InputsTextFields.push_back(std::move(NewEdit));
+				InputsTextFields.push_back(UHMOVE(NewEdit));
 			}
 		}
 	}
@@ -183,7 +183,7 @@ void UHGraphNodeGUI::Init(HINSTANCE InInstance, HWND InParent, UHGraphNode* InNo
 
 			Outputs[Idx]->SetPinGUI(NewPin.get());
 			ShowWindow(NewPin->GetHwnd(), SW_SHOW);
-			OutputsButton.push_back(std::move(NewPin));
+			OutputsButton.push_back(UHMOVE(NewPin));
 		}
 	}
 	MaxHeight = (std::max)(MaxHeight, MaxHeightOutput);

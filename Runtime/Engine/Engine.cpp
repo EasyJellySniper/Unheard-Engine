@@ -42,7 +42,7 @@ void UHEngine::SaveConfig()
 }
 
 // NTSC frequencies fixup
-float FixupNTSCFrequency(DWORD InFrequency)
+float FixupNTSCFrequency(int32_t InFrequency)
 {
 	switch (InFrequency)
 	{
@@ -65,12 +65,6 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	GMainThreadID = std::this_thread::get_id();
 	GCurrentThreadID = GMainThreadID;
 
-	// cache current monitor refresh rate, also consider the NTSC frequencies
-	DEVMODE DevMode;
-	DevMode.dmSize = sizeof(DEVMODE);
-	EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &DevMode);
-	DisplayFrequency = FixupNTSCFrequency(DevMode.dmDisplayFrequency);
-
 	// init asset manager
 	UHEAsset = MakeUnique<UHAssetManager>();
 
@@ -78,6 +72,9 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	const UHPresentationSettings PresentationSettings = UHEConfig->PresentationSetting();
 	UHEClient = InClient;
 	UHEClient->SetWindowCaption(WindowCaption);
+
+	// cache current monitor refresh rate, also consider the NTSC frequencies
+	DisplayFrequency = FixupNTSCFrequency(UHEClient->GetDisplayFrequency());
 
 	UHEGraphic = MakeUnique<UHGraphic>(UHEAsset.get(), UHEConfig.get());
 	if (!UHEGraphic->InitGraphics(UHEClient))
@@ -107,9 +104,11 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	UHEGameTimer = MakeUnique<UHGameTimer>();
 	UHEGameTimer->Reset();
 
+#if WITH_EDITOR
 	// init profiler
 	UHEProfiler = UHProfiler(UHEGameTimer.get());
 	EngineUpdateProfile = UHProfiler(UHEGameTimer.get());
+#endif
 
 	// sync full screen state to graphic
 	UHEGraphic->ToggleFullScreen(PresentationSettings.bFullScreen);
@@ -173,7 +172,9 @@ bool UHEngine::IsEngineInitialized()
 // engine updates
 void UHEngine::Update()
 {
+#if WITH_EDITOR
 	UHProfilerScope Profiler(&EngineUpdateProfile);
+#endif
 
 	// timer tick
 	UHEGameTimer->Tick();
@@ -188,20 +189,20 @@ void UHEngine::Update()
 	}
 
 	// full screen toggling
-	if (UHERawInput->IsKeyHold(VK_MENU) && UHERawInput->IsKeyUp(VK_RETURN))
+	if (UHERawInput->IsKeyHold(UH_ENUM_VALUE(UHSystemKey::Alt)) && UHERawInput->IsKeyUp(UH_ENUM_VALUE(UHSystemKey::Enter)))
 	{
 		UHEConfig->ToggleFullScreen();
 		ToggleFullScreen();
 	}
 
 	// TAA toggling
-	if (UHERawInput->IsKeyHold(VK_CONTROL) && UHERawInput->IsKeyUp('t'))
+	if (UHERawInput->IsKeyHold(UH_ENUM_VALUE(UHSystemKey::Control)) && UHERawInput->IsKeyUp('t'))
 	{
 		UHEConfig->ToggleTAA();
 	}
 
 	// vsync toggling
-	if (UHERawInput->IsKeyHold(VK_CONTROL) && UHERawInput->IsKeyUp('v'))
+	if (UHERawInput->IsKeyHold(UH_ENUM_VALUE(UHSystemKey::Control)) && UHERawInput->IsKeyUp('v'))
 	{
 		UHEConfig->ToggleVsync();
 		SetResizeReason(UHEngineResizeReason::ToggleVsync);

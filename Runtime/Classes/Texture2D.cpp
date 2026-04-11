@@ -164,7 +164,7 @@ void UHTexture2D::Recreate(bool bNeedGeneratMipmap, const std::vector<uint8_t>& 
 		const size_t OutputSize = CompressedData.size() * sizeof(uint64_t);
 		TextureData.clear();
 		TextureData.resize(OutputSize);
-		memcpy_s(TextureData.data(), OutputSize, CompressedData.data(), OutputSize);
+		UHMEMCOPY(TextureData.data(), CompressedData.data(), OutputSize);
 		TextureSettings.bIsCompressed = true;
 
 		// repeat the texture creation for compressed texture

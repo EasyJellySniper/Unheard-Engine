@@ -11,7 +11,10 @@ void UHClient::SetWindowPosition(const int32_t Width, const int32_t Height)
 void UHClient::GetWindowSize(int32_t& OutWidth, int32_t& OutHeight) const
 {
 	GLFWwindow* Window = (GLFWwindow*)NativeWindow;
-	glfwGetWindowSize(Window, OutWidth, OutHeight);
+	int TempWidth, TempHeight;
+	glfwGetWindowSize(Window, &TempWidth, &TempHeight);
+	OutWidth = TempWidth;
+	OutHeight = TempHeight;
 }
 
 void UHClient::SetWindowStyle(const bool bIsFullscreen, const int32_t Width, const int32_t Height)
@@ -33,7 +36,7 @@ void UHClient::SetWindowStyle(const bool bIsFullscreen, const int32_t Width, con
 			Mode->height,
 			Mode->refreshRate
 		);
-		glfwShowWindow(window);
+		glfwShowWindow(Window);
 	}
 	else
 	{
@@ -46,7 +49,7 @@ void UHClient::SetWindowStyle(const bool bIsFullscreen, const int32_t Width, con
 			Width, Height,
 			0
 		);
-		glfwShowWindow(window);
+		glfwShowWindow(Window);
 	}
 }
 
@@ -68,9 +71,18 @@ bool UHClient::IsQuit()
 	return glfwWindowShouldClose(Window);
 }
 
-bool UHClient::ProcessEvents()
+void UHClient::ProcessEvents()
 {
+	// process all events at once
 	glfwPollEvents();
+}
+
+int32_t UHClient::GetDisplayFrequency() const
+{
+	GLFWmonitor* Monitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* Mode = glfwGetVideoMode(Monitor);
+
+	return Mode->refreshRate;
 }
 
 #endif

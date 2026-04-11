@@ -17,9 +17,9 @@ public:
 	void BindSkyCube();
 
 	// set max recursion for the reflection, real recursion is still decided by material setting.
-	static const uint32_t MaxReflectionRecursion = 8;
-	static const int32_t ReflectionBlurStartMip = 2;
-	static const int32_t ReflectionMipsCount = 6;
+	static constexpr uint32_t MaxReflectionRecursion = 8;
+	static constexpr int32_t ReflectionBlurStartMip = 2;
+	static constexpr int32_t ReflectionMipsCount = 6;
 
 private:
 	std::vector<uint32_t> ClosestHitIDs;

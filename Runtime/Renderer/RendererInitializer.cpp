@@ -50,6 +50,7 @@ UHDeferredShadingRenderer::UHDeferredShadingRenderer(UHEngine* InEngine)
 	, MeshInstanceCount(0)
 	, bNeedGenerateSH9(true)
 	, RTIndirectOcclusionBFConsts(UHBilateralFilterConstants())
+	, RTIndirectDiffuseBFConsts(UHBilateralFilterConstants())
 {
 	for (int32_t Idx = 0; Idx < NumOfPostProcessRT; Idx++)
 	{
@@ -76,10 +77,13 @@ bool UHDeferredShadingRenderer::Initialize(UHScene* InScene)
 	// scene setup
 	CurrentScene = InScene;
 
-	// number of worker threads setup, UHE uses ALL cores by default
-	SYSTEM_INFO Sysinfo;
-	GetSystemInfo(&Sysinfo);
-	NumParallelWorkers = Sysinfo.dwNumberOfProcessors;
+	// number of worker threads setup, UHE checks ALL cores by default but clamp with the config settings
+	NumParallelWorkers = static_cast<int32_t>(std::thread::hardware_concurrency());
+	if (NumParallelWorkers == 0)
+	{
+		// fallback if hardware_concurrency() return 0
+		NumParallelWorkers = 8;
+	}
 
 	// number of parallel submitters, this combines the user specified value from config and clamp with max worker threads
 	NumParallelRenderSubmitters = ConfigInterface->RenderingSetting().ParallelSubmitters;

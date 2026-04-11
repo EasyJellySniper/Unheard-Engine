@@ -21,6 +21,7 @@ UHMaterial::UHMaterial()
 	, CompileFlag(UHMaterialCompileFlag::UpToDate)
 	, MaterialUsages(UHMaterialUsage{})
 	, MaterialBufferSize(0)
+	, MaterialRTDataCPU(UHRTMaterialData())
 #if WITH_EDITOR
 	, MaterialProps(UHMaterialProperty())
 	, bIsMaterialNodeDirty(false)
@@ -121,7 +122,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 		// allocate node by type
 		UniquePtr<UHGraphNode> NewNode = AllocateNewGraphNode(Type);
 		NewNode->InputData(FileIn);
-		EditNodes.push_back(std::move(NewNode));
+		EditNodes.push_back(UHMOVE(NewNode));
 	}
 
 	for (size_t Idx = 0; Idx < EditNodes.size(); Idx++)
@@ -255,7 +256,7 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	// fill the index of textures
 	for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
 	{
-		memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &RegisteredTextureIndexes[Idx], Stride);
+		UHMEMCOPY(MaterialConstantsCPU.data() + BufferAddress, &RegisteredTextureIndexes[Idx], Stride);
 		BufferAddress += Stride;
 	}
 
@@ -263,11 +264,11 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	MaterialNode->CopyMaterialParameter(MaterialConstantsCPU, BufferAddress);
 
 	// fill cutoff
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &CutoffValue, Stride);
+	UHMEMCOPY(MaterialConstantsCPU.data() + BufferAddress, &CutoffValue, Stride);
 	BufferAddress += Stride;
 
 	// copy blend mode
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &BlendMode, Stride);
+	UHMEMCOPY(MaterialConstantsCPU.data() + BufferAddress, &BlendMode, Stride);
 	BufferAddress += Stride;
 
 	// copy material usages
@@ -275,11 +276,11 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 	UsageValue |= MaterialUsages.bIsTangentSpace ? UH_ENUM_VALUE_U(UHMaterialFeatureBits::MaterialTangentSpace) : 0;
 	UsageValue |= MaterialUsages.bUseRefraction ? UH_ENUM_VALUE_U(UHMaterialFeatureBits::MaterialRefraction) : 0;
 
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &UsageValue, Stride);
+	UHMEMCOPY(MaterialConstantsCPU.data() + BufferAddress, &UsageValue, Stride);
 	BufferAddress += Stride;
 
 	// copy max reflection
-	memcpy_s(MaterialConstantsCPU.data() + BufferAddress, Stride, &MaxReflectionBounce, Stride);
+	UHMEMCOPY(MaterialConstantsCPU.data() + BufferAddress, &MaxReflectionBounce, Stride);
 	BufferAddress += Stride;
 
 	// upload material data, the BufferAddress should reach the end of material buffer at this point
@@ -294,17 +295,17 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 		// ** Start copy system values, be sure to adjust GRTMaterialDataStartIndex too! ** //
 
 		// copy cutoff
-		memset(&MaterialRTDataCPU, 0, sizeof(UHRTMaterialData));
-		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &CutoffValue, Stride);
+		UHMEMSET(&MaterialRTDataCPU, 0, sizeof(UHRTMaterialData));
+		UHMEMCOPY(&MaterialRTDataCPU.Data[DstIndex++], &CutoffValue, Stride);
 
 		// copy blend mode
-		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &BlendMode, Stride);
+		UHMEMCOPY(&MaterialRTDataCPU.Data[DstIndex++], &BlendMode, Stride);
 
 		// copy usage value
-		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &UsageValue, Stride);
+		UHMEMCOPY(&MaterialRTDataCPU.Data[DstIndex++], &UsageValue, Stride);
 
 		// copy max reflection value
-		memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &MaxReflectionBounce, Stride);
+		UHMEMCOPY(&MaterialRTDataCPU.Data[DstIndex++], &MaxReflectionBounce, Stride);
 
 		assert(DstIndex == GRTMaterialDataStartIndex);
 		// ** End copy system values ** //
@@ -312,9 +313,9 @@ void UHMaterial::UploadMaterialData(int32_t CurrFrame)
 		// copy texture indexes if necessary
 		for (size_t Idx = 0; Idx < RegisteredTextureIndexes.size(); Idx++)
 		{
-			memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &RegisteredTextureIndexes[Idx], Stride);
+			UHMEMCOPY(&MaterialRTDataCPU.Data[DstIndex++], &RegisteredTextureIndexes[Idx], Stride);
 			//@TODO: Custom sampler index? Be sure to modify the index in TextureNode.cpp too if this is going to be uncommented.
-			//memcpy_s(&MaterialRTDataCPU.Data[DstIndex++], Stride, &DefaultSamplerIndex, Stride);
+			//UHMEMCOPY(&MaterialRTDataCPU.Data[DstIndex++], &DefaultSamplerIndex, Stride);
 		}
 
 		// copy material parameters
@@ -673,7 +674,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		if (TextureNodeTable.find(Hash) == TextureNodeTable.end())
 		{
 			NewTexNode = MakeUnique<UHTexture2DNode>(InName);
-			EditNodes.push_back(std::move(NewTexNode));
+			EditNodes.push_back(UHMOVE(NewTexNode));
 			TextureNodeTable[Hash] = EditNodes.back().get();
 			EditGUIRelativePos.push_back(InPos);
 		}
@@ -692,7 +693,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 			}
 		}
 
-		EditNodes.push_back(std::move(InNewNode));
+		EditNodes.push_back(UHMOVE(InNewNode));
 		EditGUIRelativePos.push_back(InPos);
 		ParameterNodeTable.push_back(EditNodes.back().get());
 		return EditNodes.back().get();
@@ -718,7 +719,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* DiffusePin = NewParameterNode->GetOutputs()[0].get();
 
 		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
-		EditNodes.push_back(std::move(NewNode));
+		EditNodes.push_back(UHMOVE(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
 		EditGUIRelativePos.push_back(Pos);
@@ -754,7 +755,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* OcclusionPin = NewParameterNode->GetOutputs()[0].get();
 
 		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
-		EditNodes.push_back(std::move(NewNode));
+		EditNodes.push_back(UHMOVE(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
 		EditGUIRelativePos.push_back(Pos);
@@ -791,7 +792,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* SpecularPin = NewParameterNode->GetOutputs()[0].get();
 
 		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
-		EditNodes.push_back(std::move(NewNode));
+		EditNodes.push_back(UHMOVE(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
 		EditGUIRelativePos.push_back(Pos);
@@ -817,7 +818,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* NormalPin = NewParameterNode->GetOutputs()[0].get();
 
 		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
-		EditNodes.push_back(std::move(NewNode));
+		EditNodes.push_back(UHMOVE(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
 		EditGUIRelativePos.push_back(Pos);
@@ -844,7 +845,7 @@ void UHMaterial::GenerateDefaultMaterialNodes()
 		UHGraphPin* OpacityPin = NewParameterNode->GetOutputs()[0].get();
 
 		NewNode = MakeUnique<UHMathNode>(UHMathNodeOperator::Multiply);
-		EditNodes.push_back(std::move(NewNode));
+		EditNodes.push_back(UHMOVE(NewNode));
 		Pos.x = -GUIToLeft;
 		Pos.y += GUIStepY;
 		EditGUIRelativePos.push_back(Pos);

@@ -70,7 +70,7 @@ std::vector<uint8_t> UHTextureImporter::LoadTexture(std::filesystem::path Filena
 		// allocate W * H * sizeof(R16G16B16A16)
 		size_t Size = Width * Height * sizeof(Imf::Rgba);
 		Texture.resize(Size);
-		memcpy_s(&Texture[0], Size, &Pixels[0][0], Size);
+		UHMEMCOPY(&Texture[0], &Pixels[0][0], Size);
 	}
 	else
 	{

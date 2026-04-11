@@ -45,15 +45,7 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_get_physical_device_properties2"
 		, "VK_EXT_swapchain_colorspace" };
 
-	// platform-based extensions
-#if _WIN32
-	InstanceExtensions.push_back("VK_KHR_win32_surface");
-#elif __linux__
-	InstanceExtensions.push_back("VK_KHR_xcb_surface");
-#endif
-
 	DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME
-		, "VK_EXT_full_screen_exclusive"
 		, "VK_KHR_spirv_1_4"
 		, "VK_KHR_shader_float_controls"
 		, "VK_EXT_robustness2"
@@ -65,6 +57,14 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_EXT_descriptor_indexing"
 		, "VK_EXT_mesh_shader"
 		, "VK_KHR_shader_subgroup_extended_types" };
+
+	// platform-based extensions
+#if _WIN32
+	InstanceExtensions.push_back("VK_KHR_win32_surface");
+	DeviceExtensions.push_back("VK_EXT_full_screen_exclusive");
+#elif __linux__
+	InstanceExtensions.push_back("VK_KHR_xcb_surface");
+#endif
 
 	RayTracingExtensions = { "VK_KHR_deferred_host_operations"
 		, "VK_KHR_acceleration_structure"
@@ -1044,7 +1044,7 @@ UHGPUQuery* UHGraphic::RequestGPUQuery(uint32_t Count, VkQueryType QueueType)
 	NewQuery->SetGfxCache(this);
 	NewQuery->CreateQueryPool(Count, QueueType);
 
-	QueryPools.push_back(std::move(NewQuery));
+	QueryPools.push_back(UHMOVE(NewQuery));
 	return QueryPools.back().get();
 }
 
@@ -1078,7 +1078,7 @@ UHRenderTexture* UHGraphic::RequestRenderTexture(std::string InName, VkExtent2D 
 	NewRT->SetGfxCache(this);
 	if (NewRT->CreateRT())
 	{
-		RTPools.push_back(std::move(NewRT));
+		RTPools.push_back(UHMOVE(NewRT));
 		return RTPools.back().get();
 	}
 
@@ -1117,7 +1117,7 @@ UHTexture2D* UHGraphic::RequestTexture2D(UniquePtr<UHTexture2D>& LoadedTex, bool
 
 	if (LoadedTex->CreateTexture(bUseSharedMemory))
 	{
-		Texture2DPools.push_back(std::move(LoadedTex));
+		Texture2DPools.push_back(UHMOVE(LoadedTex));
 		return Texture2DPools.back().get();
 	}
 
@@ -1202,7 +1202,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 
 	if (NewCube->CreateCube(InTextures))
 	{
-		TextureCubePools.push_back(std::move(NewCube));
+		TextureCubePools.push_back(UHMOVE(NewCube));
 		return TextureCubePools.back().get();
 	}
 
@@ -1222,7 +1222,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(UniquePtr<UHTextureCube>& LoadedCub
 
 	if (LoadedCube->CreateCube())
 	{
-		TextureCubePools.push_back(std::move(LoadedCube));
+		TextureCubePools.push_back(UHMOVE(LoadedCube));
 		return TextureCubePools.back().get();
 	}
 
@@ -1248,7 +1248,7 @@ void UHGraphic::RequestReleaseTextureCube(UHTextureCube* InCube)
 UHMaterial* UHGraphic::RequestMaterial()
 {
 	UniquePtr<UHMaterial> NewMat = MakeUnique<UHMaterial>();
-	MaterialPools.push_back(std::move(NewMat));
+	MaterialPools.push_back(UHMOVE(NewMat));
 	return MaterialPools.back().get();
 }
 
@@ -1261,7 +1261,7 @@ UHMaterial* UHGraphic::RequestMaterial(std::filesystem::path InPath)
 	{
 		NewMat->SetGfxCache(this);
 		NewMat->PostImport();
-		MaterialPools.push_back(std::move(NewMat));
+		MaterialPools.push_back(UHMOVE(NewMat));
 		return MaterialPools.back().get();
 	}
 
@@ -1285,7 +1285,7 @@ UniquePtr<UHAccelerationStructure> UHGraphic::RequestAccelerationStructure()
 	UniquePtr<UHAccelerationStructure> NewAS = MakeUnique<UHAccelerationStructure>();
 	NewAS->SetGfxCache(this);
 
-	return std::move(NewAS);
+	return UHMOVE(NewAS);
 }
 
 bool UHGraphic::CreateShaderModule(UniquePtr<UHShader>& NewShader, std::filesystem::path OutputShaderPath)
@@ -1349,7 +1349,7 @@ uint32_t UHGraphic::RequestShader(std::string InShaderName, std::filesystem::pat
 		return -1;
 	}
 
-	ShaderPools.push_back(std::move(NewShader));
+	ShaderPools.push_back(UHMOVE(NewShader));
 	return ShaderPools.back()->GetId();
 }
 
@@ -1388,7 +1388,7 @@ uint32_t UHGraphic::RequestMaterialShader(std::string InShaderName, std::filesys
 		return -1;
 	}
 
-	ShaderPools.push_back(std::move(NewShader));
+	ShaderPools.push_back(UHMOVE(NewShader));
 	return ShaderPools.back()->GetId();
 }
 
@@ -1429,7 +1429,7 @@ UHGraphicState* UHGraphic::RequestGraphicState(UHRenderPassInfo InInfo)
 	}
 
 	NewState->IncreaseRefCount();
-	StatePools.push_back(std::move(NewState));
+	StatePools.push_back(UHMOVE(NewState));
 	return StatePools.back().get();
 }
 
@@ -1477,7 +1477,7 @@ UHGraphicState* UHGraphic::RequestRTState(UHRayTracingInfo InInfo)
 	}
 
 	NewState->IncreaseRefCount();
-	StatePools.push_back(std::move(NewState));
+	StatePools.push_back(UHMOVE(NewState));
 	return StatePools.back().get();
 }
 
@@ -1502,7 +1502,7 @@ UHComputeState* UHGraphic::RequestComputeState(UHComputePassInfo InInfo)
 	}
 
 	NewState->IncreaseRefCount();
-	StatePools.push_back(std::move(NewState));
+	StatePools.push_back(UHMOVE(NewState));
 	return StatePools.back().get();
 }
 
@@ -1524,7 +1524,7 @@ UHSampler* UHGraphic::RequestTextureSampler(UHSamplerInfo InInfo)
 		return nullptr;
 	}
 
-	SamplerPools.push_back(std::move(NewSampler));
+	SamplerPools.push_back(UHMOVE(NewSampler));
 	return SamplerPools.back().get();
 }
 
@@ -1932,20 +1932,20 @@ bool UHGraphic::CreateSwapChain()
 	CreateInfo.clipped = VK_TRUE;
 	CreateInfo.oldSwapchain = nullptr;
 
+#if _WIN32
 	// prepare fullscreen stuff, set to VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT and let the driver do the work
 	VkSurfaceFullScreenExclusiveInfoEXT FullScreenInfo{};
 	FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
 	FullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
 
-#if _WIN32
 	// Windows only exclusive fullscreen setup
 	VkSurfaceFullScreenExclusiveWin32InfoEXT Win32FullScreenInfo{};
 	Win32FullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
 	Win32FullScreenInfo.hmonitor = MonitorFromWindow((HWND)ClientCache->GetNativeWindow(), MONITOR_DEFAULTTOPRIMARY);
 	FullScreenInfo.pNext = &Win32FullScreenInfo;
-#endif
 
 	CreateInfo.pNext = &FullScreenInfo;
+#endif
 
 	if (vkCreateSwapchainKHR(LogicalDevice, &CreateInfo, nullptr, &SwapChain) != VK_SUCCESS)
 	{

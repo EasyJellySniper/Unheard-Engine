@@ -1,7 +1,14 @@
 #pragma once
 #include <cstdint>
+// cross-platform input header
 
-// cross-platform input
+enum class UHSystemKey
+{
+	Enter = 0x0D,
+	Control = 0x11,
+	Alt = 0x12
+};
+
 class UHClient;
 class UHPlatformInput
 {
@@ -52,7 +59,7 @@ private:
 	// key state, true for keydown false for keyup
 	// the keypoint is to decide key up/hold/down event with states
 	// the states are stored Virtual-Key based codes, so bCurrentKeyState[65] = true means "A" is pressed.
-	static const int32_t MaxKeyStates = 256;
+	static constexpr int32_t MaxKeyStates = 256;
 	bool bPreviousKeyState[MaxKeyStates];
 	bool bCurrentKeyState[MaxKeyStates];
 

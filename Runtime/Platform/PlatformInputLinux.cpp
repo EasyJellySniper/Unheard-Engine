@@ -3,6 +3,7 @@
 #if __linux__
 
 #include "Runtime/Platform/Client.h"
+#include "Runtime/CoreGlobals.h"
 UHPlatformInput* GPlatformInput;
 
 // mouse button callback
@@ -64,30 +65,25 @@ void KeyboardCallback(GLFWwindow* Window, int32_t Key, int32_t Scancode, int32_t
 	bool bPressed = (Action == GLFW_PRESS);
 
 	// bCurrentKeyState[Key] = bPressed
-	if (isalpha(CharKey))
+	if (isalpha((char)Key))
 	{
 		GPlatformInput->SetKeyPressed((char)Key, bPressed);
 	}
 	else
 	{
-		// deal with system key mapping, since it's now reusing the table from Windows Vk Keys, conversions are needed before setting states
-		// @TODO: Refactor this somewhere else, this is now just for quick testing
 		if (Key == GLFW_KEY_LEFT_ALT || Key == GLFW_KEY_RIGHT_ALT)
 		{
-			// VK_MENU = 0x12
-			GPlatformInput->SetKeyPressed(0x12, bPressed);
+			GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Alt), bPressed);
 		}
 
 		if (Key == GLFW_KEY_LEFT_CONTROL || Key == GLFW_KEY_RIGHT_CONTROL)
 		{
-			// VK_CONTROL = 0x11
-			GPlatformInput->SetKeyPressed(0x11, bPressed);
+			GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Control), bPressed);
 		}
 		
 		if (Key == GLFW_KEY_ENTER)
 		{
-			// VK_RETURN = 0x0D
-			GPlatformInput->SetKeyPressed(0x0D, bPressed);
+			GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Enter), bPressed);
 		}
 	}
 }

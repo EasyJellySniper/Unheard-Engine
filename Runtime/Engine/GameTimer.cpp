@@ -9,11 +9,11 @@ std::vector<std::pair<std::string, float>> UHGameTimerScope::RegisteredGameTime;
 
 UHGameTimer::UHGameTimer()
 	: DeltaTime(0.0)
-	, BaseTime(UHClock::time_point())
-	, PausedTime(UHClock::time_point())
-	, StopTime(UHClock::time_point())
-	, PreviousTime(UHClock::time_point())
-	, CurrentTime(UHClock::time_point())
+	, BaseTimePoint(UHClock::time_point())
+	, PausedTimePoint(UHClock::time_point())
+	, StopTimePoint(UHClock::time_point())
+	, PreviousTimePoint(UHClock::time_point())
+	, CurrentTimePoint(UHClock::time_point())
 	, bStopped(false)
 {
 
@@ -25,14 +25,14 @@ float UHGameTimer::GetTotalTime() const
 {
 	if (bStopped)
 	{
-		auto D0 = StopTime - PausedTime;
-		auto D1 = PausedTime - BaseTime;
+		auto D0 = StopTimePoint - PausedTimePoint;
+		auto D1 = PausedTimePoint - BaseTimePoint;
 
 		return std::chrono::duration<float>(D0 + D1).count();
 	}
 
-	auto D0 = CurrentTime - PausedTime;
-	auto D1 = PausedTime - BaseTime;
+	auto D0 = CurrentTimePoint - PausedTimePoint;
+	auto D1 = PausedTimePoint - BaseTimePoint;
 	return std::chrono::duration<float>(D0 + D1).count();
 }
 
@@ -49,9 +49,9 @@ UHClock::time_point UHGameTimer::GetTime() const
 
 void UHGameTimer::Reset()
 {
-	BaseTime = UHClock::now();
-	PreviousTime = BaseTime;
-	StopTime = UHClock::time_point();
+	BaseTimePoint = UHClock::now();
+	PreviousTimePoint = BaseTimePoint;
+	StopTimePoint = UHClock::time_point();
 	bStopped = false;
 }
 
@@ -61,9 +61,9 @@ void UHGameTimer::Start()
 	if (bStopped)
 	{
 		UHClock::time_point StartTime = UHClock::now();
-		PausedTime += StartTime - StopTime;
-		PreviousTime = StartTime;
-		StopTime = UHClock::time_point();
+		PausedTimePoint += StartTime - StopTimePoint;
+		PreviousTimePoint = StartTime;
+		StopTimePoint = UHClock::time_point();
 		bStopped = false;
 	}
 }
@@ -72,7 +72,7 @@ void UHGameTimer::Stop()
 {
 	if (!bStopped)
 	{
-		StopTime = UHClock::now();
+		StopTimePoint = UHClock::now();
 		bStopped = true;
 	}
 }
@@ -85,13 +85,13 @@ void UHGameTimer::Tick()
 		return;
 	}
 
-	CurrentTime = UHClock::now();
+	CurrentTimePoint = UHClock::now();
 
 	// Time difference between this frame and the previous.
-	DeltaTime = std::chrono::duration<double>(CurrentTime - PreviousTime).count();
+	DeltaTime = std::chrono::duration<double>(CurrentTimePoint - PreviousTimePoint).count();
 
 	// Prepare for next frame.
-	PreviousTime = CurrentTime;
+	PreviousTimePoint = CurrentTimePoint;
 
 	if (DeltaTime < 0.0)
 	{
@@ -135,18 +135,16 @@ UHGameTimerScope::~UHGameTimerScope()
 #endif
 }
 
+#if WITH_EDITOR
 const std::vector<std::pair<std::string, float>>& UHGameTimerScope::GetResiteredGameTime()
 {
-#if WITH_EDITOR
 	std::unique_lock<std::mutex> Lock(GTimeScopeLock);
 	return RegisteredGameTime;
-#endif
 }
 
 void UHGameTimerScope::ClearRegisteredGameTime()
 {
-#if WITH_EDITOR
 	std::unique_lock<std::mutex> Lock(GTimeScopeLock);
 	RegisteredGameTime.clear();
-#endif
 }
+#endif

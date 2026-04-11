@@ -1,4 +1,3 @@
-#pragma once
 #include "DeferredShadingRenderer.h"
 
 void UHDeferredShadingRenderer::ReleaseRayTracingBuffers()
@@ -134,9 +133,9 @@ void UHDeferredShadingRenderer::ResizeRayTracingBuffers(bool bUpdateDescriptor)
 			const UHBoundingBox& SceneBound = CurrentScene->GetSceneBound();
 
 			VkExtent2D VolumeSize;
-			VolumeSize.width = static_cast<uint32_t>(std::roundf(SceneBound.Extents.x * 2.0f));
-			VolumeSize.height = static_cast<uint32_t>(std::roundf(SceneBound.Extents.y * 2.0f));
-			const uint32_t VolumeSlices = static_cast<uint32_t>(std::roundf(SceneBound.Extents.z * 2.0f));
+			VolumeSize.width = static_cast<uint32_t>(std::round(SceneBound.Extents.x * 2.0f));
+			VolumeSize.height = static_cast<uint32_t>(std::round(SceneBound.Extents.y * 2.0f));
+			const uint32_t VolumeSlices = static_cast<uint32_t>(std::round(SceneBound.Extents.z * 2.0f));
 
 			RenderTextureSetting.bIsVolume = true;
 			RenderTextureSetting.NumSlices = VolumeSlices;

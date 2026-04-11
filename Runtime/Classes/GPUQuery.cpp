@@ -175,18 +175,17 @@ UHGPUTimeQueryScope::~UHGPUTimeQueryScope()
 #endif
 }
 
+#if WITH_EDITOR
 const std::vector<UHGPUQuery*>& UHGPUTimeQueryScope::GetResiteredGPUTime()
 {
-#if WITH_EDITOR
+
 	std::unique_lock<std::mutex> Lock(GGPUTimeScopeLock);
 	return RegisteredGPUTime;
-#endif
 }
 
 void UHGPUTimeQueryScope::ClearRegisteredGPUTime()
 {
-#if WITH_EDITOR
 	std::unique_lock<std::mutex> Lock(GGPUTimeScopeLock);
 	RegisteredGPUTime.clear();
-#endif
 }
+#endif

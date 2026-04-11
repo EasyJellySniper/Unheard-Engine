@@ -342,7 +342,7 @@ void UHMaterialDialog::SelectMaterial(int32_t MatIndex)
 
     // init node GUI
     UHPoint MaterialNodePos = CurrentMaterial->GetDefaultMaterialNodePos();
-    EditNodeGUIs.push_back(std::move(MakeUnique<UHMaterialNodeGUI>()));
+    EditNodeGUIs.push_back(UHMOVE(MakeUnique<UHMaterialNodeGUI>()));
     EditNodeGUIs[0]->Init(Instance, WorkAreaGUI->GetHwnd(), CurrentMaterial->GetMaterialNode().get(), "Material Inputs", MaterialNodePos.x, MaterialNodePos.y);
 
     const std::vector<UniquePtr<UHGraphNode>>& EditNodes = CurrentMaterial->GetEditNodes();
@@ -428,11 +428,11 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, UHPoint GUIRelativePo
         NewNode.reset();
         NewGUI->Init(Instance, WorkArea, InputNode, GUIName, P.x + GUIRelativePos.x, P.y + GUIRelativePos.y);
 
-        EditNodeGUIs.push_back(std::move(NewGUI));
+        EditNodeGUIs.push_back(UHMOVE(NewGUI));
     }
     else if (NewNode)
     {
-        CurrentMaterial->GetEditNodes().push_back(std::move(NewNode));
+        CurrentMaterial->GetEditNodes().push_back(UHMOVE(NewNode));
 
         UHPoint P = MousePosWhenRightDown;
         UHEditorUtil::UHScreenToClient(WorkArea, P);
@@ -445,7 +445,7 @@ void UHMaterialDialog::TryAddNodes(UHGraphNode* InputNode, UHPoint GUIRelativePo
         P.y = R.top;
         CurrentMaterial->GetGUIRelativePos().push_back(P);
 
-        EditNodeGUIs.push_back(std::move(NewGUI));
+        EditNodeGUIs.push_back(UHMOVE(NewGUI));
     }
 
     // invalidate the newly added edit node rect

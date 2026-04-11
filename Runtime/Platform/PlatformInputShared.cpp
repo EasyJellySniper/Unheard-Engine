@@ -3,6 +3,7 @@
 #include "PlatformInput.h"
 #include <cctype>
 #include <memory>
+#include "Runtime/CoreGlobals.h"
 
 UHPlatformInput::UHPlatformInput(UHClient* InClient)
 	: bPreviousKeyState{}
@@ -92,7 +93,7 @@ void UHPlatformInput::GetMouseDelta(int32_t& X, int32_t& Y) const
 void UHPlatformInput::CacheKeyStates()
 {
 	// cache key states of current frame, this should be called at the end of update functions, or at least before any input checking
-	memcpy(bPreviousKeyState, bCurrentKeyState, sizeof(bool) * MaxKeyStates);
+	UHMEMCOPY(bPreviousKeyState, bCurrentKeyState, sizeof(bool) * MaxKeyStates);
 	bPreviousLeftMousePressed = bIsLeftMousePressed;
 	bPreviousRightMousePressed = bIsRightMousePressed;
 

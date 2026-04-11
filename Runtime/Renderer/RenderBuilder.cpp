@@ -567,7 +567,7 @@ void UHRenderBuilder::FlushResourceBarrier()
 			? InTexture->GetImageSlices() : 1;
 
 		ImageBarriers[Idx].Texture->SetImageLayout(TempBarrier.newLayout, ImageBarriers[Idx].BaseMipLevel);
-		Barriers[Idx] = std::move(TempBarrier);
+		Barriers[Idx] = UHMOVE(TempBarrier);
 	}
 	DependencyInfo.pImageMemoryBarriers = Barriers.data();
 

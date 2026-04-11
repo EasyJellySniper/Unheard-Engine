@@ -138,7 +138,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 	}
 
 	const UHPlatformInput* Input = EngineCache->GetRawInput();
-	if (Input->IsKeyHold(VK_CONTROL))
+	if (Input->IsKeyHold(UH_ENUM_VALUE(UHSystemKey::Control)))
 	{
 		if (Input->IsKeyUp('1'))
 		{

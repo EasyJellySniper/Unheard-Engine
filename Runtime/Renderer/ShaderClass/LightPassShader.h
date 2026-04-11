@@ -10,5 +10,5 @@ public:
 	void BindParameters(const bool bIsRaytracingEnableRT, const bool bEnableRTIndirectLight);
 
 	// this must sync with shader implementation
-	static const uint32_t MaxSoftShadowLightsPerPixel = 8;
+	static constexpr uint32_t MaxSoftShadowLightsPerPixel = 8;
 };

@@ -46,3 +46,4 @@ build_linux/*
 UnheardEngine_Debug.exe
 UnheardEngine_Release.exe
 UnheardEngine_ReleaseEditor.exe
+UnheardEngine_Linux

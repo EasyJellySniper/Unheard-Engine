@@ -64,7 +64,7 @@ struct UHMaterialProperty
 #endif
 
 // material data slot, the number in UHRTCommon.hlsli needs to match this
-static const int32_t GMaxRTMaterialDataSlot = 32;
+static constexpr int32_t GMaxRTMaterialDataSlot = 32;
 struct UHRTMaterialData
 {
 	uint32_t Data[GMaxRTMaterialDataSlot];

@@ -76,4 +76,4 @@ inline T* CastObject(UHObject* InObj)
 	return nullptr;
 }
 
-#define STATIC_CLASS_ID(x) static const uint32_t ClassId = x;
+#define STATIC_CLASS_ID(x) static constexpr uint32_t ClassId = x;

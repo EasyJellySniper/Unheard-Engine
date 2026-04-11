@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <cstring>
+#include <cmath>
 #include <vector>
 #include <thread>
 #include <assert.h>
@@ -36,8 +38,14 @@ using UniquePtr = std::unique_ptr<T>;
 
 #define MakeUnique std::make_unique
 #define StdBind std::bind
+#define UHMEMSET std::memset
+#define UHMEMCOPY std::memcpy
+#define UHMOVE std::move
 #define UHINDEXNONE -1
 
 #define ENGINE_NAME "Unheard Engine"
 #define ENGINE_NAMEW L"Unheard Engine"
 #define ENGINE_NAME_NONE "UHE_None"
+
+#define UH_ENUM_VALUE(x) static_cast<int32_t>(x)
+#define UH_ENUM_VALUE_U(x) static_cast<uint32_t>(x)

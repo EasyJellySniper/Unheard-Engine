@@ -3,7 +3,6 @@
 // Linux platform
 #ifdef __linux__
 
-#include <GLFW/glfw3.h>
 bool UHPlatform::Initialize(UHApplication* InApp)
 {
 	glfwInit();

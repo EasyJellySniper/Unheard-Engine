@@ -3,6 +3,7 @@
 #include <chrono>
 #include <utility>
 #include <vector>
+#include <string>
 
 // Game timer based on chrono 
 // Each time is stored as milliseconds
@@ -24,11 +25,11 @@ public:
 private:
 	double DeltaTime;
 
-	UHClock::time_point BaseTime;
-	UHClock::time_point PausedTime;
-	UHClock::time_point StopTime;
-	UHClock::time_point PreviousTime;
-	UHClock::time_point CurrentTime;
+	UHClock::time_point BaseTimePoint;
+	UHClock::time_point PausedTimePoint;
+	UHClock::time_point StopTimePoint;
+	UHClock::time_point PreviousTimePoint;
+	UHClock::time_point CurrentTimePoint;
 
 	bool bStopped;
 };
@@ -40,6 +41,7 @@ public:
 	UHGameTimerScope(std::string InName, bool bPrintTimeAfterStop);
 	~UHGameTimerScope();
 
+#if WITH_EDITOR
 	static const std::vector<std::pair<std::string, float>>& GetResiteredGameTime();
 	static void ClearRegisteredGameTime();
 
@@ -47,7 +49,6 @@ private:
 	bool bPrintTimeAfterStop;
 	std::string Name;
 
-#if WITH_EDITOR
 	// editor only registered game time, which will be displayed in profile
 	static std::vector<std::pair<std::string, float>> RegisteredGameTime;
 #endif

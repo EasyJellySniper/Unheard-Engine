@@ -2,6 +2,18 @@
 #include <cstdint>
 #include <string>
 
+#if _WIN32
+#include <Windows.h>
+#include "resource.h"
+#elif __linux__
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+#include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/xcb.h>
+#endif
+
 // multiple clients management in UnheardEngine
 class UHClient
 {
@@ -41,7 +53,9 @@ public:
 
 	bool IsWindowMinimized();
 	bool IsQuit();
-	bool ProcessEvents();
+	void ProcessEvents();
+
+	int32_t GetDisplayFrequency() const;
 
 private:
 	void* NativeInstance;

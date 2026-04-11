@@ -224,7 +224,7 @@ UHComponent* UHScene::RequestComponent(uint32_t InComponentClassId)
 	};
 
 	UHComponent* Result = NewComp.get();
-	ComponentPools.push_back(std::move(NewComp));
+	ComponentPools.push_back(UHMOVE(NewComp));
 	return Result;
 }
 

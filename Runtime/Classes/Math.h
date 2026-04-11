@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "Runtime/CoreGlobals.h"
 
 // GLM math library
 #define GLM_FORCE_RADIANS
@@ -43,7 +44,7 @@ struct UHGPUMatrix
     UHGPUMatrix()
     {
         // identity matrix
-        memset(M, 0, sizeof M); 
+        UHMEMSET(M, 0, sizeof M); 
         M[0][0] = M[1][1] = M[2][2] = M[3][3] = 1.0f;
     }
 

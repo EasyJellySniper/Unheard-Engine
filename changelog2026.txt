@@ -145,3 +145,6 @@ Math library refactoring is basically done, what a milestone!
 WIP cross platform works. Replaced Win32 QPC timer method by chrono library.
 At this point, the Win32 dependencies should be all addressed. Ready to continue the Linux part!
 Did more refactoring mainly for the types, such as POINT/uuid_t from Win32, better memcpy calls and unnecessary Vulkan function removals.
+
+11-04-2026:
+WIP cross platform works. More compiling/link error fixes, and finally made Linux build successfully!

@@ -177,7 +177,7 @@ public:
 		}
 #endif
 
-		return std::move(NewBuffer);
+		return UHMOVE(NewBuffer);
 	}
 
 	// request acceleration structure

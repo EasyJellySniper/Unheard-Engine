@@ -361,8 +361,8 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	SystemConstantsCPU.NearPlane = CurrentCamera->GetNearPlane();
 	SystemConstantsCPU.RTCullingDistance = RenderingSettings.RTCullingRadius;
 	SystemConstantsCPU.MaxReflectionRecursion = UHRTReflectionShader::MaxReflectionRecursion;
-	SystemConstantsCPU.ScreenMipCount = std::floorf(
-		std::log2f(std::max(SystemConstantsCPU.Resolution.x, SystemConstantsCPU.Resolution.y)));
+	SystemConstantsCPU.ScreenMipCount = std::floor(
+		std::log2(std::max(SystemConstantsCPU.Resolution.x, SystemConstantsCPU.Resolution.y)));
 
 	UHBoundingBox SceneBound = CurrentScene->GetSceneBound();
 	// IMPORTANT! Safe rounding scene boundary before sending to GPU, this is for the rendering consistency between debug/release build
@@ -849,7 +849,9 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 
 	// hold a timer
 	UHGameTimer RTTimer;
+#if WITH_EDITOR
 	UHProfiler RenderThreadProfile(&RTTimer);
+#endif
 	bool bIsPresentedPreviously = false;
 	GCurrentThreadID = std::this_thread::get_id();
 
@@ -867,7 +869,9 @@ void UHDeferredShadingRenderer::RenderThreadLoop()
 		UHRenderBuilder SceneRenderBuilder(GraphicInterface, SceneRenderQueue.CommandBuffers[CurrentFrameRT]);
 		uint32_t PresentIndex;
 		{
+#if WITH_EDITOR
 			UHProfilerScope Profiler(&RenderThreadProfile);
+#endif
 
 			// collect worker bundle for this frame
 			if (RTParams.bEnableRendering)
