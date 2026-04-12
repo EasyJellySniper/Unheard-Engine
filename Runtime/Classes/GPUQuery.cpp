@@ -33,7 +33,7 @@ UHGPUQuery::UHGPUQuery()
 
 void UHGPUQuery::Release()
 {
-	vkDestroyQueryPool(LogicalDevice, QueryPool, nullptr);
+	SafeDestroyQueryPool(LogicalDevice, QueryPool);
 }
 
 void UHGPUQuery::CreateQueryPool(uint32_t InQueryCount, VkQueryType QueryType)
@@ -53,7 +53,7 @@ void UHGPUQuery::CreateQueryPool(uint32_t InQueryCount, VkQueryType QueryType)
 
 	if (vkCreateQueryPool(LogicalDevice, &CreateInfo, nullptr, &QueryPool) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create query pool!\n");
+		UHE_LOG("Failed to create query pool!\n");
 	}
 
 #if WITH_EDITOR

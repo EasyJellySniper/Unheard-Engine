@@ -40,14 +40,14 @@ UHShader::UHShader(std::string InShaderName, std::filesystem::path InSource, std
 
 void UHShader::Release()
 {
-	vkDestroyShaderModule(LogicalDevice, Shader, nullptr);
+	SafeDestroyShaderModule(LogicalDevice, Shader);
 }
 
 bool UHShader::Create(VkShaderModuleCreateInfo InCreateInfo)
 {
 	if (vkCreateShaderModule(LogicalDevice, &InCreateInfo, nullptr, &Shader) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create shader module!\n");
+		UHE_LOG("Failed to create shader module!\n");
 		return false;
 	}
 

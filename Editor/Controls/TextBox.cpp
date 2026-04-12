@@ -98,7 +98,7 @@ T UHTextBox::Parse()
 	}
 	catch (...)
 	{
-		UHE_LOG((L"Parsing " + GetText() + L" failed!"));
+		UHE_LOG(("Parsing " + UHUtilities::ToStringA(GetText()) + " failed!"));
 	}
 
 	return Result;

@@ -1,6 +1,7 @@
 #include "RenderingTypes.h"
 #include "Runtime/CoreGlobals.h"
 #include "Runtime/Renderer/ShaderClass/RayTracing/RTShaderDefines.h"
+#include "Runtime/Engine/GraphicFunction.h"
 
 // ---------------------------------------------------- UHDepthInfo
 UHDepthInfo::UHDepthInfo()
@@ -178,23 +179,19 @@ UHRenderPassObject::UHRenderPassObject()
 
 void UHRenderPassObject::Release(VkDevice LogicalDevice)
 {
-	vkDestroyFramebuffer(LogicalDevice, FrameBuffer, nullptr);
-	vkDestroyRenderPass(LogicalDevice, RenderPass, nullptr);
-	FrameBuffer = nullptr;
-	RenderPass = nullptr;
+	SafeDestroyFrameBuffer(LogicalDevice, FrameBuffer);
+	SafeDestroyRenderPass(LogicalDevice, RenderPass);
 }
 
 void UHRenderPassObject::ReleaseRenderPass(VkDevice LogicalDevice)
 {
-	vkDestroyRenderPass(LogicalDevice, RenderPass, nullptr);
-	RenderPass = nullptr;
+	SafeDestroyRenderPass(LogicalDevice, RenderPass);
 }
 
 void UHRenderPassObject::ReleaseFrameBuffer(VkDevice LogicalDevice)
 {
 	// release frame buffer only, used for resizing
-	vkDestroyFramebuffer(LogicalDevice, FrameBuffer, nullptr);
-	FrameBuffer = nullptr;
+	SafeDestroyFrameBuffer(LogicalDevice, FrameBuffer);
 }
 
 

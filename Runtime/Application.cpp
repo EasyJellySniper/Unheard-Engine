@@ -38,7 +38,7 @@ int32_t UHApplication::Run()
 		UHClient* Client = Platform->GetClient();
 		if (!Engine->InitEngine(Client))
 		{
-			UHE_LOG(L"Engine creation failed!\n");
+			UHE_LOG("Engine creation failed!\n");
 			Engine->ReleaseEngine();
 			Engine.reset();
 			return 0;

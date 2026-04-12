@@ -79,7 +79,7 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	UHEGraphic = MakeUnique<UHGraphic>(UHEAsset.get(), UHEConfig.get());
 	if (!UHEGraphic->InitGraphics(UHEClient))
 	{
-		UHE_LOG(L"Can't initialize graphic class!\n");
+		UHE_LOG("Can't initialize graphic class!\n");
 		return false;
 	}
 
@@ -97,7 +97,7 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	if (!UHERawInput->InitInput())
 	{
 		// print a log to remind users that inputs aren't available, and it's okay to proceed
-		UHE_LOG(L"Can't initialize input devices, input won't work!\n");
+		UHE_LOG("Can't initialize input devices, input won't work!\n");
 	}
 
 	// init game timer , and reset timer immediately
@@ -121,7 +121,7 @@ bool UHEngine::InitEngine(UHClient* InClient)
 	UHERenderer = MakeUnique<UHDeferredShadingRenderer>(this);
 	if (!UHERenderer->Initialize(CurrentScene.get()))
 	{
-		UHE_LOG(L"Can't initialize renderer class!\n");
+		UHE_LOG("Can't initialize renderer class!\n");
 	}
 
 #if WITH_EDITOR
@@ -147,7 +147,7 @@ void UHEngine::ReleaseEngine()
 	UH_SAFE_RELEASE(UHERenderer);
 	UHERenderer.reset();
 
-	CurrentScene->Release();
+	UH_SAFE_RELEASE(CurrentScene);
 
 	UHERawInput.reset();
 	UHEGameTimer.reset();
@@ -268,7 +268,7 @@ void UHEngine::ResizeEngine()
 	}
 
 	// sync the window size if it's window message
-	if (EngineResizeReason == UHEngineResizeReason::FromWndMessage
+	if (EngineResizeReason == UHEngineResizeReason::FromClientCallback
 		&& !UHEConfig->PresentationSetting().bFullScreen)
 	{
 		UHEConfig->UpdateWindowSize(UHEClient);
@@ -436,7 +436,7 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 	// re-initialize renderer
 	if (!UHERenderer->Initialize(CurrentScene.get()))
 	{
-		UHE_LOG(L"Can't initialize renderer class!\n");
+		UHE_LOG("Can't initialize renderer class!\n");
 	}
 	UHERenderer->InitRenderingResources();
 	UHERenderer->RefreshSkyLight(false);

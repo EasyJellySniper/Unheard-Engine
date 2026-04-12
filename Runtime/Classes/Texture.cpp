@@ -62,20 +62,18 @@ void UHTexture::SetExtent(uint32_t Width, uint32_t Height)
 
 void UHTexture::Release()
 {
-	vkFreeMemory(LogicalDevice, ImageMemory, nullptr);
-	ImageMemory = nullptr;
-	vkDestroyImageView(LogicalDevice, ImageView, nullptr);
-	ImageView = nullptr;
+	SafeFreeMemory(LogicalDevice, ImageMemory);
+	SafeDestroyImageView(LogicalDevice, ImageView);
 
 	for (size_t Idx = 0; Idx < ImageViewPerMip.size(); Idx++)
 	{
-		vkDestroyImageView(LogicalDevice, ImageViewPerMip[Idx], nullptr);
+		SafeDestroyImageView(LogicalDevice, ImageViewPerMip[Idx]);
 	}
 	ImageViewPerMip.clear();
 
 	for (size_t Idx = 0; Idx < ImageViewPerLayer.size(); Idx++)
 	{
-		vkDestroyImageView(LogicalDevice, ImageViewPerLayer[Idx], nullptr);
+		SafeDestroyImageView(LogicalDevice, ImageViewPerLayer[Idx]);
 	}
 	ImageViewPerLayer.clear();
 
@@ -84,8 +82,7 @@ void UHTexture::Release()
 	{
 		if (CubemapImageView[Idx] != nullptr)
 		{
-			vkDestroyImageView(LogicalDevice, CubemapImageView[Idx], nullptr);
-			CubemapImageView[Idx] = nullptr;
+			SafeDestroyImageView(LogicalDevice, CubemapImageView[Idx]);
 		}
 	}
 #endif
@@ -94,8 +91,7 @@ void UHTexture::Release()
 	// image like swap chain can't be destroyed here
 	if (bIsSourceCreatedByThis)
 	{
-		vkDestroyImage(LogicalDevice, ImageSource, nullptr);
-		ImageSource = nullptr;
+		SafeDestroyImage(LogicalDevice, ImageSource);
 	}
 
 	bHasUploadedToGPU = false;
@@ -167,7 +163,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 
 		if (vkCreateImage(LogicalDevice, &CreateInfo, nullptr, &ImageSource) != VK_SUCCESS)
 		{
-			UHE_LOG(L"Failed to create image!\n");
+			UHE_LOG("Failed to create image!\n");
 			return false;
 		}
 
@@ -207,7 +203,7 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 			if (MemoryOffset == ~0)
 			{
 				bExceedSharedMemory = true;
-				//UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
+				//UHE_LOG("Exceed shared image memory budget, will allocate individually instead.\n");
 			}
 		}
 		
@@ -241,14 +237,14 @@ bool UHTexture::Create(UHTextureInfo InInfo, UHGPUMemory* InSharedMemory)
 				if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &ImageMemory) != VK_SUCCESS)
 				{
 					// return if host memory failed too
-					UHE_LOG(L"Failed to allocate image memory!\n");
+					UHE_LOG("Failed to allocate image memory!\n");
 					return false;
 				}
 			}
 
 			if (vkBindImageMemory(LogicalDevice, ImageSource, ImageMemory, 0) != VK_SUCCESS)
 			{
-				UHE_LOG(L"Failed to bind image to GPU!\n");
+				UHE_LOG("Failed to bind image to GPU!\n");
 				return false;
 			}
 		}
@@ -305,7 +301,7 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 
 	if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &ImageView) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create image views!\n");
+		UHE_LOG("Failed to create image views!\n");
 		return false;
 	}
 	ImageViewInfo = CreateInfo;
@@ -324,7 +320,7 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 			CreateInfo.subresourceRange.levelCount = 1;
 			if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &NewView) != VK_SUCCESS)
 			{
-				UHE_LOG(L"Failed to create image views!\n");
+				UHE_LOG("Failed to create image views!\n");
 				return false;
 			}
 			ImageViewPerMip.push_back(NewView);
@@ -348,7 +344,7 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 			CreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 			if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &NewView) != VK_SUCCESS)
 			{
-				UHE_LOG(L"Failed to create image views!\n");
+				UHE_LOG("Failed to create image views!\n");
 				return false;
 			}
 			ImageViewPerLayer.push_back(NewView);
@@ -374,7 +370,7 @@ bool UHTexture::CreateImageView(VkImageViewType InViewType)
 				CreateInfo.subresourceRange.levelCount = 1;
 				if (vkCreateImageView(LogicalDevice, &CreateInfo, nullptr, &CubemapImageView[Idx * 15 + MipIdx]) != VK_SUCCESS)
 				{
-					UHE_LOG(L"Failed to create cubemap image views!\n");
+					UHE_LOG("Failed to create cubemap image views!\n");
 				}
 
 #if WITH_EDITOR

@@ -50,7 +50,7 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 	std::ifstream FileIn(InTexturePath.string().c_str(), std::ios::in | std::ios::binary);
 	if (!FileIn.is_open())
 	{
-		UHE_LOG(L"Failed to Load UHTexture " + InTexturePath.wstring() + L"!\n");
+		UHE_LOG("Failed to Load UHTexture " + InTexturePath.string() + "!\n");
 		return false;
 	}
 

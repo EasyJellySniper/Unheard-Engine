@@ -11,7 +11,7 @@ UHSampler::UHSampler(UHSamplerInfo InInfo)
 
 void UHSampler::Release()
 {
-	vkDestroySampler(LogicalDevice, TextureSampler, nullptr);
+	SafeDestroySampler(LogicalDevice, TextureSampler);
 }
 
 bool UHSampler::Create()
@@ -41,7 +41,7 @@ bool UHSampler::Create()
 
 	if (vkCreateSampler(LogicalDevice, &SamplerCreateInfo, nullptr, &TextureSampler) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create texture sampler!\n");
+		UHE_LOG("Failed to create texture sampler!\n");
 		return false;
 	}
 

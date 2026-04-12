@@ -16,12 +16,12 @@ void UHShaderClass::ClearGlobalLayoutCache(UHGraphic* InGfx)
 {
 	for (auto& SetLayout : DescriptorSetLayoutTable)
 	{
-		vkDestroyDescriptorSetLayout(InGfx->GetLogicalDevice(), SetLayout.second, nullptr);
+		SafeDestroyDescriptorSetLayout(InGfx->GetLogicalDevice(), SetLayout.second);
 	}
 
 	for (auto& PipelineLayout : PipelineLayoutTable)
 	{
-		vkDestroyPipelineLayout(InGfx->GetLogicalDevice(), PipelineLayout.second, nullptr);
+		SafeDestroyPipelineLayout(InGfx->GetLogicalDevice(), PipelineLayout.second);
 	}
 
 	DescriptorSetLayoutTable.clear();
@@ -127,11 +127,7 @@ void UHShaderClass::ReleaseDescriptor()
 {
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 
-	if (DescriptorPool)
-	{
-		vkDestroyDescriptorPool(LogicalDevice, DescriptorPool, nullptr);
-		DescriptorPool = nullptr;
-	}
+	SafeDestroyDescriptorPool(LogicalDevice, DescriptorPool);
 }
 
 void UHShaderClass::BindImage(const UHTexture* InImage, const int32_t DstBinding)
@@ -516,7 +512,7 @@ void UHShaderClass::CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout>
 
 		if (vkCreateDescriptorSetLayout(LogicalDevice, &LayoutInfo, nullptr, &DescriptorSetLayoutTable[TypeIndexCache]) != VK_SUCCESS)
 		{
-			UHE_LOG(L"Failed to create descriptor set layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+			UHE_LOG("Failed to create descriptor set layout for shader: " + Name + "\n");
 		}
 
 #if WITH_EDITOR
@@ -549,7 +545,7 @@ void UHShaderClass::CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout>
 
 		if (vkCreatePipelineLayout(LogicalDevice, &PipelineLayoutInfo, nullptr, &PipelineLayoutTable[TypeIndexCache]) != VK_SUCCESS)
 		{
-			UHE_LOG(L"Failed to create pipeline layout for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+			UHE_LOG("Failed to create pipeline layout for shader: " + Name + "\n");
 		}
 
 #if WITH_EDITOR
@@ -580,7 +576,7 @@ void UHShaderClass::CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout>
 
 	if (vkCreateDescriptorPool(LogicalDevice, &PoolInfo, nullptr, &DescriptorPool) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create descriptor pool for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+		UHE_LOG("Failed to create descriptor pool for shader: " + Name + "\n");
 	}
 
 #if WITH_EDITOR
@@ -604,7 +600,7 @@ void UHShaderClass::CreateLayoutAndDescriptor(std::vector<VkDescriptorSetLayout>
 	const VkResult Result = vkAllocateDescriptorSets(LogicalDevice, &AllocInfo, DescriptorSets.data());
 	if (Result != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create descriptor sets for shader: " + UHUtilities::ToStringW(Name) + L"\n");
+		UHE_LOG("Failed to create descriptor sets for shader: " + Name + "\n");
 	}
 }
 
@@ -644,7 +640,7 @@ void UHShaderClass::InitRayGenTable()
 	std::vector<uint8_t> TempData(Gfx->GetShaderRecordSize());
 	if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GRayGenTableSlot, 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to get ray gen group handle!\n");
+		UHE_LOG("Failed to get ray gen group handle!\n");
 	}
 
 	RayGenTable = Gfx->RequestRenderBuffer<UHShaderRecord>(1, VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
@@ -665,7 +661,7 @@ void UHShaderClass::InitMissTable()
 	{
 		if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), GMissTableSlot + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 		{
-			UHE_LOG(L"Failed to get hit group handle!\n");
+			UHE_LOG("Failed to get hit group handle!\n");
 			continue;
 		}
 
@@ -687,7 +683,7 @@ void UHShaderClass::InitHitGroupTable(size_t NumMaterials)
 		// copy hit group
 		if (GVkGetRayTracingShaderGroupHandlesKHR(Gfx->GetLogicalDevice(), RTState->GetRTPipeline(), HitGroupTableStart + static_cast<uint32_t>(Idx), 1, Gfx->GetShaderRecordSize(), TempData.data()) != VK_SUCCESS)
 		{
-			UHE_LOG(L"Failed to get hit group handle!\n");
+			UHE_LOG("Failed to get hit group handle!\n");
 			continue;
 		}
 

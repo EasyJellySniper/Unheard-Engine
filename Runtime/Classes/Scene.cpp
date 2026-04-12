@@ -276,7 +276,7 @@ void UHScene::AddMeshRenderer(UHMeshRendererComponent* InRenderer)
 {
 	if (InRenderer->GetMesh() == nullptr || InRenderer->GetMaterial() == nullptr)
 	{
-		UHE_LOG(L"Missing mesh or material in mesh renderer!\n");
+		UHE_LOG("Missing mesh or material in mesh renderer!\n");
 	}
 
 	if (UHUtilities::FindIndex(Renderers, InRenderer) != UHINDEXNONE)

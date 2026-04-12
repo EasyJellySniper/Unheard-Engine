@@ -449,6 +449,7 @@
     <ClCompile Include="Runtime\CoreGlobals.cpp" />
     <None Include="Runtime\Platform\PlatformLinux.cpp" />
     <None Include="Runtime\Platform\ClientLinux.cpp" />
+    <ClCompile Include="Runtime\Engine\GraphicFunction.cpp" />
     <ClCompile Include="Runtime\Platform\ClientWindow.cpp" />
     <None Include="Runtime\Platform\PlatformInputLinux.cpp" />
     <ClCompile Include="Runtime\Platform\PlatformInputShared.cpp" />

@@ -13,7 +13,7 @@ UHGPUMemory::UHGPUMemory()
 
 void UHGPUMemory::Release()
 {
-	vkFreeMemory(LogicalDevice, BufferMemory, nullptr);
+    SafeFreeMemory(LogicalDevice, BufferMemory);
 }
 
 void UHGPUMemory::AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex)
@@ -39,7 +39,7 @@ void UHGPUMemory::AllocateMemory(uint64_t InBudget, uint32_t MemTypeIndex)
 
     if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &BufferMemory) != VK_SUCCESS)
     {
-        UHE_LOG(L"Failed to allocate buffer memory!\n");
+        UHE_LOG("Failed to allocate buffer memory!\n");
     }
 }
 

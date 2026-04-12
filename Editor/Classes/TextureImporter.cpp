@@ -159,10 +159,10 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	}
 
 	uint32_t Width, Height;
-	std::vector<uint8_t> TextureData = LoadTexture(SourcePath.wstring(), Width, Height);
+	std::vector<uint8_t> TextureData = LoadTexture(SourcePath.string(), Width, Height);
 	if (Width == 0 && Height == 0)
 	{
-		UHE_LOG(L"Failed to load texture: " + SourcePath.wstring() + L" !\n");
+		UHE_LOG("Failed to load texture: " + SourcePath.string() + " !\n");
 		return nullptr;
 	}
 

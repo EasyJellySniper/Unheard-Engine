@@ -162,26 +162,23 @@ void UHGraphic::Release()
 	ClearContainer(QueryPools);
 
 	// release GPU memory pool
-	ImageSharedMemory->Release();
+	UH_SAFE_RELEASE(ImageSharedMemory);
 	ImageSharedMemory.reset();
-	MeshBufferSharedMemory->Release();
+	UH_SAFE_RELEASE(MeshBufferSharedMemory);
 	MeshBufferSharedMemory.reset();
 
 #if WITH_EDITOR
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
-	vkDestroyDescriptorPool(LogicalDevice, ImGuiDescriptorPool, nullptr);
-	if (ImGuiPipeline)
-	{
-		vkDestroyPipeline(LogicalDevice, ImGuiPipeline, nullptr);
-	}
+	SafeDestroyDescriptorPool(LogicalDevice, ImGuiDescriptorPool);
+	SafeDestroyPipeline(LogicalDevice, ImGuiPipeline);
 #endif
 
-	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
-	vkDestroySurfaceKHR(VulkanInstance, MainSurface, nullptr);
-	vkDestroyDevice(LogicalDevice, nullptr);
-	vkDestroyInstance(VulkanInstance, nullptr);
+	SafeDestroyCommandPool(LogicalDevice, CreationCommandPool);
+	SafeDestroySurfaceKHR(VulkanInstance, MainSurface);
+	SafeDestroyDevice(LogicalDevice);
+	SafeDestroyInstance(VulkanInstance);
 }
 
 // debug only functions
@@ -244,7 +241,7 @@ bool CheckInstanceExtension(const std::vector<const char*>& RequiredExtensions)
 
 		if (!bSupported)
 		{
-			UHE_LOG(L"Unsupport instance extension detected: " + UHUtilities::ToStringW(RequiredExtensions[Idx]) + L"\n");
+			UHE_LOG("Unsupport instance extension detected: " + std::string(RequiredExtensions[Idx]) + "\n");
 		}
 	}
 
@@ -254,7 +251,7 @@ bool CheckInstanceExtension(const std::vector<const char*>& RequiredExtensions)
 		return true;
 	}
 
-	UHE_LOG(L"Unsupport instance extension detected!\n");
+	UHE_LOG("Unsupport instance extension detected!\n");
 	return false;
 }
 
@@ -299,7 +296,7 @@ bool UHGraphic::CreateInstance()
 	// print the failure reason for instance creation
 	if (CreateResult != VK_SUCCESS)
 	{
-		UHE_LOG(L"Vulkan instance creation failed!\n");
+		UHE_LOG("Vulkan instance creation failed!\n");
 		return false;
 	}
 
@@ -354,10 +351,10 @@ bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, std::vector<cons
 
 		if (!bSupported)
 		{
-			UHE_LOG(L"Unsupport device extension detected: " + UHUtilities::ToStringW(RequiredExtensions[Idx]) + L"\n");
+			UHE_LOG("Unsupport device extension detected: " + std::string(RequiredExtensions[Idx]) + "\n");
 			if (UHUtilities::FindByElement(RayTracingExtensions, RequiredExtensions[Idx]))
 			{
-				UHE_LOG(L"Ray tracing not supported!\n");
+				UHE_LOG("Ray tracing not supported!\n");
 				bEnableRayTracing = false;
 			}
 		}
@@ -369,7 +366,7 @@ bool UHGraphic::CheckDeviceExtension(VkPhysicalDevice InDevice, std::vector<cons
 	}
 
 	RequiredExtensions = ValidExtensions;
-	UHE_LOG(L"Unsupport device extension automatically removed.\n");
+	UHE_LOG("Unsupport device extension automatically removed.\n");
 	return true;
 }
 
@@ -380,7 +377,7 @@ bool UHGraphic::CreatePhysicalDevice()
 	vkEnumeratePhysicalDevices(VulkanInstance, &DeviceCount, nullptr);
 	if (DeviceCount == 0)
 	{
-		UHE_LOG(L"Failed to find GPUs with Vulkan support!\n");
+		UHE_LOG("Failed to find GPUs with Vulkan support!\n");
 		return false;
 	}
 
@@ -432,15 +429,15 @@ bool UHGraphic::CreatePhysicalDevice()
 
 	if (PhysicalDevice == nullptr)
 	{
-		UHE_LOG(L"Failed to find a suitable GPU!\n");
+		UHE_LOG("Failed to find a suitable GPU!\n");
 		return false;
 	}
 
 	// sync selected GPU to config setting after the successful initialization
 	RenderingSettings.SelectedGpuName = SelectedDeviceName;
 
-	std::wostringstream Msg;
-	Msg << L"Selected device: " << SelectedDeviceName.c_str() << std::endl;
+	std::ostringstream Msg;
+	Msg << "Selected device: " << SelectedDeviceName.c_str() << std::endl;
 	UHE_LOG(Msg.str());
 
 	// request memory props after creation
@@ -484,13 +481,13 @@ bool UHGraphic::CreateQueueFamily()
 
 	if (!QueueFamily.GraphicsFamily.has_value())
 	{
-		UHE_LOG(L"Failed to create graphic queue!\n");
+		UHE_LOG("Failed to create graphic queue!\n");
 		return false;
 	}
 
 	if (!QueueFamily.ComputesFamily.has_value())
 	{
-		UHE_LOG(L"Failed to create compute queue!\n");
+		UHE_LOG("Failed to create compute queue!\n");
 		return false;
 	}
 
@@ -570,7 +567,7 @@ bool UHGraphic::CreateLogicalDevice()
 	{
 		if (!RTFeatures.rayTracingPipeline)
 		{
-			UHE_LOG(L"Ray tracing pipeline not supported. System won't render ray tracing effects.\n");
+			UHE_LOG("Ray tracing pipeline not supported. System won't render ray tracing effects.\n");
 			bEnableRayTracing = false;
 		}
 
@@ -641,7 +638,7 @@ bool UHGraphic::CreateLogicalDevice()
 	VkResult CreateResult = vkCreateDevice(PhysicalDevice, &CreateInfo, nullptr, &LogicalDevice);
 	if (CreateResult != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create Vulkan device!\n");
+		UHE_LOG("Failed to create Vulkan device!\n");
 		return false;
 	}
 
@@ -657,7 +654,7 @@ bool UHGraphic::CreateLogicalDevice()
 
 	if (!bSupportMeshShader)
 	{
-		UHE_LOG(L"App needs a GPU that supports mesh shaders!\n");
+		UHE_LOG("App needs a GPU that supports mesh shaders!\n");
 		return false;
 	}
 
@@ -675,7 +672,7 @@ bool UHGraphic::CreateWindowSurface()
 
 	if (vkCreateWin32SurfaceKHR(VulkanInstance, &CreateInfo, nullptr, &MainSurface) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create window surface!\n");
+		UHE_LOG("Failed to create window surface!\n");
 		return false;
 	}
 #elif __linux__
@@ -692,7 +689,7 @@ bool UHGraphic::CreateWindowSurface()
 
 	if (vkCreateXcbSurfaceKHR(VulkanInstance, &CreateInfo, nullptr, &MainSurface) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create window surface!\n");
+		UHE_LOG("Failed to create window surface!\n");
 		return false;
 	}
 #endif
@@ -819,11 +816,11 @@ void UHGraphic::ClearSwapChain()
 	for (size_t Idx = 0; Idx < SwapChainFrameBuffer.size(); Idx++)
 	{
 		RequestReleaseRT(SwapChainRT[Idx]);
-		vkDestroyFramebuffer(LogicalDevice, SwapChainFrameBuffer[Idx], nullptr);
+		SafeDestroyFrameBuffer(LogicalDevice, SwapChainFrameBuffer[Idx]);
 	}
 
-	vkDestroyRenderPass(LogicalDevice, SwapChainRenderPass, nullptr);
-	vkDestroySwapchainKHR(LogicalDevice, SwapChain, nullptr);
+	SafeDestroyRenderPass(LogicalDevice, SwapChainRenderPass);
+	SafeDestroySwapchain(LogicalDevice, SwapChain);
 	SwapChainRT.clear();
 	SwapChainFrameBuffer.clear();
 }
@@ -851,7 +848,7 @@ void UHGraphic::ToggleFullScreen(bool InFullScreenState)
 
 void UHGraphic::WaitGPU()
 {
-	vkDeviceWaitIdle(LogicalDevice);
+	SafeDeviceWaitIdle(LogicalDevice);
 }
 
 // create render pass, imageless
@@ -971,7 +968,7 @@ UHRenderPassObject UHGraphic::CreateRenderPass(std::vector<UHRenderTexture*> InT
 
 	if (vkCreateRenderPass(LogicalDevice, &RenderPassInfo, nullptr, &NewRenderPass) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create render pass\n");
+		UHE_LOG("Failed to create render pass\n");
 	}
 
 	ResultRenderPass.RenderPass = NewRenderPass;
@@ -1028,7 +1025,7 @@ VkFramebuffer UHGraphic::CreateFrameBuffer(std::vector<UHRenderTexture*> InRTs, 
 
 	if (vkCreateFramebuffer(LogicalDevice, &FramebufferInfo, nullptr, &NewFrameBuffer) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create framebuffer!\n");
+		UHE_LOG("Failed to create framebuffer!\n");
 	}
 
 #if WITH_EDITOR
@@ -1158,12 +1155,12 @@ bool AreTextureSliceConsistent(std::string InArrayName, std::vector<UHTexture2D*
 
 				if (!bIsFormatMatched)
 				{
-					UHE_LOG(L"Inconsistent texture slice format detected in array " + UHUtilities::ToStringW(InArrayName) + L"\n");
+					UHE_LOG("Inconsistent texture slice format detected in array " + InArrayName + "\n");
 				}
 
 				if (!bIsExtentMatched)
 				{
-					UHE_LOG(L"Inconsistent texture slice extent detected in array " + UHUtilities::ToStringW(InArrayName) + L"\n");
+					UHE_LOG("Inconsistent texture slice extent detected in array " + InArrayName + "\n");
 				}
 
 				bIsConsistent &= bIsFormatMatched;
@@ -1180,7 +1177,7 @@ UHTextureCube* UHGraphic::RequestTextureCube(std::string InName, std::vector<UHT
 	if (InTextures.size() != 6)
 	{
 		// for now the cube is consisted by texture slices, can't do it without any slices
-		UHE_LOG(L"Number of texture slices is not 6!\n");
+		UHE_LOG("Number of texture slices is not 6!\n");
 		return nullptr;
 	}
 
@@ -1293,7 +1290,7 @@ bool UHGraphic::CreateShaderModule(UniquePtr<UHShader>& NewShader, std::filesyst
 	// setup input shader path, read from compiled shader
 	if (!std::filesystem::exists(OutputShaderPath))
 	{
-		UHE_LOG(L"Failed to load shader " + OutputShaderPath.wstring() + L"!\n");
+		UHE_LOG("Failed to load shader " + OutputShaderPath.string() + "!\n");
 		return false;
 	}
 
@@ -1728,7 +1725,7 @@ void UHGraphic::EndOneTimeCmd(VkCommandBuffer InBuffer)
 	vkQueueWaitIdle(GraphicsQueue);
 
 	vkFreeCommandBuffers(LogicalDevice, CreationCommandPool, 1, &InBuffer);
-	vkDestroyCommandPool(LogicalDevice, CreationCommandPool, nullptr);
+	SafeDestroyCommandPool(LogicalDevice, CreationCommandPool);
 	CreationCommandPool = nullptr;
 }
 
@@ -1794,7 +1791,7 @@ bool UHGraphic::RecreateImGui()
 		// recreate the pipeline for ImGui use
 		if (ImGuiPipeline)
 		{
-			vkDestroyPipeline(LogicalDevice, ImGuiPipeline, nullptr);
+			SafeDestroyPipeline(LogicalDevice, ImGuiPipeline);
 		}
 		ImGui_ImplVulkan_CreatePipeline(LogicalDevice, nullptr, nullptr, SwapChainRenderPass, VK_SAMPLE_COUNT_1_BIT, &ImGuiPipeline, 0);
 
@@ -1949,7 +1946,7 @@ bool UHGraphic::CreateSwapChain()
 
 	if (vkCreateSwapchainKHR(LogicalDevice, &CreateInfo, nullptr, &SwapChain) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create swap chain!\n");
+		UHE_LOG("Failed to create swap chain!\n");
 		return false;
 	}
 

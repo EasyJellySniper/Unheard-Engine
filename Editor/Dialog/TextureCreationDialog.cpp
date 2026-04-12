@@ -430,8 +430,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
 
                 UH_SAFE_RELEASE(SphereToCubemapShader);
-                vkDestroyFramebuffer(Gfx->GetLogicalDevice(), SphereToCubemapFrameBuffer, nullptr);
-                vkDestroyRenderPass(Gfx->GetLogicalDevice(), SphereToCubemapRenderPass.RenderPass, nullptr);
+                SafeDestroyFrameBuffer(Gfx->GetLogicalDevice(), SphereToCubemapFrameBuffer);
+                SafeDestroyRenderPass(Gfx->GetLogicalDevice(), SphereToCubemapRenderPass.RenderPass);
                 UH_SAFE_RELEASE(ShaderData);
             }
         }

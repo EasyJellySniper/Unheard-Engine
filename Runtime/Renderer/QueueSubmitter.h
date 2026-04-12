@@ -32,7 +32,7 @@ public:
 
 		if (vkCreateCommandPool(LogicalDevice, &PoolInfo, nullptr, &CommandPool) != VK_SUCCESS)
 		{
-			UHE_LOG(L"Failed to create command pool!\n");
+			UHE_LOG("Failed to create command pool!\n");
 			return false;
 		}
 
@@ -50,7 +50,7 @@ public:
 
 		if (vkAllocateCommandBuffers(LogicalDevice, &AllocInfo, CommandBuffers.data()) != VK_SUCCESS)
 		{
-			UHE_LOG(L"Failed to allocate command buffers!\n");
+			UHE_LOG("Failed to allocate command buffers!\n");
 			return false;
 		}
 
@@ -78,7 +78,7 @@ public:
 				vkCreateSemaphore(LogicalDevice, &SemaphoreInfo, nullptr, &FinishedSemaphores[Idx]) != VK_SUCCESS ||
 				vkCreateFence(LogicalDevice, &FenceInfo, nullptr, &Fences[Idx]) != VK_SUCCESS)
 			{
-				UHE_LOG(L"Failed to allocate fences!\n");
+				UHE_LOG("Failed to allocate fences!\n");
 				return false;
 			}
 
@@ -102,12 +102,12 @@ public:
 	{
 		for (uint32_t Idx = 0; Idx < GMaxFrameInFlight; Idx++)
 		{
-			vkDestroySemaphore(LogicalDevice, WaitingSemaphores[Idx], nullptr);
-			vkDestroySemaphore(LogicalDevice, FinishedSemaphores[Idx], nullptr);
-			vkDestroyFence(LogicalDevice, Fences[Idx], nullptr);
+			SafeDestroySemaphore(LogicalDevice, WaitingSemaphores[Idx]);
+			SafeDestroySemaphore(LogicalDevice, FinishedSemaphores[Idx]);
+			SafeDestroyFence(LogicalDevice, Fences[Idx]);
 		}
 
-		vkDestroyCommandPool(LogicalDevice, CommandPool, nullptr);
+		SafeDestroyCommandPool(LogicalDevice, CommandPool);
 	}
 
 	// similar to D3D12 command list allocator

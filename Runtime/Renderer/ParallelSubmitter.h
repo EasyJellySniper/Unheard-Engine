@@ -32,7 +32,7 @@ public:
 		{
 			if (vkCreateCommandPool(LogicalDevice, &PoolInfo, nullptr, &WorkerCommandPools[Idx]) != VK_SUCCESS)
 			{
-				UHE_LOG(L"Failed to create worker command pool!\n");
+				UHE_LOG("Failed to create worker command pool!\n");
 				return;
 			}
 
@@ -48,7 +48,7 @@ public:
 
 			if (vkAllocateCommandBuffers(LogicalDevice, &AllocInfo, &WorkerCommandBuffers[Idx * (int32_t)GMaxFrameInFlight]) != VK_SUCCESS)
 			{
-				UHE_LOG(L"Failed to allocate worker command buffers!\n");
+				UHE_LOG("Failed to allocate worker command buffers!\n");
 				return;
 			}
 
@@ -63,7 +63,7 @@ public:
 	{
 		for (int32_t Idx = 0; Idx < NumWT; Idx++)
 		{
-			vkDestroyCommandPool(LogicalDevice, WorkerCommandPools[Idx], nullptr);
+			SafeDestroyCommandPool(LogicalDevice, WorkerCommandPools[Idx]);
 		}
 	}
 

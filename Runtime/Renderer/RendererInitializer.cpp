@@ -1014,7 +1014,7 @@ void UHDeferredShadingRenderer::CreateDataBuffers()
 {
 	if (CurrentScene == nullptr)
 	{
-		UHE_LOG(L"Scene is not set!\n");
+		UHE_LOG("Scene is not set!\n");
 		return;
 	}
 

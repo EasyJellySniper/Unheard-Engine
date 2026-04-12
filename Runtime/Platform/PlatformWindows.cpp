@@ -175,7 +175,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             if (Engine)
             {
-                Engine->SetResizeReason(UHEngineResizeReason::FromWndMessage);
+                Engine->SetResizeReason(UHEngineResizeReason::FromClientCallback);
             }
         }
 #if WITH_EDITOR

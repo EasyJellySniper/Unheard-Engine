@@ -280,7 +280,7 @@ bool CompileShader(std::string CommandLine)
 		}
 
 		// Log chBuf
-		UHE_LOG(UHUtilities::ToStringW(Buff));
+		UHE_LOG(std::string(Buff));
 		ErrorCount++;
 	}
 
@@ -342,12 +342,12 @@ void UHShaderImporter::CompileHLSL(UHShader* InShader)
 		CompileCmd += " -D " + Define;
 	}
 
-	UHE_LOG(L"Compiling " + InShader->GetSourcePath().wstring() + L"...\n");
+	UHE_LOG("Compiling " + InShader->GetSourcePath().string() + "...\n");
 	bool bCompileResult = CompileShader(CompileCmd);
 
 	if (!std::filesystem::exists(OutputShaderPath) || !bCompileResult)
 	{
-		UHE_LOG(L"Failed to compile shader " + InShader->GetSourcePath().wstring() + L"!\n");
+		UHE_LOG("Failed to compile shader " + InShader->GetSourcePath().string() + "!\n");
 		return;
 	}
 

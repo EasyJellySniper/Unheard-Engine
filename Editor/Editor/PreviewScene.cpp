@@ -49,8 +49,8 @@ void UHPreviewScene::Release()
 	VkDevice LogicalDevice = Gfx->GetLogicalDevice();
 	Gfx->RequestReleaseRT(PreviewRT);
 	Gfx->RequestReleaseRT(PreviewDepth);
-	vkDestroyFramebuffer(LogicalDevice, PreviewFrameBuffer, nullptr);
-	vkDestroyRenderPass(LogicalDevice, PreviewRenderPass.RenderPass, nullptr);
+	SafeDestroyFrameBuffer(LogicalDevice, PreviewFrameBuffer);
+	SafeDestroyRenderPass(LogicalDevice, PreviewRenderPass.RenderPass);
 }
 
 void UHPreviewScene::Render(bool bIsActive)

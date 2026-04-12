@@ -66,7 +66,7 @@ UHFbxImportedData UHFbxImporter::ImportRawFbx(std::filesystem::path InPath, std:
 	if (!FbxSDKImporter->Initialize(InPath.string().c_str(), -1, FbxSDKManager->GetIOSettings()))
 	{
 		// it could be here if non-fbx file was found
-		UHE_LOG(L"Failed to load " + InPath.wstring() + L"\n");
+		UHE_LOG("Failed to load " + InPath.string() + "\n");
 		return OutData;
 	}
 
@@ -210,7 +210,7 @@ void ExtractTexturesFromFbx(FbxProperty Property, UHMaterial* UHMat, std::filesy
 			}
 			else
 			{
-				UHE_LOG(L"Unsupported texture type detected: " + UHUtilities::ToStringW(TexType) + L". This one will be skipped.\n");
+				UHE_LOG("Unsupported texture type detected: " + TexType + ". This one will be skipped.\n");
 			}
 		}
 	}
@@ -358,7 +358,7 @@ UniquePtr<UHMaterial> ImportMaterial(FbxNode* InNode, std::filesystem::path InTe
 
 		if (MatCount > 1)
 		{
-			UHE_LOG(L"Multiple materials detect: " + MatName + L". Only the first material will be used for now.\n");
+			UHE_LOG("Multiple materials detect: " + std::string(Mat->GetName()) + ". Only the first material will be used for now.\n");
 		}
 
 		UHMat->SetMaterialProps(MatProps);
@@ -399,7 +399,7 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 
 	if (InMesh->GetTextureUVCount() == 0)
 	{
-		UHE_LOG(L"Fbx without texture UV found, this mesh will be ignored: " + NodeNameW + L"\n");
+		UHE_LOG("Fbx without texture UV found, this mesh will be ignored: " + std::string(InNode->GetName()) + "\n");
 		return;
 	}
 
@@ -657,7 +657,7 @@ void UHFbxImporter::ImportLights(FbxNode* InNode, std::vector<UHFbxLightData>& I
 	}
 	else
 	{
-		UHE_LOG(L"Unsupported light type detected (area or volume). This light will be ignored for now.");
+		UHE_LOG("Unsupported light type detected (area or volume). This light will be ignored for now.");
 		return;
 	}
 

@@ -37,8 +37,8 @@ UHGraphicState::UHGraphicState(UHComputePassInfo InInfo)
 
 void UHGraphicState::Release()
 {
-	vkDestroyPipeline(LogicalDevice, PassPipeline, nullptr);
-	vkDestroyPipeline(LogicalDevice, RTPipeline, nullptr);
+	SafeDestroyPipeline(LogicalDevice, PassPipeline);
+	SafeDestroyPipeline(LogicalDevice, RTPipeline);
 }
 
 VkPipelineVertexInputStateCreateInfo GetVertexInputInfo(VkVertexInputBindingDescription& OutBindingDesc, VkVertexInputAttributeDescription& OutAttributeDesc)
@@ -343,7 +343,7 @@ bool UHGraphicState::CreateState(UHRenderPassInfo InInfo)
 	VkResult Result = vkCreateGraphicsPipelines(LogicalDevice, nullptr, 1, &PipelineInfo, nullptr, &PassPipeline);
 	if (Result != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create graphics pipeline!\n");
+		UHE_LOG("Failed to create graphics pipeline!\n");
 		return false;
 	}
 
@@ -510,7 +510,7 @@ bool UHGraphicState::CreateState(UHRayTracingInfo InInfo)
 	VkResult Result = GVkCreateRayTracingPipelinesKHR(LogicalDevice, nullptr, nullptr, 1, &CreateInfo, nullptr, &RTPipeline);
 	if (Result != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create ray tracing pipeline!\n");
+		UHE_LOG("Failed to create ray tracing pipeline!\n");
 		return false;
 	}
 
@@ -548,7 +548,7 @@ bool UHGraphicState::CreateState(UHComputePassInfo InInfo)
 	VkResult Result = vkCreateComputePipelines(LogicalDevice, nullptr, 1, &PipelineInfo, nullptr, &PassPipeline);
 	if (Result != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create graphics pipeline!\n");
+		UHE_LOG("Failed to create graphics pipeline!\n");
 		return false;
 	}
 

@@ -9,8 +9,14 @@
 #include <mutex>
 #include "Runtime/CoreGlobals.h"
 
+#define LINUX_DEBUG defined(__linux__) && !defined(NDEBUG)
+
 #if WITH_EDITOR
 	#define LogMessage( str ) OutputDebugString( str );
+#elif LINUX_DEBUG
+	#include <iostream>
+	// Linux Debug
+	#define LogMessage( str ) std::cout << str;
 #else
 	#define LogMessage( str )
 #endif
@@ -32,18 +38,12 @@ inline std::mutex GLogMutex;
 
 #endif
 
-inline void UHE_LOG(std::wstring InString)
-{
-#if WITH_EDITOR
-	LogMessage(InString.c_str());
-
-	std::unique_lock<std::mutex> Lock(GLogMutex);
-	GLogBuffer.push_back(UHUtilities::ToStringA(InString));
-#endif
-}
-
 inline void UHE_LOG(std::string InString)
 {
+#if LINUX_DEBUG
+	LogMessage(InString.c_str());
+#endif
+
 #if WITH_EDITOR
 	LogMessage(std::filesystem::path(InString).wstring().c_str());
 

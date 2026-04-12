@@ -100,7 +100,7 @@ void UHAccelerationStructure::CreaetBottomAS(UHMesh* InMesh, VkCommandBuffer InB
 
 	if (GVkCreateAccelerationStructureKHR(LogicalDevice, &CreateInfo, nullptr, &AccelerationStructure) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create bottom level AS!\n");
+		UHE_LOG("Failed to create bottom level AS!\n");
 	}
 
 #if WITH_EDITOR
@@ -230,7 +230,7 @@ uint32_t UHAccelerationStructure::CreateTopAS(const std::vector<UHMeshRendererCo
 
 	if (GVkCreateAccelerationStructureKHR(LogicalDevice, &CreateInfo, nullptr, &AccelerationStructure) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to create top level AS!\n");
+		UHE_LOG("Failed to create top level AS!\n");
 	}
 
 #if WITH_EDITOR
@@ -332,18 +332,14 @@ void UHAccelerationStructure::UpdateTopAS(VkCommandBuffer InBuffer, const int32_
 
 void UHAccelerationStructure::Release()
 {
-    if (GfxCache->IsRayTracingEnabled())
-    {
+	if (GfxCache->IsRayTracingEnabled())
+	{
 		UH_SAFE_RELEASE(ScratchBuffer);
 		UH_SAFE_RELEASE(ASInstanceBuffer);
 		UH_SAFE_RELEASE(AccelerationStructureBuffer);
 
-		if (AccelerationStructure)
-		{
-			GVkDestroyAccelerationStructureKHR(LogicalDevice, AccelerationStructure, nullptr);
-			AccelerationStructure = nullptr;
-		}
-    }
+		SafeDestroyAccelerationStructure(LogicalDevice, AccelerationStructure);
+	}
 }
 
 // release scratch buffer only, this can be cleared after initialization

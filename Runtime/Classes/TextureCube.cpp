@@ -60,7 +60,7 @@ bool UHTextureCube::Import(std::filesystem::path InCubePath)
 	std::ifstream FileIn(InCubePath.string().c_str(), std::ios::in | std::ios::binary);
 	if (!FileIn.is_open())
 	{
-		UHE_LOG(L"Failed to Load UHCubemap " + InCubePath.wstring() + L"!\n");
+		UHE_LOG("Failed to Load UHCubemap " + InCubePath.string() + "!\n");
 		return false;
 	}
 

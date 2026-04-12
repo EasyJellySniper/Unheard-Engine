@@ -73,7 +73,7 @@ void UHDeferredShadingRenderer::Update()
 	if (!CurrentScene)
 	{
 		// don't update without a scene
-		UHE_LOG(L"Scene is not set!\n");
+		UHE_LOG("Scene is not set!\n");
 		return;
 	}
 
@@ -96,7 +96,7 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	if (!CurrentScene)
 	{
 		// don't render without a scene
-		UHE_LOG(L"Scene is not set!\n");
+		UHE_LOG("Scene is not set!\n");
 		return;
 	}
 

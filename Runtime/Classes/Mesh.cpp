@@ -346,7 +346,7 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	std::ifstream FileIn(InUHMeshPath.string().c_str(), std::ios::in | std::ios::binary);
 	if (!FileIn.is_open())
 	{
-		UHE_LOG(L"Failed to Load UHMesh " + InUHMeshPath.wstring() + L"!\n");
+		UHE_LOG("Failed to Load UHMesh " + InUHMeshPath.string() + "!\n");
 		return false;
 	}
 

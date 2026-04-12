@@ -4,6 +4,7 @@
 #include "../../UnheardEngine.h"
 #include "GPUMemory.h"
 #include "Runtime/CoreGlobals.h"
+#include "Runtime/Engine/GraphicFunction.h"
 
 // class for managing render buffer (E.g. vertex buffer/index buffer)
 // make this template so we can decide the size dynamically
@@ -70,7 +71,7 @@ public:
 
         if (vkCreateBuffer(LogicalDevice, &bufferInfo, nullptr, &BufferSource) != VK_SUCCESS)
         {
-            UHE_LOG(L"Failed to create buffer!\n");
+            UHE_LOG("Failed to create buffer!\n");
         }
 
         VkMemoryRequirements MemRequirements;
@@ -93,13 +94,13 @@ public:
 
         if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &BufferMemory) != VK_SUCCESS)
         {
-            UHE_LOG(L"Failed to allocate buffer memory!\n");
+            UHE_LOG("Failed to allocate buffer memory!\n");
         }
 
         // committed resource to GPU
         if (vkBindBufferMemory(LogicalDevice, BufferSource, BufferMemory, 0) != VK_SUCCESS)
         {
-            UHE_LOG(L"Failed to bind buffer to GPU!\n");
+            UHE_LOG("Failed to bind buffer to GPU!\n");
         }
 
         // if it's uploading buffer, Map here immediately and unmap it until destruction
@@ -108,7 +109,7 @@ public:
         {
             if (vkMapMemory(LogicalDevice, BufferMemory, 0, BufferSize, 0, reinterpret_cast<void**>(&DstData)) != VK_SUCCESS)
             {
-                UHE_LOG(L"Failed to map upload buffer to GPU!\n");
+                UHE_LOG("Failed to map upload buffer to GPU!\n");
             }
         }
 
@@ -136,7 +137,7 @@ public:
 
         if (vkCreateBuffer(LogicalDevice, &bufferInfo, nullptr, &BufferSource) != VK_SUCCESS)
         {
-            UHE_LOG(L"Failed to create buffer!\n");
+            UHE_LOG("Failed to create buffer!\n");
             return false;
         }
 
@@ -149,7 +150,7 @@ public:
         if (OffsetInSharedMemory == ~0)
         {
             bExceedSharedMemory = true;
-            //UHE_LOG(L"Exceed shared image memory budget, will allocate individually instead.\n");
+            //UHE_LOG("Exceed shared image memory budget, will allocate individually instead.\n");
         }
 
         if (bExceedSharedMemory)
@@ -171,13 +172,13 @@ public:
 
             if (vkAllocateMemory(LogicalDevice, &AllocInfo, nullptr, &BufferMemory) != VK_SUCCESS)
             {
-                UHE_LOG(L"Failed to allocate buffer memory!\n");
+                UHE_LOG("Failed to allocate buffer memory!\n");
             }
 
             // committed resource to GPU
             if (vkBindBufferMemory(LogicalDevice, BufferSource, BufferMemory, 0) != VK_SUCCESS)
             {
-                UHE_LOG(L"Failed to bind buffer to GPU!\n");
+                UHE_LOG("Failed to bind buffer to GPU!\n");
             }
         }
 
@@ -192,18 +193,8 @@ public:
             vkUnmapMemory(LogicalDevice, BufferMemory);
         }
 
-        if (BufferSource != nullptr)
-        {
-            vkDestroyBuffer(LogicalDevice, BufferSource, nullptr);
-        }
-
-        if (BufferMemory != nullptr)
-        {
-            vkFreeMemory(LogicalDevice, BufferMemory, nullptr);
-        }
-
-        BufferSource = nullptr;
-        BufferMemory = nullptr;
+        SafeDestroyBuffer(LogicalDevice, BufferSource);
+        SafeFreeMemory(LogicalDevice, BufferMemory);
     }
 
 	// upload all data, this will copy whole buffer

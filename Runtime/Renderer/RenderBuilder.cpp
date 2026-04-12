@@ -95,7 +95,7 @@ void UHRenderBuilder::BeginCommandBuffer(VkCommandBufferInheritanceInfo* InInfo)
 
 	if (vkBeginCommandBuffer(CmdList, &BeginInfo) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to begin recording command buffer!\n");
+		UHE_LOG("Failed to begin recording command buffer!\n");
 	}
 }
 
@@ -103,7 +103,7 @@ void UHRenderBuilder::EndCommandBuffer()
 {
 	if (vkEndCommandBuffer(CmdList) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to record command buffer!\n");
+		UHE_LOG("Failed to record command buffer!\n");
 	}
 }
 
@@ -201,7 +201,7 @@ void UHRenderBuilder::ExecuteCmd(VkQueue InQueue, VkFence InFence
 	// similar to D3D12CommandQueue::Execute()
 	if (vkQueueSubmit(InQueue, 1, &SubmitInfo, InFence) != VK_SUCCESS)
 	{
-		UHE_LOG(L"Failed to submit draw command buffer!\n");
+		UHE_LOG("Failed to submit draw command buffer!\n");
 		return;
 	}
 }
@@ -228,12 +228,12 @@ bool UHRenderBuilder::Present(VkSwapchainKHR InSwapChain, VkQueue InQueue, VkSem
 	// return if present succeed
 	if (PresentResult == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)
 	{
-		UHE_LOG(L"Lost full screen control!\n");
+		UHE_LOG("Lost full screen control!\n");
 		return false;
 	}
 	else if (PresentResult == VK_ERROR_DEVICE_LOST)
 	{
-		UHE_LOG(L"Device lost!\n");
+		UHE_LOG("Device lost!\n");
 		return false;
 	}
 
@@ -601,7 +601,7 @@ void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D 
 	// image type must be equal
 	if (SrcInfo.viewType != DstInfo.viewType)
 	{
-		UHE_LOG(L"Inconsistent view type when calling Blit!\n");
+		UHE_LOG("Inconsistent view type when calling Blit!\n");
 		return;
 	}
 
@@ -657,7 +657,7 @@ void UHRenderBuilder::Blit(UHTexture* SrcImage, UHTexture* DstImage, VkExtent2D 
 	// image type must be equal
 	if (SrcInfo.viewType != DstInfo.viewType)
 	{
-		UHE_LOG(L"[UHRenderBuilder::Blit] Inconsistent view type when calling Blit!\n");
+		UHE_LOG("[UHRenderBuilder::Blit] Inconsistent view type when calling Blit!\n");
 		return;
 	}
 
@@ -696,7 +696,7 @@ void UHRenderBuilder::CopyTexture(UHTexture* SrcImage, UHTexture* DstImage, uint
 	// copy should work on the same dimension
 	if (SrcImage->GetExtent().width != DstImage->GetExtent().width || SrcImage->GetExtent().height != DstImage->GetExtent().height)
 	{
-		UHE_LOG(L"[UHRenderBuilder::CopyTexture] Dimension mismatched when copying texture!\n");
+		UHE_LOG("[UHRenderBuilder::CopyTexture] Dimension mismatched when copying texture!\n");
 		return;
 	}
 

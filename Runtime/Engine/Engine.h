@@ -20,7 +20,7 @@
 enum class UHEngineResizeReason
 {
 	NotResizing = 0,
-	FromWndMessage,
+	FromClientCallback,
 	ToggleFullScreen,
 	ToggleVsync,
 	ToggleHDR,
