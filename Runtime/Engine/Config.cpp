@@ -1,7 +1,7 @@
 #include "Config.h"
 #include <fstream>
 #include "../Classes/Utility.h"
-#include "../../Resource.h"
+#include "../../resource.h"
 #include "../../framework.h"
 #include "../../UnheardEngine.h"
 #include "../CoreGlobals.h"

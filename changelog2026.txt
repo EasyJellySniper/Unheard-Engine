@@ -148,3 +148,8 @@ Did more refactoring mainly for the types, such as POINT/uuid_t from Win32, bett
 
 11-04-2026:
 WIP cross platform works. More compiling/link error fixes, and finally made Linux build successfully!
+
+13-04-2026:
+Installed real Ubuntu environment and did some tests. Finally it can detect my GPU properly!
+Fixed a case-sensitive include bug and corrected my dependency list.
+Next is to fix the asset path issues, I should use "/" instead of "\".
