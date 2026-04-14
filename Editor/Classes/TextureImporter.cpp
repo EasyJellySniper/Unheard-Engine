@@ -38,12 +38,12 @@ std::vector<uint8_t> UHTextureImporter::LoadTexture(std::filesystem::path Filena
 {
 	std::vector<uint8_t> Texture;
 	std::filesystem::path FilePath = Filename;
-	const bool bIsEXR = FilePath.extension().string() == ".exr";
+	const bool bIsEXR = FilePath.extension().generic_string() == ".exr";
 
 	if (bIsEXR)
 	{
 		// Load EXR file
-		Imf::RgbaInputFile File(Filename.string().c_str());
+		Imf::RgbaInputFile File(Filename.generic_string().c_str());
 		Imath::Box2i Dimension = File.dataWindow();
 		Width = Dimension.max.x - Dimension.min.x + 1;
 		Height = Dimension.max.y - Dimension.min.y + 1;
@@ -159,10 +159,10 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	}
 
 	uint32_t Width, Height;
-	std::vector<uint8_t> TextureData = LoadTexture(SourcePath.string(), Width, Height);
+	std::vector<uint8_t> TextureData = LoadTexture(SourcePath.generic_string(), Width, Height);
 	if (Width == 0 && Height == 0)
 	{
-		UHE_LOG("Failed to load texture: " + SourcePath.string() + " !\n");
+		UHE_LOG("Failed to load texture: " + SourcePath.generic_string() + " !\n");
 		return nullptr;
 	}
 
@@ -174,13 +174,13 @@ UHTexture* UHTextureImporter::ImportRawTexture(std::filesystem::path SourcePath,
 	DesiredFormat = InSettings.bIsHDR ? UHTextureFormat::UH_FORMAT_RGBA16F : DesiredFormat;
 	CompressionSettingToFormat(InSettings, DesiredFormat);
 
-	std::string OutputPathName = OutputFolder.string() + "/" + SourcePath.stem().string();
-	std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", "/");
+	std::string OutputPathName = OutputFolder.generic_string() + GPathSeparator + SourcePath.stem().generic_string();
+	std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", GPathSeparator);
 	SavedPathName = UHUtilities::StringReplace(SavedPathName, GTextureAssetFolder, "");
 
-	UniquePtr<UHTexture2D> NewTex = MakeUnique<UHTexture2D>(SourcePath.stem().string(), SavedPathName, Extent, DesiredFormat, InSettings);
+	UniquePtr<UHTexture2D> NewTex = MakeUnique<UHTexture2D>(SourcePath.stem().generic_string(), SavedPathName, Extent, DesiredFormat, InSettings);
 	UHTexture2D* OutputTex = Gfx->RequestTexture2D(NewTex, true);
-	OutputTex->SetRawSourcePath(SourcePath.string());
+	OutputTex->SetRawSourcePath(SourcePath.generic_string());
 
 	if (OutputTex != nullptr)
 	{

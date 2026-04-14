@@ -3,6 +3,7 @@
 #include "Utility.h"
 
 // general paths
+static std::string GPathSeparator = "/";
 static std::string GAssetPath = "Assets/";
 static std::string GTempFilePath = "Temp/";
 static std::string GAssetMapName = "AssetMap";
@@ -47,7 +48,7 @@ namespace UHAssetPath
 	{
 		std::filesystem::path OriginPath = InSource;
 		OriginPath = OriginPath.remove_filename();
-		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.string(), GRawShaderPath);
+		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.generic_string(), GRawShaderPath);
 
 		return OriginSubpath;
 	}
@@ -56,7 +57,7 @@ namespace UHAssetPath
 	{
 		std::filesystem::path OriginPath = InSource;
 		OriginPath = OriginPath.remove_filename();
-		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.string(), GRawMeshAssetPath);
+		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.generic_string(), GRawMeshAssetPath);
 
 		return OriginSubpath;
 	}
@@ -65,14 +66,14 @@ namespace UHAssetPath
 	{
 		std::filesystem::path OriginPath = InSource;
 		OriginPath = OriginPath.remove_filename();
-		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.string(), GMaterialAssetPath);
+		std::string OriginSubpath = UHUtilities::RemoveSubString(OriginPath.generic_string(), GMaterialAssetPath);
 
 		return OriginSubpath;
 	}
 
 	inline bool IsTheSameExtension(std::filesystem::path InSource, std::string InExt)
 	{
-		std::string SrcExt = UHUtilities::ToLowerString(InSource.extension().string());
+		std::string SrcExt = UHUtilities::ToLowerString(InSource.extension().generic_string());
 		std::string DstExt = UHUtilities::ToLowerString(InExt);
 
 		return SrcExt == DstExt;
@@ -80,7 +81,7 @@ namespace UHAssetPath
 
 	inline std::string FormatMaterialShaderOutputPath(std::string OriginSubpath, std::string MaterialPathName, std::string ShaderName, std::string MacroHash)
 	{
-		MaterialPathName = UHUtilities::StringReplace(MaterialPathName, "/", "_");
+		MaterialPathName = UHUtilities::StringReplace(MaterialPathName, GPathSeparator, "_");
 		MaterialPathName = UHUtilities::StringReplace(MaterialPathName, "\\", "_");
 		return OriginSubpath + MaterialPathName + "_" + ShaderName + MacroHash;
 	}

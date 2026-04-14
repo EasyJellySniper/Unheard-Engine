@@ -33,6 +33,7 @@ UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHTextureDial
     , Gfx(InGfx)
     , bNeedCreatingTexture(false)
     , bNeedCreatingCube(false)
+    , bCreatingCubeFromPanorama(false)
 {
     CurrentOutputPath = "";
 }
@@ -47,6 +48,7 @@ UHTextureCreationDialog::UHTextureCreationDialog(UHGraphic* InGfx, UHCubemapDial
     , Gfx(InGfx)
     , bNeedCreatingTexture(false)
     , bNeedCreatingCube(false)
+    , bCreatingCubeFromPanorama(false)
 {
     CurrentOutputPath = "";
 }
@@ -236,8 +238,8 @@ void UHTextureCreationDialog::ControlTextureCreate()
     TextureAssetPath = std::filesystem::absolute(TextureAssetPath);
 
     bool bIsValidOutputFolder = false;
-    bIsValidOutputFolder |= UHUtilities::StringFind(OutputFolder.string() + "\\", TextureAssetPath.string());
-    bIsValidOutputFolder |= UHUtilities::StringFind(TextureAssetPath.string(), OutputFolder.string() + "\\");
+    bIsValidOutputFolder |= UHUtilities::StringFind(OutputFolder.generic_string() + GPathSeparator, TextureAssetPath.generic_string());
+    bIsValidOutputFolder |= UHUtilities::StringFind(TextureAssetPath.generic_string(), OutputFolder.generic_string() + GPathSeparator);
 
     bool bSingleInputSource = std::filesystem::exists(InputSource);
     bool bMultipleInputSources = std::filesystem::exists(InputFolder);
@@ -262,13 +264,13 @@ void UHTextureCreationDialog::ControlTextureCreate()
     if (bSingleInputSource)
     {
         std::filesystem::path RawSourcePath = std::filesystem::relative(InputSource);
-        if (RawSourcePath.string().empty())
+        if (RawSourcePath.generic_string().empty())
         {
             RawSourcePath = InputSource;
         }
 
         UHTextureSettings TextureSetting = CurrentEditingSettings;
-        TextureSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
+        TextureSetting.bIsHDR = (RawSourcePath.extension().generic_string() == ".exr");
         ValidateTextureSetting(TextureSetting);
 
         UHTexture* NewTex = TextureImporter->ImportRawTexture(RawSourcePath, OutputFolder, TextureSetting);
@@ -288,19 +290,19 @@ void UHTextureCreationDialog::ControlTextureCreate()
         std::vector<UHTexture*> NewTexes;
         for (std::filesystem::recursive_directory_iterator Idx(InputFolder), end; Idx != end; Idx++)
         {
-            if (std::filesystem::is_directory(Idx->path()) || !IsSupportedImageFormat(Idx->path().extension().string()))
+            if (std::filesystem::is_directory(Idx->path()) || !IsSupportedImageFormat(Idx->path().extension().generic_string()))
             {
                 continue;
             }
             
             std::filesystem::path RawSourcePath = std::filesystem::relative(Idx->path());
-            if (RawSourcePath.string().empty())
+            if (RawSourcePath.generic_string().empty())
             {
                 RawSourcePath = Idx->path();
             }
 
             UHTextureSettings TextureSetting = CurrentEditingSettings;
-            TextureSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
+            TextureSetting.bIsHDR = (RawSourcePath.extension().generic_string() == ".exr");
             ValidateTextureSetting(TextureSetting);
 
             UHTexture* NewTex = TextureImporter->ImportRawTexture(RawSourcePath, OutputFolder, TextureSetting, true);
@@ -322,8 +324,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
     TextureAssetPath = std::filesystem::absolute(TextureAssetPath);
 
     bool bIsValidOutputFolder = false;
-    bIsValidOutputFolder |= UHUtilities::StringFind(OutputFolder.string() + "\\", TextureAssetPath.string());
-    bIsValidOutputFolder |= UHUtilities::StringFind(TextureAssetPath.string(), OutputFolder.string() + "\\");
+    bIsValidOutputFolder |= UHUtilities::StringFind(OutputFolder.generic_string() + GPathSeparator, TextureAssetPath.generic_string());
+    bIsValidOutputFolder |= UHUtilities::StringFind(TextureAssetPath.generic_string(), OutputFolder.generic_string() + GPathSeparator);
 
     if (!std::filesystem::exists(OutputFolder) || !bIsValidOutputFolder)
     {
@@ -520,11 +522,11 @@ void UHTextureCreationDialog::ControlCubemapCreate()
         Gfx->EndOneTimeCmd(RenderBuilder.GetCmdList());
 
         // creation finished, export the cube
-        std::string OutputPathName = OutputFolder.string() + "/" + NewCube->GetName();
-        std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", "/");
+        std::string OutputPathName = OutputFolder.generic_string() + GPathSeparator + NewCube->GetName();
+        std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", GPathSeparator);
         SavedPathName = UHUtilities::StringReplace(SavedPathName, GTextureAssetFolder, "");
         NewCube->SetSourcePath(SavedPathName);
-        NewCube->Export(GTextureAssetFolder + "/" + NewCube->GetSourcePath());
+        NewCube->Export(GTextureAssetFolder + GPathSeparator + NewCube->GetSourcePath());
 
         CubemapDialog->OnCreationFinished(NewCube);
 
@@ -656,8 +658,8 @@ void UHTextureCreationDialog::ControlCubemapCreate()
 
         if (NewCube)
         {
-            std::string OutputPathName = OutputFolder.string() + "/" + NewCube->GetName();
-            std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", "/");
+            std::string OutputPathName = OutputFolder.generic_string() + GPathSeparator + NewCube->GetName();
+            std::string SavedPathName = UHUtilities::StringReplace(OutputPathName, "\\", GPathSeparator);
             SavedPathName = UHUtilities::StringReplace(SavedPathName, GTextureAssetFolder, "");
             NewCube->SetSourcePath(SavedPathName);
 
@@ -668,7 +670,7 @@ void UHTextureCreationDialog::ControlCubemapCreate()
                 NewCube->Build(Gfx, Builder);
                 Gfx->EndOneTimeCmd(Cmd);
             }
-            NewCube->Export(GTextureAssetFolder + "/" + NewCube->GetSourcePath());
+            NewCube->Export(GTextureAssetFolder + GPathSeparator + NewCube->GetSourcePath());
 
             CubemapDialog->OnCreationFinished(NewCube);
         }

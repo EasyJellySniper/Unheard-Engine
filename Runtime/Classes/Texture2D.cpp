@@ -47,10 +47,10 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 		return false;
 	}
 
-	std::ifstream FileIn(InTexturePath.string().c_str(), std::ios::in | std::ios::binary);
+	std::ifstream FileIn(InTexturePath.generic_string().c_str(), std::ios::in | std::ios::binary);
 	if (!FileIn.is_open())
 	{
-		UHE_LOG("Failed to Load UHTexture " + InTexturePath.string() + "!\n");
+		UHE_LOG("Failed to Load UHTexture " + InTexturePath.generic_string() + "!\n");
 		return false;
 	}
 
@@ -239,13 +239,13 @@ std::vector<uint8_t> UHTexture2D::ReadbackTextureData()
 
 void UHTexture2D::Export(std::filesystem::path InTexturePath, bool bOverwrite)
 {
-	if (!bOverwrite && std::filesystem::exists(InTexturePath.string() + GTextureAssetExtension))
+	if (!bOverwrite && std::filesystem::exists(InTexturePath.generic_string() + GTextureAssetExtension))
 	{
 		return;
 	}
 
 	// open UHTexture file
-	std::ofstream FileOut(InTexturePath.string() + GTextureAssetExtension, std::ios::out | std::ios::binary);
+	std::ofstream FileOut(InTexturePath.generic_string() + GTextureAssetExtension, std::ios::out | std::ios::binary);
 
 	Version = UH_ENUM_VALUE(UHTextureVersion::TextureVersionMax) - 1;
 	UHObject::OnSave(FileOut);

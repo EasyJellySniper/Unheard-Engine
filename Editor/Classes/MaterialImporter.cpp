@@ -23,7 +23,7 @@ void UHMaterialImporter::LoadMaterialCache()
 			continue;
 		}
 
-		std::ifstream FileIn(Idx->path().string().c_str(), std::ios::in | std::ios::binary);
+		std::ifstream FileIn(Idx->path().generic_string().c_str(), std::ios::in | std::ios::binary);
 
 		// load cache
 		UHMaterialAssetCache Cache;
@@ -65,7 +65,7 @@ void UHMaterialImporter::WriteMaterialCache(UHMaterial* InMat, UHShader* InShade
 	int64_t SpvGeneratedTime = std::filesystem::exists(OutputShaderPath) ? std::filesystem::last_write_time(OutputShaderPath).time_since_epoch().count() : 0;
 	int64_t SourceModifiedTime = std::filesystem::last_write_time(InMat->GetPath()).time_since_epoch().count();
 
-	UHUtilities::WriteStringData(FileOut, InMat->GetPath().string());
+	UHUtilities::WriteStringData(FileOut, InMat->GetPath().generic_string());
 	FileOut.write(reinterpret_cast<const char*>(&SpvGeneratedTime), sizeof(SpvGeneratedTime));
 	FileOut.write(reinterpret_cast<const char*>(&MacroHash), sizeof(MacroHash));
 	FileOut.write(reinterpret_cast<const char*>(&SourceModifiedTime), sizeof(SourceModifiedTime));
@@ -87,12 +87,12 @@ bool UHMaterialImporter::IsMaterialCached(UHMaterial* InMat, UHShader* InShader)
 	Cache.SourcePath = InMat->GetPath();
 	Cache.MacroHash = MacroHash;
 
-	std::string OutputShaderPath = InShader->GetOutputPath().string();
+	std::string OutputShaderPath = InShader->GetOutputPath().generic_string();
 	if (!std::filesystem::exists(InShader->GetOutputPath()))
 	{
 		return false;
 	}
-	Cache.SpvGeneratedTime = std::filesystem::last_write_time(InShader->GetOutputPath().string()).time_since_epoch().count();
+	Cache.SpvGeneratedTime = std::filesystem::last_write_time(InShader->GetOutputPath().generic_string()).time_since_epoch().count();
 	Cache.SourceModifiedTime = std::filesystem::last_write_time(InMat->GetPath()).time_since_epoch().count();
 
 	return UHUtilities::FindByElement(UHMaterialsCache, Cache);

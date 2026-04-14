@@ -408,8 +408,8 @@ void UHEngine::OnSaveScene(std::filesystem::path OutputPath)
 		return;
 	}
 
-	std::ofstream FileOut(OutputPath.string().c_str(), std::ios::out | std::ios::binary);
-	CurrentScene->SetName(OutputPath.filename().stem().string());
+	std::ofstream FileOut(OutputPath.generic_string().c_str(), std::ios::out | std::ios::binary);
+	CurrentScene->SetName(OutputPath.filename().stem().generic_string());
 	CurrentScene->OnSave(FileOut);
 	FileOut.close();
 }
@@ -418,14 +418,14 @@ void UHEngine::OnLoadScene(std::filesystem::path InputPath)
 {
 	if (!std::filesystem::exists(InputPath))
 	{
-		UHE_LOG("Scene " + InputPath.string() + " not found!\n");
+		UHE_LOG("Scene " + InputPath.generic_string() + " not found!\n");
 		return;
 	}
 
 	ResetScene();
 
 	// load scene file
-	std::ifstream FileIn(InputPath.string().c_str(), std::ios::in | std::ios::binary);
+	std::ifstream FileIn(InputPath.generic_string().c_str(), std::ios::in | std::ios::binary);
 	CurrentScene->OnLoad(FileIn);
 	FileIn.close();
 

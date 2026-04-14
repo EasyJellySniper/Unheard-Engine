@@ -471,7 +471,7 @@ void UHMaterial::Export(const std::filesystem::path InPath)
 		std::filesystem::create_directories(GMaterialAssetPath);
 	}
 
-	const std::string OutPath = InPath.empty() ? GMaterialAssetPath + SourcePath + GMaterialAssetExtension : InPath.string();
+	const std::string OutPath = InPath.empty() ? GMaterialAssetPath + SourcePath + GMaterialAssetExtension : InPath.generic_string();
 	std::ofstream FileOut(OutPath, std::ios::out | std::ios::binary);
 
 	// get current version before saving

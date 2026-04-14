@@ -343,10 +343,10 @@ void UHMesh::RecalculateMeshBound()
 // function for importing UHAsset
 bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 {
-	std::ifstream FileIn(InUHMeshPath.string().c_str(), std::ios::in | std::ios::binary);
+	std::ifstream FileIn(InUHMeshPath.generic_string().c_str(), std::ios::in | std::ios::binary);
 	if (!FileIn.is_open())
 	{
-		UHE_LOG("Failed to Load UHMesh " + InUHMeshPath.string() + "!\n");
+		UHE_LOG("Failed to Load UHMesh " + InUHMeshPath.generic_string() + "!\n");
 		return false;
 	}
 
@@ -439,7 +439,7 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 	}
 
 	// don't output again if file exists if it doesn't want to overwrite
-	std::filesystem::path OutPath = OutputFolder.string();
+	std::filesystem::path OutPath = OutputFolder.generic_string();
 	if (!OutPath.has_filename())
 	{
 		OutPath += Name + GMeshAssetExtension;
@@ -451,7 +451,7 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 	}
 
 	// open UHMesh file
-	std::ofstream FileOut(OutPath.string(), std::ios::out | std::ios::binary);
+	std::ofstream FileOut(OutPath.generic_string(), std::ios::out | std::ios::binary);
 	Version = UH_ENUM_VALUE(UHMeshVersion::MeshVersionMax) - 1;
 	UHObject::OnSave(FileOut);
 

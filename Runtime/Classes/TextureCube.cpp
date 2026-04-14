@@ -57,10 +57,10 @@ bool UHTextureCube::Import(std::filesystem::path InCubePath)
 		return false;
 	}
 
-	std::ifstream FileIn(InCubePath.string().c_str(), std::ios::in | std::ios::binary);
+	std::ifstream FileIn(InCubePath.generic_string().c_str(), std::ios::in | std::ios::binary);
 	if (!FileIn.is_open())
 	{
-		UHE_LOG("Failed to Load UHCubemap " + InCubePath.string() + "!\n");
+		UHE_LOG("Failed to Load UHCubemap " + InCubePath.generic_string() + "!\n");
 		return false;
 	}
 
@@ -114,13 +114,13 @@ void UHTextureCube::Recreate(UHTextureFormat NewFormat)
 
 void UHTextureCube::Export(std::filesystem::path InCubePath, bool bOverwrite)
 {
-	if (!bOverwrite && std::filesystem::exists(InCubePath.string() + GCubemapAssetExtension))
+	if (!bOverwrite && std::filesystem::exists(InCubePath.generic_string() + GCubemapAssetExtension))
 	{
 		return;
 	}
 
 	// open UHTexture file
-	std::ofstream FileOut(InCubePath.string() + GCubemapAssetExtension, std::ios::out | std::ios::binary);
+	std::ofstream FileOut(InCubePath.generic_string() + GCubemapAssetExtension, std::ios::out | std::ios::binary);
 
 	Version = UH_ENUM_VALUE(UHTextureVersion::TextureVersionMax) - 1;
 	UHObject::OnSave(FileOut);

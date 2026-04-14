@@ -223,7 +223,7 @@ void UHCubemapDialog::ControlSave()
     }
 
     const std::filesystem::path SourcePath = CurrentCube->GetSourcePath();
-    CurrentCube->Export(GTextureAssetFolder + SourcePath.string());
+    CurrentCube->Export(GTextureAssetFolder + SourcePath.generic_string());
     MessageBoxA(nullptr, "Current editing cube is saved.", "Cubemap Editor", MB_OK);
 }
 
@@ -233,7 +233,7 @@ void UHCubemapDialog::ControlSaveAll()
     for (UHTextureCube* Tex : AssetMgr->GetCubemaps())
     {
         const std::filesystem::path SourcePath = Tex->GetSourcePath();
-        Tex->Export(GTextureAssetFolder + SourcePath.string());
+        Tex->Export(GTextureAssetFolder + SourcePath.generic_string());
     }
     MessageBoxA(nullptr, "All cubes are saved.", "Cubemap Editor", MB_OK);
 }

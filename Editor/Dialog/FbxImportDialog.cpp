@@ -131,8 +131,8 @@ bool IsPathValid(const std::filesystem::path& OutputFolder, std::filesystem::pat
 	AssetPath = std::filesystem::absolute(AssetPath);
 
 	bool bIsValidOutputFolder = false;
-	bIsValidOutputFolder |= UHUtilities::StringFind(OutputFolder.string() + "\\", AssetPath.string());
-	bIsValidOutputFolder |= UHUtilities::StringFind(AssetPath.string(), OutputFolder.string() + "\\");
+	bIsValidOutputFolder |= UHUtilities::StringFind(OutputFolder.generic_string() + GPathSeparator, AssetPath.generic_string());
+	bIsValidOutputFolder |= UHUtilities::StringFind(AssetPath.generic_string(), OutputFolder.generic_string() + GPathSeparator);
 	return bIsValidOutputFolder && std::filesystem::exists(OutputFolder);
 }
 
@@ -174,11 +174,11 @@ void UHFbxImportDialog::OnImport()
 
 	for (UniquePtr<UHMesh>& ImportMesh : ImportedData.ImportedMesh)
 	{
-		std::filesystem::path OutPath = MeshOutputPath + "/" + ImportMesh->GetName() + GMeshAssetExtension;
+		std::filesystem::path OutPath = MeshOutputPath + GPathSeparator + ImportMesh->GetName() + GMeshAssetExtension;
 
 		// setup source path with ./ prefix removed
-		std::filesystem::path SourcePath = std::filesystem::relative(MeshOutputPath, GMeshAssetFolder).string() + "/" + ImportMesh->GetName();
-		ImportMesh->SetSourcePath(UHUtilities::StringReplace(SourcePath.string(), "./", ""));
+		std::filesystem::path SourcePath = std::filesystem::relative(MeshOutputPath, GMeshAssetFolder).generic_string() + GPathSeparator + ImportMesh->GetName();
+		ImportMesh->SetSourcePath(UHUtilities::StringReplace(SourcePath.generic_string(), "./", ""));
 		MeshCache.push_back(ImportMesh.get());
 
 		if (!std::filesystem::exists(OutPath))
@@ -190,7 +190,7 @@ void UHFbxImportDialog::OnImport()
 
 	for (UniquePtr<UHMaterial>& ImportMaterial : ImportedData.ImportedMaterial)
 	{
-		std::filesystem::path OutPath = MaterialOutputPath + "/" + ImportMaterial->GetName() + GMaterialAssetExtension;
+		std::filesystem::path OutPath = MaterialOutputPath + GPathSeparator + ImportMaterial->GetName() + GMaterialAssetExtension;
 		if (!std::filesystem::exists(OutPath))
 		{
 			ImportMaterial->GenerateDefaultMaterialNodes();

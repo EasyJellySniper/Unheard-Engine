@@ -10,7 +10,7 @@ std::vector<UHIniData> LoadIniFile(std::filesystem::path InPath)
 	}
 
 	// start parsing the ini file
-	std::ifstream FileIn(InPath.string().c_str(), std::ios::in);
+	std::ifstream FileIn(InPath.generic_string().c_str(), std::ios::in);
 
 	// based on stupid read character method
 	std::string Buffer;

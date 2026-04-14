@@ -246,7 +246,7 @@ UHObject* UHAssetManager::ImportMesh(std::filesystem::path InPath)
 		UHMeshesCache.push_back(LoadedMesh.get());
 		if (GIsEditor)
 		{
-			AllAssetsMap.push_back(UHAssetMap(LoadedMesh.get(), InPath.string()));
+			AllAssetsMap.push_back(UHAssetMap(LoadedMesh.get(), InPath.generic_string()));
 		}
 
 		Result = LoadedMesh.get();
@@ -268,7 +268,7 @@ UHObject* UHAssetManager::ImportTexture(std::filesystem::path InPath)
 		UHTexture2Ds.push_back(NewTex);
 		if (GIsEditor)
 		{
-			AllAssetsMap.push_back(UHAssetMap(NewTex, InPath.string()));
+			AllAssetsMap.push_back(UHAssetMap(NewTex, InPath.generic_string()));
 		}
 
 		Result = NewTex;
@@ -293,7 +293,7 @@ UHObject* UHAssetManager::ImportCubemap(std::filesystem::path InPath)
 		UHCubemaps.push_back(NewCube);
 		if (GIsEditor)
 		{
-			AllAssetsMap.push_back(UHAssetMap(NewCube, InPath.string()));
+			AllAssetsMap.push_back(UHAssetMap(NewCube, InPath.generic_string()));
 		}
 
 		Result = NewCube;
@@ -310,7 +310,10 @@ UHObject* UHAssetManager::ImportMaterial(std::filesystem::path InPath)
 UHObject* UHAssetManager::ImportAsset(std::filesystem::path InPath)
 {
 	UHObject* Result = nullptr;
-	const std::string Extension = InPath.extension().string();
+
+	// safely normalize the input path
+	InPath = InPath.generic_string();
+	const std::string Extension = InPath.extension().generic_string();
 
 	if (Extension == GMeshAssetExtension)
 	{
@@ -553,7 +556,7 @@ UHObject* UHAssetManager::AddImportedMaterial(std::filesystem::path InPath)
 		UHMaterialsCache.push_back(Mat);
 		if (GIsEditor)
 		{
-			AllAssetsMap.push_back(UHAssetMap(Mat, InPath.string()));
+			AllAssetsMap.push_back(UHAssetMap(Mat, InPath.generic_string()));
 		}
 
 		Result = Mat;

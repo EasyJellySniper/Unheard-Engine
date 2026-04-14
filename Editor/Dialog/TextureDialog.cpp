@@ -252,12 +252,12 @@ void UHTextureDialog::ControlApply()
         MessageBoxA(nullptr, "Please select a valid image source file and try again.", "Missing source file", MB_OK);
         return;
     }
-    CurrentTexture->SetRawSourcePath(RawSourcePath.string());
+    CurrentTexture->SetRawSourcePath(RawSourcePath.generic_string());
 
     // recreate texture if any option is changed
     const UHTextureSettings OldSetting = CurrentTexture->GetTextureSettings();
     UHTextureSettings NewSetting = CurrentEditingSettings;
-    NewSetting.bIsHDR = (RawSourcePath.extension().string() == ".exr");
+    NewSetting.bIsHDR = (RawSourcePath.extension().generic_string() == ".exr");
     ValidateTextureSetting(NewSetting);
     CurrentTexture->SetTextureSettings(NewSetting);
 
@@ -295,7 +295,7 @@ void UHTextureDialog::ControlSave()
     }
 
     const std::filesystem::path SourcePath = CurrentTexture->GetSourcePath();
-    CurrentTexture->Export(GTextureAssetFolder + SourcePath.string());
+    CurrentTexture->Export(GTextureAssetFolder + SourcePath.generic_string());
     MessageBoxA(nullptr, "Current editing texture is saved.\nIt's also recommended to resave referencing materials.", "Texture Editor", MB_OK);
 }
 
@@ -305,7 +305,7 @@ void UHTextureDialog::ControlSaveAll()
     for (UHTexture2D* Tex : AssetMgr->GetTexture2Ds())
     {
         const std::filesystem::path SourcePath = Tex->GetSourcePath();
-        Tex->Export(GTextureAssetFolder + SourcePath.string());
+        Tex->Export(GTextureAssetFolder + SourcePath.generic_string());
     }
     MessageBoxA(nullptr, "All textures are saved.", "Texture Editor", MB_OK);
 }
@@ -319,12 +319,12 @@ void UHTextureDialog::ControlBrowseRawTexture()
 
     std::filesystem::path FilePath = UHEditorUtil::FileSelectInput(GImageFilter);
     std::filesystem::path RawSourcePath = std::filesystem::relative(FilePath);
-    if (RawSourcePath.string().empty())
+    if (RawSourcePath.generic_string().empty())
     {
         // if the path is not relative to engine folder, just use the absolute path
         RawSourcePath = FilePath;
     }
-    CurrentTexture->SetRawSourcePath(RawSourcePath.string());
+    CurrentTexture->SetRawSourcePath(RawSourcePath.generic_string());
 }
 
 void UHTextureDialog::RefreshImGuiMipLevel()

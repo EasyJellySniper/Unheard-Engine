@@ -183,7 +183,7 @@ void UHEditor::OnSaveScene()
     std::filesystem::path SceneAssetPath = GSceneAssetPath;
     SceneAssetPath = std::filesystem::absolute(SceneAssetPath);
     std::filesystem::path OutPath = UHEditorUtil::FileSelectSavePath(Filter, SceneAssetPath.wstring());
-    if (OutPath.string().length() == 0)
+    if (OutPath.generic_string().length() == 0)
     {
         return;
     }
@@ -194,8 +194,8 @@ void UHEditor::OnSaveScene()
     }
 
     bool bIsValidOutputFolder = false;
-    bIsValidOutputFolder |= UHUtilities::StringFind(OutPath.string() + "\\", SceneAssetPath.string());
-    bIsValidOutputFolder |= UHUtilities::StringFind(SceneAssetPath.string(), OutPath.string() + "\\");
+    bIsValidOutputFolder |= UHUtilities::StringFind(OutPath.generic_string() + GPathSeparator, SceneAssetPath.generic_string());
+    bIsValidOutputFolder |= UHUtilities::StringFind(SceneAssetPath.generic_string(), OutPath.generic_string() + GPathSeparator);
 
     std::filesystem::path Temp = OutPath;
     if (!std::filesystem::exists(Temp.remove_filename()) || !bIsValidOutputFolder)
@@ -221,7 +221,7 @@ void UHEditor::OnLoadScene()
     std::filesystem::path SceneAssetPath = GSceneAssetPath;
     SceneAssetPath = std::filesystem::absolute(SceneAssetPath);
     std::filesystem::path InputPath = UHEditorUtil::FileSelectInput(Filter, SceneAssetPath.wstring());
-    if (InputPath.string().length() == 0)
+    if (InputPath.generic_string().length() == 0)
     {
         return;
     }

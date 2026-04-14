@@ -63,10 +63,10 @@ UHFbxImportedData UHFbxImporter::ImportRawFbx(std::filesystem::path InPath, std:
 
 	// importer initialization, create fbx importer
 	FbxImporter* FbxSDKImporter = FbxImporter::Create(FbxSDKManager, "UHFbxImporter");
-	if (!FbxSDKImporter->Initialize(InPath.string().c_str(), -1, FbxSDKManager->GetIOSettings()))
+	if (!FbxSDKImporter->Initialize(InPath.generic_string().c_str(), -1, FbxSDKManager->GetIOSettings()))
 	{
 		// it could be here if non-fbx file was found
-		UHE_LOG("Failed to load " + InPath.string() + "\n");
+		UHE_LOG("Failed to load " + InPath.generic_string() + "\n");
 		return OutData;
 	}
 
@@ -170,10 +170,10 @@ void ExtractTexturesFromFbx(FbxProperty Property, UHMaterial* UHMat, std::filesy
 			std::string TexType = Property.GetNameAsCStr();
 			FbxFileTexture* FileTexture = FbxCast<FbxFileTexture>(Texture);
 			std::filesystem::path TexFileName = FileTexture->GetFileName();
-			TexFileName = InTextureRefPath.string() + "/" + TexFileName.stem().string();
+			TexFileName = InTextureRefPath.generic_string() + GPathSeparator + TexFileName.stem().generic_string();
 			TexFileName = std::filesystem::relative(TexFileName, GTextureAssetFolder);
-			std::string TexFileNameString = TexFileName.string();
-			TexFileNameString = UHUtilities::StringReplace(TexFileNameString, "\\", "/");
+			std::string TexFileNameString = TexFileName.generic_string();
+			TexFileNameString = UHUtilities::StringReplace(TexFileNameString, "\\", GPathSeparator);
 
 			if (TexType == FbxSurfaceMaterial::sDiffuse)
 			{
@@ -576,9 +576,9 @@ void UHFbxImporter::ImportMeshesAndMaterials(FbxNode* InNode, std::filesystem::p
 	UniquePtr<UHMaterial> NewMat = ImportMaterial(InNode, InTextureRefPath);
 
 	// setup source path of materials with ./ prefix removed
-	std::filesystem::path OutPath = MaterialOutputPath + "/" + NewMat->GetName() + GMaterialAssetExtension;
-	std::filesystem::path SourcePath = std::filesystem::relative(MaterialOutputPath, GMaterialAssetPath).string() + "/" + NewMat->GetName();
-	NewMat->SetSourcePath(UHUtilities::StringReplace(SourcePath.string(), "./", ""));
+	std::filesystem::path OutPath = MaterialOutputPath + GPathSeparator + NewMat->GetName() + GMaterialAssetExtension;
+	std::filesystem::path SourcePath = std::filesystem::relative(MaterialOutputPath, GMaterialAssetPath).generic_string() + GPathSeparator + NewMat->GetName();
+	NewMat->SetSourcePath(UHUtilities::StringReplace(SourcePath.generic_string(), "./", ""));
 	NewMesh->SetImportedMaterialName(NewMat->GetSourcePath());
 
 	if (!UHUtilities::FindByElement(ImportedMaterialNames, NewMat->GetSourcePath()))

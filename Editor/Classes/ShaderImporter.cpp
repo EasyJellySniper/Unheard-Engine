@@ -40,7 +40,7 @@ void UHShaderImporter::LoadShaderCache()
 			continue;
 		}
 
-		std::ifstream FileIn(Idx->path().string().c_str(), std::ios::in | std::ios::binary);
+		std::ifstream FileIn(Idx->path().generic_string().c_str(), std::ios::in | std::ios::binary);
 
 		// load cache
 		UHRawShaderAssetCache Cache;
@@ -97,11 +97,11 @@ void WriteShaderCache(UHShader* InShader, std::filesystem::path OverrideOutputPa
 	// get last modified time
 	int64_t SourcLastModifiedTime = std::filesystem::last_write_time(InShader->GetSourcePath()).time_since_epoch().count();
 
-	UHUtilities::WriteStringData(FileOut, InShader->GetSourcePath().string());
+	UHUtilities::WriteStringData(FileOut, InShader->GetSourcePath().generic_string());
 	FileOut.write(reinterpret_cast<const char*>(&SourcLastModifiedTime), sizeof(SourcLastModifiedTime));
 
 	std::filesystem::path OutPath = OverrideOutputPath.empty() ? InShader->GetOutputPath() : OverrideOutputPath;
-	UHUtilities::WriteStringData(FileOut, OutPath.string());
+	UHUtilities::WriteStringData(FileOut, OutPath.generic_string());
 	UHUtilities::WriteStringData(FileOut, InShader->GetEntryName());
 	UHUtilities::WriteStringData(FileOut, InShader->GetProfileName());
 
@@ -322,8 +322,8 @@ void UHShaderImporter::CompileHLSL(UHShader* InShader)
 	// compile, setup dx layout as well, be careful that the path must include "" mark in case there are folders with whitespace name
 	const std::string QuoteMark = "\"";
 	std::string CompileCmd = " -spirv -T " + InShader->GetProfileName() + " -E " + InShader->GetEntryName() + " "
-		+ QuoteMark + std::filesystem::absolute(InShader->GetSourcePath()).string() + QuoteMark
-		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
+		+ QuoteMark + std::filesystem::absolute(InShader->GetSourcePath()).generic_string() + QuoteMark
+		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).generic_string() + QuoteMark
 		+ " -HV 2018 "
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
@@ -342,12 +342,12 @@ void UHShaderImporter::CompileHLSL(UHShader* InShader)
 		CompileCmd += " -D " + Define;
 	}
 
-	UHE_LOG("Compiling " + InShader->GetSourcePath().string() + "...\n");
+	UHE_LOG("Compiling " + InShader->GetSourcePath().generic_string() + "...\n");
 	bool bCompileResult = CompileShader(CompileCmd);
 
 	if (!std::filesystem::exists(OutputShaderPath) || !bCompileResult)
 	{
-		UHE_LOG("Failed to compile shader " + InShader->GetSourcePath().string() + "!\n");
+		UHE_LOG("Failed to compile shader " + InShader->GetSourcePath().generic_string() + "!\n");
 		return;
 	}
 
@@ -364,7 +364,7 @@ std::filesystem::path UHShaderImporter::TranslateHLSL(UHShader* InShader, UHMate
 	// 4) Compile it and write cache, force write should be fine, compile should be happen when editing in material editor
 
 	std::string ShaderCode;
-	std::ifstream FileIn(std::filesystem::absolute(InShader->GetSourcePath()).string().c_str(), std::ios::in);
+	std::ifstream FileIn(std::filesystem::absolute(InShader->GetSourcePath()).generic_string().c_str(), std::ios::in);
 	if (FileIn.is_open())
 	{
 		std::stringstream Buffer;
@@ -432,8 +432,8 @@ std::filesystem::path UHShaderImporter::TranslateHLSL(UHShader* InShader, UHMate
 	// compile, setup dx layout as well, be careful with path system, quotation mark is needed
 	const std::string QuoteMark = "\"";
 	std::string CompileCmd = " -spirv -T " + InShader->GetProfileName() + " -E " + InShader->GetEntryName() + " "
-		+ QuoteMark + std::filesystem::absolute(TempShaderPath + GRawShaderExtension).string() + QuoteMark
-		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).string() + QuoteMark
+		+ QuoteMark + std::filesystem::absolute(TempShaderPath + GRawShaderExtension).generic_string() + QuoteMark
+		+ " -Fo " + QuoteMark + std::filesystem::absolute(OutputShaderPath).generic_string() + QuoteMark
 		+ " -HV 2018 "
 		+ " -fvk-use-dx-layout "
 		+ " -fvk-use-dx-position-w "
@@ -452,12 +452,12 @@ std::filesystem::path UHShaderImporter::TranslateHLSL(UHShader* InShader, UHMate
 		CompileCmd += " -D " + Define;
 	}
 
-	UHE_LOG("Compiling " + OutputShaderPath.string() + "...\n");
+	UHE_LOG("Compiling " + OutputShaderPath.generic_string() + "...\n");
 	bool bCompileResult = CompileShader(CompileCmd);
 
 	if (!std::filesystem::exists(OutputShaderPath) || !bCompileResult)
 	{
-		UHE_LOG("Failed to compile shader " + OutputShaderPath.string() + "!\n");
+		UHE_LOG("Failed to compile shader " + OutputShaderPath.generic_string() + "!\n");
 		return "";
 	}
 

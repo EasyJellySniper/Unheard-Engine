@@ -49,7 +49,6 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 		, "VK_KHR_spirv_1_4"
 		, "VK_KHR_shader_float_controls"
 		, "VK_EXT_robustness2"
-		, "VK_EXT_hdr_metadata"
 		, "VK_KHR_dynamic_rendering"
 		, "VK_KHR_synchronization2"
 		, "VK_KHR_push_descriptor"
@@ -315,7 +314,6 @@ bool UHGraphic::CreateInstance()
 	GVkCreateRayTracingPipelinesKHR = (PFN_vkCreateRayTracingPipelinesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCreateRayTracingPipelinesKHR");
 	GVkCmdTraceRaysKHR = (PFN_vkCmdTraceRaysKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdTraceRaysKHR");
 	GVkGetRayTracingShaderGroupHandlesKHR = (PFN_vkGetRayTracingShaderGroupHandlesKHR)vkGetInstanceProcAddr(VulkanInstance, "vkGetRayTracingShaderGroupHandlesKHR");
-	GVkSetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)vkGetInstanceProcAddr(VulkanInstance, "vkSetHdrMetadataEXT");
 	GVkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetInstanceProcAddr(VulkanInstance, "vkCmdPushDescriptorSetKHR");
 	GVkCmdBeginConditionalRenderingEXT = (PFN_vkCmdBeginConditionalRenderingEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdBeginConditionalRenderingEXT");
 	GVkCmdEndConditionalRenderingEXT = (PFN_vkCmdEndConditionalRenderingEXT)vkGetInstanceProcAddr(VulkanInstance, "vkCmdEndConditionalRenderingEXT");
@@ -1290,12 +1288,12 @@ bool UHGraphic::CreateShaderModule(UniquePtr<UHShader>& NewShader, std::filesyst
 	// setup input shader path, read from compiled shader
 	if (!std::filesystem::exists(OutputShaderPath))
 	{
-		UHE_LOG("Failed to load shader " + OutputShaderPath.string() + "!\n");
+		UHE_LOG("Failed to load shader " + OutputShaderPath.generic_string() + "!\n");
 		return false;
 	}
 
 	// load shader code
-	std::ifstream FileIn(OutputShaderPath.string(), std::ios::ate | std::ios::binary);
+	std::ifstream FileIn(OutputShaderPath.generic_string(), std::ios::ate | std::ios::binary);
 
 	// get file size
 	size_t FileSize = static_cast<size_t>(FileIn.tellg());
