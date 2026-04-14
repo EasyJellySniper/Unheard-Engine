@@ -135,7 +135,9 @@ void UHDeferredShadingRenderer::NotifyRenderThread()
 	RenderThread->WakeThread();
 
 	// only wait RT in editor, shipped build will wait in somewhere else by calling WaitPreviousRenderTask()
+#if !__linux__
 	if (GIsEditor)
+#endif
 	{
 		RenderThread->WaitTask();
 	}

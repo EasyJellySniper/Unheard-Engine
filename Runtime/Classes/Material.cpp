@@ -77,6 +77,12 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 	UHUtilities::ReadStringVectorData(FileIn, RegisteredTextureNames);
 	ImportGraphData(FileIn);
 
+	// fix up RegisteredTextureNames path
+	for (std::string& TexName : RegisteredTextureNames)
+	{
+		TexName = UHUtilities::StringReplace(TexName, "\\", GPathSeparator);
+	}
+
 	// material constant data
 	if (Version >= UH_ENUM_VALUE(UHMaterialVersion::GoingBindless))
 	{

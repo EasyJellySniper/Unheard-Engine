@@ -153,3 +153,8 @@ WIP cross platform works. More compiling/link error fixes, and finally made Linu
 Installed real Ubuntu environment and did some tests. Finally it can detect my GPU properly!
 Fixed a case-sensitive include bug and corrected my dependency list.
 Next is to fix the asset path issues, I should use "/" instead of "\".
+
+14-04-2026:
+Carry on Linux debugging. The incorrect material data caused black objects rendering.
+And it is because incorrect file reading! I need to do a pass for all size_t and enums stored in a file.
+Those types are not cross-platform safe at all!

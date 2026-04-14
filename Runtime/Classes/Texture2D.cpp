@@ -61,6 +61,10 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 	UHUtilities::ReadStringData(FileIn, SourcePath);
 	UHUtilities::ReadStringData(FileIn, RawSourcePath);
 
+	// fix up path
+	SourcePath = UHUtilities::StringReplace(SourcePath, "\\", GPathSeparator);
+	RawSourcePath = UHUtilities::StringReplace(RawSourcePath, "\\", GPathSeparator);
+
 	// read extent
 	FileIn.read(reinterpret_cast<char*>(&ImageExtent.width), sizeof(ImageExtent.width));
 	FileIn.read(reinterpret_cast<char*>(&ImageExtent.height), sizeof(ImageExtent.height));

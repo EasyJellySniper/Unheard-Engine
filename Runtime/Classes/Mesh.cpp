@@ -388,6 +388,10 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 		SourcePath = Name;
 	}
 
+	// fix up path
+	SourcePath = UHUtilities::StringReplace(SourcePath, "\\", GPathSeparator);
+	ImportedMaterialName = UHUtilities::StringReplace(ImportedMaterialName, "\\", GPathSeparator);
+
 	return true;
 }
 

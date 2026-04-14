@@ -69,6 +69,9 @@ bool UHTextureCube::Import(std::filesystem::path InCubePath)
 	FileIn.read(reinterpret_cast<char*>(&TextureType), sizeof(TextureType));
 	UHUtilities::ReadStringData(FileIn, SourcePath);
 
+	// fix up path
+	SourcePath = UHUtilities::StringReplace(SourcePath, "\\", GPathSeparator);
+
 	// read extent and format
 	FileIn.read(reinterpret_cast<char*>(&ImageExtent.width), sizeof(ImageExtent.width));
 	FileIn.read(reinterpret_cast<char*>(&ImageExtent.height), sizeof(ImageExtent.height));
