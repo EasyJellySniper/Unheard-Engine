@@ -287,7 +287,7 @@ private:
 	/** ====================================================== Functions ====================================================== **/
 
 	// debug only functions
-#if WITH_EDITOR
+#if WITH_EDITOR || LINUX_DEBUG
 	// check validation layer support
 	bool CheckValidationLayerSupport();
 #endif
@@ -377,9 +377,11 @@ private:
 	std::vector<const char*> RayTracingExtensions;
 
 	// debug only variables
-#if WITH_EDITOR
+#if WITH_EDITOR || LINUX_DEBUG
 	// validation layer list
 	const std::vector<const char*> ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+#endif
+#if WITH_EDITOR
 	VkDescriptorPool ImGuiDescriptorPool;
 	VkPipeline ImGuiPipeline;
 #endif

@@ -31,14 +31,14 @@ public:
 	void SetRightMousePressed(bool bFlag);
 	void SetKeyPressed(char CharKey, bool bFlag);
 	void SetKeyPressed(int32_t VkKey, bool bFlag);
-	void CalculateMouseMovement(const int32_t CurrX, const int32_t CurrY);
+	void CalculateMouseMovement(const double CurrX, const double CurrY);
 
 	// mouse delta calculated based on cached cursor position, might not be as smooth as the movement function
-	void GetMouseDelta(int32_t& X, int32_t& Y) const;
+	void GetMouseDelta(double& X, double& Y) const;
 	// mouse movement returned by input api directly
-	void GetMouseMovement(int32_t& X, int32_t& Y) const;
+	void GetMouseMovement(double& X, double& Y) const;
 	// mouse position
-	void GetMousePosition(long& X, long& Y) const;
+	void GetMousePosition(double& X, double& Y) const;
 
 	void CacheKeyStates();
 	bool IsKeyHold(char CharKey) const;
@@ -69,10 +69,10 @@ private:
 	bool bPreviousRightMousePressed;
 	bool bEnableInput;
 
-	long LastMousePosX;
-	long LastMousePosY;
-	long LastMouseMovementX;
-	long LastMouseMovementY;
+	double LastMousePosX;
+	double LastMousePosY;
+	double LastMouseMovementX;
+	double LastMouseMovementY;
 
 	UHClient* ClientCache;
 };

@@ -85,12 +85,12 @@ void UHPlatformInput::ParseInputData(void* InData)
 	}
 }
 
-void UHPlatformInput::GetMousePosition(long& X, long& Y) const
+void UHPlatformInput::GetMousePosition(double& X, double& Y) const
 {
 	POINT MousePos;
 	GetCursorPos(&MousePos);
-	X = MousePos.x;
-	Y = MousePos.y;
+	X = static_cast<double>(MousePos.x);
+	Y = static_cast<double>(MousePos.y);
 }
 
 #endif

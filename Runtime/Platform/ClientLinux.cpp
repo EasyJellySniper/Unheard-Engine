@@ -67,14 +67,16 @@ bool UHClient::IsWindowMinimized()
 
 bool UHClient::IsQuit()
 {
-	GLFWwindow* Window = (GLFWwindow*)NativeWindow;
-	return glfwWindowShouldClose(Window);
+	return bIsQuit;
 }
 
 void UHClient::ProcessEvents()
 {
 	// process all events at once
 	glfwPollEvents();
+
+	GLFWwindow* Window = (GLFWwindow*)NativeWindow;
+	bIsQuit = glfwWindowShouldClose(Window);
 }
 
 int32_t UHClient::GetDisplayFrequency() const

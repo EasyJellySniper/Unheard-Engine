@@ -51,7 +51,7 @@ void MouseMoveCallback(GLFWwindow* Window, double PosX, double PosY)
 		return;
 	}
 
-	GPlatformInput->CalculateMouseMovement(static_cast<int32_t>(PosX), static_cast<int32_t>(PosY));
+	GPlatformInput->CalculateMouseMovement(PosX, PosY);
 }
 
 // keyboard callback
@@ -62,29 +62,24 @@ void KeyboardCallback(GLFWwindow* Window, int32_t Key, int32_t Scancode, int32_t
 		return;
 	}
 
-	bool bPressed = (Action == GLFW_PRESS);
+	bool bPressed = (Action == GLFW_PRESS || Action == GLFW_REPEAT);
 
-	// bCurrentKeyState[Key] = bPressed
-	if (isalpha((char)Key))
+	if (Key == GLFW_KEY_LEFT_ALT || Key == GLFW_KEY_RIGHT_ALT)
 	{
-		GPlatformInput->SetKeyPressed((char)Key, bPressed);
+		GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Alt), bPressed);
 	}
-	else
+	else if (Key == GLFW_KEY_LEFT_CONTROL || Key == GLFW_KEY_RIGHT_CONTROL)
 	{
-		if (Key == GLFW_KEY_LEFT_ALT || Key == GLFW_KEY_RIGHT_ALT)
-		{
-			GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Alt), bPressed);
-		}
-
-		if (Key == GLFW_KEY_LEFT_CONTROL || Key == GLFW_KEY_RIGHT_CONTROL)
-		{
-			GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Control), bPressed);
-		}
-		
-		if (Key == GLFW_KEY_ENTER)
-		{
-			GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Enter), bPressed);
-		}
+		GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Control), bPressed);
+	}
+	else if (Key == GLFW_KEY_ENTER)
+	{
+		GPlatformInput->SetKeyPressed(UH_ENUM_VALUE(UHSystemKey::Enter), bPressed);
+	}
+	// can allow more keys in the future
+	else if (isalnum(Key))
+	{
+		GPlatformInput->SetKeyPressed(Key, bPressed);
 	}
 }
 
@@ -94,17 +89,8 @@ bool UHPlatformInput::InitInput()
 
 	// set input mode for better movement and register input callbacks
 	GLFWwindow* Window = (GLFWwindow*)ClientCache->GetNativeWindow();
-	
-	// select the smoothest mouse input as possible
-	if (glfwRawMouseMotionSupported())
-	{
-		glfwSetInputMode(Window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	}
-	else
-	{
-		glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	}
 
+	glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetMouseButtonCallback(Window, MouseButtonCallback);
 	glfwSetCursorPosCallback(Window, MouseMoveCallback);
 	glfwSetKeyCallback(Window, KeyboardCallback);
@@ -117,7 +103,7 @@ void UHPlatformInput::ParseInputData(void* InData)
 	// not needed for Linux
 }
 
-void UHPlatformInput::GetMousePosition(long& X, long& Y) const
+void UHPlatformInput::GetMousePosition(double& X, double& Y) const
 {
 	double MousePosX = 0;
 	double MousePosY = 0;
@@ -125,8 +111,8 @@ void UHPlatformInput::GetMousePosition(long& X, long& Y) const
 	GLFWwindow* Window = (GLFWwindow*)ClientCache->GetNativeWindow();
 	glfwGetCursorPos(Window, &MousePosX, &MousePosY);
 
-	X = static_cast<long>(MousePosX);
-	Y = static_cast<long>(MousePosY);
+	X = MousePosX;
+	Y = MousePosY;
 }
 
 #endif

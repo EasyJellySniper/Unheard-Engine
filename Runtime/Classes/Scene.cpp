@@ -463,7 +463,7 @@ void UHScene::UpdateCamera()
 
 	if (Input->IsRightMouseHold())
 	{
-		int32_t MouseMoveX, MouseMoveY;
+		double MouseMoveX, MouseMoveY;
 		Input->GetMouseMovement(MouseMoveX, MouseMoveY);
 
 		float X = static_cast<float>(MouseMoveX) * MouseRotSpeed;

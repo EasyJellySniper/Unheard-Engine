@@ -69,21 +69,21 @@ void UHPlatformInput::SetKeyPressed(int32_t VkKey, bool bFlag)
 	bCurrentKeyState[VkKey] = bFlag;
 }
 
-void UHPlatformInput::CalculateMouseMovement(const int32_t CurrX, const int32_t CurrY)
+void UHPlatformInput::CalculateMouseMovement(const double CurrX, const double CurrY)
 {
 	LastMouseMovementX = CurrX - LastMousePosX;
 	LastMouseMovementY = CurrY - LastMousePosY;
 }
 
-void UHPlatformInput::GetMouseMovement(int32_t& X, int32_t& Y) const
+void UHPlatformInput::GetMouseMovement(double& X, double& Y) const
 {
 	X = LastMouseMovementX;
 	Y = LastMouseMovementY;
 }
 
-void UHPlatformInput::GetMouseDelta(int32_t& X, int32_t& Y) const
+void UHPlatformInput::GetMouseDelta(double& X, double& Y) const
 {
-	long MousePosX, MousePosY;
+	double MousePosX, MousePosY;
 	GetMousePosition(MousePosX, MousePosY);
 
 	X = MousePosX - LastMousePosX;

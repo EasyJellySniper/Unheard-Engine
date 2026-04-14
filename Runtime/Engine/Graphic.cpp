@@ -85,6 +85,10 @@ UHGraphic::UHGraphic(UHAssetManager* InAssetManager, UHConfigManager* InConfig)
 bool UHGraphic::InitGraphics(UHClient* InClient)
 {
 	bUseValidationLayers = ConfigInterface->RenderingSetting().bEnableLayerValidation && GIsEditor;
+	#if LINUX_DEBUG
+		// debug for Linux
+		bUseValidationLayers = true;
+	#endif
 	ClientCache = InClient;
 
 	bool bInitSuccess = CreateInstance()
@@ -181,7 +185,7 @@ void UHGraphic::Release()
 }
 
 // debug only functions
-#if WITH_EDITOR
+#if WITH_EDITOR || LINUX_DEBUG
 
 // check validation layer support
 bool UHGraphic::CheckValidationLayerSupport()
@@ -271,7 +275,7 @@ bool UHGraphic::CreateInstance()
 	CreateInfo.pApplicationInfo = &AppInfo;
 
 	// set up validation layer if it's debugging
-#if WITH_EDITOR
+#if WITH_EDITOR || LINUX_DEBUG
 	if (bUseValidationLayers && CheckValidationLayerSupport())
 	{
 		CreateInfo.enabledLayerCount = static_cast<uint32_t>(ValidationLayers.size());
@@ -1889,8 +1893,8 @@ bool UHGraphic::CreateSwapChain()
 	VkPresentModeKHR PresentMode = ChooseSwapChainMode(SwapChainSupport, ConfigInterface->PresentationSetting().bVsync);
 	VkExtent2D Extent = ChooseSwapChainExtent(SwapChainSupport, ClientCache);
 
-	// Follow GMaxFrameInFlight for image counts
-	uint32_t ImageCount = GMaxFrameInFlight;
+	// Set ImageCount to driver recommendation min count
+	uint32_t ImageCount = SwapChainSupport.Capabilities2.surfaceCapabilities.minImageCount + 1;
 	if (SwapChainSupport.Capabilities2.surfaceCapabilities.maxImageCount > 0 && ImageCount > SwapChainSupport.Capabilities2.surfaceCapabilities.maxImageCount)
 	{
 		ImageCount = SwapChainSupport.Capabilities2.surfaceCapabilities.maxImageCount;
