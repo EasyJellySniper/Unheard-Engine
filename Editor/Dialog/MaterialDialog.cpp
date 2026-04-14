@@ -579,8 +579,8 @@ void UHMaterialDialog::TryMoveNodes()
     };
 
     // cache mouse movement before doing any operations
-    int32_t MouseDeltaX;
-    int32_t MouseDeltaY;
+    double MouseDeltaX;
+    double MouseDeltaY;
     RawInput.GetMouseDelta(MouseDeltaX, MouseDeltaY);
 
     if (WorkAreaGUI->IsPointInside(MousePos))
@@ -596,7 +596,7 @@ void UHMaterialDialog::TryMoveNodes()
             DrawPinConnectionLine(true);
 
             // move node
-            MoveGUI(GUIToMove, MouseDeltaX, MouseDeltaY);
+            MoveGUI(GUIToMove, (int32_t)MouseDeltaX, (int32_t)MouseDeltaY);
 
             RECT NewRect;
             UHEditorUtil::GetWindowSize(GUIToMove, NewRect, Dialog);
@@ -618,7 +618,7 @@ void UHMaterialDialog::TryMoveNodes()
             // move all nodes as like we're moving the view client
             for (UniquePtr<UHGraphNodeGUI>& GUI : EditNodeGUIs)
             {
-                MoveGUI(GUI->GetHWND(), MouseDeltaX, MouseDeltaY);
+                MoveGUI(GUI->GetHWND(), (int32_t)MouseDeltaX, (int32_t)MouseDeltaY);
             }
 
             bNeedRepaint = true;
