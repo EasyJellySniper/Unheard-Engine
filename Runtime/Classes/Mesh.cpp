@@ -361,15 +361,15 @@ bool UHMesh::Import(std::filesystem::path InUHMeshPath)
 	UHUtilities::ReadStringData(FileIn, ImportedMaterialName);
 
 	// read transform data
-	FileIn.read(reinterpret_cast<char*>(&ImportedTranslation), sizeof(ImportedTranslation));
-	FileIn.read(reinterpret_cast<char*>(&ImportedRotation), sizeof(ImportedRotation));
-	FileIn.read(reinterpret_cast<char*>(&ImportedScale), sizeof(ImportedScale));
+	FileIn >> ImportedTranslation;
+	FileIn >> ImportedRotation;
+	FileIn >> ImportedScale;
 
 	// read vertex
-	UHUtilities::ReadVectorData(FileIn, PositionData);
-	UHUtilities::ReadVectorData(FileIn, UV0Data);
-	UHUtilities::ReadVectorData(FileIn, NormalData);
-	UHUtilities::ReadVectorData(FileIn, TangentData);
+	UHUtilities::ReadStructVector(FileIn, PositionData);
+	UHUtilities::ReadStructVector(FileIn, UV0Data);
+	UHUtilities::ReadStructVector(FileIn, NormalData);
+	UHUtilities::ReadStructVector(FileIn, TangentData);
 
 	// read indices
 	UHUtilities::ReadVectorData(FileIn, IndicesData);
@@ -465,15 +465,15 @@ void UHMesh::Export(std::filesystem::path OutputFolder, bool bOverwrite)
 	UHUtilities::WriteStringData(FileOut, ImportedMaterialName);
 
 	// write transform data
-	FileOut.write(reinterpret_cast<const char*>(&ImportedTranslation), sizeof(ImportedTranslation));
-	FileOut.write(reinterpret_cast<const char*>(&ImportedRotation), sizeof(ImportedRotation));
-	FileOut.write(reinterpret_cast<const char*>(&ImportedScale), sizeof(ImportedScale));
+	FileOut << ImportedTranslation;
+	FileOut << ImportedRotation;
+	FileOut << ImportedScale;
 
 	// write vertex
-	UHUtilities::WriteVectorData(FileOut, PositionData);
-	UHUtilities::WriteVectorData(FileOut, UV0Data);
-	UHUtilities::WriteVectorData(FileOut, NormalData);
-	UHUtilities::WriteVectorData(FileOut, TangentData);
+	UHUtilities::WriteStructVector(FileOut, PositionData);
+	UHUtilities::WriteStructVector(FileOut, UV0Data);
+	UHUtilities::WriteStructVector(FileOut, NormalData);
+	UHUtilities::WriteStructVector(FileOut, TangentData);
 
 	// write indices
 	UHUtilities::WriteVectorData(FileOut, IndicesData);

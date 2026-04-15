@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <thread>
+#include <fstream>
 #include <assert.h>
 
 // header for global shared definitions, only define things here if necessary

@@ -84,7 +84,7 @@ bool UHTextureCube::Import(std::filesystem::path InCubePath)
 	}
 
 	// read texture settings
-	FileIn.read(reinterpret_cast<char*>(&TextureSettings), sizeof(TextureSettings));
+	FileIn >> TextureSettings;
 
 	FileIn.close();
 
@@ -144,7 +144,7 @@ void UHTextureCube::Export(std::filesystem::path InCubePath, bool bOverwrite)
 	}
 
 	// write texture settings
-	FileOut.write(reinterpret_cast<char*>(&TextureSettings), sizeof(TextureSettings));
+	FileOut << TextureSettings;
 
 	FileOut.close();
 }

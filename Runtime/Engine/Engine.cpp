@@ -347,7 +347,7 @@ void UHEngine::EndFPSLimiter()
 	}
 
 	FrameEndTime = UHEGameTimer->GetTime();
-	const float Duration = std::chrono::duration<float>(FrameEndTime - FrameBeginTime).count();
+	float Duration = std::chrono::duration<float>(FrameEndTime - FrameBeginTime).count();
 	const float DesiredDuration = 1.0f / FPSLimit;
 
 	if (DesiredDuration > Duration)
@@ -376,6 +376,35 @@ void UHEngine::EndFPSLimiter()
 				break;
 			}
 		}
+	}
+}
+
+void UHEngine::DisplayFPS()
+{
+	// FPS count for shipped build
+	if (GIsShipping)
+	{
+		FrameEndTime = UHEGameTimer->GetTime();
+		float Duration = std::chrono::duration<float>(FrameEndTime - FrameBeginTime).count();
+		DisplayFPSTitle(Duration * 1000.0f);
+	}
+}
+
+void UHEngine::DisplayFPSTitle(float InDurationMS)
+{
+	// calc fps from total time, only do this once a second
+	static float TimeElasped = 0.0f;
+	float GameTime = UHEGameTimer->GetTotalTime();
+
+	if (UHEClient != nullptr && (GameTime - TimeElasped) > 1.0f)
+	{
+		float FPS = 1000.0f / InDurationMS;
+		std::stringstream FPSStream;
+		FPSStream << std::fixed << std::setprecision(2) << FPS;
+
+		std::string NewCaption = WindowCaption + " - " + FPSStream.str() + " FPS";
+		UHEClient->SetWindowCaption(NewCaption);
+		TimeElasped = GameTime;
 	}
 }
 
@@ -468,21 +497,9 @@ void UHEngine::EndProfile()
 	Stats.RenderThreadTime = UHERenderer->GetRenderThreadTime();
 	Stats.TotalTime = UHEProfiler.GetDiff() * 1000.0f;
 
-	// calc fps from total time, only do this once a second
-	static float TimeElasped = 0.0f;
-	float GameTime = UHEGameTimer->GetTotalTime();
-	if (UHEClient != nullptr && (GameTime - TimeElasped) > 1.0f)
-	{
-		float FPS = 1000.0f / Stats.TotalTime;
-		std::stringstream FPSStream;
-		FPSStream << std::fixed << std::setprecision(2) << FPS;
+	DisplayFPSTitle(Stats.TotalTime);
 
-		std::string NewCaption = WindowCaption + " - " + FPSStream.str() + " FPS";
-		UHEClient->SetWindowCaption(NewCaption);
-		TimeElasped = GameTime;
-		Stats.FPS = FPS;
-	}
-
+	Stats.FPS = 1000.0f / Stats.TotalTime;
 	Stats.RendererCount = CurrentScene ? static_cast<int32_t>(CurrentScene->GetAllRendererCount()) : 0;
 	Stats.DrawCallCount = UHERenderer->GetDrawCallCount();
 	Stats.OccludedCallCount = UHERenderer->GetOccludedCallCount();

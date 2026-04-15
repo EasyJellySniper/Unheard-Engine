@@ -80,6 +80,11 @@ struct UHTextureSettings
 	bool bUseMipmap;
 };
 
+// file I/O for UHTextureSettings
+extern std::ofstream& operator<<(std::ofstream& Out, const UHTextureSettings& T);
+
+extern std::ifstream& operator>>(std::ifstream& In, UHTextureSettings& T);
+
 class UHGraphic;
 class UHRenderBuilder;
 

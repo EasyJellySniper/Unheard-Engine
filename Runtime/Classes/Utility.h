@@ -190,6 +190,50 @@ namespace UHUtilities
 		FileIn.read(reinterpret_cast<char*>(&OutVector.data()[0]), ElementCount * sizeof(T));
 	}
 
+	// generic write struct vector data
+	template<class T>
+	inline void WriteStructVector(std::ofstream& FileOut, const std::vector<T>& InVector)
+	{
+		// don't write if file it's not opened
+		if (FileOut.fail())
+		{
+			return;
+		}
+
+		uint64_t ElementCount = InVector.size();
+		FileOut.write(reinterpret_cast<const char*>(&ElementCount), sizeof(ElementCount));
+
+		for (uint64_t I = 0; I < ElementCount; I++)
+		{
+			// struct must have << operator implemented
+			FileOut << InVector[I];
+		}
+	}
+
+	// generic read struct vector data
+	template<class T>
+	inline void ReadStructVector(std::ifstream& FileIn, std::vector<T>& OutVector)
+	{
+		// don't read if file it's not opended
+		if (FileIn.fail())
+		{
+			return;
+		}
+
+		// file must've written "Element counts" or this will fail
+
+		// read element count first
+		uint64_t ElementCount;
+		FileIn.read(reinterpret_cast<char*>(&ElementCount), sizeof(ElementCount));
+
+		OutVector.resize(ElementCount);
+		for (uint64_t I = 0; I < ElementCount; I++)
+		{
+			// struct must have >> operator implemented
+			FileIn >> OutVector[I];
+		}
+	}
+
 	void WriteStringVectorData(std::ofstream& FileOut, std::vector<std::string>& InVector);
 	void ReadStringVectorData(std::ifstream& FileIn, std::vector<std::string>& OutVector);
 
@@ -324,4 +368,10 @@ namespace UHUtilities
 	std::wstring FloatToWString(const float InValue, const int32_t InPrecision = 2);
 
 	std::string FloatToString(const float InValue, const int32_t InPrecision = 2);
+
+	// generic write bool data
+	void WriteBoolData(std::ofstream& FileOut, const bool& InFlag);
+
+	// generic read string data
+	void ReadBoolData(std::ifstream& FileIn, bool& bFlag);
 }

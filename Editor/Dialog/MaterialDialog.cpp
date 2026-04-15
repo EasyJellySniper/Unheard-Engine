@@ -731,10 +731,10 @@ void UHMaterialDialog::DrawPinConnectionLine(bool bIsErasing)
         DragRect.top = std::min(P1.y, P2.y);
         DragRect.bottom = std::max(P1.y, P2.y);
  
-        DragRect.left = std::min(DragRect.left, P3.x) - 10;
-        DragRect.right = std::max(DragRect.right, P3.x) + 10;
-        DragRect.top = std::min(DragRect.top, P3.y) - 10;
-        DragRect.bottom = std::max(DragRect.bottom, P3.y) + 10;
+        DragRect.left = std::min((int32_t)DragRect.left, P3.x) - 10;
+        DragRect.right = std::max((int32_t)DragRect.right, P3.x) + 10;
+        DragRect.top = std::min((int32_t)DragRect.top, P3.y) - 10;
+        DragRect.bottom = std::max((int32_t)DragRect.bottom, P3.y) + 10;
 
         // only invalidate the rect passed by the line, include previous mouse position
         InvalidateRect(Dialog, &DragRect, false);

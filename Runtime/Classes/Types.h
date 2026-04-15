@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <cmath>
+#include <fstream>
 #if _WIN32
 #define NOMINMAX
 #include <Windows.h>
@@ -61,6 +62,10 @@ struct UHPoint
     }
 #endif
 
-    long x;
-    long y;
+    int32_t x;
+    int32_t y;
 };
+
+// file I/O for UHPoint
+extern std::ofstream& operator<<(std::ofstream& Out, const UHPoint& P);
+extern std::ifstream& operator>>(std::ifstream& In, UHPoint& P);

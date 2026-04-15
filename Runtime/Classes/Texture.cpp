@@ -495,3 +495,27 @@ bool UHTexture::operator==(const UHTexture& InTexture)
 		&& TextureSettings.bIsLinear == InTexture.TextureSettings.bIsLinear
 		&& TextureSettings.bIsNormal == InTexture.TextureSettings.bIsNormal;
 }
+
+std::ofstream& operator<<(std::ofstream& Out, const UHTextureSettings& T)
+{
+	UHUtilities::WriteBoolData(Out, T.bIsLinear);
+	UHUtilities::WriteBoolData(Out, T.bIsNormal);
+	Out.write(reinterpret_cast<const char*>(&T.CompressionSetting), sizeof(T.CompressionSetting));
+	UHUtilities::WriteBoolData(Out, T.bIsCompressed);
+	UHUtilities::WriteBoolData(Out, T.bIsHDR);
+	UHUtilities::WriteBoolData(Out, T.bUseMipmap);
+
+	return Out;
+}
+
+std::ifstream& operator>>(std::ifstream& In, UHTextureSettings& T)
+{
+	UHUtilities::ReadBoolData(In, T.bIsLinear);
+	UHUtilities::ReadBoolData(In, T.bIsNormal);
+	In.read(reinterpret_cast<char*>(&T.CompressionSetting), sizeof(T.CompressionSetting));
+	UHUtilities::ReadBoolData(In, T.bIsCompressed);
+	UHUtilities::ReadBoolData(In, T.bIsHDR);
+	UHUtilities::ReadBoolData(In, T.bUseMipmap);
+
+	return In;
+}

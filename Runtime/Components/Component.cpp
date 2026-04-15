@@ -9,13 +9,13 @@ UHComponent::UHComponent()
 void UHComponent::OnSave(std::ofstream& OutStream)
 {
 	UHObject::OnSave(OutStream);
-	OutStream.write(reinterpret_cast<const char*>(&bIsEnabled), sizeof(bIsEnabled));
+	UHUtilities::WriteBoolData(OutStream, bIsEnabled);
 }
 
 void UHComponent::OnLoad(std::ifstream& InStream)
 {
 	UHObject::OnLoad(InStream);
-	InStream.read(reinterpret_cast<char*>(&bIsEnabled), sizeof(bIsEnabled));
+	UHUtilities::ReadBoolData(InStream, bIsEnabled);
 }
 
 void UHComponent::SetIsEnabled(bool bInFlag)

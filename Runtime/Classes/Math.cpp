@@ -625,3 +625,57 @@ void UHBoundingFrustum::CreateFromMatrix(UHBoundingFrustum& Out, UHMatrix4x4 Pro
         Out.Far = Points[5].z;
     }
 }
+
+std::ofstream& operator<<(std::ofstream& Out, const UHVector2& V) 
+{
+    Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
+    Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
+
+    return Out;
+}
+
+std::ifstream& operator>>(std::ifstream& In, UHVector2& V)
+{
+    In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
+    In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
+
+    return In;
+}
+
+std::ofstream& operator<<(std::ofstream& Out, const UHVector3& V)
+{
+    Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
+    Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
+    Out.write(reinterpret_cast<const char*>(&V.z), sizeof(V.z));
+
+    return Out;
+}
+
+std::ifstream& operator>>(std::ifstream& In, UHVector3& V)
+{
+    In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
+    In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
+    In.read(reinterpret_cast<char*>(&V.z), sizeof(V.z));
+
+    return In;
+}
+
+std::ofstream& operator<<(std::ofstream& Out, const UHVector4& V)
+{
+    Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
+    Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
+    Out.write(reinterpret_cast<const char*>(&V.z), sizeof(V.z));
+    Out.write(reinterpret_cast<const char*>(&V.w), sizeof(V.w));
+
+    return Out;
+}
+
+std::ifstream& operator>>(std::ifstream& In, UHVector4& V)
+{
+    In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
+    In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
+    In.read(reinterpret_cast<char*>(&V.z), sizeof(V.z));
+    In.read(reinterpret_cast<char*>(&V.w), sizeof(V.w));
+
+    return In;
+}

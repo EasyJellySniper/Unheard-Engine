@@ -21,8 +21,8 @@ void UHSkyLightComponent::OnSave(std::ofstream& OutStream)
 {
 	UHComponent::OnSave(OutStream);
 	UHTransformComponent::OnSave(OutStream);
-	OutStream.write(reinterpret_cast<const char*>(&AmbientSkyColor), sizeof(AmbientSkyColor));
-	OutStream.write(reinterpret_cast<const char*>(&AmbientGroundColor), sizeof(AmbientGroundColor));
+	OutStream << AmbientSkyColor;
+	OutStream << AmbientGroundColor;
 	OutStream.write(reinterpret_cast<const char*>(&SkyIntensity), sizeof(SkyIntensity));
 	OutStream.write(reinterpret_cast<const char*>(&GroundIntensity), sizeof(GroundIntensity));
 
@@ -42,8 +42,8 @@ void UHSkyLightComponent::OnLoad(std::ifstream& InStream)
 {
 	UHComponent::OnLoad(InStream);
 	UHTransformComponent::OnLoad(InStream);
-	InStream.read(reinterpret_cast<char*>(&AmbientSkyColor), sizeof(AmbientSkyColor));
-	InStream.read(reinterpret_cast<char*>(&AmbientGroundColor), sizeof(AmbientGroundColor));
+	InStream >> AmbientSkyColor;
+	InStream >> AmbientGroundColor;
 	InStream.read(reinterpret_cast<char*>(&SkyIntensity), sizeof(SkyIntensity));
 	InStream.read(reinterpret_cast<char*>(&GroundIntensity), sizeof(GroundIntensity));
 

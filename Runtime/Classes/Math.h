@@ -234,3 +234,11 @@ namespace UHMathHelpers
     float ToRadians(float InDegrees);
     float ToDegrees(float InRadians);
 }
+
+// file I/O for math types
+extern std::ofstream& operator<<(std::ofstream& Out, const UHVector2& V);
+extern std::ifstream& operator>>(std::ifstream& In, UHVector2& V);
+extern std::ofstream& operator<<(std::ofstream& Out, const UHVector3& V);
+extern std::ifstream& operator>>(std::ifstream& In, UHVector3& V);
+extern std::ofstream& operator<<(std::ofstream& Out, const UHVector4& V);
+extern std::ifstream& operator>>(std::ifstream& In, UHVector4& V);

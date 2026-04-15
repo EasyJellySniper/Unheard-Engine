@@ -76,16 +76,6 @@ public:
 		return "";
 	}
 
-	virtual void InputData(std::ifstream& FileIn) override
-	{
-		FileIn.read(reinterpret_cast<char*>(&DefaultValue), sizeof(DefaultValue));
-	}
-
-	virtual void OutputData(std::ofstream& FileOut) override
-	{
-		FileOut.write(reinterpret_cast<const char*>(&DefaultValue), sizeof(DefaultValue));
-	}
-
 	void SetDataIndexInMaterial(int32_t InIndex)
 	{
 		DataIndexInMaterial = InIndex;
@@ -102,6 +92,16 @@ public:
 	UHFloatNode(float Default = 0.0f);
 	virtual std::string EvalDefinition() override;
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
+
+	virtual void InputData(std::ifstream& FileIn) override
+	{
+		FileIn.read(reinterpret_cast<char*>(&DefaultValue), sizeof(DefaultValue));
+	}
+
+	virtual void OutputData(std::ofstream& FileOut) override
+	{
+		FileOut.write(reinterpret_cast<const char*>(&DefaultValue), sizeof(DefaultValue));
+	}
 };
 
 class UHFloat2Node : public UHParameterNode<UHVector2>
@@ -110,6 +110,16 @@ public:
 	UHFloat2Node(UHVector2 Default = UHVector2());
 	virtual std::string EvalDefinition() override;
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
+
+	virtual void InputData(std::ifstream& FileIn) override
+	{
+		FileIn >> DefaultValue;
+	}
+
+	virtual void OutputData(std::ofstream& FileOut) override
+	{
+		FileOut << DefaultValue;
+	}
 };
 
 class UHFloat3Node : public UHParameterNode<UHVector3>
@@ -118,6 +128,16 @@ public:
 	UHFloat3Node(UHVector3 Default = UHVector3());
 	virtual std::string EvalDefinition() override;
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
+
+	virtual void InputData(std::ifstream& FileIn) override
+	{
+		FileIn >> DefaultValue;
+	}
+
+	virtual void OutputData(std::ofstream& FileOut) override
+	{
+		FileOut << DefaultValue;
+	}
 };
 
 class UHFloat4Node : public UHParameterNode<UHVector4>
@@ -126,4 +146,14 @@ public:
 	UHFloat4Node(UHVector4 Default = UHVector4());
 	virtual std::string EvalDefinition() override;
 	virtual bool IsEqual(const UHGraphNode* InNode) override;
+
+	virtual void InputData(std::ifstream& FileIn) override
+	{
+		FileIn >> DefaultValue;
+	}
+
+	virtual void OutputData(std::ofstream& FileOut) override
+	{
+		FileOut << DefaultValue;
+	}
 };

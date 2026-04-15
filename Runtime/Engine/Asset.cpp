@@ -25,6 +25,7 @@ UHAssetManager::UHAssetManager()
 
 	// generate built-in meshes
 	UHMesh BuiltInCube = UHGeometryHelper::CreateCubeMesh();
+	BuiltInCube.SetSourcePath("BuiltIn/UHMesh_Cube");
 	BuiltInCube.Export(GBuiltInMeshAssetPath, false);
 
 	// generate built-in textures

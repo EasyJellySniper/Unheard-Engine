@@ -60,7 +60,7 @@ void UHDirectionalLightComponent::OnSave(std::ofstream& OutStream)
 {
 	UHComponent::OnSave(OutStream);
 	UHTransformComponent::OnSave(OutStream);
-	OutStream.write(reinterpret_cast<const char*>(&LightColor), sizeof(LightColor));
+	OutStream << LightColor;
 	OutStream.write(reinterpret_cast<const char*>(&Intensity), sizeof(Intensity));
 }
 
@@ -68,7 +68,7 @@ void UHDirectionalLightComponent::OnLoad(std::ifstream& InStream)
 {
 	UHComponent::OnLoad(InStream);
 	UHTransformComponent::OnLoad(InStream);
-	InStream.read(reinterpret_cast<char*>(&LightColor), sizeof(LightColor));
+	InStream >> LightColor;
 	InStream.read(reinterpret_cast<char*>(&Intensity), sizeof(Intensity));
 }
 
@@ -151,7 +151,7 @@ void UHPointLightComponent::OnSave(std::ofstream& OutStream)
 {
 	UHComponent::OnSave(OutStream);
 	UHTransformComponent::OnSave(OutStream);
-	OutStream.write(reinterpret_cast<const char*>(&LightColor), sizeof(LightColor));
+	OutStream << LightColor;
 	OutStream.write(reinterpret_cast<const char*>(&Intensity), sizeof(Intensity));
 	OutStream.write(reinterpret_cast<const char*>(&Radius), sizeof(Radius));
 }
@@ -160,7 +160,7 @@ void UHPointLightComponent::OnLoad(std::ifstream& InStream)
 {
 	UHComponent::OnLoad(InStream);
 	UHTransformComponent::OnLoad(InStream);
-	InStream.read(reinterpret_cast<char*>(&LightColor), sizeof(LightColor));
+	InStream >> LightColor;
 	InStream.read(reinterpret_cast<char*>(&Intensity), sizeof(Intensity));
 	InStream.read(reinterpret_cast<char*>(&Radius), sizeof(Radius));
 }
@@ -270,7 +270,7 @@ void UHSpotLightComponent::OnSave(std::ofstream& OutStream)
 {
 	UHComponent::OnSave(OutStream);
 	UHTransformComponent::OnSave(OutStream);
-	OutStream.write(reinterpret_cast<const char*>(&LightColor), sizeof(LightColor));
+	OutStream << LightColor;
 	OutStream.write(reinterpret_cast<const char*>(&Intensity), sizeof(Intensity));
 	OutStream.write(reinterpret_cast<const char*>(&Radius), sizeof(Radius));
 	OutStream.write(reinterpret_cast<const char*>(&Angle), sizeof(Angle));
@@ -280,7 +280,7 @@ void UHSpotLightComponent::OnLoad(std::ifstream& InStream)
 {
 	UHComponent::OnLoad(InStream);
 	UHTransformComponent::OnLoad(InStream);
-	InStream.read(reinterpret_cast<char*>(&LightColor), sizeof(LightColor));
+	InStream >> LightColor;
 	InStream.read(reinterpret_cast<char*>(&Intensity), sizeof(Intensity));
 	InStream.read(reinterpret_cast<char*>(&Radius), sizeof(Radius));
 	InStream.read(reinterpret_cast<char*>(&Angle), sizeof(Angle));

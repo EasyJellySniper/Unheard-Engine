@@ -138,3 +138,17 @@ UHColorRGBInt::UHColorRGBInt()
 {
 
 }
+
+std::ofstream& operator<<(std::ofstream& Out, const UHPoint& P)
+{
+    Out.write(reinterpret_cast<const char*>(&P.x), sizeof(int32_t));
+    Out.write(reinterpret_cast<const char*>(&P.y), sizeof(int32_t));
+    return Out;
+}
+
+std::ifstream& operator>>(std::ifstream& In, UHPoint& P)
+{
+    In.read(reinterpret_cast<char*>(&P.x), sizeof(int32_t));
+    In.read(reinterpret_cast<char*>(&P.y), sizeof(int32_t));
+    return In;
+}

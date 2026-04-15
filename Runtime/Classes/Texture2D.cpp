@@ -73,7 +73,7 @@ bool UHTexture2D::Import(std::filesystem::path InTexturePath)
 	UHUtilities::ReadVectorData(FileIn, TextureData);
 
 	// read texture settings
-	FileIn.read(reinterpret_cast<char*>(&TextureSettings), sizeof(TextureSettings));
+	FileIn >> TextureSettings;
 
 	if (Version >= UH_ENUM_VALUE(UHTextureVersion::OutputImageFormat))
 	{
@@ -267,7 +267,7 @@ void UHTexture2D::Export(std::filesystem::path InTexturePath, bool bOverwrite)
 	UHUtilities::WriteVectorData(FileOut, TextureData);
 
 	// write texture settings
-	FileOut.write(reinterpret_cast<char*>(&TextureSettings), sizeof(TextureSettings));
+	FileOut << TextureSettings;
 
 	if (Version >= UH_ENUM_VALUE(UHTextureVersion::OutputImageFormat))
 	{

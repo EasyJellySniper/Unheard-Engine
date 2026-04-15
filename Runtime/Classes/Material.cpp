@@ -169,8 +169,8 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 	}
 
 	// GUI pos data
-	UHUtilities::ReadVectorData(FileIn, EditGUIRelativePos);
-	FileIn.read(reinterpret_cast<char*>(&DefaultMaterialNodePos), sizeof(DefaultMaterialNodePos));
+	UHUtilities::ReadStructVector(FileIn, EditGUIRelativePos);
+	FileIn >> DefaultMaterialNodePos;
 }
 
 // post import callback
@@ -595,8 +595,8 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	}
 
 	// GUI pos data
-	UHUtilities::WriteVectorData(FileOut, EditGUIRelativePos);
-	FileOut.write(reinterpret_cast<const char*>(&DefaultMaterialNodePos), sizeof(DefaultMaterialNodePos));
+	UHUtilities::WriteStructVector(FileOut, EditGUIRelativePos);
+	FileOut << DefaultMaterialNodePos;
 }
 
 std::string UHMaterial::GetCBufferDefineCode(size_t& OutSize)

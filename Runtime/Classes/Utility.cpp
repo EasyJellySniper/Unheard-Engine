@@ -306,4 +306,32 @@ namespace UHUtilities
 
 		return Stream.str();
 	}
+
+	// generic write bool data
+	void WriteBoolData(std::ofstream& FileOut, const bool& InFlag)
+	{
+		if (FileOut.fail())
+		{
+			return;
+		}
+
+		// platform-safe write of bool
+		uint8_t Flag = InFlag ? 1 : 0;
+		FileOut.write(reinterpret_cast<const char*>(&Flag), sizeof(Flag));
+	}
+
+	// generic read string data
+	void ReadBoolData(std::ifstream& FileIn, bool& bFlag)
+	{
+		if (FileIn.fail())
+		{
+			return;
+		}
+
+		// platform-safe read of bool
+		uint8_t Flag;
+		FileIn.read(reinterpret_cast<char*>(&Flag), sizeof(Flag));
+
+		bFlag = Flag > 0;
+	}
 }

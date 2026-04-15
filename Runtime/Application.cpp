@@ -97,6 +97,7 @@ int32_t UHApplication::Run()
 #endif
 
 			Engine->EndFPSLimiter();
+			Engine->DisplayFPS();
 #if WITH_EDITOR
 			Engine->EndProfile();
 #endif

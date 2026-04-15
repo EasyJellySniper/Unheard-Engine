@@ -62,10 +62,10 @@ void UHMeshRendererComponent::OnSave(std::ofstream& OutStream)
 	UHTransformComponent::OnSave(OutStream);
 
 #if WITH_EDITOR
-	OutStream.write(reinterpret_cast<const char*>(&bIsVisibleEditor), sizeof(bIsVisibleEditor));
+	UHUtilities::WriteBoolData(OutStream, bIsVisibleEditor);
 #else
 	bool bDummy = true;
-	OutStream.write(reinterpret_cast<const char*>(&bDummy), sizeof(bDummy));
+	UHUtilities::WriteBoolData(OutStream, bDummy);
 #endif
 
 	// mesh cache
@@ -98,10 +98,10 @@ void UHMeshRendererComponent::OnLoad(std::ifstream& InStream)
 	UHTransformComponent::OnLoad(InStream);
 
 #if WITH_EDITOR
-	InStream.read(reinterpret_cast<char*>(&bIsVisibleEditor), sizeof(bIsVisibleEditor));
+	UHUtilities::ReadBoolData(InStream, bIsVisibleEditor);
 #else
 	bool bDummy;
-	InStream.read(reinterpret_cast<char*>(&bDummy), sizeof(bDummy));
+	UHUtilities::ReadBoolData(InStream, bDummy);
 #endif
 
 	// mesh cache

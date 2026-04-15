@@ -74,6 +74,7 @@ public:
 	// FPS limiter function
 	void BeginFPSLimiter();
 	void EndFPSLimiter();
+	void DisplayFPS();
 
 	void ResetScene();
 	void OnSaveScene(std::filesystem::path OutputPath);
@@ -89,6 +90,7 @@ public:
 private:
 	// engine resize
 	void ResizeEngine();
+	void DisplayFPSTitle(float InDurationMS);
 
 	// cache the client
 	UHClient* UHEClient;
