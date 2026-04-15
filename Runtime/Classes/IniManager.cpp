@@ -24,7 +24,8 @@ std::vector<UHIniData> LoadIniFile(std::filesystem::path InPath)
 	{
 		bool bIsValidBuffer = Buffer.size() > 0;
 
-		if (Char == '[')
+		// need to consider CRLF format and just ignore it
+		if (Char == '[' || Char == '\r')
 		{
 			continue;
 		}

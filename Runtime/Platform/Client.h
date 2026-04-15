@@ -46,7 +46,7 @@ public:
 		return NativeWindow;
 	}
 
-	void SetWindowPosition(const int32_t Width, const int32_t Height);
+	void SetWindowSize(const int32_t Width, const int32_t Height);
 	void GetWindowSize(int32_t& OutWidth, int32_t& OutHeight) const;
 	void SetWindowStyle(const bool bIsFullscreen, const int32_t Width, const int32_t Height);
 	void SetWindowCaption(const std::string InCaption);

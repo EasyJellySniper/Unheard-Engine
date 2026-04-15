@@ -236,9 +236,12 @@ namespace UHMathHelpers
 }
 
 // file I/O for math types
-extern std::ofstream& operator<<(std::ofstream& Out, const UHVector2& V);
-extern std::ifstream& operator>>(std::ifstream& In, UHVector2& V);
-extern std::ofstream& operator<<(std::ofstream& Out, const UHVector3& V);
-extern std::ifstream& operator>>(std::ifstream& In, UHVector3& V);
-extern std::ofstream& operator<<(std::ofstream& Out, const UHVector4& V);
-extern std::ifstream& operator>>(std::ifstream& In, UHVector4& V);
+namespace glm
+{
+    extern std::ofstream& operator<<(std::ofstream& Out, const vec2& V);
+    extern std::ifstream& operator>>(std::ifstream& In, vec2& V);
+    extern std::ofstream& operator<<(std::ofstream& Out, const vec3& V);
+    extern std::ifstream& operator>>(std::ifstream& In, vec3& V);
+    extern std::ofstream& operator<<(std::ofstream& Out, const vec4& V);
+    extern std::ifstream& operator>>(std::ifstream& In, vec4& V);
+}

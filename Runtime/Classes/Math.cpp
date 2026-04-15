@@ -626,56 +626,59 @@ void UHBoundingFrustum::CreateFromMatrix(UHBoundingFrustum& Out, UHMatrix4x4 Pro
     }
 }
 
-std::ofstream& operator<<(std::ofstream& Out, const UHVector2& V) 
+namespace glm
 {
-    Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
-    Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
+    std::ofstream& operator<<(std::ofstream& Out, const vec2& V) 
+    {
+        Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
+        Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
 
-    return Out;
-}
+        return Out;
+    }
 
-std::ifstream& operator>>(std::ifstream& In, UHVector2& V)
-{
-    In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
-    In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
+    std::ifstream& operator>>(std::ifstream& In, vec2& V)
+    {
+        In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
+        In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
 
-    return In;
-}
+        return In;
+    }
 
-std::ofstream& operator<<(std::ofstream& Out, const UHVector3& V)
-{
-    Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
-    Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
-    Out.write(reinterpret_cast<const char*>(&V.z), sizeof(V.z));
+    std::ofstream& operator<<(std::ofstream& Out, const vec3& V)
+    {
+        Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
+        Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
+        Out.write(reinterpret_cast<const char*>(&V.z), sizeof(V.z));
 
-    return Out;
-}
+        return Out;
+    }
 
-std::ifstream& operator>>(std::ifstream& In, UHVector3& V)
-{
-    In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
-    In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
-    In.read(reinterpret_cast<char*>(&V.z), sizeof(V.z));
+    std::ifstream& operator>>(std::ifstream& In, vec3& V)
+    {
+        In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
+        In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
+        In.read(reinterpret_cast<char*>(&V.z), sizeof(V.z));
 
-    return In;
-}
+        return In;
+    }
 
-std::ofstream& operator<<(std::ofstream& Out, const UHVector4& V)
-{
-    Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
-    Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
-    Out.write(reinterpret_cast<const char*>(&V.z), sizeof(V.z));
-    Out.write(reinterpret_cast<const char*>(&V.w), sizeof(V.w));
+    std::ofstream& operator<<(std::ofstream& Out, const vec4& V)
+    {
+        Out.write(reinterpret_cast<const char*>(&V.x), sizeof(V.x));
+        Out.write(reinterpret_cast<const char*>(&V.y), sizeof(V.y));
+        Out.write(reinterpret_cast<const char*>(&V.z), sizeof(V.z));
+        Out.write(reinterpret_cast<const char*>(&V.w), sizeof(V.w));
 
-    return Out;
-}
+        return Out;
+    }
 
-std::ifstream& operator>>(std::ifstream& In, UHVector4& V)
-{
-    In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
-    In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
-    In.read(reinterpret_cast<char*>(&V.z), sizeof(V.z));
-    In.read(reinterpret_cast<char*>(&V.w), sizeof(V.w));
+    std::ifstream& operator>>(std::ifstream& In, vec4& V)
+    {
+        In.read(reinterpret_cast<char*>(&V.x), sizeof(V.x));
+        In.read(reinterpret_cast<char*>(&V.y), sizeof(V.y));
+        In.read(reinterpret_cast<char*>(&V.z), sizeof(V.z));
+        In.read(reinterpret_cast<char*>(&V.w), sizeof(V.w));
 
-    return In;
+        return In;
+    }
 }

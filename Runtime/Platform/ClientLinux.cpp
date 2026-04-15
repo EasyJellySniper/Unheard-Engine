@@ -2,10 +2,10 @@
 
 #if __linux__
 
-void UHClient::SetWindowPosition(const int32_t Width, const int32_t Height)
+void UHClient::SetWindowSize(const int32_t Width, const int32_t Height)
 {
 	GLFWwindow* Window = (GLFWwindow*)NativeWindow;
-	glfwSetWindowPos(Window, Width, Height);
+	glfwSetWindowSize(Window, Width, Height);
 }
 
 void UHClient::GetWindowSize(int32_t& OutWidth, int32_t& OutHeight) const

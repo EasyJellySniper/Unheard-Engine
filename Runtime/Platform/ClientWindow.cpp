@@ -4,7 +4,7 @@
 
 #include "Runtime/CoreGlobals.h"
 
-void UHClient::SetWindowPosition(const int32_t Width, const int32_t Height)
+void UHClient::SetWindowSize(const int32_t Width, const int32_t Height)
 {
 	SetWindowPos((HWND)NativeWindow, nullptr, 0, 0, Width, Height, 0);
 }

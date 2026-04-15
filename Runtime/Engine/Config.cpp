@@ -197,7 +197,7 @@ void UHConfigManager::ApplyPresentationSettings(UHClient* InClient)
 {
 	if (PresentationSettings.WindowWidth != 0 && PresentationSettings.WindowHeight != 0)
 	{
-		InClient->SetWindowPosition(PresentationSettings.WindowWidth, PresentationSettings.WindowHeight);
+		InClient->SetWindowSize(PresentationSettings.WindowWidth, PresentationSettings.WindowHeight);
 	}
 	else
 	{
