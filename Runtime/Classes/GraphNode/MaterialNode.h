@@ -5,7 +5,7 @@
 class UHMaterial;
 struct UHRTMaterialData;
 
-enum class UHMaterialInputType
+enum class UHMaterialInputType : uint32_t
 {
 	MaterialInputStandard,
 	MaterialInputOpacityOnly,

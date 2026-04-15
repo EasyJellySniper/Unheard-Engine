@@ -55,13 +55,13 @@ public:
 	float ImageMemoryBudgetMB;
 };
 
-enum class UHRTShadowQuality
+enum class UHRTShadowQuality : uint32_t
 {
 	RTShadow_Full,
 	RTShadow_Half
 };
 
-enum class UHRTReflectionQuality
+enum class UHRTReflectionQuality : uint32_t
 {
 	RTReflection_Full,
 	RTReflection_Half

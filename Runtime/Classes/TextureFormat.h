@@ -4,7 +4,7 @@
 
 // high-level definition of the texture format in UHE
 // these should be translated to low-level formats
-enum class UHTextureFormat
+enum class UHTextureFormat : uint32_t
 {
 	UH_FORMAT_NONE = 0,
 	UH_FORMAT_RGBA8_UNORM,

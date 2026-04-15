@@ -2,7 +2,7 @@
 #include "../ShaderClass.h"
 
 const int32_t GMaxBilateralFilterRadius = 5;
-enum class UHBilaterialFilterType
+enum class UHBilaterialFilterType : uint32_t
 {
 	FilterHorizontal = 0,
 	FilterVertical

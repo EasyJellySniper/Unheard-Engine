@@ -9,7 +9,7 @@
 #include "AccelerationStructure.h"
 #include "Runtime/Renderer/RenderingTypes.h"
 
-enum class UHMeshVersion
+enum class UHMeshVersion : uint32_t
 {
 	StoreSourcePath = 1,
 	MeshVersionMax

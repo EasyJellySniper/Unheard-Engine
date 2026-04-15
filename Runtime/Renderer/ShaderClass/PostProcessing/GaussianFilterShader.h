@@ -2,7 +2,7 @@
 #include "../ShaderClass.h"
 
 const int32_t GMaxGaussianFilterRadius = 5;
-enum class UHGaussianFilterType
+enum class UHGaussianFilterType : uint32_t
 {
 	FilterHorizontal = 0,
 	FilterVertical

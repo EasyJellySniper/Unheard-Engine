@@ -154,7 +154,7 @@ void UHDemoScript::OnEngineUpdate(float DeltaTime)
 		}
 		else if (Input->IsKeyUp('4'))
 		{
-			EngineCache->OnLoadScene("Assets/Scenes/VikingHouses.uhscene");
+			EngineCache->OnLoadScene("Assets/Scenes/test2.uhscene");
 		}
 	}
 }

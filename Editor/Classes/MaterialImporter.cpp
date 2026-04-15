@@ -54,7 +54,7 @@ void UHMaterialImporter::WriteMaterialCache(UHMaterial* InMat, UHShader* InShade
 	}
 
 	// macro hash
-	size_t MacroHash = UHUtilities::ShaderDefinesToHash(InShader->GetShaderDefines());
+	uint64_t MacroHash = UHUtilities::ShaderDefinesToHash(InShader->GetShaderDefines());
 	std::string MacroHashName = (MacroHash != 0) ? "_" + std::to_string(MacroHash) : "";
 	std::string OutName = UHAssetPath::FormatMaterialShaderOutputPath("", InMat->GetSourcePath(), InShader->GetName(), MacroHashName);
 

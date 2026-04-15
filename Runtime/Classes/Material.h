@@ -8,7 +8,7 @@
 #include "TextureCube.h"
 #include "GraphNode/MaterialNode.h"
 
-enum class UHMaterialVersion
+enum class UHMaterialVersion : uint32_t
 {
 	Initial,
 	GoingBindless,
@@ -162,7 +162,7 @@ private:
 	std::filesystem::path MaterialPath;
 
 	// material constant buffer, the size will be following the result of graph
-	size_t MaterialBufferSize;
+	uint64_t MaterialBufferSize;
 	std::vector<uint8_t> MaterialConstantsCPU;
 	std::array<UniquePtr<UHRenderBuffer<uint8_t>>, GMaxFrameInFlight> MaterialConstantsGPU;
 

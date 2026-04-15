@@ -1,7 +1,7 @@
 #pragma once
 #include "../ShaderClass.h"
 
-enum class UHKawaseBlurType
+enum class UHKawaseBlurType : uint32_t
 {
 	Downsample = 0,
 	Upsample

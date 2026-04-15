@@ -13,7 +13,7 @@ class UHMesh;
 class UHMaterial;
 class UHCameraComponent;
 class UHLightBase;
-enum class UHLightType;
+enum class UHLightType : uint32_t;
 
 struct UHFbxCameraData
 {
@@ -48,7 +48,7 @@ public:
 	std::vector<UHFbxLightData> ImportedLightData;
 };
 
-enum UHFbxConvertUnit
+enum class UHFbxConvertUnit : uint32_t
 {
 	Meter,
 	Centimeter

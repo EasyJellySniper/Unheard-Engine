@@ -158,3 +158,7 @@ Next is to fix the asset path issues, I should use "/" instead of "\".
 Carry on Linux debugging. The incorrect material data caused black objects rendering.
 And it is because incorrect file reading! I need to do a pass for all size_t and enums stored in a file.
 Those types are not cross-platform safe at all!
+
+15-04-2026:
+Did a full check on all my enums and size_t usages. I specified an exact size for all my enum classes, and avoid size_t for file I/O.
+This should enhance cross-platform safety for file serialization. I also resaved all assets.

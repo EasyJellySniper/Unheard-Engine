@@ -165,7 +165,7 @@ namespace UHUtilities
 			return;
 		}
 
-		size_t ElementCount = InVector.size();
+		uint64_t ElementCount = InVector.size();
 		FileOut.write(reinterpret_cast<const char*>(&ElementCount), sizeof(ElementCount));
 		FileOut.write(reinterpret_cast<const char*>(&InVector.data()[0]), ElementCount * sizeof(T));
 	}
@@ -183,7 +183,7 @@ namespace UHUtilities
 		// file must've written "Element counts" or this will fail
 		
 		// read element count first
-		size_t ElementCount;
+		uint64_t ElementCount;
 		FileIn.read(reinterpret_cast<char*>(&ElementCount), sizeof(ElementCount));
 
 		OutVector.resize(ElementCount);

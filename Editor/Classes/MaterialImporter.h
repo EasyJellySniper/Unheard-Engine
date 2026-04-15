@@ -31,7 +31,7 @@ struct UHMaterialAssetCache
 
 	std::filesystem::path SourcePath;
 	int64_t SpvGeneratedTime;
-	size_t MacroHash;
+	uint64_t MacroHash;
 	int64_t SourceModifiedTime;
 };
 

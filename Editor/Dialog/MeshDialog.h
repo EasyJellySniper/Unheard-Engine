@@ -18,6 +18,7 @@ public:
 
 private:
 	void SelectMesh(UHMesh* InMesh);
+	void ControlSaveAll();
 
 	UHAssetManager* AssetMgr;
 	int32_t CurrentMeshIndex;

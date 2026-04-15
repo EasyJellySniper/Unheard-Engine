@@ -97,7 +97,7 @@ bool UHMaterial::Import(std::filesystem::path InMatPath)
 void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 {
 	// import graph data, use the same format as in ExportGraphData
-	size_t NumMaterialInputs;
+	uint64_t NumMaterialInputs;
 	FileIn.read(reinterpret_cast<char*>(&NumMaterialInputs), sizeof(NumMaterialInputs));
 
 	std::vector<int32_t> MaterialInputConnections;
@@ -117,7 +117,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 		MaterialInputPinOutputIndex.push_back(OutputIdx);
 	}
 
-	size_t NumEditNodes;
+	uint64_t NumEditNodes;
 	FileIn.read(reinterpret_cast<char*>(&NumEditNodes), sizeof(NumEditNodes));
 
 	for (size_t Idx = 0; Idx < NumEditNodes; Idx++)
@@ -133,7 +133,7 @@ void UHMaterial::ImportGraphData(std::ifstream& FileIn)
 
 	for (size_t Idx = 0; Idx < EditNodes.size(); Idx++)
 	{
-		size_t NumInputs;
+		uint64_t NumInputs;
 		FileIn.read(reinterpret_cast<char*>(&NumInputs), sizeof(NumInputs));
 
 		std::vector<UniquePtr<UHGraphPin>>& Inputs = EditNodes[Idx]->GetInputs();
@@ -556,7 +556,7 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 
 	// 1 & 2
 	const std::vector<UniquePtr<UHGraphPin>>& Inputs = MaterialNode->GetInputs();
-	size_t NumMaterialInputs = Inputs.size();
+	uint64_t NumMaterialInputs = Inputs.size();
 	FileOut.write(reinterpret_cast<const char*>(&NumMaterialInputs), sizeof(NumMaterialInputs));
 
 	for (size_t Idx = 0; Idx < NumMaterialInputs; Idx++)
@@ -568,7 +568,7 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	}
 
 	// 3
-	size_t NumEditNodes = EditNodes.size();
+	uint64_t NumEditNodes = EditNodes.size();
 	FileOut.write(reinterpret_cast<const char*>(&NumEditNodes), sizeof(NumEditNodes));
 
 	for (size_t Idx = 0; Idx < NumEditNodes; Idx++)
@@ -581,7 +581,7 @@ void UHMaterial::ExportGraphData(std::ofstream& FileOut)
 	// 4
 	for (size_t Idx = 0; Idx < NumEditNodes; Idx++)
 	{
-		size_t NumInputs = EditNodes[Idx]->GetInputs().size();
+		uint64_t NumInputs = EditNodes[Idx]->GetInputs().size();
 		FileOut.write(reinterpret_cast<const char*>(&NumInputs), sizeof(NumInputs));
 
 		const std::vector<UniquePtr<UHGraphPin>>& NodeInputs = EditNodes[Idx]->GetInputs();

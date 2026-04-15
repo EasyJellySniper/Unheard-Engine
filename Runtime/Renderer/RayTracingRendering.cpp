@@ -326,12 +326,12 @@ void UHDeferredShadingRenderer::DispatchRaySkyLightPass(UHRenderBuilder& RenderB
 
 	GraphicInterface->BeginCmdDebug(RenderBuilder.GetCmdList(), "Dispatch Ray Sky Light");
 
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSkyData, VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSkyDiscoverAngle, VK_IMAGE_LAYOUT_GENERAL));
-	RenderBuilder.FlushResourceBarrier();
-
 	if (RTParams.bEnableRayTracing && RTInstanceCount > 0 && RTParams.bEnableRTIndirectLighting && RTParams.bEnableSkyLight)
 	{
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSkyData, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.PushResourceBarrier(UHImageBarrier(GRTSkyDiscoverAngle, VK_IMAGE_LAYOUT_GENERAL));
+		RenderBuilder.FlushResourceBarrier();
+
 		// [0] is to bind the shader descriptor
 		RTDescriptorSets[CurrentFrameRT][0] = RTSkyLightShader->GetDescriptorSet(CurrentFrameRT);
 		RenderBuilder.BindRTDescriptorSet(RTSkyLightShader->GetPipelineLayout(), RTDescriptorSets[CurrentFrameRT]);

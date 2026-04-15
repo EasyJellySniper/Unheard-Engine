@@ -11,7 +11,7 @@
 #include "Runtime/Renderer/DeferredShadingRenderer.h"
 #include "StatusDialog.h"
 
-enum class UHNodeMenuAction
+enum class UHNodeMenuAction : uint32_t
 {
     NoAction = 50,
     Deletion,

@@ -3,7 +3,7 @@
 #include "Transform.h"
 
 // light type
-enum class UHLightType
+enum class UHLightType : uint32_t
 {
 	Directional,
 	Point,

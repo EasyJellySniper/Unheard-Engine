@@ -17,7 +17,7 @@
 #include "../../Editor/Editor/Profiler.h"
 #endif
 
-enum class UHEngineResizeReason
+enum class UHEngineResizeReason : uint32_t
 {
 	NotResizing = 0,
 	FromClientCallback,

@@ -47,7 +47,7 @@ struct UHRawShaderAssetCache
 	std::string EntryName;
 	std::string ProfileName;
 	std::vector<std::string> Defines;
-	size_t ShaderHash;
+	uint64_t ShaderHash;
 };
 
 class UHShaderImporter

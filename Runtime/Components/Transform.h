@@ -7,7 +7,7 @@ const UHVector3 GWorldRight = { 1.0f, 0.0f, 0.0f };
 const UHVector3 GWorldUp = { 0.0f, 1.0f, 0.0f };
 const UHVector3 GWorldForward = { 0.0f, 0.0f, 1.0f };
 
-enum class UHTransformSpace
+enum class UHTransformSpace : uint32_t
 {
 	Local = 0,
 	World

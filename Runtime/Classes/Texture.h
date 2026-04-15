@@ -6,20 +6,20 @@
 #include "GPUMemory.h"
 #include "TextureFormat.h"
 
-enum class UHTextureVersion
+enum class UHTextureVersion : uint32_t
 {
 	InitialTexture = 0,
 	OutputImageFormat,
 	TextureVersionMax
 };
 
-enum class UHTextureType
+enum class UHTextureType : uint32_t
 {
 	Texture2D,
 	TextureCube
 };
 
-enum class UHTextureCompressionSettings
+enum class UHTextureCompressionSettings : uint32_t
 {
 	CompressionNone,
 	BC1,

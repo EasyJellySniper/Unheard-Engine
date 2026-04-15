@@ -20,7 +20,7 @@ namespace UHUtilities
 			return;
 		}
 
-		size_t StringSize = InString.size();
+		uint64_t StringSize = InString.size();
 		FileOut.write(reinterpret_cast<const char*>(&StringSize), sizeof(StringSize));
 		FileOut.write(InString.c_str(), StringSize);
 	}
@@ -35,7 +35,7 @@ namespace UHUtilities
 		}
 
 		// file must've written "string size" or this might fail
-		size_t StringSize = 0;
+		uint64_t StringSize = 0;
 		FileIn.read(reinterpret_cast<char*>(&StringSize), sizeof(StringSize));
 
 		// create a char array buffer and read to string
@@ -49,7 +49,7 @@ namespace UHUtilities
 
 	void WriteStringVectorData(std::ofstream& FileOut, std::vector<std::string>& InVector)
 	{
-		size_t VectorSize = InVector.size();
+		uint64_t VectorSize = InVector.size();
 		FileOut.write(reinterpret_cast<const char*>(&VectorSize), sizeof(VectorSize));
 
 		for (size_t Idx = 0; Idx < VectorSize; Idx++)
@@ -60,7 +60,7 @@ namespace UHUtilities
 
 	void ReadStringVectorData(std::ifstream& FileIn, std::vector<std::string>& OutVector)
 	{
-		size_t VectorSize = 0;
+		uint64_t VectorSize = 0;
 		FileIn.read(reinterpret_cast<char*>(&VectorSize), sizeof(VectorSize));
 
 		OutVector.resize(VectorSize);

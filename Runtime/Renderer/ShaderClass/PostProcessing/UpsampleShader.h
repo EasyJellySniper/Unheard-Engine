@@ -1,7 +1,7 @@
 #pragma once
 #include "../ShaderClass.h"
 
-enum class UHUpsampleMethod
+enum class UHUpsampleMethod : uint32_t
 {
 	Nearest2x2 = 0,
 	Nearest4x4,

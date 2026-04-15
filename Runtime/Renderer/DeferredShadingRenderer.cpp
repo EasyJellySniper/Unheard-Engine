@@ -153,7 +153,7 @@ void UHDeferredShadingRenderer::WaitPreviousRenderTask()
 }
 
 #if WITH_EDITOR
-enum class UHDebugViewMode
+enum class UHDebugViewMode : uint32_t
 {
 	None,
 	Diffuse,
@@ -280,6 +280,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	}
 
 	const UHRenderingSettings& RenderingSettings = ConfigInterface->RenderingSetting();
+	const bool bSupportRayTracing = GraphicInterface->IsRayTracingEnabled() && RenderingSettings.bEnableRayTracing;
 
 	// setup system constants and upload
 	SystemConstantsCPU.ViewProj = CurrentCamera->GetViewProjMatrix();
@@ -343,7 +344,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	FeatureData |= (bSkyLightEnabled) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureEnvCube) : 0;
 	FeatureData |= (GraphicInterface->IsHDRAvailable()) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureHDR) : 0;
 	FeatureData |= RenderingSettings.bDenoiseRayTracing ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureUseSmoothNormalForRaytracing) : 0;
-	FeatureData |= (RenderingSettings.bEnableRayTracing && RenderingSettings.bEnableRTIndirectLighting) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTIndirectLight) : 0;
+	FeatureData |= (bSupportRayTracing && RenderingSettings.bEnableRTIndirectLighting) ? UH_ENUM_VALUE_U(UHSystemRenderFeatureBits::FeatureRTIndirectLight) : 0;
 	SystemConstantsCPU.SystemRenderFeature = FeatureData;
 
 	SystemConstantsCPU.DirectionalShadowRayTMax = RenderingSettings.RTShadowTMax;
@@ -495,7 +496,7 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	ToneMapShader->UploadToneMapData(ToneMapData, CurrentFrameGT);
 
 	// upload RT shader data
-	if (RenderingSettings.bEnableRayTracing)
+	if (bSupportRayTracing)
 	{
 		// RTIL settings
 		if (RenderingSettings.bEnableRTIndirectLighting)
@@ -837,7 +838,8 @@ bool UHDeferredShadingRenderer::NeedDepthNormalHistory() const
 	return GIsEditor || 
 		(ConfigInterface
 		&& ConfigInterface->RenderingSetting().bEnableRayTracing
-		&& ConfigInterface->RenderingSetting().bEnableRTIndirectLighting);
+		&& ConfigInterface->RenderingSetting().bEnableRTIndirectLighting
+		&& GraphicInterface->IsRayTracingEnabled());
 }
 
 void UHDeferredShadingRenderer::RenderThreadLoop()

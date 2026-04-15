@@ -5,7 +5,7 @@
 #include "Runtime/Classes/Types.h"
 
 #if WITH_EDITOR
-enum class UHAutoSizeMethod
+enum class UHAutoSizeMethod : uint32_t
 {
 	AutoSizeNone,
 	AutoSizeX,
@@ -13,7 +13,7 @@ enum class UHAutoSizeMethod
 	AutoSizeBoth
 };
 
-enum class UHAutoMoveMethod
+enum class UHAutoMoveMethod : uint32_t
 {
 	AutoMoveNone,
 	AutoMoveX,

@@ -156,7 +156,7 @@ struct UHSphericalHarmonicConstants
 	float Weight; // this should be set as 4.0f * PI / SampleCount in C++ side
 };
 
-enum class UHRenderPassTypes
+enum class UHRenderPassTypes : uint32_t
 {
 	OcclusionResolve = 0,
 	DepthPrePass,
@@ -306,12 +306,12 @@ private:
 };
 
 #if WITH_EDITOR
-enum class UHDebugBoundType
+enum class UHDebugBoundType : uint32_t
 {
-	DebugNone = -1,
 	DebugBox,
 	DebugSphere,
-	DebugCone
+	DebugCone,
+	DebugMax
 };
 
 struct UHDebugBoundConstant
@@ -334,17 +334,17 @@ struct UHDebugBoundConstant
 };
 #endif
 
-enum class UHSystemRenderFeatureBits
+enum class UHSystemRenderFeatureBits : uint32_t
 {
 	FeatureEnvCube = 1 << 0,
 	FeatureHDR = 1 << 1,
 	FeatureUseSmoothNormalForRaytracing = 1 << 2,
 	FeatureRTIndirectLight = 1 << 3,
-	FeatureDebug = 1 << 31,
+	FeatureDebug = 1U << 31,
 };
 
 // constant types
-enum class UHConstantTypes
+enum class UHConstantTypes : uint32_t
 {
 	System = 0,
 	Object,

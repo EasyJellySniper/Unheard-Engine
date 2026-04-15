@@ -11,7 +11,7 @@ const std::string GOutChannelShared[] = { ".rgb",".r",".g",".b" };
 
 class UHGraphNodeGUI;
 
-enum class UHGraphNodeType
+enum class UHGraphNodeType : uint32_t
 {
     UnknownNode,
     FloatNode = 100,

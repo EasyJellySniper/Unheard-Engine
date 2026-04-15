@@ -47,19 +47,19 @@ UHAssetManager::UHAssetManager()
 		}
 
 		// 2x2 white tex
-		std::unique_ptr<UHTexture2D> SystemTex = MakeUnique<UHTexture2D>("UHWhiteTex", "UHWhiteTex", SystemTexSize, FallbackTexFormat, TexSettings);
+		std::unique_ptr<UHTexture2D> SystemTex = MakeUnique<UHTexture2D>("UHWhiteTex", "BuiltIn/UHWhiteTex", SystemTexSize, FallbackTexFormat, TexSettings);
 		std::vector<uint8_t> TexData(2 * 2 * GTextureFormatData[UH_ENUM_VALUE(FallbackTexFormat)].ByteSize, 255);
 		SystemTex->SetTextureData(TexData);
 		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
 
 		// 2x2 max uint tex
-		SystemTex = MakeUnique<UHTexture2D>("UHMaxUIntTex", "UHMaxUIntTex", SystemTexSize, UHTextureFormat::UH_FORMAT_R32_UINT, TexSettings);
+		SystemTex = MakeUnique<UHTexture2D>("UHMaxUIntTex", "BuiltIn/UHMaxUIntTex", SystemTexSize, UHTextureFormat::UH_FORMAT_R32_UINT, TexSettings);
 		memset(TexData.data(), ~0, TexData.size());
 		SystemTex->SetTextureData(TexData);
 		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
 
 		// 2x2 black tex, with alpha channel = 1
-		SystemTex = MakeUnique<UHTexture2D>("UHBlackTex", "UHBlackTex", SystemTexSize, FallbackTexFormat, TexSettings);
+		SystemTex = MakeUnique<UHTexture2D>("UHBlackTex", "BuiltIn/UHBlackTex", SystemTexSize, FallbackTexFormat, TexSettings);
 		memset(TexData.data(), 0, TexData.size());
 		for (size_t Idx = 0; Idx < TexData.size(); Idx += 4)
 		{
@@ -70,13 +70,13 @@ UHAssetManager::UHAssetManager()
 
 		// 2x2 transparent tex, with all channels = 0
 		memset(TexData.data(), 0, TexData.size());
-		SystemTex = MakeUnique<UHTexture2D>("UHTransparentTex", "UHTransparentTex", SystemTexSize, FallbackTexFormat, TexSettings);
+		SystemTex = MakeUnique<UHTexture2D>("UHTransparentTex", "BuiltIn/UHTransparentTex", SystemTexSize, FallbackTexFormat, TexSettings);
 		SystemTex->SetTextureData(TexData);
 		SystemTex->Export(GBuiltInTextureAssetPath + SystemTex->GetName(), false);
 
 		// 2x2 black cube
 		std::unique_ptr<UHTextureCube> SystemCube = MakeUnique<UHTextureCube>("UHBlackCube", SystemTexSize, FallbackTexFormat, TexSettings);
-		SystemCube->SetSourcePath("UHBlackCube");
+		SystemCube->SetSourcePath("BuiltIn/UHBlackCube");
 		for (int32_t Idx = 0; Idx < 6; Idx++)
 		{
 			SystemCube->SetCubeData(TexData, Idx);
@@ -85,7 +85,7 @@ UHAssetManager::UHAssetManager()
 
 		// 2x2 default sky
 		SystemCube = MakeUnique<UHTextureCube>("UHDefaultSkyCube", SystemTexSize, FallbackTexFormat, TexSettings);
-		SystemCube->SetSourcePath("UHDefaultSkyCube");
+		SystemCube->SetSourcePath("BuiltIn/UHDefaultSkyCube");
 		for (size_t Idx = 0; Idx < TexData.size(); Idx += 4)
 		{
 			TexData[Idx] = 135;
@@ -107,7 +107,7 @@ UHAssetManager::UHAssetManager()
 	std::ifstream FileIn(GAssetPath + GAssetMapName, std::ios::in | std::ios::binary);
 	if (FileIn.is_open())
 	{
-		size_t NumAssets;
+		uint64_t NumAssets;
 		FileIn.read(reinterpret_cast<char*>(&NumAssets), sizeof(NumAssets));
 
 		AllAssetsMap.resize(NumAssets);
@@ -590,7 +590,7 @@ void UHAssetManager::ImportAssets()
 	// output asset map after import all
 	std::ofstream FileOut(GAssetPath + GAssetMapName, std::ios::out | std::ios::binary);
 
-	size_t NumAssets = AllAssetsMap.size();
+	uint64_t NumAssets = AllAssetsMap.size();
 	FileOut.write(reinterpret_cast<const char*>(&NumAssets), sizeof(NumAssets));
 
 	for (size_t Idx = 0; Idx < NumAssets; Idx++)

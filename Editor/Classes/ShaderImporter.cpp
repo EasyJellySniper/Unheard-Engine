@@ -108,7 +108,7 @@ void WriteShaderCache(UHShader* InShader, std::filesystem::path OverrideOutputPa
 	std::vector<std::string> Defines = InShader->GetShaderDefines();
 	UHUtilities::WriteStringVectorData(FileOut, Defines);
 
-	size_t Hash = InShader->GetShaderHash();
+	uint64_t Hash = InShader->GetShaderHash();
 	FileOut.write(reinterpret_cast<const char*>(&Hash), sizeof(Hash));
 
 	FileOut.close();

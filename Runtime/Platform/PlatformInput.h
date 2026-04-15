@@ -2,7 +2,7 @@
 #include <cstdint>
 // cross-platform input header
 
-enum class UHSystemKey
+enum class UHSystemKey : uint32_t
 {
 	Enter = 0x0D,
 	Control = 0x11,

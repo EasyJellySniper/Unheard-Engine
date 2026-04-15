@@ -38,7 +38,7 @@ private:
 };
 
 // shader to reprojection RTIL
-enum class UHRTIndirectReprojectType
+enum class UHRTIndirectReprojectType : uint32_t
 {
 	SkyReprojection,
 	DiffuseReprojection

@@ -3,6 +3,7 @@
 #if WITH_EDITOR
 #include "Runtime/Engine/Asset.h"
 #include "Runtime/Engine/Graphic.h"
+#include "Runtime/Classes/AssetPath.h"
 
 UHMeshDialog::UHMeshDialog(UHAssetManager* InAsset, UHGraphic* InGfx)
 	: UHDialog(nullptr, nullptr)
@@ -79,6 +80,11 @@ void UHMeshDialog::Update(bool& bIsDialogActive)
 		ImGui::EndTable();
 	}
 
+	if (ImGui::Button("Save all"))
+	{
+		ControlSaveAll();
+	}
+
 	const bool bIsWindowActive = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 	PreviewScene->Render(bIsWindowActive);
 	ImGui::End();
@@ -89,6 +95,19 @@ void UHMeshDialog::Update(bool& bIsDialogActive)
 void UHMeshDialog::SelectMesh(UHMesh* InMesh)
 {
 	PreviewScene->SetMesh(InMesh);
+}
+
+void UHMeshDialog::ControlSaveAll()
+{
+	// simply resave all meshes
+	const std::vector<UHMesh*>& Meshes = AssetMgr->GetUHMeshes();
+	for (UHMesh* Mesh : Meshes)
+	{
+		std::filesystem::path OutputPath = Mesh->GetSourcePath();
+		Mesh->Export(GMeshAssetFolder + OutputPath.generic_string() + GMeshAssetExtension);
+	}
+
+	MessageBoxA(nullptr, "All meshes are saved.", "Mesh Editor", MB_OK);
 }
 
 #endif

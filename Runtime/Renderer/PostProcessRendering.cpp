@@ -243,7 +243,7 @@ void UHDeferredShadingRenderer::RenderComponentBounds(UHRenderBuilder& RenderBui
 	}
 
 	UHDebugBoundConstant BoundConstant = Comp->GetDebugBoundConst();
-	if (BoundConstant.BoundType == UHDebugBoundType::DebugNone)
+	if (BoundConstant.BoundType == UHDebugBoundType::DebugMax)
 	{
 		return;
 	}

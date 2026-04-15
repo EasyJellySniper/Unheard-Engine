@@ -2,26 +2,26 @@
 #include "../../framework.h"
 
 #if _WIN32
-
 #include <hidusage.h>
+#include "Runtime/CoreGlobals.h"
 
 bool UHPlatformInput::InitInput()
 {
-	enum InputDeviceType
+	enum class InputDeviceType : uint32_t
 	{
 		Mouse, Keyboard
 	};
 
 	RAWINPUTDEVICE RawInputDevice[2];
-	RawInputDevice[InputDeviceType::Mouse].usUsagePage = HID_USAGE_PAGE_GENERIC;
-	RawInputDevice[InputDeviceType::Mouse].usUsage = HID_USAGE_GENERIC_MOUSE;
-	RawInputDevice[InputDeviceType::Mouse].dwFlags = NULL;   // adds HID mouse and also ignores legacy mouse messages
-	RawInputDevice[InputDeviceType::Mouse].hwndTarget = 0;
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Mouse)].usUsagePage = HID_USAGE_PAGE_GENERIC;
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Mouse)].usUsage = HID_USAGE_GENERIC_MOUSE;
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Mouse)].dwFlags = NULL;   // adds HID mouse and also ignores legacy mouse messages
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Mouse)].hwndTarget = 0;
 
-	RawInputDevice[InputDeviceType::Keyboard].usUsagePage = HID_USAGE_PAGE_GENERIC;
-	RawInputDevice[InputDeviceType::Keyboard].usUsage = HID_USAGE_GENERIC_KEYBOARD;
-	RawInputDevice[InputDeviceType::Keyboard].dwFlags = NULL;   // adds HID keyboard and also ignores legacy keyboard messages
-	RawInputDevice[InputDeviceType::Keyboard].hwndTarget = 0;
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Keyboard)].usUsagePage = HID_USAGE_PAGE_GENERIC;
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Keyboard)].usUsage = HID_USAGE_GENERIC_KEYBOARD;
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Keyboard)].dwFlags = NULL;   // adds HID keyboard and also ignores legacy keyboard messages
+	RawInputDevice[UH_ENUM_VALUE_U(InputDeviceType::Keyboard)].hwndTarget = 0;
 
 	// tell system to send input message to UHE client
 	return RegisterRawInputDevices(RawInputDevice, 2, sizeof(RawInputDevice[0]));
