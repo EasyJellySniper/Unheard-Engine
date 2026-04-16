@@ -884,7 +884,7 @@
     <ClCompile Include="Runtime\Platform\PlatformWindows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Runtime\Platform\ClientWindow.cpp">
+    <ClCompile Include="Runtime\Platform\ClientWindows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Runtime\Platform\PlatformInputShared.cpp">

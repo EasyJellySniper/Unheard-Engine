@@ -17,13 +17,13 @@ UHEngine::UHEngine()
 	, FrameBeginTime(UHClock::time_point())
 	, FrameEndTime(UHClock::time_point())
 	, DisplayFrequency(60.0f)
-	, WaitDuration(UHClock::duration())
-	, WaitDurationMS(0.0f)
 #if WITH_EDITOR
 	, UHEEditor(nullptr)
 	, UHEProfiler(nullptr)
 #endif
 	, WindowCaption(ENGINE_NAME)
+	, AverageFrameTimeMS(0.0f)
+	, FrameCount(0)
 {
 	// config manager needs to be initialze as early as possible
 	UHEConfig = MakeUnique<UHConfigManager>();
@@ -347,31 +347,37 @@ void UHEngine::EndFPSLimiter()
 	}
 
 	FrameEndTime = UHEGameTimer->GetTime();
-	float Duration = std::chrono::duration<float>(FrameEndTime - FrameBeginTime).count();
-	const float DesiredDuration = 1.0f / FPSLimit;
+	float DurationMS = std::chrono::duration<float>(FrameEndTime - FrameBeginTime).count() * 1000.0f;
+	const float DesiredDurationMS = 1000.0f / FPSLimit;
 
-	if (DesiredDuration > Duration)
+	if (DesiredDurationMS > DurationMS)
 	{
-		WaitDuration = std::chrono::duration<float>(DesiredDuration - Duration);
-		WaitDurationMS = (DesiredDuration - Duration) * 1000.0f;
+		// evaluate total waiting time
+		float WaitDurationMS = (DesiredDurationMS - DurationMS);
+		std::chrono::duration<float, std::milli> BusyWaitMS(WaitDurationMS);
 
-		auto TargetTime = FrameEndTime + WaitDuration;
-
-		// sleep if the requested MS is larger than a value
-		// this reduces the CPU burning for the busy loop below
-		const float SleepThresholdMS = 5.0f;
-		if (WaitDurationMS > SleepThresholdMS)
-		{
-			std::chrono::duration<float, std::milli> SleepMS(WaitDurationMS - SleepThresholdMS);
-			std::this_thread::sleep_for(SleepMS);
-		}
-
-		// wait the remaining time, busy loop is needed for the best accuracy
+		// kick off the waiting, the workflow is a mixsure of sleep + busy loop waiting
 		UHClock::time_point StartWaitingTime = UHEGameTimer->GetTime();
 		while (true)
 		{
+			// sleep if the requested MS is larger than a value
+			// this reduces the CPU burning for the later busy loop below
+			const float SleepThresholdMS = 8.0f;
+			if (WaitDurationMS > SleepThresholdMS)
+			{
+				std::chrono::duration<float, std::milli> SleepMS(SleepThresholdMS);
+				std::this_thread::sleep_for(SleepMS);
+				WaitDurationMS -= SleepThresholdMS;
+			}
+
+			if (WaitDurationMS <= 0.0f)
+			{
+				// waiting done by sleep, return early
+				break;
+			}
+
 			std::this_thread::yield();
-			if ((UHEGameTimer->GetTime() - StartWaitingTime) > WaitDuration)
+			if ((UHEGameTimer->GetTime() - StartWaitingTime) > BusyWaitMS)
 			{
 				break;
 			}
@@ -396,15 +402,30 @@ void UHEngine::DisplayFPSTitle(float InDurationMS)
 	static float TimeElasped = 0.0f;
 	float GameTime = UHEGameTimer->GetTotalTime();
 
-	if (UHEClient != nullptr && (GameTime - TimeElasped) > 1.0f)
+	if (UHEClient != nullptr)
 	{
-		float FPS = 1000.0f / InDurationMS;
-		std::stringstream FPSStream;
-		FPSStream << std::fixed << std::setprecision(2) << FPS;
+		// display smoothed FPS
+		if ((GameTime - TimeElasped) > 1.0f && FrameCount > 0)
+		{
+			float FrameTimeMS = AverageFrameTimeMS / static_cast<float>(FrameCount);
+			float FPS = 1000.0f / FrameTimeMS;
 
-		std::string NewCaption = WindowCaption + " - " + FPSStream.str() + " FPS";
-		UHEClient->SetWindowCaption(NewCaption);
-		TimeElasped = GameTime;
+			std::stringstream FPSStream;
+			FPSStream << std::fixed << std::setprecision(2) << FPS;
+
+			std::stringstream FrameTimeStream;
+			FrameTimeStream << std::fixed << std::setprecision(2) << FrameTimeMS;
+
+			std::string NewCaption = WindowCaption + " - " + FPSStream.str() + " FPS (" + FrameTimeStream.str() + " ms)";
+			UHEClient->SetWindowCaption(NewCaption);
+			TimeElasped = GameTime;
+
+			AverageFrameTimeMS = 0.0f;
+			FrameCount = 0;
+		}
+
+		AverageFrameTimeMS += InDurationMS;
+		FrameCount++;
 	}
 }
 
@@ -420,9 +441,9 @@ void UHEngine::ResetScene()
 	if (GIsShipping)
 	{
 		UHEAsset->Release();
-		UHEAsset->ImportBuiltInAssets();
 		UHEGraphic->GetImageSharedMemory()->Reset();
 		UHEGraphic->GetMeshSharedMemory()->Reset();
+		UHEAsset->ImportBuiltInAssets();
 	}
 
 	// recreate scene when loading

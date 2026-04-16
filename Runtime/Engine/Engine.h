@@ -134,7 +134,7 @@ private:
 	UHClock::time_point FrameBeginTime;
 	UHClock::time_point FrameEndTime;
 	float DisplayFrequency;
-	std::chrono::duration<float> WaitDuration;
-	float WaitDurationMS;
+	float AverageFrameTimeMS;
+	uint32_t FrameCount;
 };
 

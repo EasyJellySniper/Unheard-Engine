@@ -164,9 +164,12 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 	const std::vector<UniquePtr<UHComponent>>& SceneComponents = InScene->GetAllCompoments();
 	TestType = UHDemoType::DayTest;
 
+	TestSpotLights.clear();
+	TestPointLights.clear();
+	TestPointLightOrigin.clear();
+
 	if (UHUtilities::StringFind(InScene->GetName(), "SpotLightNight"))
 	{
-		TestSpotLights.clear();
 		for (const UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
 			if (Comp->GetObjectClassId() == UHSpotLightComponent::ClassId)
@@ -179,8 +182,6 @@ void UHDemoScript::OnSceneInitialized(UHScene* InScene, UHAssetManager* InAsset,
 
 	if (UHUtilities::StringFind(InScene->GetName(), "PointLightNight"))
 	{
-		TestPointLights.clear();
-		TestPointLightOrigin.clear();
 		for (const UniquePtr<UHComponent>& Comp : SceneComponents)
 		{
 			if (Comp->GetObjectClassId() == UHPointLightComponent::ClassId)
