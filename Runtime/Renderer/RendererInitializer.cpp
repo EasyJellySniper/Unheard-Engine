@@ -142,9 +142,6 @@ void UHDeferredShadingRenderer::Release()
 {
 	VkDevice LogicalDevice = GraphicInterface->GetLogicalDevice();
 
-	// wait device to finish before release
-	GraphicInterface->WaitGPU();
-
 	// end threads
 	RenderThread->WaitTask();
 	RenderThread->EndThread();
@@ -154,6 +151,9 @@ void UHDeferredShadingRenderer::Release()
 		WorkerThread->EndThread();
 	}
 	WorkerThreads.clear();
+
+	// wait device to finish before release
+	GraphicInterface->WaitGPU();
 
 	RelaseRenderingBuffers();
 	ReleaseDataBuffers();

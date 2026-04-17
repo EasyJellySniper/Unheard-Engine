@@ -213,13 +213,10 @@ void UHEngine::Update()
 	CurrentScene->Update();
 
 	// wait previous render task done before new updates for shipping build
-	// linux build waits somewhere else and do not need this
-#if !__linux__
 	if (GIsShipping)
 	{
 		UHERenderer->WaitPreviousRenderTask();
 	}
-#endif
 
 	if (EngineResizeReason != UHEngineResizeReason::NotResizing)
 	{
