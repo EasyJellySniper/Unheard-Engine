@@ -166,3 +166,4 @@ This should enhance cross-platform safety for file serialization. I also resaved
 
 17-04-2026:
 Minor bugfixes, corrected FPS limiter and smoothed FPS display.
+Also fixed resize behavior and threading issues for Linux!
