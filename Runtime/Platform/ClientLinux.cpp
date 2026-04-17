@@ -20,14 +20,15 @@ void UHClient::GetWindowSize(int32_t& OutWidth, int32_t& OutHeight) const
 void UHClient::SetWindowStyle(const bool bIsFullscreen, const int32_t Width, const int32_t Height)
 {
 	GLFWwindow* Window = (GLFWwindow*)NativeWindow;
-
+	GLFWmonitor* Monitor = glfwGetPrimaryMonitor();
+	int32_t MonitorX, MonitorY;
+	glfwGetMonitorPos(Monitor, &MonitorX, &MonitorY);
+	
 	if (bIsFullscreen)
 	{
 		// going fullscreen
-		GLFWmonitor* Monitor = glfwGetPrimaryMonitor();
 		const GLFWvidmode* Mode = glfwGetVideoMode(Monitor);
 
-		glfwSetWindowAttrib(Window, GLFW_DECORATED, GLFW_FALSE);
 		glfwSetWindowMonitor(
 			Window,
 			Monitor,
@@ -36,20 +37,27 @@ void UHClient::SetWindowStyle(const bool bIsFullscreen, const int32_t Width, con
 			Mode->height,
 			Mode->refreshRate
 		);
+
+		glfwSetWindowAttrib(Window, GLFW_DECORATED, GLFW_FALSE);
 		glfwShowWindow(Window);
+		glfwFocusWindow(Window);
+		glfwRequestWindowAttention(Window);
 	}
 	else
 	{
 		// going window
-		glfwSetWindowAttrib(Window, GLFW_RESIZABLE, GLFW_TRUE);
 		glfwSetWindowMonitor(
 			Window,
 			nullptr,
-			0, 0,
+			MonitorX + 10, MonitorY + 10,
 			Width, Height,
 			0
 		);
+
+		glfwSetWindowAttrib(Window, GLFW_RESIZABLE, GLFW_TRUE);
+		glfwSetWindowAttrib(Window, GLFW_DECORATED, GLFW_TRUE);
 		glfwShowWindow(Window);
+		glfwFocusWindow(Window);
 	}
 }
 

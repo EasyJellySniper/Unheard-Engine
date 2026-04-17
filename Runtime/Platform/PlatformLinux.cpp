@@ -12,7 +12,6 @@ void ResizeCallback(GLFWwindow* Window, int32_t Width, int32_t Height)
 	{
 		if (UHEngine* Engine = GAppCache->GetEngine())
 		{
-			UHE_LOG("Engine resizing triggered by client.\n");
 			Engine->SetResizeReason(UHEngineResizeReason::FromClientCallback);
 		}
 	}

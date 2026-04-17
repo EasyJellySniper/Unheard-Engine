@@ -212,17 +212,19 @@ void UHEngine::Update()
 	// update scene
 	CurrentScene->Update();
 
-	// wait previous render task done before new updates
+	// wait previous render task done before new updates for shipping build
+	// linux build waits somewhere else and do not need this
+#if !__linux__
 	if (GIsShipping)
 	{
 		UHERenderer->WaitPreviousRenderTask();
 	}
+#endif
 
 	if (EngineResizeReason != UHEngineResizeReason::NotResizing)
 	{
 		ResizeEngine();
 		UHERenderer->SetSwapChainReset(true);
-		EngineResizeReason = UHEngineResizeReason::NotResizing;
 	}
 	else
 	{
@@ -254,8 +256,13 @@ void UHEngine::Update()
 // engine render loop
 void UHEngine::RenderLoop()
 {
-	UHERenderer->NotifyRenderThread();
+	if (EngineResizeReason == UHEngineResizeReason::NotResizing)
+	{
+		UHERenderer->NotifyRenderThread();
+	}
+	
 	GFrameNumber++;
+	EngineResizeReason = UHEngineResizeReason::NotResizing;
 }
 
 void UHEngine::ResizeEngine()
