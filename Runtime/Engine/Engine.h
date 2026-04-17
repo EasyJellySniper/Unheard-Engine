@@ -135,6 +135,7 @@ private:
 	UHClock::time_point FrameEndTime;
 	float DisplayFrequency;
 	float AverageFrameTimeMS;
+	float AccumulateFrameTimeMS;
 	uint32_t FrameCount;
 };
 

@@ -163,3 +163,6 @@ Those types are not cross-platform safe at all!
 Did a full check on all my enums and size_t usages. I specified an exact size for all my enum classes, and avoid size_t for file I/O.
 Avoided bool, long type and raw struct used in file I/O. Always implement serialize operator for strucutures!
 This should enhance cross-platform safety for file serialization. I also resaved all assets.
+
+17-04-2026:
+Minor bugfixes, corrected FPS limiter and smoothed FPS display.

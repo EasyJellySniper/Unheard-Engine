@@ -23,6 +23,7 @@ UHEngine::UHEngine()
 #endif
 	, WindowCaption(ENGINE_NAME)
 	, AverageFrameTimeMS(0.0f)
+	, AccumulateFrameTimeMS(0.0f)
 	, FrameCount(0)
 {
 	// config manager needs to be initialze as early as possible
@@ -407,7 +408,7 @@ void UHEngine::DisplayFPSTitle(float InDurationMS)
 		// display smoothed FPS
 		if ((GameTime - TimeElasped) > 1.0f && FrameCount > 0)
 		{
-			float FrameTimeMS = AverageFrameTimeMS / static_cast<float>(FrameCount);
+			float FrameTimeMS = AccumulateFrameTimeMS / static_cast<float>(FrameCount);
 			float FPS = 1000.0f / FrameTimeMS;
 
 			std::stringstream FPSStream;
@@ -420,11 +421,12 @@ void UHEngine::DisplayFPSTitle(float InDurationMS)
 			UHEClient->SetWindowCaption(NewCaption);
 			TimeElasped = GameTime;
 
-			AverageFrameTimeMS = 0.0f;
+			AverageFrameTimeMS = FrameTimeMS;
+			AccumulateFrameTimeMS = 0.0f;
 			FrameCount = 0;
 		}
 
-		AverageFrameTimeMS += InDurationMS;
+		AccumulateFrameTimeMS += InDurationMS;
 		FrameCount++;
 	}
 }
@@ -520,7 +522,8 @@ void UHEngine::EndProfile()
 
 	DisplayFPSTitle(Stats.TotalTime);
 
-	Stats.FPS = 1000.0f / Stats.TotalTime;
+	Stats.FPS = 1000.0f / AverageFrameTimeMS;
+	Stats.TotalTime = AverageFrameTimeMS;
 	Stats.RendererCount = CurrentScene ? static_cast<int32_t>(CurrentScene->GetAllRendererCount()) : 0;
 	Stats.DrawCallCount = UHERenderer->GetDrawCallCount();
 	Stats.OccludedCallCount = UHERenderer->GetOccludedCallCount();
