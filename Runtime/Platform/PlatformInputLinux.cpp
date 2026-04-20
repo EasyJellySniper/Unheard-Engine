@@ -90,6 +90,12 @@ bool UHPlatformInput::InitInput()
 	// set input mode for better movement and register input callbacks
 	GLFWwindow* Window = (GLFWwindow*)ClientCache->GetNativeWindow();
 
+	// select the smoothest mouse input as possible
+	if (glfwRawMouseMotionSupported())
+	{
+		glfwSetInputMode(Window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	}
+
 	glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetMouseButtonCallback(Window, MouseButtonCallback);
 	glfwSetCursorPosCallback(Window, MouseMoveCallback);
