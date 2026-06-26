@@ -48,11 +48,15 @@ public:
 	size_t GetSpotLightCount() const;
 
 	const std::vector<UHMeshRendererComponent*>& GetAllRenderers() const;
+	const std::vector<UHMeshRendererComponent*>& GetDirtyRenderers() const;
 	const std::vector<UHMeshRendererComponent*>& GetOpaqueRenderers() const;
 	const std::vector<UHMeshRendererComponent*>& GetTranslucentRenderers() const;
 	const std::vector<UHDirectionalLightComponent*>& GetDirLights() const;
 	const std::vector<UHPointLightComponent*>& GetPointLights() const;
 	const std::vector<UHSpotLightComponent*>& GetSpotLights() const;
+	const std::vector<UHDirectionalLightComponent*>& GetDirtyDirLights() const;
+	const std::vector<UHPointLightComponent*>& GetDirtyPointLights() const;
+	const std::vector<UHSpotLightComponent*>& GetDirtySpotLights() const;
 	const std::vector<UHMaterial*>& GetMaterials() const;
 	UHCameraComponent* GetMainCamera();
 	UHSkyLightComponent* GetSkyLight() const;
@@ -71,14 +75,20 @@ private:
 	UHGameTimer* Timer;
 	UHCameraComponent* MainCamera;
 	UHSkyLightComponent* CurrentSkyLight;
+	UHEngine* EngineCache;
 
 	std::vector<UHMaterial*> Materials;
 	std::vector<UHMeshRendererComponent*> Renderers;
 	std::vector<UHMeshRendererComponent*> OpaqueRenderers;
 	std::vector<UHMeshRendererComponent*> TranslucentRenderers;
+	std::vector<UHMeshRendererComponent*> DirtyRenderers;
+
 	std::vector<UHDirectionalLightComponent*> DirectionalLights;
 	std::vector<UHPointLightComponent*> PointLights;
 	std::vector<UHSpotLightComponent*> SpotLights;
+	std::vector<UHDirectionalLightComponent*> DirtyDirectionalLights;
+	std::vector<UHPointLightComponent*> DirtyPointLights;
+	std::vector<UHSpotLightComponent*> DirtySpotLights;
 
 	std::vector<UniquePtr<UHComponent>> ComponentPools;
 	UHBoundingBox SceneBound;

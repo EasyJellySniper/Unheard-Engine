@@ -88,6 +88,13 @@ void UHScene::Initialize(UHEngine* InEngine)
 	ConfigCache = InEngine->GetConfigManager();
 	Input = InEngine->GetRawInput();
 	Timer = InEngine->GetGameTimer();
+	EngineCache = InEngine;
+
+	// reserve dirty renderers vector
+	DirtyRenderers.reserve(1024);
+	DirtyDirectionalLights.reserve(4);
+	DirtyPointLights.reserve(100);
+	DirtySpotLights.reserve(100);
 
 	// call all scene initialized code in scripts
 	for (const auto& Script : UHGameScripts)
@@ -113,6 +120,7 @@ void UHScene::Release()
 {
 	// container clear
 	Renderers.clear();
+	DirtyRenderers.clear();
 	Materials.clear();
 	Renderers.clear();
 	OpaqueRenderers.clear();
@@ -120,6 +128,9 @@ void UHScene::Release()
 	DirectionalLights.clear();
 	PointLights.clear();
 	SpotLights.clear();
+	DirtyDirectionalLights.clear();
+	DirtyPointLights.clear();
+	DirtySpotLights.clear();
 }
 
 void UHScene::Update()
@@ -127,12 +138,27 @@ void UHScene::Update()
 	UHGameTimerScope Scope("SceneUpdate", false);
 	UpdateCamera();
 
-	// for objects won't update per-frame, conditionally call update, save ~0.2ms time for me
+	// collect dirty transform components and update them
+	std::vector<UHTransformComponent*> TransformComponents;
+	TransformComponents.reserve(10000);
+
+	// specially keep a track of dirty components
+	DirtyRenderers.clear();
+	DirtyDirectionalLights.clear();
+	DirtyPointLights.clear();
+	DirtySpotLights.clear();
+	const int32_t CurrentFrameGT = EngineCache->GetSceneRenderer()->GetCurrentFrameIndex();
+
 	for (UHMeshRendererComponent* Renderer : Renderers)
 	{
 		if (Renderer->IsWorldDirty())
 		{
-			Renderer->Update();
+			TransformComponents.push_back(Renderer);
+		}
+
+		if (Renderer->IsRenderDirty(CurrentFrameGT))
+		{
+			DirtyRenderers.push_back(Renderer);
 		}
 	}
 
@@ -140,7 +166,12 @@ void UHScene::Update()
 	{
 		if (Light->IsWorldDirty())
 		{
-			Light->Update();
+			TransformComponents.push_back(Light);
+		}
+
+		if (Light->IsRenderDirty(CurrentFrameGT))
+		{
+			DirtyDirectionalLights.push_back(Light);
 		}
 	}
 
@@ -148,7 +179,12 @@ void UHScene::Update()
 	{
 		if (Light->IsWorldDirty())
 		{
-			Light->Update();
+			TransformComponents.push_back(Light);
+		}
+
+		if (Light->IsRenderDirty(CurrentFrameGT))
+		{
+			DirtyPointLights.push_back(Light);
 		}
 	}
 
@@ -156,8 +192,19 @@ void UHScene::Update()
 	{
 		if (Light->IsWorldDirty())
 		{
-			Light->Update();
+			TransformComponents.push_back(Light);
 		}
+
+		if (Light->IsRenderDirty(CurrentFrameGT))
+		{
+			DirtySpotLights.push_back(Light);
+		}
+	}
+
+	// can consider parallel update in the future if bottlenecks happen
+	for (UHTransformComponent* TransformComp : TransformComponents)
+	{
+		TransformComp->Update();
 	}
 }
 
@@ -369,6 +416,11 @@ const std::vector<UHMeshRendererComponent*>& UHScene::GetAllRenderers() const
 	return Renderers;
 }
 
+const std::vector<UHMeshRendererComponent*>& UHScene::GetDirtyRenderers() const
+{
+	return DirtyRenderers;
+}
+
 const std::vector<UHMeshRendererComponent*>& UHScene::GetOpaqueRenderers() const
 {
 	return OpaqueRenderers;
@@ -392,6 +444,21 @@ const std::vector<UHPointLightComponent*>& UHScene::GetPointLights() const
 const std::vector<UHSpotLightComponent*>& UHScene::GetSpotLights() const
 {
 	return SpotLights;
+}
+
+const std::vector<UHDirectionalLightComponent*>& UHScene::GetDirtyDirLights() const
+{
+	return DirtyDirectionalLights;
+}
+
+const std::vector<UHPointLightComponent*>& UHScene::GetDirtyPointLights() const
+{
+	return DirtyPointLights;
+}
+
+const std::vector<UHSpotLightComponent*>& UHScene::GetDirtySpotLights() const
+{
+	return DirtySpotLights;
 }
 
 const std::vector<UHMaterial*>& UHScene::GetMaterials() const

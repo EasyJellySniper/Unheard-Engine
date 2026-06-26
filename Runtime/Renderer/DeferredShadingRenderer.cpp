@@ -377,11 +377,11 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 
 	GSystemConstantBuffer[CurrentFrameGT]->UploadAllData(&SystemConstantsCPU);
 
-	// upload object constants, only update CPU value if transform is changed
+	// upload renderer constants and only update dirty renderers
 	if (CurrentScene->GetAllRendererCount() > 0)
 	{
-		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetAllRenderers();
-		int32_t MinDirtyObjIndex = static_cast<int32_t>(Renderers.size());
+		const std::vector<UHMeshRendererComponent*>& Renderers = CurrentScene->GetDirtyRenderers();
+		int32_t MinDirtyObjIndex = static_cast<int32_t>(CurrentScene->GetAllRendererCount());
 		int32_t MaxDirtyObjIndex = 0;
 
 		for (size_t Idx = 0; Idx < Renderers.size(); Idx++)
@@ -392,23 +392,20 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			const int32_t RendererIdx = Renderer->GetBufferDataIndex();
 
 			UHObjectConstants Constant = Renderer->GetConstants();
-			if (Renderer->IsRenderDirty(CurrentFrameGT) && Renderer->IsVisible())
+			ObjectConstantsCPU[RendererIdx] = Renderer->GetConstants();
+
+			// setup occlusion data if necessary
+			if (RenderingSettings.bEnableHardwareOcclusion)
 			{
-				ObjectConstantsCPU[RendererIdx] = Constant;
-
-				// setup occlusion data if necessary
-				if (RenderingSettings.bEnableHardwareOcclusion)
-				{
-					Constant.GWorld = Renderer->GetWorldBoundMatrix();
-					OcclusionConstantsCPU[RendererIdx] = Constant;
-				}
-
-				// record min/max dirty index to reduce buffer copy range
-				MinDirtyObjIndex = std::min(MinDirtyObjIndex, RendererIdx);
-				MaxDirtyObjIndex = std::max(MaxDirtyObjIndex, RendererIdx);
-
-				Renderer->SetRenderDirty(false, CurrentFrameGT);
+				Constant.GWorld = Renderer->GetWorldBoundMatrix();
+				OcclusionConstantsCPU[RendererIdx] = Constant;
 			}
+
+			// record min/max dirty index to reduce buffer copy range
+			MinDirtyObjIndex = std::min(MinDirtyObjIndex, RendererIdx);
+			MaxDirtyObjIndex = std::max(MaxDirtyObjIndex, RendererIdx);
+
+			Renderer->SetRenderDirty(false, CurrentFrameGT);
 
 			// copy material data only when it's dirty
 			UHMaterial* Mat = Renderer->GetMaterial();
@@ -435,31 +432,26 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	// upload directional light data
 	if (CurrentScene->GetDirLightCount() > 0)
 	{
-		const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirLights();
+		const std::vector<UHDirectionalLightComponent*>& DirLights = CurrentScene->GetDirtyDirLights();
 		for (size_t Idx = 0; Idx < DirLights.size(); Idx++)
 		{
 			UHDirectionalLightComponent* Light = DirLights[Idx];
-			if (Light->IsRenderDirty(CurrentFrameGT))
-			{
-				DirLightConstantsCPU[Idx] = Light->GetConstants();
-				Light->SetRenderDirty(false, CurrentFrameGT);
-			}
+			DirLightConstantsCPU[Idx] = Light->GetConstants();
+			Light->SetRenderDirty(false, CurrentFrameGT);
 		}
+
 		GDirectionalLightBuffer[CurrentFrameGT]->UploadAllData(DirLightConstantsCPU.data());
 	}
 
 	// upload point light data
 	if (CurrentScene->GetPointLightCount() > 0)
 	{
-		const std::vector<UHPointLightComponent*>& PointLights = CurrentScene->GetPointLights();
+		const std::vector<UHPointLightComponent*>& PointLights = CurrentScene->GetDirtyPointLights();
 		for (size_t Idx = 0; Idx < PointLights.size(); Idx++)
 		{
 			UHPointLightComponent* Light = PointLights[Idx];
-			if (Light->IsRenderDirty(CurrentFrameGT))
-			{
-				PointLightConstantsCPU[Idx] = Light->GetConstants();
-				Light->SetRenderDirty(false, CurrentFrameGT);
-			}
+			PointLightConstantsCPU[Idx] = Light->GetConstants();
+			Light->SetRenderDirty(false, CurrentFrameGT);
 		}
 		GPointLightBuffer[CurrentFrameGT]->UploadAllData(PointLightConstantsCPU.data());
 	}
@@ -467,15 +459,12 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 	// upload spot light data
 	if (CurrentScene->GetSpotLightCount() > 0)
 	{
-		const std::vector<UHSpotLightComponent*>& SpotLights = CurrentScene->GetSpotLights();
+		const std::vector<UHSpotLightComponent*>& SpotLights = CurrentScene->GetDirtySpotLights();
 		for (size_t Idx = 0; Idx < SpotLights.size(); Idx++)
 		{
 			UHSpotLightComponent* Light = SpotLights[Idx];
-			if (Light->IsRenderDirty(CurrentFrameGT))
-			{
-				SpotLightConstantsCPU[Idx] = Light->GetConstants();
-				Light->SetRenderDirty(false, CurrentFrameGT);
-			}
+			SpotLightConstantsCPU[Idx] = Light->GetConstants();
+			Light->SetRenderDirty(false, CurrentFrameGT);
 		}
 		GSpotLightBuffer[CurrentFrameGT]->UploadAllData(SpotLightConstantsCPU.data());
 	}
@@ -522,6 +511,11 @@ void UHDeferredShadingRenderer::UploadDataBuffers()
 			RTSoftShadowShader->GetConstants(CurrentFrameGT)->UploadData(&SoftShadowConsts, 0);
 		}
 	}
+}
+
+uint32_t UHDeferredShadingRenderer::GetCurrentFrameIndex() const
+{
+	return CurrentFrameGT;
 }
 
 void UHDeferredShadingRenderer::FrustumCulling()

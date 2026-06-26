@@ -195,6 +195,9 @@ public:
 	// upload data buffers
 	void UploadDataBuffers();
 
+	// get current frame index
+	uint32_t GetCurrentFrameIndex() const;
+
 private:
 	/************************************************ functions ************************************************/
 	void RenderThreadLoop();
